@@ -8,4 +8,12 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] })
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://server-monitoring-system.test',
+        changeOrigin: true,
+      },
+    },
+  },
 })
