@@ -10,4 +10,14 @@ const client = createClient<paths>({
     },
 });
 
+export const getCsrfCookie = async () => {
+    return fetch("/sanctum/csrf-cookie", {
+        method: "GET",
+        headers: {
+            Accept: "application/json",
+        },
+        credentials: "include",
+    });
+};
+
 export default client;

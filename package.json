@@ -5,7 +5,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "npm run dev -w frontend",
-    "gpush": "scripts\\git\\git-push.bat"
+    "gpush": "scripts\\git\\git-push.bat",
+    "types": "php artisan scramble:export --path=frontend/src/api/api.json && npm run types -w frontend"
   },
   "workspaces": [
     "frontend"
