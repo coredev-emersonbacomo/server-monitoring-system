@@ -12,22 +12,9 @@ class SecOp extends Model
     {
         return $this->belongsTo(Coop::class, 'coop_id');
     }
-
-    protected $fillable = [
-        'name',
-        'role',
-        'email',
-        'username',
-        'password',
-        'status',
-        'coop_id'
-    ];
-
-    protected $hidden = [
-        'password',
-    ];
-
-    protected $casts = [
-        'password' => 'hashed',
-    ];
+public function User(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+   
 }

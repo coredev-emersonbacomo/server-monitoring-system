@@ -13,16 +13,12 @@ return new class extends Migration
     {
         Schema::create('servers', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('coop_id')->constrained();
             $table->string('url');
             $table->string('server_name');
-            $table->string('device_name');
-            $table->float('cpu_usage');
-            $table->float('memory_usage');
-            $table->float('storage');
-            $table->float('uptime');
-            $table->float('network_rbytes');
-            $table->float('network_tbytes');
-            $table->foreignId('coop_id');
+            $table->string('device_name');        
+            $table->string('internal_ip');        
+            $table->string('external_ip');        
             $table->timestamps();
         });
     }

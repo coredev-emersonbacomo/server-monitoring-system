@@ -12,14 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sec_ops', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('role');
-            $table->string('email')->unique();
-            $table->string('username')->unique();
-            $table->string('password');
-            $table->string('status')->default('active');
-            $table ->foreignId('coop_id');
+            $table->foreignId('user_id')->constrained();
+            $table->string('status');
+            $table->foreignId('coop_id')->constrained();
+
             $table->timestamps();
         });
     }

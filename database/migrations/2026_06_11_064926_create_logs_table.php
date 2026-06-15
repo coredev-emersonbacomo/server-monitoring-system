@@ -13,7 +13,9 @@ return new class extends Migration
     {
         Schema::create('logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('secops_id');
+            $table->foreignId('user_id')->constrained();
+            $table->string('user_firstname');
+            $table->string('user_lastname');
             $table->text('action');
             $table->timestamps();
         });

@@ -56,8 +56,8 @@ if not "!REPO_URL!"=="" (
 )
 
 :: User Identity
-git config user.email "user@example.com"
-git config user.name "user"
+git config user.email "coredev.johannkarlportrias@example.com"
+git config user.name "coredev-Portrias"
 git config --global core.editor "code --wait"
 
 :: Ensure main branch
