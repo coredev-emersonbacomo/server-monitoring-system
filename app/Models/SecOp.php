@@ -12,9 +12,9 @@ class SecOp extends Model
     {
         return $this->belongsTo(Coop::class, 'coop_id');
     }
-public function User(): BelongsTo
+    public function User(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
-   
+
 }
