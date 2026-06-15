@@ -3,36 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Data\LoginData;
-use App\Data\RegisterData;
 use App\Data\UserData;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    /**
-     * Register a new user
-     */
-    public function register(RegisterData $data): UserData
-    {
-        $user = User::create([
-            'name' => $data->name,
-            'email' => $data->email,
-            'password' => Hash::make($data->password),
-        ]);
-
-        Auth::login($user);
-
-        request()->session()->regenerate();
-
-        return UserData::from($user);
-    }
-
     /**
      * Authenticate user and initialize session
      */
@@ -44,7 +23,7 @@ class AuthController extends Controller
             RateLimiter::hit($this->throttleKey($request));
 
             throw ValidationException::withMessages([
-                'email' => __('auth.failed'),
+                'email' => "Invallid credentials.",
             ]);
         }
 
@@ -85,10 +64,11 @@ class AuthController extends Controller
         $seconds = RateLimiter::availableIn($this->throttleKey($request));
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
+            'email' => [
+                'message' => 'Too many login attempts.',
+                'retry_after_seconds' => $seconds,
+                'available_at' => now()->addSeconds($seconds)->timestamp,
+            ],
         ])->status(429);
     }
 

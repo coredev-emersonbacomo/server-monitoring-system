@@ -9,13 +9,6 @@ interface LoginCredentials {
     password: string;
 }
 
-interface RegisterCredentials {
-    name: string;
-    email: string;
-    password: string;
-    password_confirmation: string;
-}
-
 export const useAuth = () => {
     return useQuery({
         queryKey: ["auth", "me"],
@@ -41,26 +34,6 @@ export const useLogin = () => {
         mutationFn: async (credentials: LoginCredentials) => {
             await getCsrfCookie();
             const { data, error } = await client.POST("/login", {
-                body: credentials as never,
-            });
-            if (error) {
-                throw error;
-            }
-            return data;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-        },
-    });
-};
-
-export const useRegister = () => {
-    const queryClient = useQueryClient();
-
-    return useMutation({
-        mutationFn: async (credentials: RegisterCredentials) => {
-            await getCsrfCookie();
-            const { data, error } = await client.POST("/register", {
                 body: credentials as never,
             });
             if (error) {

@@ -1,13 +1,11 @@
 import { useState, useMemo } from "react";
 import { Search, Filter, Activity } from "lucide-react";
-// import { useDashboardSocket } from "../hooks/useDashboardSocket";
+import { useMockDashboard } from "../hooks/useMockDashboard";
 import { CoopCard } from "../components/CoopCard";
 import { ChartZoomProvider } from "../contexts/ChartZoomContext";
-import { mockCoops } from "@/data/mockDashboard";
 
 export default function Dashboard() {
-    // const { coops, status } = useDashboardSocket();
-    const coops = mockCoops;
+    const { coops, status } = useMockDashboard();
     const [searchQuery, setSearchQuery] = useState("");
 
     const filteredCoops = useMemo(() => {

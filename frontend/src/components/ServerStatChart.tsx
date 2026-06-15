@@ -55,7 +55,7 @@ export const ServerStatChart = memo(function ServerStatChart({
         : data;
 
     return (
-        <div className="rounded-lg border border-border/60 bg-card/40 p-3 flex flex-col gap-1">
+        <div className="rounded-lg border border-border/60 bg-card/40 p-3 py-4 flex flex-col gap-1">
             <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
                 {title}
             </span>
@@ -85,8 +85,8 @@ export const ServerStatChart = memo(function ServerStatChart({
                                 fontSize: 9,
                                 fill: "rgba(255,255,255,0.35)",
                             }}
-                            tickLine={false}
-                            axisLine={false}
+                            // tickLine={false}
+                            // axisLine={false}
                             minTickGap={50}
                         />
                         <YAxis
@@ -95,8 +95,8 @@ export const ServerStatChart = memo(function ServerStatChart({
                                 fontSize: 9,
                                 fill: "rgba(255,255,255,0.35)",
                             }}
-                            tickLine={false}
-                            axisLine={false}
+                            // tickLine={false}
+                            // axisLine={false}
                             width={34}
                             tickFormatter={(v: number) => `${v}${unit}`}
                         />
@@ -130,6 +130,10 @@ export const ServerStatChart = memo(function ServerStatChart({
                     </LineChart>
                 </ResponsiveContainer>
             </div>
+            <span className="text-xs text-muted-foreground">
+                {displayData[displayData.length - 1][dataKey].toFixed(2)}
+                {unit}
+            </span>
         </div>
     );
 });
