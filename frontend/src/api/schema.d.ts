@@ -75,23 +75,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Register a new user */
-        post: operations["auth.register"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/logout": {
         parameters: {
             query?: never;
@@ -116,7 +99,8 @@ export interface components {
         /** UserData */
         UserData: {
             id: number;
-            name: string;
+            first_name: string;
+            last_name: string;
             /** Format: email */
             email: string;
         };
@@ -164,26 +148,6 @@ export interface operations {
         };
     };
     "auth.login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description `UserData` */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserData"];
-                };
-            };
-        };
-    };
-    "auth.register": {
         parameters: {
             query?: never;
             header?: never;

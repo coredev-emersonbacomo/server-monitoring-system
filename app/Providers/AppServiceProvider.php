@@ -31,9 +31,10 @@ class AppServiceProvider extends ServiceProvider
             // from Scramble's static analyzer, causing it to fall back to additionalProperties.
             $type = new ObjectType;
             $type->addProperty('id', new IntegerType);
-            $type->addProperty('name', new StringType);
+            $type->addProperty('first_name', new StringType);
+            $type->addProperty('last_name', new StringType);
             $type->addProperty('email', (new StringType)->format('email'));
-            $type->setRequired(['id', 'name', 'email']);
+            $type->setRequired(['id', 'first_name', 'last_name', 'email']);
 
             $openApi->components->schemas['UserData'] = Schema::fromType($type);
         });
