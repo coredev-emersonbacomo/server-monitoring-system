@@ -1,5 +1,5 @@
 import { Outlet } from "react-router-dom";
-import { Activity } from "lucide-react";
+import { Activity, Settings } from "lucide-react";
 import { SidebarNav } from "@/components/sidebarNav";
 import { BreadcrumbProvider } from "@/contexts/breadCrumbContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,7 +9,7 @@ const sidebarLinks = [
     { name: "Dashboard", href: "/", icon: Activity },
     { name: "Coops", href: "/coops", icon: Activity },
     { name: "Users", href: "/users", icon: Activity },
-    { name: "Settings", href: "/settings", icon: Activity },
+    { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function ProtectedRoute() {

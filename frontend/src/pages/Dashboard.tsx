@@ -1,12 +1,14 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Search, Filter, Activity } from "lucide-react";
 import { useMockDashboard } from "../hooks/useMockDashboard";
 import { CoopCard } from "../components/CoopCard";
 import { ChartZoomProvider } from "../contexts/ChartZoomContext";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 export default function Dashboard() {
     const { coops, status } = useMockDashboard();
     const [searchQuery, setSearchQuery] = useState("");
+    const scrollRef = useRef<HTMLDivElement>(null);
 
     const filteredCoops = useMemo(() => {
         if (!searchQuery.trim()) return coops;
@@ -14,14 +16,12 @@ export default function Dashboard() {
 
         return coops
             .map((coop) => {
-                // Check if coop name matches
                 if (
                     coop.name.toLowerCase().includes(q) ||
                     coop.region.toLowerCase().includes(q)
                 ) {
                     return coop;
                 }
-                // Otherwise, filter servers
                 const matchingServers = coop.servers.filter(
                     (s) =>
                         s.name.toLowerCase().includes(q) ||
@@ -33,9 +33,17 @@ export default function Dashboard() {
             .filter((coop) => coop.servers.length > 0);
     }, [coops, searchQuery]);
 
+    const virtualizer = useVirtualizer({
+        count: filteredCoops.length,
+        getScrollElement: () => scrollRef.current,
+        estimateSize: () => 500,
+        measureElement: (el) => el.getBoundingClientRect().height,
+        overscan: 2,
+    });
+
     return (
         <ChartZoomProvider>
-            <div className="min-h-screen bg-background text-foreground">
+            <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
                 {/* Header */}
                 <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -77,8 +85,8 @@ export default function Dashboard() {
                 </header>
 
                 {/* Main Content */}
-                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-                    {filteredCoops.length === 0 ? (
+                {filteredCoops.length === 0 ? (
+                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
                         <div className="text-center py-24 text-muted-foreground">
                             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted/50 mb-4">
                                 <Search className="w-6 h-6" />
@@ -90,12 +98,45 @@ export default function Dashboard() {
                                 Try adjusting your search query.
                             </p>
                         </div>
-                    ) : (
-                        filteredCoops.map((coop) => (
-                            <CoopCard key={coop.id} coop={coop} />
-                        ))
-                    )}
-                </main>
+                    </main>
+                ) : (
+                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 min-h-0">
+                        <div ref={scrollRef} className="h-full overflow-auto">
+                            <div
+                                style={{
+                                    height: `${virtualizer.getTotalSize()}px`,
+                                    width: "100%",
+                                    position: "relative",
+                                }}
+                            >
+                                {virtualizer.getVirtualItems().map(
+                                    (virtualItem) => (
+                                        <div
+                                            key={virtualItem.key}
+                                            data-index={virtualItem.index}
+                                            ref={virtualizer.measureElement}
+                                            style={{
+                                                position: "absolute",
+                                                top: 0,
+                                                left: 0,
+                                                width: "100%",
+                                                transform: `translateY(${virtualItem.start}px)`,
+                                            }}
+                                        >
+                                            <CoopCard
+                                                coop={
+                                                    filteredCoops[
+                                                    virtualItem.index
+                                                    ]
+                                                }
+                                            />
+                                        </div>
+                                    ),
+                                )}
+                            </div>
+                        </div>
+                    </main>
+                )}
             </div>
         </ChartZoomProvider>
     );

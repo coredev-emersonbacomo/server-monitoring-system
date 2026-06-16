@@ -13,6 +13,10 @@ import { toLabelCase } from "@/utils/helpers";
 const TopBarNav: React.FC = () => {
     const { trail } = useBreadcrumb();
 
+    if (trail.length === 0) {
+        return null;
+    }
+
     return (
         <div className="flex justify-between items-center relative mb-9 py-2">
             <Breadcrumb>
@@ -23,7 +27,7 @@ const TopBarNav: React.FC = () => {
                                 <BreadcrumbLink
                                     href={crumb.href}
                                     className={twMerge(
-                                        "text-anti-primary text-lg leading-3.5 hover:text-blue-500",
+                                        "text-foreground text-lg leading-3.5 hover:text-blue-500",
                                         index === 0 &&
                                             "text-2xl font-bold leading-5",
                                     )}
@@ -32,7 +36,7 @@ const TopBarNav: React.FC = () => {
                                 </BreadcrumbLink>
                             </BreadcrumbItem>
                             {index !== trail.length - 1 && (
-                                <BreadcrumbSeparator className="text-anti-primary text-lg" />
+                                <BreadcrumbSeparator className="text-foreground text-lg" />
                             )}
                         </React.Fragment>
                     ))}

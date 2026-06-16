@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -12,7 +12,6 @@ import ThemeToggle from "./themeToggle";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { CircleUser, EllipsisVertical, Menu } from "lucide-react";
 import { Button } from "./ui/button";
-import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 
 interface SidebarNavLink {
     name: string;
@@ -26,9 +25,9 @@ interface SidebarNavProps {
 
 export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { logout } = useAuthContext();
     const handleLogout = () => logout();
-    const { resetTrail, rootPage, getCurrentCrumbHref } = useBreadcrumb();
 
     const [popoverProfileOpen, setPopoverProfileOpen] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
@@ -77,13 +76,13 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
     return (
         <aside
             className={twMerge(
-                "flex flex-col gap-15 bg-background text-anti-primary py-[1.2rem] px-2",
+                "flex flex-col gap-sidebar-section-gap bg-background text-foreground py-5 px-sidebar-padding",
                 isCollapsed ? "w-sidebar-collapsed" : "w-sidebar",
-                "transition-all duration-300 ease-in-out overflow-x-hidden ring-ghost sticky top-0 h-screen! overflow-y-auto",
+                "transition-all duration-300 ease-in-out overflow-x-hidden ring ring-sidebar-ring sticky top-0 h-screen! overflow-y-auto",
             )}
         >
-            <div className="flex gap-4 px-2 items-center h-s">
-                <button onClick={toggleSidebar}>
+            <div className="flex gap-sidebar-padding items-center h-16">
+                <button className="p-2" onClick={toggleSidebar}>
                     <Menu
                         className={twMerge(
                             "size-icon cursor-pointer transition-all duration-300 ease-in-out",
@@ -99,37 +98,29 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
 
             <nav className="flex flex-col gap-2">
                 {links.map((link) => {
-                    const isActive = rootPage === link.href;
-                    const finalUrl = `${link.href}?root=${link.href}`;
+                    const isActive =
+                        link.href === "/"
+                            ? location.pathname === "/"
+                            : location.pathname.startsWith(link.href);
 
                     return (
                         <Tooltip key={link.name}>
                             <TooltipTrigger asChild>
                                 <div
                                     onClick={() => {
-                                        if (isActive) {
-                                            resetTrail(link.href);
-                                            navigate(finalUrl);
-                                            return;
-                                        }
-                                        navigate(
-                                            getCurrentCrumbHref(
-                                                link.href,
-                                                finalUrl,
-                                            ),
-                                        );
+                                        navigate(link.href);
                                     }}
                                     className={twMerge(
-                                        "py-2 px-2 rounded-xl text-lg transition-all duration-300 ease-in-out overflow-hidden cursor-pointer",
+                                        "py-0.5 rounded-xl text-lg transition-all duration-300 ease-in-out overflow-hidden cursor-pointer",
                                         isCollapsed
                                             ? "w-sidebar-button-collapsed"
                                             : "w-full",
                                         isActive
                                             ? "bg-sidebar-active font-bold"
-                                            : "text-sidebar-text-inactive hover:bg-sidebar-hover",
+                                            : "text-muted-foreground hover:bg-sidebar-hover",
                                     )}
                                 >
-                                    <div className="flex items-center gap-4 w-sidebar-button">
+                                    <div className="flex items-center gap-sidebar-section-gap p-sidebar-item-padding w-sidebar-button">
                                         {
                                             <link.icon
                                                 variant={
@@ -138,10 +129,10 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                                                         : "outline"
                                                 }
                                                 className={twMerge(
-                                                    "w-icon h-icon",
+                                                    "size-icon",
                                                     isActive
-                                                        ? "text-sidebar-icon-active"
-                                                        : "text-anti-primary",
+                                                        ? "text-sidebar-foreground"
+                                                        : "text-foreground",
                                                 )}
                                             />
                                         }
@@ -154,10 +145,10 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                                 align="center"
                                 hidden={!isCollapsed}
                                 className={twMerge(
-                                    "relative bg-primary text-primary-foreground ring-ghost text-md font-semibold",
+                                    "relative bg-primary text-primary-foreground ring-transparent text-md font-semibold",
                                     // Arrow base
                                     "before:content-[''] before:absolute before:size-2 before:rotate-45",
-                                    "before:bg-primary before:ring-ghost",
+                                    "before:bg-primary before:ring-transparent",
                                     // Position arrow based on side
                                     "data-[side=top]:before:-bottom-1 data-[side=top]:before:left-1/2 data-[side=top]:before:-translate-x-1/2",
                                     "data-[side=bottom]:before:-top-1 data-[side=bottom]:before:left-1/2 data-[side=bottom]:before:-translate-x-1/2",
@@ -180,14 +171,14 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                 <PopoverTrigger asChild>
                     <div
                         className={twMerge(
-                            "group py-2 px-1 rounded-xl text-lg transition-all duration-300 ease-in-out overflow-hidden",
+                            "group py-2 rounded-xl text-lg transition-all duration-300 ease-in-out overflow-hidden",
                             "cursor-pointer mt-auto",
                             isCollapsed
                                 ? "w-sidebar-button-collapsed"
                                 : "w-full hover:bg-sidebar-hover",
                         )}
                     >
-                        <div className="flex items-center gap-4 w-sidebar-button">
+                        <div className="flex items-center gap-sidebar-padding w-sidebar-button">
                             <ProfileBar />
                             <EllipsisVertical className="ml-auto mr-3 text-gray-400 size-5" />
                         </div>
@@ -198,7 +189,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                     align="end"
                     side="right"
                     sideOffset={8}
-                    className="w-64 bg-background p-5 rounded-lg flex flex-col gap-4 ring-ghost z-9999"
+                    className="w-64 bg-background p-5 rounded-lg flex flex-col gap-sidebar-padding ring-transparent z-9999"
                 >
                     {isCollapsed ? (
                         <ProfileBar
@@ -210,7 +201,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                             variant={"outline"}
                             icon={<CircleUser />}
                             label="Profile"
-                            onClick={() => navigate("profile?root=profile")}
+                            onClick={() => navigate("/profile")}
                         />
                     )}
                     <ThemeToggle />
@@ -245,12 +236,12 @@ const ProfileBar = ({
         <div
             className={twMerge(
                 asNavigation &&
-                    "cursor-pointer rounded-lg py-2 hover:bg-anti-primary/2 hover:ring-ghost",
+                    "cursor-pointer rounded-lg py-2 hover:bg-foreground/2 hover:ring-transparent",
             )}
             onClick={
                 asNavigation
                     ? () => {
-                          navigate("profile?root=profile");
+                          navigate("/profile");
                           setPopoverOpen?.(false);
                       }
                     : undefined
@@ -258,28 +249,29 @@ const ProfileBar = ({
         >
             <div
                 className={twMerge(
-                    "flex items-center gap-4",
+                    "flex items-center gap-sidebar-section-gap",
                     asNavigation && "hover:scale-95 hover:pl-1",
                 )}
             >
                 <div
                     className={twMerge(
-                        "w-[calc(var(--spacing-icon)+0.5rem)] aspect-square rounded-full overflow-hidden",
-                        "border-2 border-white ring-ghost outline-anti-primary/10",
+                        "w-[calc(var(--size-icon)+0.5rem)] aspect-square rounded-full overflow-hidden",
+                        "border-2 border-white ring-transparent outline-foreground/10",
                         "group-hover:outline-1 group-hover:scale-105",
                     )}
                 >
-                    <div className="w-full h-full rounded-full overflow-hidden bg-anti-primary/10 flex items-center justify-center">
-                        <span className="text-lg font-semibold text-anti-primary/60">
-                            {firstName[0]}{lastName[0]}
+                    <div className="w-full h-full rounded-full overflow-hidden bg-foreground/10 flex items-center justify-center">
+                        <span className="text-lg font-semibold text-foreground/60">
+                            {firstName[0]}
+                            {lastName[0]}
                         </span>
                     </div>
                 </div>
                 <div className="leading-6">
-                    <div className="font-semibold text-anti-primary/80 group-hover:text-anti-primary text-[1.1rem]">
+                    <div className="font-semibold text-foreground/80 group-hover:text-foreground text-[1.1rem]">
                         {firstName} {lastName}
                     </div>
-                    <div className="text-anti-primary/40 -ml-0.5 text-base">
+                    <div className="text-foreground/40 -ml-0.5 text-base">
                         @{username}
                     </div>
                 </div>
