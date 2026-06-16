@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->integer('landline')->nullable();
+            $table->integer('contact_number')->nullable();
             $table->string('status');
             $table->timestamps();
         });

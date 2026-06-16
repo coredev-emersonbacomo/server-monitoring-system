@@ -20,7 +20,9 @@ class AdminSeeder extends Seeder
             'username' => 'admin',
             'password' => bcrypt('admin'),
             'role_id' => UserRole::Admin->value,
-            'created_at' => now()
+            'created_at' => now(),
+            'updated_at'=> now(),
+            'last_login' => now()
         ]);
     }
 }

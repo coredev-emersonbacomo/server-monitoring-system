@@ -13,7 +13,7 @@ use App\Models\Role;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['first_name', 'last_name', 'email', 'password','username'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {

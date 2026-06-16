@@ -12,10 +12,16 @@ class CreateCoopData extends Data
 
         #[Required, Min(2), Max(255)]
         public string $name,
+        #[Min(5)]
+        public string $description,
+        #[Required, Min(5)]
+        public string $location,
         #[Required, Min(5), Max(255)]
         public string $email,
         #[Required]
-        public string $landline,
+        public string $contact_number,
+        public string $banner_picture
+        
 
 
 

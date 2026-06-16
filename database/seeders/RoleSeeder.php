@@ -18,7 +18,7 @@ class RoleSeeder extends Seeder
             'role_name' => 'Admin',
         ],
         [
-            'role_name' => 'User',
+            'role_name' => 'SecOps',
         ]]);
     }
 }
