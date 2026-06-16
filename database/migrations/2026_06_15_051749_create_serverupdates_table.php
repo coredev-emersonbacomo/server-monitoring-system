@@ -16,9 +16,9 @@ return new class extends Migration
             $table->float('cpu_usage');
             $table->float('memory_usage');
             $table->float('storage')->unsigned(true);
-            $table->bigInteger('uptime')->unsigned(true);
-            $table->bigInteger('network_rbytes')->unsigned(true);
-            $table->bigInteger('network_tbytes')->unsigned(true);
+            $table->int('uptime')->unsigned(true);
+            $table->int('network_rbytes')->unsigned(true);
+            $table->int('network_tbytes')->unsigned(true);
             $table->timestamps();
         });
     }
