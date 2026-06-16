@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('username')->unique();
             $table->string('password');
             $table->timestamp('last_login')->nullable();
+            $table->string('profile_picture_url')->nullable();
 
             $table->rememberToken();
             $table->timestamps();
