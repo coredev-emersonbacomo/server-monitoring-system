@@ -1,5 +1,8 @@
 <?php
 
+use App\Data\ServerUpdatesData;
+use App\Models\ServerUpdate;
+use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Broadcasting\PrivateChannel;
 use App\Models\Server;
@@ -13,13 +16,33 @@ use App\Events\ServerStatsUpdated;
 
 // Endpoint for external server agents to push live stats to the backend.
 // The backend stores the stats and broadcasts to the React frontend via Reverb.
-Route::post('/server/stats', function () {
+Route::post('/server/stats', function (ServerUpdatesData $serverUpdatesData, Request $request) {
+    
     // 1. Receive data from the external server agent (e.g. JSON containing CPU, Memory).
-    // $data = request()->validate([...]);
+    // ServerUpdate::create([
+    //     'server_id' => 1, // In a real implementation, you'd identify the server by an API key or IP address
+    //     'cpu_usage' => $serverUpdatesData->cpu_usage,
+    //     'memory_usage' => $serverUpdatesData->memory_usage,
+    //     'storage' => $serverUpdatesData->storage,
+    //     'uptime' => $serverUpdatesData->uptime,
+    //     'network_rbytes' => $serverUpdatesData->network_rbytes,
+    //     'network_tbytes' => $serverUpdatesData->network_tbytes,
+    // ]);
+    Log::info("Received the post Here!!!");
 
     // 2. Update the local database.
-    // $server = Server::where('ip', request()->ip())->firstOrFail();
-    // $server->metrics()->create($data); // Insert the new stat point
+    $server = ServerUpdate::where('server_id', $serverUpdatesData->server_id)->firstOrFail();
+    $newServerUpdate = ServerUpdate::create([
+        'server_id' => $serverUpdatesData->server_id,
+        'cpu_usage' => $serverUpdatesData->cpu_usage,
+        'memory_usage' => $serverUpdatesData->memory_usage,
+        'storage' => $serverUpdatesData->storage,
+        'uptime' => $serverUpdatesData->uptime,
+        'network_rbytes' => $serverUpdatesData->network_rbytes,
+        'network_tbytes' => $serverUpdatesData->network_tbytes,
+    ]);
+
+
 
     // 3. SEC-OPS BEST PRACTICE: Scoped Broadcasting
     // Do not broadcast all servers to everyone! Filter the payload and use Private Channels.

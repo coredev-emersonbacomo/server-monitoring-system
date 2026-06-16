@@ -15,10 +15,10 @@ return new class extends Migration
             $table->foreignId('server_id')->constrained();
             $table->float('cpu_usage');
             $table->float('memory_usage');
-            $table->float('storage');
-            $table->float('uptime');
-            $table->float('network_rbytes');
-            $table->float('network_tbytes');
+            $table->float('storage')->unsigned(true);
+            $table->bigInteger('uptime')->unsigned(true);
+            $table->bigInteger('network_rbytes')->unsigned(true);
+            $table->bigInteger('network_tbytes')->unsigned(true);
             $table->timestamps();
         });
     }
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('serverupdates');
+        Schema::dropIfExists('server_updates');
     }
 };

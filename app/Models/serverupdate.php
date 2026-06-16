@@ -7,7 +7,7 @@ use App\Models\Server;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 
-class serverupdate extends Model
+class ServerUpdate extends Model
 {
      
      public function server(): BelongsTo
