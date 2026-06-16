@@ -5,6 +5,7 @@ import { ProtectedRoute } from "./layouts/ProtectedRoute";
 import Coops from "./pages/Coops";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import Logs from "./pages/Logs";
 
 const router = createBrowserRouter([
     {
@@ -25,6 +26,10 @@ const router = createBrowserRouter([
             {
                 path: "/users",
                 element: <Users />,
+            },
+            {
+                path: "/logs",
+                element: <Logs />,
             },
             {
                 path: "/settings",

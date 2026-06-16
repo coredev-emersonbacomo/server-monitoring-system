@@ -1,14 +1,28 @@
 import { Outlet } from "react-router-dom";
-import { Activity, Settings } from "lucide-react";
-import { SidebarNav } from "@/components/sidebarNav";
-import { BreadcrumbProvider } from "@/contexts/breadCrumbContext";
+import {
+    Activity,
+    Settings,
+    Users,
+    Landmark,
+    type LucideProps,
+    ClipboardClock,
+} from "lucide-react";
+import { SidebarNav } from "@/components/SidebarNav";
+import { BreadcrumbProvider } from "@/contexts/BreadCrumbContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import TopBarNav from "@/components/TopBarNav";
 
 const sidebarLinks = [
     { name: "Dashboard", href: "/", icon: Activity },
-    { name: "Coops", href: "/coops", icon: Activity },
-    { name: "Users", href: "/users", icon: Activity },
+    {
+        name: "Coops",
+        href: "/coops",
+        icon: (props: LucideProps) => (
+            <Landmark {...props} strokeWidth="1.75" />
+        ),
+    },
+    { name: "Users", href: "/users", icon: Users },
+    { name: "Logs", href: "/logs", icon: ClipboardClock },
     { name: "Settings", href: "/settings", icon: Settings },
 ];
 

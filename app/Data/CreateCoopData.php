@@ -21,9 +21,5 @@ class CreateCoopData extends Data
         #[Required]
         public string $contact_number,
         public string $banner_picture
-        
-
-
-
     ) {}
 }

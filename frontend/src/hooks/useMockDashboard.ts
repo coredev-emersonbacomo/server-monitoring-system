@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import { mockCoops, type Coop, type StatPoint } from "../data/mockDashboard";
 
+let nextTs = Date.now();
+
 function nextPoint(prev: StatPoint): StatPoint {
     const clamp = (v: number, lo: number, hi: number) =>
         Math.max(lo, Math.min(hi, v));
     const rw = (v: number, delta: number) => v + (Math.random() - 0.5) * delta;
 
+    nextTs += 1000;
     return {
-        timestamp: Date.now(),
+        timestamp: nextTs,
         cpu: clamp(rw(prev.cpu, 10), 5, 98),
         memory: clamp(rw(prev.memory, 5), 20, 92),
         netIn: clamp(rw(prev.netIn, 1.5), 0, 30),
