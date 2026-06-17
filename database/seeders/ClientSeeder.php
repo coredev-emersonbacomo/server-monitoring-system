@@ -22,11 +22,13 @@ class ClientSeeder extends Seeder
 
         DB::table("servers")->insert([
             'client_id' => 1,
-            'url' => 'http://abc.com',
+            'cpu_cores' => 4,
+            'ram' => 16,
             'server_name' => 'server-1',
             'device_name' => 'Thinkpad',
             'internal_ip' => '192.168.1.1',
             'external_ip' => '127.0.0.1',
+            'operating_system' => 'Ubuntu 20.04',
         ]);
     }
 }
