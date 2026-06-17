@@ -5,8 +5,8 @@ namespace App\Data;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Attributes\MapInputName;
 use Spatie\LaravelData\Attributes\Validation\Required;
-use Spatie\LaravelData\Attributes\Validation\Min;
-use Spatie\LaravelData\Attributes\Validation\Max;
+use Spatie\LaravelData\Attributes\Validation\MaxDigits;
+use Spatie\LaravelData\Attributes\Validation\MinDigits;
 
 class ServerUpdatesData extends Data
 {
@@ -21,18 +21,18 @@ class ServerUpdatesData extends Data
         public int $timestamp,
 
         // Tell Spatie to look inside the 'cpu' array for 'load1'
-        #[Required, Min(0), Max(100), MapInputName('cpu.load1')]
+        #[Required, MinDigits(0), MaxDigits(100), MapInputName('cpu.load1')]
         public float $cpu_usage,
 
         // Tell Spatie to look inside the 'memory' array for 'percent'
-        #[Required, Min(0), Max(100), MapInputName('memory.percent')]
+        #[Required, MinDigits(0), MaxDigits(100), MapInputName('memory.percent')]
         public float $memory_usage,
 
         // Tell Spatie to look inside the 'disk' array for 'percent'
-        #[Required, Min(0), MapInputName('disk.percent')]
+        #[Required, MinDigits(0), MapInputName('disk.percent')]
         public float $storage,
 
-        #[Required, Min(0)]
+        #[Required, MinDigits(0)]
         public int $uptime,
 
         // We can handle the network totals inside a custom mapping method below
