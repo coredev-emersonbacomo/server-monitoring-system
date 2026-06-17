@@ -14,13 +14,13 @@ class ServerStatsUpdated implements ShouldBroadcastNow
 
     /**
      * The payload that will be sent to the frontend.
-     * In a real app, this might be an array of Coop objects or a specific Server.
+     * In a real app, this might be an array of Client objects or a specific Server.
      */
-    public array $coops;
+    public array $clients;
 
-    public function __construct(array $coops)
+    public function __construct(array $clients)
     {
-        $this->coops = $coops;
+        $this->clients = $clients;
     }
 
     /**

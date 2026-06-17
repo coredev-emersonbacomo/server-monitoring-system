@@ -1,25 +1,25 @@
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useCoop, useUpdateCoop } from "@/hooks/useCoops";
+import { useClient, useUpdateClient } from "@/hooks/useClients";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
-import { CoopForm } from "@/components/CoopForm";
+import { ClientForm } from "@/components/ClientForm";
 import { Loader2 } from "lucide-react";
 
-export default function CoopEdit() {
+export default function ClientEdit() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { setTrail } = useBreadcrumb();
-    const coopId = Number(id);
+    const clientId = Number(id);
 
-    const { data: coop, isLoading, error } = useCoop(coopId);
-    const updateCoop = useUpdateCoop(coopId);
+    const { data: client, isLoading, error } = useClient(clientId);
+    const updateClient = useUpdateClient(clientId);
 
     useEffect(() => {
         setTrail([
-            { label: "Coops", href: "/coops" },
-            { label: `Edit${coop ? `: ${coop.name}` : ""}`, href: `/coops/${id}/edit` },
+            { label: "Clients", href: "/clients" },
+            { label: `Edit${client ? `: ${client.name}` : ""}`, href: `/clients/${id}/edit` },
         ]);
-    }, [setTrail, id, coop]);
+    }, [setTrail, id, client]);
 
     if (isLoading) {
         return (
@@ -29,23 +29,23 @@ export default function CoopEdit() {
         );
     }
 
-    if (error || !coop) {
+    if (error || !client) {
         return (
             <div className="flex-1 flex items-center justify-center text-sm text-destructive">
-                Failed to load coop
+                Failed to load client
             </div>
         );
     }
 
     return (
-        <CoopForm
-            title={`Edit: ${coop.name}`}
-            initialBannerUrl={coop.banner_image_url || undefined}
+        <ClientForm
+            title={`Edit: ${client.name}`}
+            initialBannerUrl={client.banner_image_url || undefined}
             onSubmit={async (formData) => {
-                await updateCoop.mutateAsync(formData);
-                navigate("/coops");
+                await updateClient.mutateAsync(formData);
+                navigate("/clients");
             }}
-            isPending={updateCoop.isPending}
+            isPending={updateClient.isPending}
         />
     );
 }

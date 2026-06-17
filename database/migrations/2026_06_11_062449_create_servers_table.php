@@ -13,12 +13,14 @@ return new class extends Migration
     {
         Schema::create('servers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('coop_id')->constrained();
-            $table->string('url');
+            $table->foreignId('client_id')->constrained();
             $table->string('server_name');
             $table->string('device_name');        
             $table->string('internal_ip');        
-            $table->string('external_ip');        
+            $table->string('external_ip'); 
+            $table->integer('cpu_cores');
+            $table->integer('ram');
+            $table->string('operating_system');        
             $table->timestamps();
         });
     }

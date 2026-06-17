@@ -8,7 +8,7 @@ use Spatie\LaravelData\Attributes\Validation\Min;
 use Spatie\LaravelData\Attributes\Validation\Required;
 use Illuminate\Http\UploadedFile;
 
-class CreateCoopData extends Data
+class CreateClientData extends Data
 {
     public function __construct(
 

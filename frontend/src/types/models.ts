@@ -3,5 +3,5 @@
 
 import type { components } from "@/api/schema";
 
-export type Coop = components["schemas"]["CoopData"];
+export type Client = components["schemas"]["ClientData"];
 export type User = components["schemas"]["UserData"];

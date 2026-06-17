@@ -2,12 +2,12 @@ import { createBrowserRouter } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
-import Coops from "./pages/Coops";
+import Clients from "./pages/Clients";
 import UsersIndex from "./pages/users/Index";
 import UsersCreate from "./pages/users/Create";
 import UsersEdit from "./pages/users/Edit";
-import CoopCreate from "./pages/CoopCreate";
-import CoopEdit from "./pages/CoopEdit";
+import ClientCreate from "./pages/ClientCreate";
+import ClientEdit from "./pages/ClientEdit";
 import Settings from "./pages/Settings";
 import Logs from "./pages/Logs";
 
@@ -24,17 +24,17 @@ const router = createBrowserRouter([
                 element: <Dashboard />,
             },
             {
-                path: "/coops",
-                element: <Coops />,
+                path: "/clients",
+                element: <Clients />,
             },
             // ── Users ──────────────────────────────────
             {
-                path: "/coops/create",
-                element: <CoopCreate />,
+                path: "/clients/create",
+                element: <ClientCreate />,
             },
             {
-                path: "/coops/:id/edit",
-                element: <CoopEdit />,
+                path: "/clients/:id/edit",
+                element: <ClientEdit />,
             },
             {
                 path: "/users",

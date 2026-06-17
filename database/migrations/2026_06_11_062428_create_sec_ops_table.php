@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('sec_ops', function (Blueprint $table) {
             $table->foreignId('user_id')->constrained();
             $table->string('status');
-            $table->foreignId('coop_id')->constrained();
+            $table->foreignId('client_id')->constrained();
 
             $table->timestamps();
         });

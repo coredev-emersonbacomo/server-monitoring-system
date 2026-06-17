@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('coops', function (Blueprint $table) {
+        Schema::create('clients', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('description')->nullable();
             $table->string('email')->unique();
-            $table->integer('contact_number')->nullable();
+            $table->string('contact_number')->nullable();
             $table->string('location')->nullable(false);
             $table->string('banner_image_url')->nullable();
             $table->timestamps();
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('coops');
+        Schema::dropIfExists('clients');
     }
 };
