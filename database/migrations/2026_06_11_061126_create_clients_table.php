@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('description')->nullable();
             $table->string('email')->unique();
-            $table->integer('contact_number')->nullable();
+            $table->string('contact_number')->nullable();
             $table->string('location')->nullable(false);
             $table->string('banner_image_url')->nullable();
             $table->timestamps();
