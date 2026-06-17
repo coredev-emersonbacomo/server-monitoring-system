@@ -18,8 +18,8 @@ class CreateCoopData extends Data
         public string $location,
         #[Required, Min(5), Max(255)]
         public string $email,
-        #[Required]
+        #[Required, min(5)]
         public string $contact_number,
-        public string $banner_picture
+        public string $banner_image_url
     ) {}
 }
