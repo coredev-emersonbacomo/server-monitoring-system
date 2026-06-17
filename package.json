@@ -8,7 +8,7 @@
     "dev": "npm run dev -w frontend",
     "gpush": "scripts\\git\\git-push.bat",
     "types": "php artisan scramble:clear && php artisan scramble:export --path=frontend/src/api/api.json && npm run types -w frontend",
-    "seed": "php artisan migrate && php artisan db:seed --class=RoleSeeder &&  php artisan db:seed --class=AdminSeeder"
+    "resetdb": "del /f /q database\\database.sqlite 2>nul & php artisan migrate && php artisan db:seed --class=RoleSeeder &&  php artisan db:seed --class=AdminSeeder"
   },
   "workspaces": [
     "frontend"

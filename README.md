@@ -1,6 +1,6 @@
 Commands:
 
 Seeder
-==== npm run seed
+==== npm run resetdb
 App Start
 ==== npm start

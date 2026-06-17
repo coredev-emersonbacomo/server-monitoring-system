@@ -68,6 +68,12 @@ export const ServerStatChart = memo(function ServerStatChart({
                   displayData[displayData.length - 1].timestamp,
               ];
 
+    const tsValues = displayData.map((d) => d.timestamp);
+    const xDomain: [number, number] =
+        tsValues.length < 2
+            ? [0, 0]
+            : [Math.min(...tsValues), Math.max(...tsValues)];
+
     return (
         <div className="rounded-lg border border-border/60 bg-card/40 p-3 py-4 flex flex-col gap-3">
             <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
@@ -93,7 +99,7 @@ export const ServerStatChart = memo(function ServerStatChart({
                             dataKey="timestamp"
                             type="number"
                             scale="time"
-                            domain={["dataMin", "dataMax"]}
+                            domain={xDomain}
                             ticks={tickTimestamps}
                             tickFormatter={fmtTime}
                             tick={{
