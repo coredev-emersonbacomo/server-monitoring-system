@@ -21,11 +21,11 @@ export default defineConfig({
     server: {
         proxy: {
             "/api": {
-                target: "http://server-monitoring-system.test",
+                target: "http://localhost:8000",
                 changeOrigin: true,
             },
             "/sanctum": {
-                target: "http://server-monitoring-system.test",
+                target: "http://localhost:8000",
                 changeOrigin: true,
             },
         },

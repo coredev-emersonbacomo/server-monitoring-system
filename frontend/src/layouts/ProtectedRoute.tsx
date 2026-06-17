@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import {
     Activity,
     Settings,
@@ -11,6 +11,7 @@ import { SidebarNav } from "@/components/SidebarNav";
 import { BreadcrumbProvider } from "@/contexts/BreadCrumbContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import TopBarNav from "@/components/TopBarNav";
+import { useAuthContext } from "@/hooks/useAuthContext";
 
 const sidebarLinks = [
     { name: "Dashboard", href: "/", icon: Activity },
@@ -27,6 +28,17 @@ const sidebarLinks = [
 ];
 
 export function ProtectedRoute() {
+    const { user, isLoading } = useAuthContext();
+    const location = useLocation();
+
+    if (isLoading) {
+        return <div className="flex min-h-screen items-center justify-center" />;
+    }
+
+    if (!user) {
+        return <Navigate to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+    }
+
     return (
         <TooltipProvider>
             <BreadcrumbProvider>

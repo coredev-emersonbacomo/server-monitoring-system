@@ -3,9 +3,11 @@ import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
 import Coops from "./pages/Coops";
-import UsersIndex from "./pages/Users/Index";
-import UsersCreate from "./pages/Users/Create";
-import UsersEdit from "./pages/Users/Edit";
+import UsersIndex from "./pages/users/Index";
+import UsersCreate from "./pages/users/Create";
+import UsersEdit from "./pages/users/Edit";
+import CoopCreate from "./pages/CoopCreate";
+import CoopEdit from "./pages/CoopEdit";
 import Settings from "./pages/Settings";
 import Logs from "./pages/Logs";
 
@@ -26,6 +28,14 @@ const router = createBrowserRouter([
                 element: <Coops />,
             },
             // ── Users ──────────────────────────────────
+            {
+                path: "/coops/create",
+                element: <CoopCreate />,
+            },
+            {
+                path: "/coops/:id/edit",
+                element: <CoopEdit />,
+            },
             {
                 path: "/users",
                 element: <UsersIndex />,

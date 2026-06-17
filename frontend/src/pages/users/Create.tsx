@@ -81,42 +81,42 @@ const Create = () => {
         return Object.keys(e).length === 0;
     };
 
-   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validate()) return;
 
-    try {
-        const res = await fetch("/api/users", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            },
-            body: JSON.stringify({
-                first_name:            form.first_name,
-                last_name:             form.last_name,
-                email:                 form.email,
-                username:              form.username,
-                role_id:               form.role === "admin" ? 1 : 2,
-                password:              form.password,
-                password_confirmation: form.password_confirmation,
-            }),
-        });
+        try {
+            const res = await fetch("/api/users", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                },
+                body: JSON.stringify({
+                    first_name: form.first_name,
+                    last_name: form.last_name,
+                    email: form.email,
+                    username: form.username,
+                    role_id: form.role === "admin" ? 1 : 2,
+                    password: form.password,
+                    password_confirmation: form.password_confirmation,
+                }),
+            });
 
-        if (!res.ok) {
-            const data = await res.json();
-            // surface Laravel validation errors if any
-            if (data.errors) {
-                setErrors(data.errors);
+            if (!res.ok) {
+                const data = await res.json();
+                // surface Laravel validation errors if any
+                if (data.errors) {
+                    setErrors(data.errors);
+                }
+                return;
             }
-            return;
-        }
 
-        navigate("/users");
-    } catch (err) {
-        console.error("Failed to create user:", err);
-    }
-};      
+            navigate("/users");
+        } catch (err) {
+            console.error("Failed to create user:", err);
+        }
+    };
 
     const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -152,7 +152,7 @@ const Create = () => {
                 >
                     {/* Avatar upload */}
                     <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <div className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
                             {avatarPreview ? (
                                 <img
                                     src={avatarPreview}

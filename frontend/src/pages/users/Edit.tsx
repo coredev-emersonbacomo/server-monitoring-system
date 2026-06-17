@@ -209,7 +209,7 @@ const Edit = () => {
                 >
                     {/* Avatar */}
                     <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <div className="w-16 h-16 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
                             {currentAvatar ? (
                                 <img
                                     src={currentAvatar}

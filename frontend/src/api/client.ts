@@ -11,13 +11,16 @@ const client = createClient<paths>({
 });
 
 export const getCsrfCookie = async () => {
-    return fetch("/sanctum/csrf-cookie", {
+    const response = await fetch("/sanctum/csrf-cookie", {
         method: "GET",
         headers: {
             Accept: "application/json",
         },
         credentials: "include",
     });
+    if (!response.ok) {
+        throw new Error("Failed to get CSRF cookie");
+    }
 };
 
 export default client;

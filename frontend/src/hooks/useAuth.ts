@@ -20,7 +20,7 @@ export const useAuth = () => {
                 }
                 throw error;
             }
-            return data as UserData;
+            return data ?? null;
         },
         retry: false,
         staleTime: 1000 * 60 * 5, // 5 minutes
@@ -41,8 +41,8 @@ export const useLogin = () => {
             }
             return data;
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+        onSuccess: (data) => {
+            queryClient.setQueryData(["auth", "me"], data);
         },
     });
 };

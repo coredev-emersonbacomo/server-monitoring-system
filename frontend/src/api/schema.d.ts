@@ -28,8 +28,20 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
+                            success: boolean;
                             /** @constant */
-                            status: "success";
+                            message: "Metrics recorded.";
+                        };
+                    };
+                };
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            error: "Unauthorized or invalid server ID.";
                         };
                     };
                 };
@@ -92,15 +104,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/coops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["coop.index"];
+        put?: never;
+        post: operations["coop.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/coops/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["coop.show"];
+        put: operations["coop.update"];
+        post?: never;
+        delete: operations["coop.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** CoopData */
+        CoopData: {
+            id: number;
+            name: string;
+            description: string;
+            location: string;
+            email: string;
+            contact_number: string;
+            banner_image_url: string;
+            servers_count: number;
+            created_at: string;
+            updated_at: string;
+        };
         /** UserData */
         UserData: {
             id: number;
             first_name: string;
             last_name: string;
+            role_id: number;
+            profile_picture_url: string;
             /** Format: email */
             email: string;
         };
@@ -180,6 +239,136 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "coop.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoopData"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "coop.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    description: string;
+                    location: string;
+                    email: string;
+                    contact_number: string;
+                    banner_image_url: string;
+                };
+            };
+        };
+        responses: {
+            /** @description `CoopData` */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoopData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "coop.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `CoopData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoopData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "coop.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    description: string;
+                    location: string;
+                    email: string;
+                    contact_number: string;
+                    banner_image_url: string;
+                };
+            };
+        };
+        responses: {
+            /** @description `CoopData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoopData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "coop.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
             cookie?: never;
         };
         requestBody?: never;
