@@ -4,6 +4,9 @@ namespace App\Data;
 
 use Spatie\LaravelData\Attributes\Validation\Email;
 use Spatie\LaravelData\Data;
+use Spatie\LaravelData\Attributes\Validation\Min;
+use Spatie\LaravelData\Attributes\Validation\Unique;
+
 
 class UserData extends Data
 {
@@ -15,6 +18,10 @@ class UserData extends Data
         public string $profile_picture_url,
         #[Email]
         public string $email,
+        #[Min(3), Unique('users', 'username')]
+        public string $username,
+        #[Min(8)]
+        public string $password,
     ) {
     }
 }
