@@ -15,12 +15,14 @@ return new class extends Migration
             $table->id();
             $table->foreignId('client_id')->constrained();
             $table->string('server_name');
-            $table->string('device_name');        
-            $table->string('internal_ip');        
-            $table->string('external_ip'); 
-            $table->integer('cpu_cores');
-            $table->integer('ram');
-            $table->string('operating_system');        
+            $table->string('device_name');
+            $table->string('internal_ip');
+            $table->string('external_ip');
+
+            // TODO: add autoscript for getting specs
+            $table->integer('cpu_cores')->nullable();
+            $table->integer('ram')->nullable();
+            $table->string('operating_system')->nullable;
             $table->timestamps();
         });
     }
