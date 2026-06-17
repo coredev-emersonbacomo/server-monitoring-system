@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
+// File Path: routes/api.php 
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -14,3 +15,4 @@ use Illuminate\Support\Facades\Route;
 
 Route::group([], base_path('routes/api/auth.php'));
 Route::group([], base_path('routes/api/servers.php'));
+Route::group([], base_path('routes/api/users.php'));
