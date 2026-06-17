@@ -13,7 +13,7 @@ use App\Models\Role;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 
-#[Fillable(['first_name', 'last_name', 'email', 'password','username'])]
+#[Fillable(['first_name', 'last_name', 'email', 'password', 'username', 'role_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -34,6 +34,6 @@ class User extends Authenticatable
     }
     public function role(): BelongsTo
     {
-        return $this->belongsTo(Role::class, 'role');
+        return $this->belongsTo(Role::class, 'role_id');
     }
 }

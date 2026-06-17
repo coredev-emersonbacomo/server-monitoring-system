@@ -1,9 +1,7 @@
 // users/Edit.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Upload, AlertTriangle } from "lucide-react";
-
-type Role = "admin" | "secoops";
 
 interface User {
     id: number;
@@ -11,58 +9,13 @@ interface User {
     last_name: string;
     email: string;
     username: string;
-    role: Role;
+    role: { id: number; role_name: string };
     status: "active" | "inactive";
     avatar?: string;
 }
 
-// ─── Mock fetch (replace with useQuery / axios) ───────────────────────────────
 
-const MOCK_USERS: User[] = [
-    {
-        id: 1,
-        first_name: "Ruby",
-        last_name: "Arnold",
-        email: "r.arnold@devify.com",
-        username: "ruby.arnold",
-        role: "admin",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=47",
-    },
-    {
-        id: 2,
-        first_name: "James",
-        last_name: "Whitfield",
-        email: "j.whitfield@devify.com",
-        username: "james.w",
-        role: "admin",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=12",
-    },
-    {
-        id: 3,
-        first_name: "Lena",
-        last_name: "Park",
-        email: "l.park@devify.com",
-        username: "lena.park",
-        role: "secoops",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=32",
-    },
-    {
-        id: 4,
-        first_name: "Omar",
-        last_name: "Hassan",
-        email: "o.hassan@devify.com",
-        username: "omar.h",
-        role: "secoops",
-        status: "inactive",
-    },
-];
 
-function mockFindUser(id: number): User | undefined {
-    return MOCK_USERS.find((u) => u.id === id);
-}
 
 // ─── Reusable field ───────────────────────────────────────────────────────────
 
@@ -97,42 +50,67 @@ const inputCls =
 const Edit = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
-    const user = mockFindUser(Number(id));
 
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [notFound, setNotFound] = useState(false);
     const [form, setForm] = useState({
-        first_name: user?.first_name ?? "",
-        last_name: user?.last_name ?? "",
-        email: user?.email ?? "",
-        username: user?.username ?? "",
-        role: user?.role ?? ("secoops" as Role),
-        status: user?.status ?? ("active" as "active" | "inactive"),
+        first_name: "",
+        last_name: "",
+        email: "",
+        username: "",
+        role_id: 2,
+        status: "active" as "active" | "inactive",
         password: "",
         password_confirmation: "",
     });
-
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [showDelete, setShowDelete] = useState(false);
 
-    if (!user) {
+    useEffect(() => {
+        fetch(`/api/users/${id}`, {
+            headers: { "Accept": "application/json" },
+        })
+            .then((res) => {
+                if (res.status === 404) { setNotFound(true); return null; }
+                return res.json();
+            })
+            .then((data) => {
+                if (!data) return;
+                setUser(data);
+                setForm({
+                    first_name: data.first_name,
+                    last_name: data.last_name,
+                    email: data.email,
+                    username: data.username,
+                    role_id: data.role?.id ?? 2,
+                    status: data.status ?? "active",
+                    password: "",
+                    password_confirmation: "",
+                });
+                setLoading(false);
+            })
+            .catch(() => setLoading(false));
+    }, [id]);
+
+    if (loading) return <p className="text-sm text-gray-400 p-6">Loading...</p>;
+
+    if (notFound || !user) {
         return (
             <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
                 <AlertTriangle size={32} className="opacity-40" />
                 <p className="text-sm">User not found.</p>
-                <button
-                    onClick={() => navigate("/users")}
-                    className="text-sm text-gray-600 underline"
-                >
+                <button onClick={() => navigate("/users")} className="text-sm text-gray-600 underline">
                     Back to users
                 </button>
             </div>
         );
     }
-
     const set =
         (key: string) =>
-        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-            setForm((f) => ({ ...f, [key]: e.target.value }));
+            (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+                setForm((f) => ({ ...f, [key]: e.target.value }));
 
     const validate = (): boolean => {
         const e: Record<string, string> = {};
@@ -148,18 +126,34 @@ const Edit = () => {
         setErrors(e);
         return Object.keys(e).length === 0;
     };
-
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validate()) return;
-        // TODO: PUT /api/users/:id
-        console.log("Update user payload:", { id: user.id, ...form });
-        navigate("/users");
+
+        try {
+            const res = await fetch(`/api/users/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                body: JSON.stringify(form),
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                if (data.errors) setErrors(data.errors);
+                return;
+            }
+
+            navigate("/users");
+        } catch (err) {
+            console.error("Failed to update user:", err);
+        }
     };
 
-    const handleDelete = () => {
-        // TODO: DELETE /api/users/:id
-        console.log("Delete user:", user.id);
+    const handleDelete = async () => {
+        await fetch(`/api/users/${id}`, {
+            method: "DELETE",
+            headers: { "Accept": "application/json" },
+        });
         navigate("/users");
     };
 
@@ -168,10 +162,8 @@ const Edit = () => {
         if (file) setAvatarPreview(URL.createObjectURL(file));
     };
 
-    const currentAvatar = avatarPreview ?? user.avatar;
-    const initials =
-        `${form.first_name[0] ?? ""}${form.last_name[0] ?? ""}`.toUpperCase();
-
+    const currentAvatar = avatarPreview ?? user?.avatar;
+    const initials = `${form.first_name?.[0] ?? ""}${form.last_name?.[0] ?? ""}`.toUpperCase();
     return (
         <div className="w-full flex flex-col items-center px-4 py-6">
             <div className="w-full max-w-2xl flex flex-col gap-6">
@@ -297,11 +289,11 @@ const Edit = () => {
                         <Field label="Role" required>
                             <select
                                 className={inputCls}
-                                value={form.role}
-                                onChange={set("role")}
+                                value={form.role_id}
+                                onChange={(e) => setForm((f) => ({ ...f, role_id: Number(e.target.value) }))}
                             >
-                                <option value="admin">Admin</option>
-                                <option value="secoops">Secoops</option>
+                                <option value={1}>Admin</option>
+                                <option value={2}>Secoops</option>
                             </select>
                         </Field>
                         <Field label="Status">

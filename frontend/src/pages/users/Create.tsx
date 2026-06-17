@@ -252,8 +252,8 @@ const Create = () => {
                                 value={form.role}
                                 onChange={set("role")}
                             >
-                                <option value="admin">Admin</option>
-                                <option value="secoops">Secoops</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Secoops">Secoops</option>
                             </select>
                         </Field>
                         <Field label="Status">

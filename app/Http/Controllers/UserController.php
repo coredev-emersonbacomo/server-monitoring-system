@@ -1,5 +1,4 @@
 <?php
-//  UserController 
 
 namespace App\Http\Controllers;
 
@@ -7,7 +6,7 @@ use App\Data\CreateUserData;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
-
+//  UserController 
 class UserController extends Controller
 {
     public function index(): JsonResponse
@@ -29,5 +28,9 @@ class UserController extends Controller
         ]);
 
         return response()->json($user->load('role'), 201);
+    }
+    public function show(User $user): JsonResponse
+    {
+        return response()->json($user->load('role'));
     }
 }

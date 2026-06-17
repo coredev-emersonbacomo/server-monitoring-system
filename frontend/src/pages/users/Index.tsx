@@ -1,12 +1,12 @@
 // users/Index.tsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Plus, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ProfileCard from "@/components/ProfileCard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Role = "admin" | "secoops";
+type Role = "Admin" | "Secoops";
 
 interface User {
     id: number;
@@ -14,56 +14,10 @@ interface User {
     last_name: string;
     email: string;
     username: string;
-    role: Role;
+    role: { id: number; role_name: string };
     status: "active" | "inactive";
     avatar?: string;
 }
-
-// ─── Mock data (replace with API call) ────────────────────────────────────────
-
-const INITIAL_USERS: User[] = [
-    {
-        id: 1,
-        first_name: "Ruby",
-        last_name: "Arnold",
-        email: "r.arnold@devify.com",
-        username: "ruby.arnold",
-        role: "admin",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=47",
-    },
-    {
-        id: 2,
-        first_name: "James",
-        last_name: "Whitfield",
-        email: "j.whitfield@devify.com",
-        username: "james.w",
-        role: "admin",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=12",
-    },
-    {
-        id: 3,
-        first_name: "Lena",
-        last_name: "Park",
-        email: "l.park@devify.com",
-        username: "lena.park",
-        role: "secoops",
-        status: "active",
-        avatar: "https://i.pravatar.cc/150?img=32",
-    },
-    {
-        id: 4,
-        first_name: "Omar",
-        last_name: "Hassan",
-        email: "o.hassan@devify.com",
-        username: "omar.h",
-        role: "secoops",
-        status: "inactive",
-        avatar: undefined,
-    },
-   
-];
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
@@ -95,15 +49,31 @@ const TABS: { label: string; value: FilterTab }[] = [
     { label: "All", value: "all" },
     { label: "Active", value: "active" },
     { label: "Inactive", value: "inactive" },
-    { label: "Admin", value: "admin" },
-    { label: "Secoops", value: "secoops" },
+    { label: "Admin", value: "Admin" },
+    { label: "Secoops", value: "Secoops" },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const Users = () => {
     const navigate = useNavigate();
-    const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+    const [users, setUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
+
+
+    const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [deleteName, setDeleteName] = useState("");
+    useEffect(() => {
+        fetch("/api/users", {
+            headers: { "Accept": "application/json" },
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                setUsers(data);
+                setLoading(false);
+            })
+            .catch(() => setLoading(false));
+    }, []);
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<FilterTab>("all");
 
@@ -116,21 +86,29 @@ const Users = () => {
                 u.email.toLowerCase().includes(q) ||
                 u.username.toLowerCase().includes(q);
             const matchFilter =
-                filter === "all" || u.status === filter || u.role === filter;
+                filter === "all" || u.status === filter || u.role?.role_name === filter;
             return matchSearch && matchFilter;
         });
     }, [search, filter, users]);
 
     const handleDelete = (id: number) => {
-        if (confirm("Remove this user?")) {
-            setUsers((prev) => prev.filter((u) => u.id !== id));
-        }
+        const user = users.find((u) => u.id === id);
+        setDeleteId(id);
+        setDeleteName(`${user?.first_name} ${user?.last_name}`);
     };
 
+    const confirmDelete = async () => {
+        if (!deleteId) return;
+        await fetch(`/api/users/${deleteId}`, {
+            method: "DELETE",
+            headers: { "Accept": "application/json" },
+        });
+        setUsers((prev) => prev.filter((u) => u.id !== deleteId));
+        setDeleteId(null);
+    };
     const activeCount = users.filter((u) => u.status === "active").length;
     const inactiveCount = users.filter((u) => u.status === "inactive").length;
-    const adminCount = users.filter((u) => u.role === "admin").length;
-
+    const adminCount = users.filter((u) => u.role?.role_name === "Admin").length;
     return (
         <div className="flex flex-col gap-5">
             {/* ── Header ── */}
@@ -142,7 +120,7 @@ const Users = () => {
                     Manage accounts and assign roles.
                 </p>
             </div>
-            
+
             {/* ── Toolbar ── */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -164,11 +142,10 @@ const Users = () => {
                             <button
                                 key={t.value}
                                 onClick={() => setFilter(t.value)}
-                                className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-                                    filter === t.value
-                                        ? "bg-gray-900 text-white border-gray-900"
-                                        : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
-                                }`}
+                                className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${filter === t.value
+                                    ? "bg-gray-900 text-white border-gray-900"
+                                    : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+                                    }`}
                             >
                                 {t.label}
                             </button>
@@ -199,7 +176,9 @@ const Users = () => {
                     sub="Secoops below admin"
                 />
             </div>
-
+            {loading && (
+                <p className="text-sm text-gray-400">Loading users...</p>
+            )}
             {/* ── Section label ── */}
             <p className="text-xs uppercase tracking-widest text-gray-400 font-medium">
                 {visible.length} user{visible.length !== 1 ? "s" : ""}
@@ -219,12 +198,36 @@ const Users = () => {
                             id={u.id}
                             name={`${u.first_name} ${u.last_name}`}
                             email={u.email}
-                            role={u.role === "admin" ? "Admin" : "Secoops"}
+                            role={u.role?.role_name === "Admin" ? "Admin" : "Secoops"}
                             imageUrl={u.avatar}
                             status={u.status}
                             onDelete={handleDelete}
                         />
                     ))}
+                </div>
+            )}
+            {deleteId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-lg p-6 max-w-sm w-full mx-4">
+                        <h2 className="text-base font-semibold text-gray-900 mb-1">Remove user?</h2>
+                        <p className="text-sm text-gray-500 mb-5">
+                            This will permanently delete <strong>{deleteName}</strong> and cannot be undone.
+                        </p>
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setDeleteId(null)}
+                                className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                className="px-4 py-2 text-sm font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                            >
+                                Remove
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

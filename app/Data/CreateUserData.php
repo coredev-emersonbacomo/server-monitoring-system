@@ -1,4 +1,3 @@
-<!-- CreateUserData.php -->
 <?php
 namespace App\Data;
 
@@ -9,6 +8,7 @@ use Spatie\LaravelData\Attributes\Validation\Min;
 use Spatie\LaravelData\Attributes\Validation\Required;
 use Spatie\LaravelData\Attributes\Validation\Unique;
 use Spatie\LaravelData\Data;
+//  CreateUserData.php 
 
 class CreateUserData extends Data
 {
