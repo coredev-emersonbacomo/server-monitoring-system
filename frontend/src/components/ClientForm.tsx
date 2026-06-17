@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-interface CoopFormProps {
+interface ClientFormProps {
     title: string;
     initialBannerUrl?: string;
     onSubmit: (formData: FormData) => Promise<void>;
     isPending: boolean;
 }
 
-export function CoopForm({ title, initialBannerUrl, onSubmit, isPending }: CoopFormProps) {
+export function ClientForm({ title, initialBannerUrl, onSubmit, isPending }: ClientFormProps) {
     const navigate = useNavigate();
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");

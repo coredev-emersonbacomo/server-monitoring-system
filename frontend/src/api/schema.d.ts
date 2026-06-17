@@ -104,33 +104,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/coops": {
+    "/clients": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["coop.index"];
+        get: operations["client.index"];
         put?: never;
-        post: operations["coop.store"];
+        post: operations["client.store"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/coops/{id}": {
+    "/clients/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["coop.show"];
-        put: operations["coop.update"];
+        get: operations["client.show"];
+        put: operations["client.update"];
         post?: never;
-        delete: operations["coop.destroy"];
+        delete: operations["client.destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -140,8 +140,8 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** CoopData */
-        CoopData: {
+        /** ClientData */
+        ClientData: {
             id: number;
             name: string;
             description: string;
@@ -253,7 +253,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "coop.index": {
+    "client.index": {
         parameters: {
             query?: never;
             header?: never;
@@ -267,13 +267,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CoopData"][];
+                    "application/json": components["schemas"]["ClientData"][];
                 };
             };
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "coop.store": {
+    "client.store": {
         parameters: {
             query?: never;
             header?: never;
@@ -293,19 +293,19 @@ export interface operations {
             };
         };
         responses: {
-            /** @description `CoopData` */
+            /** @description `ClientData` */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CoopData"];
+                    "application/json": components["schemas"]["ClientData"];
                 };
             };
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "coop.show": {
+    "client.show": {
         parameters: {
             query?: never;
             header?: never;
@@ -316,19 +316,19 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description `CoopData` */
+            /** @description `ClientData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CoopData"];
+                    "application/json": components["schemas"]["ClientData"];
                 };
             };
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "coop.update": {
+    "client.update": {
         parameters: {
             query?: never;
             header?: never;
@@ -350,19 +350,19 @@ export interface operations {
             };
         };
         responses: {
-            /** @description `CoopData` */
+            /** @description `ClientData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CoopData"];
+                    "application/json": components["schemas"]["ClientData"];
                 };
             };
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "coop.destroy": {
+    "client.destroy": {
         parameters: {
             query?: never;
             header?: never;

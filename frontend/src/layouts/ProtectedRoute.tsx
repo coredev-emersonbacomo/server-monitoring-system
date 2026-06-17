@@ -16,8 +16,8 @@ import { useAuthContext } from "@/hooks/useAuthContext";
 const sidebarLinks = [
     { name: "Dashboard", href: "/", icon: Activity },
     {
-        name: "Coops",
-        href: "/coops",
+        name: "Clients",
+        href: "/clients",
         icon: (props: LucideProps) => (
             <Landmark {...props} strokeWidth="1.75" />
         ),

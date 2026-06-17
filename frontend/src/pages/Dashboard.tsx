@@ -1,12 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Search, Filter, Activity } from "lucide-react";
 import { useMockDashboard } from "../hooks/useMockDashboard";
-import { DashboardCoopCard } from "../components/dashboard/DashboardCoopCard";
+import { DashboardClientCard } from "../components/dashboard/DashboardClientCard";
 import { ChartZoomProvider } from "../contexts/ChartZoomContext";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 export default function Dashboard() {
-    const { coops, status } = useMockDashboard();
+    const { clients, status } = useMockDashboard();
     const [searchQuery, setSearchQuery] = useState("");
     const [time, setTime] = useState(new Date());
 
@@ -16,31 +16,31 @@ export default function Dashboard() {
     }, []);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const filteredCoops = useMemo(() => {
-        if (!searchQuery.trim()) return coops;
+    const filteredClients = useMemo(() => {
+        if (!searchQuery.trim()) return clients;
         const q = searchQuery.toLowerCase();
 
-        return coops
-            .map((coop) => {
+        return clients
+            .map((client) => {
                 if (
-                    coop.name.toLowerCase().includes(q) ||
-                    coop.region.toLowerCase().includes(q)
+                    client.name.toLowerCase().includes(q) ||
+                    client.region.toLowerCase().includes(q)
                 ) {
-                    return coop;
+                    return client;
                 }
-                const matchingServers = coop.servers.filter(
+                const matchingServers = client.servers.filter(
                     (s) =>
                         s.name.toLowerCase().includes(q) ||
                         s.ip.toLowerCase().includes(q) ||
                         s.os.toLowerCase().includes(q),
                 );
-                return { ...coop, servers: matchingServers };
+                return { ...client, servers: matchingServers };
             })
-            .filter((coop) => coop.servers.length > 0);
-    }, [coops, searchQuery]);
+            .filter((client) => client.servers.length > 0);
+    }, [clients, searchQuery]);
 
     const virtualizer = useVirtualizer({
-        count: filteredCoops.length,
+        count: filteredClients.length,
         getScrollElement: () => scrollRef.current,
         estimateSize: () => 500,
         measureElement: (el) => el.getBoundingClientRect().height,
@@ -94,7 +94,7 @@ export default function Dashboard() {
                 </header>
 
                 {/* Main Content */}
-                {filteredCoops.length === 0 ? (
+                {filteredClients.length === 0 ? (
                     <main className="px-4 sm:px-6 lg:px-8 py-8 w-full">
                         <div className="text-center py-24 text-muted-foreground">
                             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted/50 mb-4">
@@ -133,9 +133,9 @@ export default function Dashboard() {
                                                 transform: `translateY(${virtualItem.start}px)`,
                                             }}
                                         >
-                                            <DashboardCoopCard
-                                                coop={
-                                                    filteredCoops[
+                                            <DashboardClientCard
+                                                client={
+                                                    filteredClients[
                                                         virtualItem.index
                                                     ]
                                                 }

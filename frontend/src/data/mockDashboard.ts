@@ -31,7 +31,7 @@ export interface Server {
     openPorts: OpenPort[]
 }
 
-export interface Coop {
+export interface Client {
     id: number
     name: string
     region: string
@@ -42,9 +42,9 @@ export interface Coop {
 
 
 // ── Stat generator ────────────────────────────────────────────────────────────
-function generateStats(hours = 24, intervalMin = 10): StatPoint[] {
+function generateStats(): StatPoint[] {
     const now = Date.now()
-    const points = Math.floor((hours * 60) / intervalMin)
+    const count = 144
     const data: StatPoint[] = []
 
     let cpu    = 30 + Math.random() * 20
@@ -56,7 +56,7 @@ function generateStats(hours = 24, intervalMin = 10): StatPoint[] {
     const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
     const rw    = (v: number, delta: number) => v + (Math.random() - 0.5) * delta
 
-    for (let i = points; i >= 0; i--) {
+    for (let i = count; i >= 0; i--) {
         cpu    = clamp(rw(cpu,    10), 5,  98)
         memory = clamp(rw(memory,  5), 20, 92)
         netIn  = clamp(rw(netIn,  1.5), 0, 30)
@@ -64,7 +64,7 @@ function generateStats(hours = 24, intervalMin = 10): StatPoint[] {
         disk   = clamp(rw(disk,   0.4), 30, 99)
 
         data.push({
-            timestamp: now - i * intervalMin * 60 * 1000,
+            timestamp: now - i * 1000,
             cpu:    Math.round(cpu    * 10) / 10,
             memory: Math.round(memory * 10) / 10,
             netIn:  Math.round(netIn  * 100) / 100,
@@ -75,8 +75,8 @@ function generateStats(hours = 24, intervalMin = 10): StatPoint[] {
     return data
 }
 
-// ── Mock Coops ────────────────────────────────────────────────────────────────
-export const mockCoops: Coop[] = [
+// ── Mock Clients ──────────────────────────────────────────────────────────────
+export const mockClients: Client[] = [
     {
         id: 1,
         name: 'Alpha Cluster',

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { mockCoops, type Coop, type StatPoint } from "../data/mockDashboard";
+import { mockClients, type Client, type StatPoint } from "../data/mockDashboard";
 
 let nextTs = Date.now();
 
@@ -25,16 +25,16 @@ function trimStats(stats: StatPoint[]): StatPoint[] {
 }
 
 export function useMockDashboard() {
-    const [coops, setCoops] = useState<Coop[]>(() =>
-        structuredClone(mockCoops),
+    const [clients, setClients] = useState<Client[]>(() =>
+        structuredClone(mockClients),
     );
 
     useEffect(() => {
         const id = setInterval(() => {
-            setCoops((prev) =>
-                prev.map((coop) => ({
-                    ...coop,
-                    servers: coop.servers.map((s) => ({
+            setClients((prev) =>
+                prev.map((client) => ({
+                    ...client,
+                    servers: client.servers.map((s) => ({
                         ...s,
                         stats: trimStats([
                             ...s.stats,
@@ -48,5 +48,5 @@ export function useMockDashboard() {
         return () => clearInterval(id);
     }, []);
 
-    return { coops, status: "connected" as const };
+    return { clients, status: "connected" as const };
 }

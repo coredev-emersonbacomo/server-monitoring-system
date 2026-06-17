@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Search, Landmark, Loader2, Pencil, Trash2 } from "lucide-react";
-import { useCoops, useDeleteCoop } from "@/hooks/useCoops";
+import { useClients, useDeleteClient } from "@/hooks/useClients";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -13,16 +13,16 @@ import {
 } from "@/components/ui/dialog";
 import type { components } from "@/api/schema";
 
-type CoopData = components["schemas"]["CoopData"];
+type ClientData = components["schemas"]["ClientData"];
 
-export default function Coops() {
-    const { data: coops, isLoading, error } = useCoops();
-    const deleteCoop = useDeleteCoop();
+export default function Clients() {
+    const { data: clients, isLoading, error } = useClients();
+    const deleteClient = useDeleteClient();
 
     const [searchQuery, setSearchQuery] = useState("");
-    const [deleting, setDeleting] = useState<CoopData | null>(null);
+    const [deleting, setDeleting] = useState<ClientData | null>(null);
 
-    const filtered = coops?.filter(
+    const filtered = clients?.filter(
         (c) =>
             c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             c.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -39,7 +39,7 @@ export default function Coops() {
                                 <Landmark className="w-5 h-5 text-primary" />
                             </div>
                             <h1 className="text-lg font-semibold tracking-tight">
-                                Coops
+                                Clients
                             </h1>
                         </div>
                         <div className="flex items-center gap-3">
@@ -47,14 +47,14 @@ export default function Coops() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                 <input
                                     type="text"
-                                    placeholder="Search coops..."
+                                    placeholder="Search clients..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="w-full pl-9 pr-4 py-2 bg-muted/50 border-transparent focus:bg-background border focus:border-primary/50 focus:ring-2 focus:ring-primary/20 rounded-lg text-sm transition-all outline-none"
                                 />
                             </div>
-                            <Link to="/coops/create">
-                                <Button icon={<Plus className="w-4 h-4" />} label="Add Coop" />
+                            <Link to="/clients/create">
+                                <Button icon={<Plus className="w-4 h-4" />} label="Add Client" />
                             </Link>
                         </div>
                     </div>
@@ -67,10 +67,10 @@ export default function Coops() {
                         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                     </div>
                 ) : error ? (
-                    <div className="text-sm text-destructive">Failed to load coops</div>
+                    <div className="text-sm text-destructive">Failed to load clients</div>
                 ) : !filtered?.length ? (
                     <div className="text-sm text-muted-foreground text-center py-16">
-                        No coops found
+                        No clients found
                     </div>
                 ) : (
                     <div className="rounded-lg border border-border/60 overflow-hidden">
@@ -85,19 +85,19 @@ export default function Coops() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border/40">
-                                {filtered.map((coop) => (
-                                    <tr key={coop.id} className="hover:bg-muted/20 transition-colors">
-                                        <td className="px-4 py-3 font-medium">{coop.name}</td>
-                                        <td className="px-4 py-3 text-muted-foreground">{coop.location}</td>
-                                        <td className="px-4 py-3 text-muted-foreground">{coop.email}</td>
-                                        <td className="px-4 py-3 text-muted-foreground">{coop.contact_number}</td>
+                                {filtered.map((client) => (
+                                    <tr key={client.id} className="hover:bg-muted/20 transition-colors">
+                                        <td className="px-4 py-3 font-medium">{client.name}</td>
+                                        <td className="px-4 py-3 text-muted-foreground">{client.location}</td>
+                                        <td className="px-4 py-3 text-muted-foreground">{client.email}</td>
+                                        <td className="px-4 py-3 text-muted-foreground">{client.contact_number}</td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                <Link to={`/coops/${coop.id}/edit`}>
+                                                <Link to={`/clients/${client.id}/edit`}>
                                                     <Button variant="outline" icon={<Pencil className="w-4 h-4" />} className="px-2 py-1" />
                                                 </Link>
                                                 <Dialog
-                                                    open={deleting?.id === coop.id}
+                                                    open={deleting?.id === client.id}
                                                     onOpenChange={(open) => { if (!open) setDeleting(null); }}
                                                 >
                                                     <DialogTrigger asChild>
@@ -105,12 +105,12 @@ export default function Coops() {
                                                             variant="outline"
                                                             icon={<Trash2 className="w-4 h-4 text-destructive" />}
                                                             className="px-2 py-1"
-                                                            onClick={() => setDeleting(coop)}
+                                                            onClick={() => setDeleting(client)}
                                                         />
                                                     </DialogTrigger>
                                                     <DialogContent className="sm:max-w-sm">
                                                         <DialogHeader>
-                                                            <DialogTitle>Delete Coop</DialogTitle>
+                                                            <DialogTitle>Delete Client</DialogTitle>
                                                         </DialogHeader>
                                                         <p className="text-sm text-muted-foreground">
                                                             Are you sure you want to delete{" "}
@@ -123,11 +123,11 @@ export default function Coops() {
                                                             </DialogClose>
                                                             <Button
                                                                 variant="danger"
-                                                                label={deleteCoop.isPending ? "Deleting..." : "Delete"}
-                                                                disabled={deleteCoop.isPending}
+                                                                label={deleteClient.isPending ? "Deleting..." : "Delete"}
+                                                                disabled={deleteClient.isPending}
                                                                 onClick={async () => {
                                                                     if (deleting) {
-                                                                        await deleteCoop.mutateAsync(deleting.id);
+                                                                        await deleteClient.mutateAsync(deleting.id);
                                                                         setDeleting(null);
                                                                     }
                                                                 }}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Coop } from '../data/mockDashboard'
+import type { Client } from '../data/mockDashboard'
 import Echo from 'laravel-echo'
 import Pusher from 'pusher-js'
 
@@ -16,7 +16,7 @@ window.Pusher = Pusher
 export type WsStatus = 'connecting' | 'connected' | 'disconnected'
 
 export function useDashboardSocket() {
-    const [coops, setCoops] = useState<Coop[]>([])
+    const [clients, setClients] = useState<Client[]>([])
     const [status, setStatus] = useState<WsStatus>('connecting')
 
     useEffect(() => {
@@ -41,9 +41,9 @@ export function useDashboardSocket() {
         })
 
         echo.private('dashboard')
-            .listen('.ServerStatsUpdated', (e: { coops: Coop[] }) => {
-                if (e.coops && e.coops.length > 0) {
-                    setCoops(e.coops)
+            .listen('.ServerStatsUpdated', (e: { clients: Client[] }) => {
+                if (e.clients && e.clients.length > 0) {
+                    setClients(e.clients)
                 }
             })
 
@@ -53,5 +53,5 @@ export function useDashboardSocket() {
         }
     }, [])
 
-    return { coops, status }
+    return { clients, status }
 }

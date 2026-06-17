@@ -16,4 +16,4 @@ use Illuminate\Support\Facades\Route;
 Route::group([], base_path('routes/api/auth.php'));
 Route::group([], base_path('routes/api/servers.php'));
 Route::group([], base_path('routes/api/users.php'));
-Route::group([], base_path('routes/api/coops.php'));
+Route::group([], base_path('routes/api/clients.php'));
