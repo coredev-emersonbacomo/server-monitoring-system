@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import client, { getCsrfCookie } from "@/api/client";
+import client, { getCsrfCookie } from "@/api/api";
 import type { components } from "@/api/schema.d";
 
 type UserData = components["schemas"]["UserData"];

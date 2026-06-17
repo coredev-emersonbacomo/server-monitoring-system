@@ -148,7 +148,7 @@ export interface components {
             location: string;
             email: string;
             contact_number: string;
-            banner_image_url: string;
+            banner_image_url?: string;
             servers_count: number;
             created_at: string;
             updated_at: string;
@@ -282,13 +282,13 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
+                "multipart/form-data": {
                     name: string;
                     description: string;
                     location: string;
                     email: string;
                     contact_number: string;
-                    banner_image_url: string;
+                    banner_image?: string;
                 };
             };
         };
@@ -339,13 +339,13 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
+                "multipart/form-data": {
                     name: string;
                     description: string;
                     location: string;
                     email: string;
                     contact_number: string;
-                    banner_image_url: string;
+                    banner_image?: string;
                 };
             };
         };

@@ -3,9 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Data\CoopData;
-use App\Data\CreateCoopData;
 use App\Models\Coop;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class CoopController extends Controller
 {
@@ -29,15 +30,26 @@ class CoopController extends Controller
         );
     }
 
-    public function store(CreateCoopData $data): JsonResponse
+    public function store(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'name' => 'required|string|min:2|max:255',
+            'description' => 'nullable|string|min:5',
+            'location' => 'required|string|min:5',
+            'email' => 'required|email|min:5|max:255',
+            'contact_number' => 'required|string|min:5',
+            'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:4096',
+        ]);
+
+        $bannerImageUrl = $this->handleBannerUpload($request);
+
         $coop = Coop::create([
-            'name' => $data->name,
-            'description' => $data->description ?? '',
-            'location' => $data->location,
-            'email' => $data->email,
-            'contact_number' => $data->contact_number,
-            'banner_image_url' => $data->banner_image_url ?? '',
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? '',
+            'location' => $validated['location'],
+            'email' => $validated['email'],
+            'contact_number' => $validated['contact_number'],
+            'banner_image_url' => $bannerImageUrl,
             'status' => 'active',
         ]);
 
@@ -80,17 +92,34 @@ class CoopController extends Controller
         );
     }
 
-    public function update(CreateCoopData $data, int $id): JsonResponse
+    public function update(Request $request, int $id): JsonResponse
     {
         $coop = Coop::findOrFail($id);
 
+        $validated = $request->validate([
+            'name' => 'required|string|min:2|max:255',
+            'description' => 'nullable|string|min:5',
+            'location' => 'required|string|min:5',
+            'email' => 'required|email|min:5|max:255',
+            'contact_number' => 'required|string|min:5',
+            'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:4096',
+        ]);
+
+        $bannerImageUrl = $coop->banner_image_url;
+        if ($request->hasFile('banner_image')) {
+            if ($coop->banner_image_url) {
+                Storage::disk('public')->delete($coop->banner_image_url);
+            }
+            $bannerImageUrl = $this->handleBannerUpload($request);
+        }
+
         $coop->update([
-            'name' => $data->name,
-            'description' => $data->description ?? '',
-            'location' => $data->location,
-            'email' => $data->email,
-            'contact_number' => $data->contact_number,
-            'banner_image_url' => $data->banner_image_url ?? '',
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? '',
+            'location' => $validated['location'],
+            'email' => $validated['email'],
+            'contact_number' => $validated['contact_number'],
+            'banner_image_url' => $bannerImageUrl,
         ]);
 
         $coop->loadCount('servers');
@@ -109,6 +138,17 @@ class CoopController extends Controller
                 'updated_at' => $coop->updated_at->toIso8601String(),
             ]),
         );
+    }
+
+    protected function handleBannerUpload(Request $request): string
+    {
+        if (!$request->hasFile('banner_image')) {
+            return '';
+        }
+
+        $path = $request->file('banner_image')->store('coop-banners', 'public');
+
+        return Storage::url($path);
     }
 
     public function destroy(int $id): JsonResponse

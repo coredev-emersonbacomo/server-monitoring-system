@@ -6,6 +6,8 @@ use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Min;
 use Spatie\LaravelData\Attributes\Validation\Required;
+use Illuminate\Http\UploadedFile;
+
 class CreateCoopData extends Data
 {
     public function __construct(
@@ -18,8 +20,8 @@ class CreateCoopData extends Data
         public string $location,
         #[Required, Min(5), Max(255)]
         public string $email,
-        #[Required, min(5)]
+        #[Required, Min(5)]
         public string $contact_number,
-        public string $banner_image_url
+        public ?UploadedFile $banner_image = null,
     ) {}
 }

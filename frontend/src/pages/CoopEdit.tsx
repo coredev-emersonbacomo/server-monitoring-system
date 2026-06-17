@@ -40,16 +40,9 @@ export default function CoopEdit() {
     return (
         <CoopForm
             title={`Edit: ${coop.name}`}
-            initial={{
-                name: coop.name,
-                description: coop.description ?? "",
-                location: coop.location ?? "",
-                email: coop.email,
-                contact_number: coop.contact_number ?? "",
-                banner_picture: coop.banner_picture ?? "",
-            }}
-            onSubmit={async (data) => {
-                await updateCoop.mutateAsync(data);
+            initialBannerUrl={coop.banner_image_url || undefined}
+            onSubmit={async (formData) => {
+                await updateCoop.mutateAsync(formData);
                 navigate("/coops");
             }}
             isPending={updateCoop.isPending}

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import client from "@/api/client";
+import client, { getCsrfCookie } from "@/api/api";
 import type { components } from "@/api/schema.d";
 
 type CoopData = components["schemas"]["CoopData"];
@@ -33,9 +33,10 @@ export const useCreateCoop = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (body: Record<string, unknown>) => {
+        mutationFn: async (formData: FormData) => {
+            await getCsrfCookie();
             const { data, error } = await client.POST("/coops", {
-                body: body as never,
+                body: formData as never,
             });
             if (error) throw error;
             return data;
@@ -50,10 +51,11 @@ export const useUpdateCoop = (id: number) => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (body: Record<string, unknown>) => {
+        mutationFn: async (formData: FormData) => {
+            await getCsrfCookie();
             const { data, error } = await client.PUT("/coops/{id}", {
                 params: { path: { id } },
-                body: body as never,
+                body: formData as never,
             });
             if (error) throw error;
             return data;
@@ -70,6 +72,7 @@ export const useDeleteCoop = () => {
 
     return useMutation({
         mutationFn: async (id: number) => {
+            await getCsrfCookie();
             const { error } = await client.DELETE("/coops/{id}", {
                 params: { path: { id } },
             });

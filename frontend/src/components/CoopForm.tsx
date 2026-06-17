@@ -1,45 +1,44 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-interface CoopFormValues {
-    name: string;
-    description: string;
-    location: string;
-    email: string;
-    contact_number: string;
-    banner_picture: string;
-}
-
 interface CoopFormProps {
     title: string;
-    initial?: CoopFormValues;
-    onSubmit: (data: Record<string, unknown>) => Promise<void>;
+    initialBannerUrl?: string;
+    onSubmit: (formData: FormData) => Promise<void>;
     isPending: boolean;
 }
 
-const emptyForm: CoopFormValues = {
-    name: "",
-    description: "",
-    location: "",
-    email: "",
-    contact_number: "",
-    banner_picture: "",
-};
-
-export function CoopForm({ title, initial, onSubmit, isPending }: CoopFormProps) {
+export function CoopForm({ title, initialBannerUrl, onSubmit, isPending }: CoopFormProps) {
     const navigate = useNavigate();
-    const [form, setForm] = useState<CoopFormValues>(initial ?? emptyForm);
+    const [name, setName] = useState("");
+    const [description, setDescription] = useState("");
+    const [location, setLocation] = useState("");
+    const [email, setEmail] = useState("");
+    const [contactNumber, setContactNumber] = useState("");
+    const [bannerFile, setBannerFile] = useState<File | null>(null);
+    const [bannerPreview, setBannerPreview] = useState<string | null>(initialBannerUrl ?? null);
     const [errors, setErrors] = useState<Record<string, string[]>>({});
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setErrors({});
+
+        const fd = new FormData();
+        fd.append("name", name);
+        fd.append("description", description);
+        fd.append("location", location);
+        fd.append("email", email);
+        fd.append("contact_number", contactNumber);
+        if (bannerFile) {
+            fd.append("banner_image", bannerFile);
+        }
+
         try {
-            await onSubmit(form);
+            await onSubmit(fd);
         } catch (err: unknown) {
             if (err && typeof err === "object" && "errors" in err) {
                 setErrors((err as { errors: Record<string, string[]> }).errors);
@@ -47,11 +46,19 @@ export function CoopForm({ title, initial, onSubmit, isPending }: CoopFormProps)
         }
     };
 
-    const set = (field: keyof CoopFormValues) =>
-        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-            setForm((prev) => ({ ...prev, [field]: e.target.value }));
+    const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] ?? null;
+        setBannerFile(file);
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = () => setBannerPreview(reader.result as string);
+            reader.readAsDataURL(file);
+        } else {
+            setBannerPreview(initialBannerUrl ?? null);
+        }
+    };
 
-    const hasBanner = form.banner_picture?.trim();
+    const hasBanner = bannerPreview && bannerPreview !== "";
 
     return (
         <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
@@ -71,7 +78,7 @@ export function CoopForm({ title, initial, onSubmit, isPending }: CoopFormProps)
                         style={
                             hasBanner
                                 ? {
-                                      backgroundImage: `url(${form.banner_picture})`,
+                                      backgroundImage: `url(${bannerPreview})`,
                                       backgroundSize: "cover",
                                       backgroundPosition: "center",
                                   }
@@ -100,7 +107,7 @@ export function CoopForm({ title, initial, onSubmit, isPending }: CoopFormProps)
                 >
                     <div>
                         <Label htmlFor="name">Name</Label>
-                        <Input id="name" value={form.name} onChange={set("name")} required />
+                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
                         {errors.name?.map((e) => (
                             <p key={e} className="text-xs text-destructive mt-1">{e}</p>
                         ))}
@@ -110,8 +117,8 @@ export function CoopForm({ title, initial, onSubmit, isPending }: CoopFormProps)
                         <Label htmlFor="description">Description</Label>
                         <textarea
                             id="description"
-                            value={form.description}
-                            onChange={set("description")}
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
                             rows={3}
                             className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                         />
@@ -123,14 +130,14 @@ export function CoopForm({ title, initial, onSubmit, isPending }: CoopFormProps)
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <Label htmlFor="location">Location</Label>
-                            <Input id="location" value={form.location} onChange={set("location")} required />
+                            <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} required />
                             {errors.location?.map((e) => (
                                 <p key={e} className="text-xs text-destructive mt-1">{e}</p>
                             ))}
                         </div>
                         <div>
                             <Label htmlFor="email">Email</Label>
-                            <Input id="email" type="email" value={form.email} onChange={set("email")} required />
+                            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                             {errors.email?.map((e) => (
                                 <p key={e} className="text-xs text-destructive mt-1">{e}</p>
                             ))}
@@ -139,15 +146,42 @@ export function CoopForm({ title, initial, onSubmit, isPending }: CoopFormProps)
 
                     <div>
                         <Label htmlFor="contact_number">Contact Number</Label>
-                        <Input id="contact_number" value={form.contact_number} onChange={set("contact_number")} required />
+                        <Input id="contact_number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} required />
                         {errors.contact_number?.map((e) => (
                             <p key={e} className="text-xs text-destructive mt-1">{e}</p>
                         ))}
                     </div>
 
                     <div>
-                        <Label htmlFor="banner_picture">Banner Picture URL</Label>
-                        <Input id="banner_picture" value={form.banner_picture} onChange={set("banner_picture")} placeholder="https://example.com/banner.jpg" />
+                        <Label htmlFor="banner_image">Banner Image</Label>
+                        <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-2 px-4 py-2 rounded-md border border-input bg-transparent text-sm font-medium cursor-pointer hover:bg-muted/50 transition-colors">
+                                <Upload className="w-4 h-4" />
+                                {bannerFile ? "Change Image" : "Upload Image"}
+                                <input
+                                    id="banner_image"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+                                    onChange={handleBannerChange}
+                                    className="hidden"
+                                />
+                            </label>
+                            {bannerFile && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setBannerFile(null);
+                                        setBannerPreview(initialBannerUrl ?? null);
+                                    }}
+                                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                    Remove
+                                </button>
+                            )}
+                        </div>
+                        {errors.banner_image?.map((e) => (
+                            <p key={e} className="text-xs text-destructive mt-1">{e}</p>
+                        ))}
                     </div>
 
                     <div className="flex items-center justify-end gap-3 pt-2 border-t border-border/40">
