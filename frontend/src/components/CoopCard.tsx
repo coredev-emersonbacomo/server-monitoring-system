@@ -1,6 +1,5 @@
-import { Fragment, memo } from "react";
+import { memo } from "react";
 import type { Coop } from "../data/mockDashboard";
-import { ServerCard } from "./ServerCard";
 
 interface CoopCardProps {
     coop: Coop;
@@ -8,45 +7,33 @@ interface CoopCardProps {
 
 export const CoopCard = memo(function CoopCard({ coop }: CoopCardProps) {
     return (
-        <div className="rounded-xl border border-border/60 bg-card overflow-hidden shadow-sm">
-            {/* Coop Banner */}
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden shadow-sm cursor-pointer hover:shadow-md transition-shadow">
             <div
-                className="relative px-6 py-8"
+                className="relative px-5 py-6"
                 style={{
                     background: `linear-gradient(to bottom, ${coop.gradient.from}33, ${coop.gradient.to}11, transparent)`,
                 }}
             >
                 <div className="relative z-10">
                     <div className="flex items-center justify-between">
-                        <div>
-                            <h2 className="text-2xl font-semibold text-foreground tracking-tight">
-                                {coop.name}
-                            </h2>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                {coop.description}
-                            </p>
-                        </div>
+                        <h3 className="text-lg font-semibold text-foreground tracking-tight">
+                            {coop.name}
+                        </h3>
                         <div className="text-right">
-                            <div className="text-sm font-medium text-foreground">
+                            <div className="text-xs font-medium text-foreground">
                                 {coop.region}
                             </div>
-                            <div className="text-xs text-muted-foreground mt-1">
+                            <div className="text-xs text-muted-foreground mt-0.5">
                                 {coop.servers.length} Servers
                             </div>
                         </div>
                     </div>
                 </div>
-                {/* Fade overlay for text contrast at the bottom of the banner */}
-                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-card to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-3/4 bg-linear-to-t from-card to-transparent" />
             </div>
 
-            {/* Servers List */}
-            <div className="divide-y divide-border/40">
-                {coop.servers.map((server) => (
-                    <Fragment key={server.id}>
-                        <ServerCard server={server} />
-                    </Fragment>
-                ))}
+            <div className="px-5 py-3 text-sm text-muted-foreground border-t border-border/40">
+                No recent updates or warnings
             </div>
         </div>
     );

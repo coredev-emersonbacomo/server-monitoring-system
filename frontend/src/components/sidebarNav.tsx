@@ -8,10 +8,10 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { twMerge } from "tailwind-merge";
-import ThemeToggle from "./themeToggle";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { CircleUser, EllipsisVertical, Menu } from "lucide-react";
 import { Button } from "./ui/button";
+import ThemeToggle from "./ThemeToggle";
 
 interface SidebarNavLink {
     name: string;
@@ -82,7 +82,10 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
             )}
         >
             <div className="flex gap-sidebar-padding items-center h-16">
-                <button className="p-2" onClick={toggleSidebar}>
+                <button
+                    className="p-sidebar-item-padding"
+                    onClick={toggleSidebar}
+                >
                     <Menu
                         className={twMerge(
                             "size-icon cursor-pointer transition-all duration-300 ease-in-out",
@@ -111,7 +114,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                                         navigate(link.href);
                                     }}
                                     className={twMerge(
-                                        "py-0.5 rounded-xl text-lg transition-all duration-300 ease-in-out overflow-hidden cursor-pointer",
+                                        "rounded-xl text-lg transition-all duration-300 ease-in-out overflow-hidden cursor-pointer",
                                         isCollapsed
                                             ? "w-sidebar-button-collapsed"
                                             : "w-full",

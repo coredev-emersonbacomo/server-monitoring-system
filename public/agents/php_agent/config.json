@@ -1,5 +1,5 @@
 {
-  "server_id": "server-001",
+  "server_id": "1",
   "token": "secret-token",
-  "api_url": "http://localhost:8000/agent"
+  "api_url": "http://127.0.0.1:8000/api/server/stats"
 }

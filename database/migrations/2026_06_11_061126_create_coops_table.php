@@ -14,9 +14,11 @@ return new class extends Migration
         Schema::create('coops', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->string('description')->nullable();
             $table->string('email')->unique();
-            $table->integer('landline')->nullable();
-            $table->string('status');
+            $table->integer('contact_number')->nullable();
+            $table->string('location')->nullable(false);
+            $table->string('banner_picture')->nullable();
             $table->timestamps();
         });
     }

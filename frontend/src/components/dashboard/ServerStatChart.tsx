@@ -8,9 +8,9 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from "recharts";
-import type { StatPoint } from "../data/mockDashboard";
 import { useChartZoomContext } from "@/hooks/useChartZoomContext";
 import { useZoomHandlers } from "@/hooks/useZoomHandlers";
+import type { StatPoint } from "@/data/mockDashboard";
 
 function fmtTime(ts: number) {
     const d = new Date(ts);
@@ -48,19 +48,33 @@ export const ServerStatChart = memo(function ServerStatChart({
     const { onWheel, onTouchStart, onTouchMove } =
         useZoomHandlers(allTimestamps);
 
-    const displayData = domain
+    const zoomedData = domain
         ? data.filter(
               (d) => d.timestamp >= domain[0] && d.timestamp <= domain[1],
           )
         : data;
 
+    const windowSize = 60;
+    const displayData =
+        zoomedData.length <= windowSize
+            ? zoomedData
+            : zoomedData.slice(zoomedData.length - windowSize);
+
+    const tickTimestamps =
+        displayData.length < 2
+            ? displayData.map((d) => d.timestamp)
+            : [
+                  displayData[Math.floor(displayData.length / 2)].timestamp,
+                  displayData[displayData.length - 1].timestamp,
+              ];
+
     return (
-        <div className="rounded-lg border border-border/60 bg-card/40 p-3 py-4 flex flex-col gap-1">
+        <div className="rounded-lg border border-border/60 bg-card/40 p-3 py-4 flex flex-col gap-3">
             <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
                 {title}
             </span>
             <div
-                className="touch-none select-none"
+                className="touch-none select-none overflow-visible"
                 onWheel={onWheel}
                 onTouchStart={onTouchStart}
                 onTouchMove={onTouchMove}
@@ -68,11 +82,11 @@ export const ServerStatChart = memo(function ServerStatChart({
                 <ResponsiveContainer width="100%" height={110}>
                     <LineChart
                         data={displayData}
-                        margin={{ top: 4, right: 6, left: -10, bottom: 0 }}
+                        margin={{ top: 4, right: 6, left: 6, bottom: 0 }}
                     >
                         <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="rgba(255,255,255,0.04)"
+                            stroke="var(--color-border)"
+                            strokeOpacity={0.5}
                             vertical={false}
                         />
                         <XAxis
@@ -80,23 +94,24 @@ export const ServerStatChart = memo(function ServerStatChart({
                             type="number"
                             scale="time"
                             domain={["dataMin", "dataMax"]}
+                            ticks={tickTimestamps}
                             tickFormatter={fmtTime}
                             tick={{
-                                fontSize: 9,
-                                fill: "rgba(255,255,255,0.35)",
+                                fontSize: 10,
+                                fill: "var(--color-muted-foreground)",
                             }}
-                            // tickLine={false}
-                            // axisLine={false}
+                            tickLine={false}
+                            axisLine={false}
                             minTickGap={50}
                         />
                         <YAxis
                             domain={yDomain}
                             tick={{
-                                fontSize: 9,
-                                fill: "rgba(255,255,255,0.35)",
+                                fontSize: 10,
+                                fill: "var(--color-muted-foreground)",
                             }}
-                            // tickLine={false}
-                            // axisLine={false}
+                            tickLine={false}
+                            axisLine={false}
                             width={34}
                             tickFormatter={(v: number) => `${v}${unit}`}
                         />
@@ -110,7 +125,7 @@ export const ServerStatChart = memo(function ServerStatChart({
                                 color: "rgba(255,255,255,0.85)",
                             }}
                             labelFormatter={(v) => fmtDatetime(Number(v))}
-                            formatter={(v: any) => [
+                            formatter={(v: unknown) => [
                                 `${Number(v).toFixed(2)}${unit}`,
                                 title,
                             ]}

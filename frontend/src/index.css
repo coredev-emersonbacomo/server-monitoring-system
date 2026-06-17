@@ -102,7 +102,7 @@
     --sidebar-active: oklch(0.9 0 0);
     --sidebar-hover: oklch(0.96 0 0);
     --sidebar-padding: 0.5rem;
-    --sidebar-item-padding: 0.5rem;
+    --sidebar-item-padding: 0.7rem;
     --sidebar-width: 16rem;
     --sidebar-width-collapsed: 4rem;
     --sidebar-button-width: calc(
@@ -166,4 +166,6 @@
     html {
         @apply font-sans;
     }
+    .recharts-wrapper .recharts-surface { overflow: visible; }
+    .recharts-wrapper [clip-path] { clip-path: none !important; }
 }

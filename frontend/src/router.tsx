@@ -7,6 +7,7 @@ import UsersIndex from "./pages/Users/Index";
 import UsersCreate from "./pages/Users/Create";
 import UsersEdit from "./pages/Users/Edit";
 import Settings from "./pages/Settings";
+import Logs from "./pages/Logs";
 
 const router = createBrowserRouter([
     {
@@ -36,6 +37,10 @@ const router = createBrowserRouter([
             {
                 path: "/users/:id/edit",
                 element: <UsersEdit />,
+            },
+            {
+                path: "/logs",
+                element: <Logs />,
             },
             // ───────────────────────────────────────────
             {

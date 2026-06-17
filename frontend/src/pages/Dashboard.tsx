@@ -1,13 +1,19 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Search, Filter, Activity } from "lucide-react";
 import { useMockDashboard } from "../hooks/useMockDashboard";
-import { CoopCard } from "../components/CoopCard";
+import { DashboardCoopCard } from "../components/dashboard/DashboardCoopCard";
 import { ChartZoomProvider } from "../contexts/ChartZoomContext";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 export default function Dashboard() {
     const { coops, status } = useMockDashboard();
     const [searchQuery, setSearchQuery] = useState("");
+    const [time, setTime] = useState(new Date());
+
+    useEffect(() => {
+        const id = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(id);
+    }, []);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const filteredCoops = useMemo(() => {
@@ -46,7 +52,7 @@ export default function Dashboard() {
             <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
                 {/* Header */}
                 <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="px-4 sm:px-6 lg:px-8">
                         <div className="flex h-16 items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-primary/10 rounded-lg">
@@ -64,6 +70,9 @@ export default function Dashboard() {
                             </div>
 
                             <div className="flex-1 max-w-md flex items-center gap-2">
+                                <time className="tabular-nums text-sm text-muted-foreground min-w-20">
+                                    {time.toLocaleTimeString()}
+                                </time>
                                 <div className="relative flex-1">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                     <input
@@ -86,7 +95,7 @@ export default function Dashboard() {
 
                 {/* Main Content */}
                 {filteredCoops.length === 0 ? (
-                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+                    <main className="px-4 sm:px-6 lg:px-8 py-8 w-full">
                         <div className="text-center py-24 text-muted-foreground">
                             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted/50 mb-4">
                                 <Search className="w-6 h-6" />
@@ -100,7 +109,7 @@ export default function Dashboard() {
                         </div>
                     </main>
                 ) : (
-                    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 min-h-0">
+                    <main className="px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 min-h-0">
                         <div ref={scrollRef} className="h-full overflow-auto">
                             <div
                                 style={{
@@ -109,8 +118,9 @@ export default function Dashboard() {
                                     position: "relative",
                                 }}
                             >
-                                {virtualizer.getVirtualItems().map(
-                                    (virtualItem) => (
+                                {virtualizer
+                                    .getVirtualItems()
+                                    .map((virtualItem) => (
                                         <div
                                             key={virtualItem.key}
                                             data-index={virtualItem.index}
@@ -123,16 +133,15 @@ export default function Dashboard() {
                                                 transform: `translateY(${virtualItem.start}px)`,
                                             }}
                                         >
-                                            <CoopCard
+                                            <DashboardCoopCard
                                                 coop={
                                                     filteredCoops[
-                                                    virtualItem.index
+                                                        virtualItem.index
                                                     ]
                                                 }
                                             />
                                         </div>
-                                    ),
-                                )}
+                                    ))}
                             </div>
                         </div>
                     </main>

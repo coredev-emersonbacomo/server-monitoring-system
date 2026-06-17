@@ -11,6 +11,8 @@ class UserData extends Data
         public int $id,
         public string $first_name,
         public string $last_name,
+        public int $role_id,
+        public string $profile_picture_url,
         #[Email]
         public string $email,
     ) {
