@@ -3,7 +3,7 @@
 # .env
 .env.backup
 .env.production
-frontend/.env
+# frontend/.env
 frontend/src/api/api.json
 .phpactor.json
 .phpunit.result.cache

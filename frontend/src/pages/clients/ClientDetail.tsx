@@ -456,10 +456,11 @@ export default function ClientDetail() {
                     <div className="flex items-center justify-end mb-6">
                         <div className="flex items-center gap-2">
                             {/* Upload — always accessible */}
-                            {mode !== "create" && showEdit && (
+                            {showEdit && (
                                 <>
                                     <label className="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring h-8 px-3 py-1 border border-border bg-transparent hover:bg-muted text-foreground cursor-pointer">
                                         <Upload size={13} />
+                                        Upload Banner Image
                                         <input
                                             id={bannerInputId}
                                             type="file"
@@ -488,15 +489,18 @@ export default function ClientDetail() {
                                             Reset
                                         </button>
                                     )}
-                                    <Button
-                                        variant="danger"
-                                        size="sm"
-                                        icon={<Trash2 size={13} />}
-                                        label="Delete"
-                                        className="bg-red-600/70"
-                                        onClick={() => setShowDelete(true)}
-                                    />
                                 </>
+                            )}
+
+                            {mode === "edit" && (
+                                <Button
+                                    variant="danger"
+                                    size="sm"
+                                    icon={<Trash2 size={13} />}
+                                    label="Delete"
+                                    className="bg-red-600/70"
+                                    onClick={() => setShowDelete(true)}
+                                />
                             )}
 
                             {mode !== "create" && !showEdit && (
