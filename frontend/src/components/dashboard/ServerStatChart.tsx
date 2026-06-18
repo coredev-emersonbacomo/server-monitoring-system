@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import { useChartZoomContext } from "@/hooks/useChartZoomContext";
 import { useZoomHandlers } from "@/hooks/useZoomHandlers";
-import type { StatPoint } from "@/data/mockDashboard";
+import type { StatPoint } from "@/types/stats";
 
 function fmtTime(ts: number) {
     const d = new Date(ts);
