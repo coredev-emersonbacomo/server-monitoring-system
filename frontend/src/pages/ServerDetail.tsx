@@ -7,7 +7,7 @@ import { ServerCard } from "@/components/dashboard/ServerCard";
 import { ChartZoomProvider } from "@/contexts/ChartZoomContext";
 import { Button } from "@/components/ui/button";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
-import type { StatPoint } from "@/data/mockDashboard";
+import type { StatPoint } from "@/types/stats";
 
 export default function ServerDetail() {
     const { id } = useParams<{ id: string }>();

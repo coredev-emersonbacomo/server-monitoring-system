@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Data\ClientData;
+use App\Data\CreateClientData;
 use App\Models\Client;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,7 @@ class ClientController extends Controller
         );
     }
 
-    public function store(ClientData $clientdata, Request $request): JsonResponse
+    public function store(CreateClientData $clientdata, Request $request): JsonResponse
     {
         $bannerImageUrl = $this->handleBannerUpload($request);
 

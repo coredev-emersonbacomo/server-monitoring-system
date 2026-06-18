@@ -14,14 +14,14 @@ class CreateClientData extends Data
 
         #[Required, Min(2), Max(255)]
         public string $name,
-        #[Min(5)]
-        public string $description,
         #[Required, Min(5)]
         public string $location,
         #[Required, Min(5), Max(255)]
         public string $email,
         #[Required, Min(5)]
         public string $contact_number,
+        #[Min(5)]
+        public ?string $description = null,
         public ?UploadedFile $banner_image = null,
     ) {}
 }
