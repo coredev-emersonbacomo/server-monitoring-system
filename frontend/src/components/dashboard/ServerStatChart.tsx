@@ -60,6 +60,9 @@ export const ServerStatChart = memo(function ServerStatChart({
             ? zoomedData
             : zoomedData.slice(zoomedData.length - windowSize);
 
+    const last = displayData[displayData.length - 1];
+    const currentValue = last?.[dataKey];
+
     const tickTimestamps =
         displayData.length < 2
             ? displayData.map((d) => d.timestamp)
@@ -85,75 +88,109 @@ export const ServerStatChart = memo(function ServerStatChart({
                 onTouchStart={onTouchStart}
                 onTouchMove={onTouchMove}
             >
-                <ResponsiveContainer width="100%" height={110}>
-                    <LineChart
-                        data={displayData}
-                        margin={{ top: 4, right: 6, left: 6, bottom: 0 }}
-                    >
-                        <CartesianGrid
-                            stroke="var(--color-border)"
-                            strokeOpacity={0.5}
-                            vertical={false}
-                        />
-                        <XAxis
-                            dataKey="timestamp"
-                            type="number"
-                            scale="time"
-                            domain={xDomain}
-                            ticks={tickTimestamps}
-                            tickFormatter={fmtTime}
-                            tick={{
-                                fontSize: 10,
-                                fill: "var(--color-muted-foreground)",
-                            }}
-                            tickLine={false}
-                            axisLine={false}
-                            minTickGap={50}
-                        />
-                        <YAxis
-                            domain={yDomain}
-                            tick={{
-                                fontSize: 10,
-                                fill: "var(--color-muted-foreground)",
-                            }}
-                            tickLine={false}
-                            axisLine={false}
-                            width={34}
-                            tickFormatter={(v: number) => `${v}${unit}`}
-                        />
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: "oklch(0.205 0 0)",
-                                border: "1px solid rgba(255,255,255,0.1)",
-                                borderRadius: "8px",
-                                fontSize: "11px",
-                                padding: "6px 10px",
-                                color: "rgba(255,255,255,0.85)",
-                            }}
-                            labelFormatter={(v) => fmtDatetime(Number(v))}
-                            formatter={(v: unknown) => [
-                                `${Number(v).toFixed(2)}${unit}`,
-                                title,
-                            ]}
-                            cursor={{
-                                stroke: "rgba(255,255,255,0.15)",
-                                strokeWidth: 1,
-                            }}
-                        />
-                        <Line
-                            type="monotone"
-                            dataKey={dataKey}
-                            stroke={color}
-                            dot={false}
-                            strokeWidth={1.5}
-                            isAnimationActive={false}
-                        />
-                    </LineChart>
-                </ResponsiveContainer>
+                {displayData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={110}>
+                        <LineChart
+                            data={displayData}
+                            margin={{ top: 4, right: 6, left: 6, bottom: 0 }}
+                        >
+                            <CartesianGrid
+                                stroke="var(--color-border)"
+                                strokeOpacity={0.5}
+                                vertical={false}
+                            />
+                            <XAxis
+                                dataKey="timestamp"
+                                type="number"
+                                scale="time"
+                                domain={xDomain}
+                                ticks={tickTimestamps}
+                                tickFormatter={fmtTime}
+                                tick={{
+                                    fontSize: 10,
+                                    fill: "var(--color-muted-foreground)",
+                                }}
+                                tickLine={false}
+                                axisLine={false}
+                                minTickGap={50}
+                            />
+                            <YAxis
+                                domain={yDomain}
+                                tick={{
+                                    fontSize: 10,
+                                    fill: "var(--color-muted-foreground)",
+                                }}
+                                tickLine={false}
+                                axisLine={false}
+                                width={34}
+                                tickFormatter={(v: number) => `${v}${unit}`}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: "oklch(0.205 0 0)",
+                                    border: "1px solid rgba(255,255,255,0.1)",
+                                    borderRadius: "8px",
+                                    fontSize: "11px",
+                                    padding: "6px 10px",
+                                    color: "rgba(255,255,255,0.85)",
+                                }}
+                                labelFormatter={(v) => fmtDatetime(Number(v))}
+                                formatter={(v: unknown) => [
+                                    `${Number(v).toFixed(2)}${unit}`,
+                                    title,
+                                ]}
+                                cursor={{
+                                    stroke: "rgba(255,255,255,0.15)",
+                                    strokeWidth: 1,
+                                }}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey={dataKey}
+                                stroke={color}
+                                dot={false}
+                                strokeWidth={1.5}
+                                isAnimationActive={false}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <div className="flex items-center justify-center w-full" style={{ height: 110 }}>
+                        <div className="flex flex-col items-center gap-2">
+                            <svg
+                                width="56"
+                                height="36"
+                                viewBox="0 0 56 36"
+                                fill="none"
+                                className="text-border"
+                            >
+                                <path
+                                    d="M4 32 L14 22 L24 28 L34 12 L44 18 L52 6"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    opacity="0.7"
+                                />
+                                <circle
+                                    cx="52"
+                                    cy="6"
+                                    r="2.5"
+                                    fill="currentColor"
+                                    opacity="0.55"
+                                />
+                            </svg>
+                            <span className="text-xs text-muted-foreground/50">
+                                No data
+                            </span>
+                        </div>
+                    </div>
+                )}
             </div>
             <span className="text-xs text-muted-foreground">
-                {displayData[displayData.length - 1][dataKey].toFixed(2)}
-                {unit}
+                {currentValue !== undefined
+                    ? `${currentValue.toFixed(2)}${unit}`
+                    : `—${unit}`}
             </span>
         </div>
     );

@@ -5,7 +5,7 @@ import { ProtectedRoute } from "./layouts/ProtectedRoute";
 import Clients from "./pages/clients/Index";
 import UsersIndex from "./pages/users/Index";
 import UserDetail from "./pages/UserDetail";
-import ClientDetail from "./pages/ClientDetail";
+import ClientDetail from "./pages/clients/ClientDetail";
 import Settings from "./pages/Settings";
 import Logs from "./pages/Logs";
 import ServerDetail from "./pages/ServerDetail";

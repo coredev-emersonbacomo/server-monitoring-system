@@ -258,9 +258,9 @@ const ProfileBar = ({
             >
                 <div
                     className={twMerge(
-                        "w-[calc(var(--size-icon)+0.5rem)] aspect-square rounded-full overflow-hidden",
-                        "border-2 border-white ring-transparent outline-foreground/10",
-                        "group-hover:outline-1 group-hover:scale-105",
+                    "size-icon rounded-full overflow-hidden",
+                    "ring-1 ring-border outline-foreground/10",
+                    "group-hover:outline-1 group-hover:scale-105",
                     )}
                 >
                     <div className="w-full h-full rounded-full overflow-hidden bg-foreground/10 flex items-center justify-center">

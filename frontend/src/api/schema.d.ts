@@ -4,6 +4,54 @@
  */
 
 export interface paths {
+    "/servers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description `ServerData` */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ServerData"];
+                    };
+                };
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            error: "Server not found.";
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/server/stats": {
         parameters: {
             query?: never;
@@ -136,6 +184,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/clients/{id}/servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["client.servers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["dashboard.stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["users.index"];
+        put?: never;
+        post: operations["users.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{user}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["users.show"];
+        put: operations["users.update"];
+        post?: never;
+        delete: operations["users.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -144,24 +256,79 @@ export interface components {
         ClientData: {
             id: number;
             name: string;
-            description: string;
+            description: string | null;
             location: string;
+            /** Format: email */
             email: string;
             contact_number: string;
-            banner_image_url?: string;
+            /** @description Allowed mime types: image/jpeg, image/png, image/jpg, image/gif, image/webp */
+            banner_image_path?: string | null;
+            banner_image_url: string;
             servers_count: number;
             created_at: string;
             updated_at: string;
         };
-        /** UserData */
-        UserData: {
+        /** DashboardStatsData */
+        DashboardStatsData: {
+            total_clients: number;
+            total_servers: number;
+            online_count: number;
+            warning_count: number;
+            offline_count: number;
+            top_usage_cpu: {
+                server_id: number;
+                server_name: string;
+                client_name: string;
+                value: number;
+            }[];
+            top_usage_memory: {
+                server_id: number;
+                server_name: string;
+                client_name: string;
+                value: number;
+            }[];
+            top_usage_disk: {
+                server_id: number;
+                server_name: string;
+                client_name: string;
+                value: number;
+            }[];
+        };
+        /** FullUserData */
+        FullUserData: {
             id: number;
             first_name: string;
             last_name: string;
-            role_id: number;
-            profile_picture_url: string;
-            /** Format: email */
             email: string;
+            role_id: number;
+            username: string;
+            last_login?: string | null;
+            profile_picture_url?: string | null;
+            avatar?: string | null;
+            status: string;
+            role?: {
+                role_name: string;
+            } | null;
+            /** Format: date-time */
+            created_at?: string | null;
+            /** Format: date-time */
+            updated_at?: string | null;
+        };
+        /** ServerData */
+        ServerData: {
+            id: number;
+            server_name: string;
+            device_name: string;
+            internal_ip: string;
+            external_ip: string;
+            cpu_cores?: number | null;
+            ram?: number | null;
+            operating_system?: string | null;
+            client_id: number;
+            client_name: string;
+            stats: {
+                [key: string]: unknown;
+            }[];
         };
     };
     responses: {
@@ -174,6 +341,34 @@ export interface components {
                 "application/json": {
                     /** @description Error overview. */
                     message: string;
+                };
+            };
+        };
+        /** @description Not found */
+        ModelNotFoundException: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /** @description Error overview. */
+                    message: string;
+                };
+            };
+        };
+        /** @description Validation error */
+        ValidationException: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /** @description Errors overview. */
+                    message: string;
+                    /** @description A detailed description of each field that failed validation. */
+                    errors: {
+                        [key: string]: string[];
+                    };
                 };
             };
         };
@@ -194,13 +389,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description `UserData` */
+            /** @description `FullUserData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserData"];
+                    "application/json": components["schemas"]["FullUserData"];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -223,13 +418,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description `UserData` */
+            /** @description `FullUserData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserData"];
+                    "application/json": components["schemas"]["FullUserData"];
                 };
             };
         };
@@ -282,13 +477,20 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": {
+                "application/json": {
+                    id: number;
                     name: string;
-                    description: string;
+                    description: string | null;
                     location: string;
+                    /** Format: email */
                     email: string;
                     contact_number: string;
-                    banner_image?: string;
+                    /** @description Allowed mime types: image/jpeg, image/png, image/jpg, image/gif, image/webp */
+                    banner_image_path?: string | null;
+                    banner_image_url: string;
+                    servers_count: number;
+                    created_at: string;
+                    updated_at: string;
                 };
             };
         };
@@ -341,11 +543,13 @@ export interface operations {
             content: {
                 "multipart/form-data": {
                     name: string;
-                    description: string;
+                    description?: string | null;
                     location: string;
+                    /** Format: email */
                     email: string;
                     contact_number: string;
-                    banner_image?: string;
+                    /** Format: binary */
+                    banner_image?: string | null;
                 };
             };
         };
@@ -360,6 +564,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "client.destroy": {
@@ -381,6 +586,195 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "client.servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "dashboard.stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `DashboardStatsData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardStatsData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "users.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FullUserData"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "users.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    first_name: string;
+                    last_name: string;
+                    /**
+                     * Format: email
+                     * @description Must be unique in `users`.
+                     */
+                    email: string;
+                    /** @description Must be unique in `users`. */
+                    username: string;
+                    role_id: number;
+                    /** @description Must be confirmed by a matching `_confirmation` field. */
+                    password: string;
+                    password_confirmation: string;
+                };
+            };
+        };
+        responses: {
+            /** @description `FullUserData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FullUserData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "users.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user ID */
+                user: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `FullUserData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FullUserData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "users.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user ID */
+                user: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    first_name?: string;
+                    last_name?: string;
+                    /** Format: email */
+                    email?: string;
+                    username?: string;
+                    role_id?: number;
+                    /** @description Must be confirmed by a matching `_confirmation` field. */
+                    password?: string | null;
+                    password_confirmation?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `FullUserData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FullUserData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "users.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user ID */
+                user: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
 }

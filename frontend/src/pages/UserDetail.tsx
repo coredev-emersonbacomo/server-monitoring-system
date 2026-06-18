@@ -1,115 +1,138 @@
 import { useState, useEffect } from "react";
+import { z } from "zod";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Pencil, Upload, AlertTriangle } from "lucide-react";
+import {
+    ArrowLeft,
+    Pencil,
+    Upload,
+    AlertTriangle,
+    RefreshCw,
+} from "lucide-react";
+import { toast } from "sonner";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogClose,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+import {
+    useUser,
+    useCreateUser,
+    useUpdateUser,
+    useDeleteUser,
+} from "@/hooks/useUsers";
 
-type Role = "admin" | "secoops";
+// ─── Form skeleton ────────────────────────────────────────────────────────────
 
-interface UserForm {
-    first_name: string;
-    last_name: string;
-    email: string;
-    username: string;
-    role: Role;
-    status: "active" | "inactive";
-    password: string;
-    password_confirmation: string;
-    avatar: string | undefined;
-}
-
-const EMPTY_FORM: UserForm = {
-    first_name: "",
-    last_name: "",
-    email: "",
-    username: "",
-    role: "secoops",
-    status: "active",
-    password: "",
-    password_confirmation: "",
-    avatar: undefined,
-};
-
-interface UserRecord extends UserForm {
-    id: number;
-}
-
-const MOCK_USERS: UserRecord[] = [
-    { id: 1, first_name: "Ruby", last_name: "Arnold", email: "r.arnold@devify.com", username: "ruby.arnold", role: "admin", status: "active", password: "", password_confirmation: "", avatar: "https://i.pravatar.cc/150?img=47" },
-    { id: 2, first_name: "James", last_name: "Whitfield", email: "j.whitfield@devify.com", username: "james.w", role: "admin", status: "active", password: "", password_confirmation: "", avatar: "https://i.pravatar.cc/150?img=12" },
-    { id: 3, first_name: "Lena", last_name: "Park", email: "l.park@devify.com", username: "lena.park", role: "secoops", status: "active", password: "", password_confirmation: "", avatar: "https://i.pravatar.cc/150?img=32" },
-    { id: 4, first_name: "Omar", last_name: "Hassan", email: "o.hassan@devify.com", username: "omar.h", role: "secoops", status: "inactive", password: "", password_confirmation: "", avatar: undefined },
-];
-
-function StackField({
-    label,
-    required,
-    readValue,
-    editValue,
-    hint,
-}: {
-    label: string;
-    required?: boolean;
-    readValue: React.ReactNode;
-    editValue: React.ReactNode;
-    hint?: string;
-}) {
+function FormSkeleton() {
     return (
-        <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-foreground">
-                {label}
-                {required && <span className="text-destructive ml-0.5">*</span>}
-            </label>
-            <div className="grid grid-cols-[1fr] grid-rows-[1fr]">
-                <div className="col-start-1 row-start-1 [.nc-edit_&]:invisible [.nc-create_&]:invisible">
-                    {readValue}
-                </div>
-                <div className="col-start-1 row-start-1 invisible [.nc-edit_&]:visible [.nc-create_&]:visible">
-                    {editValue}
-                </div>
+        <div className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-6 animate-pulse">
+            <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-muted shrink-0" />
+                <div className="h-8 w-28 bg-muted rounded-lg" />
             </div>
-            {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+            <div className="h-px bg-border" />
+            {[0, 1, 2].map((i) => (
+                <div key={i} className="grid grid-cols-2 gap-4">
+                    <div className="h-9 bg-muted rounded-md" />
+                    <div className="h-9 bg-muted rounded-md" />
+                </div>
+            ))}
         </div>
     );
 }
 
-const inputCls =
-    "w-full px-3 py-2 text-sm border border-input rounded-lg bg-transparent focus:outline-none focus:ring-1 focus:ring-ring transition-colors";
+// ─── Field wrapper ────────────────────────────────────────────────────────────
+
+function Field({
+    label,
+    required,
+    children,
+    hint,
+    error,
+}: {
+    label: string;
+    required?: boolean;
+    children: React.ReactNode;
+    hint?: string;
+    error?: string;
+}) {
+    return (
+        <div className="flex flex-col gap-1">
+            <Label>
+                {label}
+                {required && <span className="text-destructive ml-0.5">*</span>}
+            </Label>
+            {children}
+            {hint && (
+                <p className="text-[11px] text-muted-foreground">{hint}</p>
+            )}
+            {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+    );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function UserDetail() {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
     const { setTrail } = useBreadcrumb();
     const isCreate = !id;
+    const userId = id ? Number(id) : 0;
 
-    const userId = Number(id);
-    const userRecord = isCreate ? null : MOCK_USERS.find((u) => u.id === userId) ?? null;
+    // ── Data fetching ──────────────────────────────────────────────────────────
+    const {
+        data: userRecord,
+        isLoading: userLoading,
+        isError: userError,
+    } = useUser(userId);
 
+    // ── Mutations ──────────────────────────────────────────────────────────────
+    const createUser = useCreateUser();
+    const updateUser = useUpdateUser(userId);
+    const deleteUser = useDeleteUser();
+
+    // ── Local state ────────────────────────────────────────────────────────────
     const [isEditing, setIsEditing] = useState(isCreate);
+    const [showDelete, setShowDelete] = useState(false);
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
-    const initForm = (): UserForm => {
+    const [form, setForm] = useState({
+        first_name: "",
+        last_name: "",
+        email: "",
+        username: "",
+        role_id: 2,
+        status: "active" as "active" | "inactive",
+        password: "",
+        password_confirmation: "",
+    });
+
+    // Populate form when user data arrives
+    useEffect(() => {
         if (userRecord) {
-            return {
+            setForm({
                 first_name: userRecord.first_name,
                 last_name: userRecord.last_name,
                 email: userRecord.email,
                 username: userRecord.username,
-                role: userRecord.role,
-                status: userRecord.status,
+                role_id: userRecord.role_id,
+                status: userRecord.status ?? "active",
                 password: "",
                 password_confirmation: "",
-                avatar: userRecord.avatar,
-            };
+            });
         }
-        return EMPTY_FORM;
-    };
+    }, [userRecord]);
 
-    const [form, setForm] = useState<UserForm>(initForm);
-    const [errors, setErrors] = useState<Record<string, string>>({});
-    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-    const [showDelete, setShowDelete] = useState(false);
-    const [saving, setSaving] = useState(false);
-
+    // Breadcrumb
     useEffect(() => {
         if (isCreate) {
             setTrail([
@@ -119,70 +142,116 @@ export default function UserDetail() {
         } else if (userRecord) {
             setTrail([
                 { label: "Users", href: "/users" },
-                { label: `${userRecord.first_name} ${userRecord.last_name}`, href: `/users/${userRecord.id}` },
+                {
+                    label: `${userRecord.first_name} ${userRecord.last_name}`,
+                    href: `/users/${userId}`,
+                },
             ]);
         }
-    }, [setTrail, isCreate, userRecord]);
+    }, [setTrail, isCreate, userRecord, userId]);
 
-    const update = (key: keyof UserForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setForm((f) => ({ ...f, [key]: e.target.value }));
-    };
+    const set =
+        (key: keyof typeof form) =>
+        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+            setForm((f) => ({ ...f, [key]: e.target.value }));
 
     const validate = (): boolean => {
-        const e: Record<string, string> = {};
-        if (!form.first_name.trim()) e.first_name = "Required";
-        if (!form.last_name.trim()) e.last_name = "Required";
-        if (!form.email.trim()) e.email = "Required";
-        else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Invalid email";
-        if (!form.username.trim()) e.username = "Required";
-        if (isCreate) {
-            if (!form.password) e.password = "Required";
-            else if (form.password.length < 8) e.password = "Minimum 8 characters";
-        } else {
-            if (form.password && form.password.length < 8) e.password = "Minimum 8 characters";
+        const schema = z.object({
+            first_name: z.string().trim().min(1, "Required"),
+            last_name: z.string().trim().min(1, "Required"),
+            email: z.string().trim().min(1, "Required").email("Invalid email"),
+            username: z.string().trim().min(1, "Required"),
+            password: z.string().superRefine((val, ctx) => {
+                if (isCreate && !val) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required" });
+                else if (val && val.length < 8) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Minimum 8 characters" });
+            }),
+            password_confirmation: z.string()
+        }).superRefine((data, ctx) => {
+            if (data.password && data.password !== data.password_confirmation) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["password_confirmation"], message: "Passwords do not match" });
+            }
+        });
+
+        const result = schema.safeParse(form);
+        if (result.success) {
+            setErrors({});
+            return true;
         }
-        if (form.password && form.password !== form.password_confirmation)
-            e.password_confirmation = "Passwords do not match";
-        setErrors(e);
-        return Object.keys(e).length === 0;
+
+        const newErrors: Record<string, string> = {};
+        for (const issue of result.error.issues) {
+            const key = issue.path[0] as string;
+            if (!newErrors[key]) newErrors[key] = issue.message;
+        }
+        setErrors(newErrors);
+        return false;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validate()) return;
-        setSaving(true);
+
         try {
             if (isCreate) {
-                await fetch("/api/users", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", Accept: "application/json" },
-                    body: JSON.stringify({
-                        first_name: form.first_name,
-                        last_name: form.last_name,
-                        email: form.email,
-                        username: form.username,
-                        role_id: form.role === "admin" ? 1 : 2,
-                        password: form.password,
-                        password_confirmation: form.password_confirmation,
-                    }),
+                await createUser.mutateAsync({
+                    first_name: form.first_name,
+                    last_name: form.last_name,
+                    email: form.email,
+                    username: form.username,
+                    role_id: Number(form.role_id),
+                    password: form.password,
+                    password_confirmation: form.password_confirmation,
                 });
+                toast.success("User created successfully.");
                 navigate("/users");
             } else {
-                // TODO: PUT /api/users/:id
-                console.log("Update user payload:", { id: userId, ...form });
+                const payload: Record<string, unknown> = {
+                    first_name: form.first_name,
+                    last_name: form.last_name,
+                    email: form.email,
+                    username: form.username,
+                    role_id: Number(form.role_id),
+                };
+                if (form.password) {
+                    payload.password = form.password;
+                    payload.password_confirmation = form.password_confirmation;
+                }
+                await updateUser.mutateAsync(payload);
+                toast.success("User updated successfully.");
                 setIsEditing(false);
+                setForm((f) => ({
+                    ...f,
+                    password: "",
+                    password_confirmation: "",
+                }));
             }
-        } catch (err) {
-            console.error("Failed to save user:", err);
-        } finally {
-            setSaving(false);
+        } catch (err: unknown) {
+            const data = err as Record<string, Record<string, string>>;
+            if (data?.errors) {
+                // Map Laravel validation errors to field-level display
+                const mapped: Record<string, string> = {};
+                for (const [k, v] of Object.entries(data.errors)) {
+                    mapped[k] = Array.isArray(v) ? v[0] : String(v);
+                }
+                setErrors(mapped);
+            } else {
+                toast.error(
+                    isCreate
+                        ? "Failed to create user."
+                        : "Failed to update user.",
+                );
+            }
         }
     };
 
     const handleDelete = async () => {
-        // TODO: DELETE /api/users/:id
-        console.log("Delete user:", userId);
-        navigate("/users");
+        try {
+            await deleteUser.mutateAsync(userId);
+            toast.success("User deleted.");
+            navigate("/users");
+        } catch {
+            toast.error("Failed to delete user.");
+        }
     };
 
     const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,26 +259,47 @@ export default function UserDetail() {
         if (file) setAvatarPreview(URL.createObjectURL(file));
     };
 
-    if (!isCreate && !userRecord) {
+    // ── Loading state ──────────────────────────────────────────────────────────
+    if (!isCreate && userLoading) {
+        return (
+            <div className="w-full flex flex-col items-center px-4 py-6">
+                <div className="w-full max-w-2xl flex flex-col gap-6">
+                    <div className="h-5 w-24 bg-muted rounded animate-pulse" />
+                    <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+                    <FormSkeleton />
+                </div>
+            </div>
+        );
+    }
+
+    // ── Error / not found state ────────────────────────────────────────────────
+    if (!isCreate && (userError || (!userLoading && !userRecord))) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
                 <AlertTriangle size={32} className="opacity-40" />
                 <p className="text-sm">User not found.</p>
-                <button onClick={() => navigate("/users")} className="text-sm underline">
-                    Back to users
-                </button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<RefreshCw size={14} />}
+                    label="Back to users"
+                    onClick={() => navigate("/users")}
+                />
             </div>
         );
     }
 
     const showEdit = isEditing || isCreate;
-    const currentAvatar = avatarPreview ?? form.avatar;
-    const initials = `${form.first_name[0] ?? ""}${form.last_name[0] ?? ""}`.toUpperCase() || "?";
+    const currentAvatar = avatarPreview ?? userRecord?.avatar;
+    const initials =
+        `${form.first_name[0] ?? ""}${form.last_name[0] ?? ""}`.toUpperCase() ||
+        "?";
+    const isSaving = createUser.isPending || updateUser.isPending;
 
     return (
-        <div className={`w-full flex flex-col items-center px-4 py-6 ${showEdit ? "nc-edit" : ""} ${isCreate ? "nc-create" : ""}`}>
+        <div className="w-full flex flex-col items-center px-4 py-6">
             <div className="w-full max-w-2xl flex flex-col gap-6">
-                {/* Back + actions */}
+                {/* ── Back + actions ── */}
                 <div className="flex items-center justify-between">
                     <button
                         onClick={() => navigate("/users")}
@@ -219,222 +309,362 @@ export default function UserDetail() {
                     </button>
                     <div className="flex items-center gap-2">
                         {!isCreate && !showEdit && (
-                            <Button variant="outline" icon={<Pencil className="w-4 h-4" />} label="Edit" onClick={() => setIsEditing(true)} />
-                        )}
-                        {showEdit && (
                             <Button
                                 variant="outline"
+                                size="sm"
+                                icon={<Pencil className="w-4 h-4" />}
+                                label="Edit"
+                                onClick={() => setIsEditing(true)}
+                            />
+                        )}
+                        {showEdit && !isCreate && (
+                            <Button
+                                variant="outline"
+                                size="sm"
                                 label="Cancel"
                                 onClick={() => {
-                                    if (isCreate) navigate("/users");
-                                    else { setIsEditing(false); if (userRecord) setForm({ ...userRecord, password: "", password_confirmation: "" }); }
+                                    setIsEditing(false);
+                                    setErrors({});
+                                    if (userRecord) {
+                                        setForm({
+                                            first_name: userRecord.first_name,
+                                            last_name: userRecord.last_name,
+                                            email: userRecord.email,
+                                            username: userRecord.username,
+                                            role_id: userRecord.role_id,
+                                            status:
+                                                userRecord.status ?? "active",
+                                            password: "",
+                                            password_confirmation: "",
+                                        });
+                                    }
                                 }}
                             />
                         )}
                         {!isCreate && !showEdit && (
-                            <button onClick={() => setShowDelete(true)} className="text-xs text-muted-foreground hover:text-destructive transition-colors">
+                            <button
+                                onClick={() => setShowDelete(true)}
+                                className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                            >
                                 Delete
                             </button>
                         )}
                     </div>
                 </div>
 
-                {/* Header */}
-                <div className="grid grid-cols-[1fr] grid-rows-[1fr]">
-                    <div className="col-start-1 row-start-1 [.nc-edit_&]:invisible [.nc-create_&]:invisible">
-                        <h1 className="text-xl font-semibold text-foreground">
-                            {userRecord ? `${userRecord.first_name} ${userRecord.last_name}` : "User"}
-                        </h1>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                            {userRecord ? `${userRecord.email} · @${userRecord.username}` : ""}
-                        </p>
-                    </div>
-                    <div className="col-start-1 row-start-1 invisible [.nc-edit_&]:visible [.nc-create_&]:visible">
-                        <h1 className="text-xl font-semibold text-foreground">
-                            {isCreate ? "Add User" : "Edit User"}
-                        </h1>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                            {isCreate ? "Create a new account and assign a role." : `${form.first_name || "..."} ${form.last_name || "..."} · @${form.username || "..."}`}
-                        </p>
-                    </div>
+                {/* ── Header ── */}
+                <div>
+                    <h1 className="text-xl font-semibold text-foreground">
+                        {isCreate
+                            ? "Add User"
+                            : showEdit
+                              ? "Edit User"
+                              : `${userRecord?.first_name} ${userRecord?.last_name}`}
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                        {isCreate
+                            ? "Create a new account and assign a role."
+                            : showEdit
+                              ? `${form.first_name || "…"} ${form.last_name || "…"} · @${form.username || "…"}`
+                              : `${userRecord?.email} · @${userRecord?.username}`}
+                    </p>
                 </div>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-6">
+                {/* ── Form ── */}
+                <form
+                    onSubmit={handleSubmit}
+                    className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-6"
+                >
                     {/* Avatar */}
                     <div className="flex items-center gap-4">
                         <div className="w-16 h-16 rounded-full bg-muted border border-border flex items-center justify-center overflow-hidden shrink-0">
                             {currentAvatar ? (
-                                <img src={currentAvatar} alt="Avatar" className="w-full h-full object-cover" />
+                                <img
+                                    src={currentAvatar}
+                                    alt="Avatar"
+                                    className="w-full h-full object-cover"
+                                />
                             ) : (
-                                <span className="text-xl text-muted-foreground font-semibold">{initials}</span>
+                                <span className="text-xl text-muted-foreground font-semibold">
+                                    {initials}
+                                </span>
                             )}
                         </div>
-                        <div className="grid grid-cols-[1fr] grid-rows-[1fr]">
-                            <div className="col-start-1 row-start-1 [.nc-edit_&]:invisible [.nc-create_&]:invisible">
-                                {currentAvatar && (
-                                    <p className="text-sm text-muted-foreground">Photo uploaded</p>
-                                )}
-                            </div>
-                            <div className="col-start-1 row-start-1 invisible [.nc-edit_&]:visible [.nc-create_&]:visible">
-                                <label className="flex items-center gap-2 px-3 py-2 text-sm border border-input rounded-lg cursor-pointer hover:bg-muted/50 transition-colors text-muted-foreground">
-                                    <Upload size={14} />
-                                    {currentAvatar ? "Change photo" : "Upload photo"}
-                                    <input type="file" accept="image/*" className="hidden" onChange={handleAvatar} />
-                                </label>
-                            </div>
-                        </div>
+                        {showEdit && (
+                            <label className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors text-muted-foreground">
+                                <Upload size={14} />
+                                {currentAvatar
+                                    ? "Change photo"
+                                    : "Upload photo"}
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleAvatar}
+                                />
+                            </label>
+                        )}
                     </div>
 
                     <div className="h-px bg-border" />
 
                     {/* Name */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <StackField
+                        <Field
                             label="First name"
                             required
-                            readValue={<p className="text-sm text-foreground">{userRecord?.first_name}</p>}
-                            editValue={
-                                <div>
-                                    <input className={inputCls} placeholder="Ruby" value={form.first_name} onChange={update("first_name")} />
-                                    {errors.first_name && <p className="text-xs text-destructive mt-1">{errors.first_name}</p>}
-                                </div>
-                            }
-                        />
-                        <StackField
+                            error={errors.first_name}
+                        >
+                            {showEdit ? (
+                                <Input
+                                    placeholder="Ruby"
+                                    value={form.first_name}
+                                    onChange={set("first_name")}
+                                    className={cn(
+                                        errors.first_name &&
+                                            "border-destructive",
+                                    )}
+                                />
+                            ) : (
+                                <p className="text-sm text-foreground py-1">
+                                    {userRecord?.first_name}
+                                </p>
+                            )}
+                        </Field>
+                        <Field
                             label="Last name"
                             required
-                            readValue={<p className="text-sm text-foreground">{userRecord?.last_name}</p>}
-                            editValue={
-                                <div>
-                                    <input className={inputCls} placeholder="Arnold" value={form.last_name} onChange={update("last_name")} />
-                                    {errors.last_name && <p className="text-xs text-destructive mt-1">{errors.last_name}</p>}
-                                </div>
-                            }
-                        />
+                            error={errors.last_name}
+                        >
+                            {showEdit ? (
+                                <Input
+                                    placeholder="Arnold"
+                                    value={form.last_name}
+                                    onChange={set("last_name")}
+                                    className={cn(
+                                        errors.last_name &&
+                                            "border-destructive",
+                                    )}
+                                />
+                            ) : (
+                                <p className="text-sm text-foreground py-1">
+                                    {userRecord?.last_name}
+                                </p>
+                            )}
+                        </Field>
                     </div>
 
                     {/* Email + Username */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <StackField
-                            label="Email"
-                            required
-                            readValue={<p className="text-sm text-foreground">{userRecord?.email}</p>}
-                            editValue={
-                                <div>
-                                    <input className={inputCls} type="email" placeholder="ruby@devify.com" value={form.email} onChange={update("email")} />
-                                    {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
-                                </div>
-                            }
-                        />
-                        <StackField
+                        <Field label="Email" required error={errors.email}>
+                            {showEdit ? (
+                                <Input
+                                    type="email"
+                                    placeholder="ruby@devify.com"
+                                    value={form.email}
+                                    onChange={set("email")}
+                                    className={cn(
+                                        errors.email && "border-destructive",
+                                    )}
+                                />
+                            ) : (
+                                <p className="text-sm text-foreground py-1">
+                                    {userRecord?.email}
+                                </p>
+                            )}
+                        </Field>
+                        <Field
                             label="Username"
                             required
                             hint="Letters, numbers, and dots only"
-                            readValue={<p className="text-sm text-foreground">@{userRecord?.username}</p>}
-                            editValue={
-                                <div>
-                                    <input className={inputCls} placeholder="ruby.arnold" value={form.username} onChange={update("username")} />
-                                    {errors.username && <p className="text-xs text-destructive mt-1">{errors.username}</p>}
-                                </div>
-                            }
-                        />
+                            error={errors.username}
+                        >
+                            {showEdit ? (
+                                <Input
+                                    placeholder="ruby.arnold"
+                                    value={form.username}
+                                    onChange={set("username")}
+                                    className={cn(
+                                        errors.username && "border-destructive",
+                                    )}
+                                />
+                            ) : (
+                                <p className="text-sm text-foreground py-1">
+                                    @{userRecord?.username}
+                                </p>
+                            )}
+                        </Field>
                     </div>
 
                     {/* Role + Status */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <StackField
-                            label="Role"
-                            required
-                            readValue={
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                    userRecord?.role === "admin" ? "bg-primary/10 text-foreground" : "bg-muted text-muted-foreground"
-                                }`}>
-                                    {userRecord?.role === "admin" ? "Admin" : "Secoops"}
-                                </span>
-                            }
-                            editValue={
-                                <select className={inputCls} value={form.role} onChange={update("role")}>
-                                    <option value="admin">Admin</option>
-                                    <option value="secoops">Secoops</option>
+                        <Field label="Role" required>
+                            {showEdit ? (
+                                <select
+                                    value={form.role_id}
+                                    onChange={(e) =>
+                                        setForm((f) => ({
+                                            ...f,
+                                            role_id: Number(e.target.value),
+                                        }))
+                                    }
+                                    className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
+                                >
+                                    <option value={1}>Admin</option>
+                                    <option value={2}>Secoops</option>
                                 </select>
-                            }
-                        />
-                        <StackField
-                            label="Status"
-                            readValue={
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                    userRecord?.status === "active" ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
-                                }`}>
-                                    {userRecord?.status === "active" ? "Active" : "Inactive"}
+                            ) : (
+                                <span
+                                    className={cn(
+                                        "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+                                        userRecord?.role_id === 1
+                                            ? "bg-primary/10 text-foreground"
+                                            : "bg-muted text-muted-foreground",
+                                    )}
+                                >
+                                    {userRecord?.role?.role_name ??
+                                        (userRecord?.role_id === 1
+                                            ? "Admin"
+                                            : "Secoops")}
                                 </span>
-                            }
-                            editValue={
-                                <select className={inputCls} value={form.status} onChange={update("status")}>
+                            )}
+                        </Field>
+                        <Field label="Status">
+                            {showEdit ? (
+                                <select
+                                    value={form.status}
+                                    onChange={set("status")}
+                                    className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
+                                >
                                     <option value="active">Active</option>
                                     <option value="inactive">Inactive</option>
                                 </select>
-                            }
-                        />
+                            ) : (
+                                <span
+                                    className={cn(
+                                        "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
+                                        userRecord?.status === "active"
+                                            ? "bg-emerald-500/10 text-emerald-400"
+                                            : "bg-red-500/10 text-red-400",
+                                    )}
+                                >
+                                    {userRecord?.status === "active"
+                                        ? "Active"
+                                        : "Inactive"}
+                                </span>
+                            )}
+                        </Field>
                     </div>
 
                     <div className="h-px bg-border" />
 
                     {/* Password */}
-                    <div>
-                        <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">
-                            {isCreate ? "Password" : "Change password"}
-                            {!isCreate && <span className="normal-case tracking-normal font-normal text-muted-foreground"> (leave blank to keep current)</span>}
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <StackField
-                                label="New password"
-                                required={isCreate}
-                                readValue={<p className="text-sm text-muted-foreground">••••••••</p>}
-                                editValue={
-                                    <div>
-                                        <input className={inputCls} type="password" placeholder={isCreate ? "Min. 8 characters" : "New password"} value={form.password} onChange={update("password")} />
-                                        {errors.password && <p className="text-xs text-destructive mt-1">{errors.password}</p>}
-                                    </div>
-                                }
-                            />
-                            <StackField
-                                label="Confirm password"
-                                required={isCreate}
-                                readValue={<p className="text-sm text-muted-foreground">••••••••</p>}
-                                editValue={
-                                    <div>
-                                        <input className={inputCls} type="password" placeholder="Repeat password" value={form.password_confirmation} onChange={update("password_confirmation")} />
-                                        {errors.password_confirmation && <p className="text-xs text-destructive mt-1">{errors.password_confirmation}</p>}
-                                    </div>
-                                }
-                            />
+                    {showEdit && (
+                        <div>
+                            <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">
+                                {isCreate ? "Password" : "Change password"}
+                                {!isCreate && (
+                                    <span className="normal-case tracking-normal font-normal">
+                                        {" "}
+                                        (leave blank to keep current)
+                                    </span>
+                                )}
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Field
+                                    label={
+                                        isCreate ? "Password" : "New password"
+                                    }
+                                    required={isCreate}
+                                    error={errors.password}
+                                >
+                                    <Input
+                                        type="password"
+                                        placeholder={
+                                            isCreate
+                                                ? "Min. 8 characters"
+                                                : "New password"
+                                        }
+                                        value={form.password}
+                                        onChange={set("password")}
+                                        className={cn(
+                                            errors.password &&
+                                                "border-destructive",
+                                        )}
+                                    />
+                                </Field>
+                                <Field
+                                    label="Confirm password"
+                                    required={isCreate}
+                                    error={errors.password_confirmation}
+                                >
+                                    <Input
+                                        type="password"
+                                        placeholder="Repeat password"
+                                        value={form.password_confirmation}
+                                        onChange={set("password_confirmation")}
+                                        className={cn(
+                                            errors.password_confirmation &&
+                                                "border-destructive",
+                                        )}
+                                    />
+                                </Field>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Actions */}
                     {showEdit && (
                         <div className="flex items-center justify-end gap-3 pt-2 border-t border-border/40">
-                            <Button type="submit" label={saving ? "Saving..." : isCreate ? "Create User" : "Save Changes"} disabled={saving} />
+                            <Button
+                                type="submit"
+                                disabled={isSaving}
+                                label={
+                                    isSaving
+                                        ? "Saving…"
+                                        : isCreate
+                                          ? "Create User"
+                                          : "Save Changes"
+                                }
+                            />
                         </div>
                     )}
                 </form>
 
-                {/* Delete confirm modal */}
-                {showDelete && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                        <div className="bg-card border border-border/60 rounded-xl p-6 max-w-sm w-full mx-4 shadow-lg">
-                            <h2 className="text-base font-semibold mb-1">Remove user?</h2>
-                            <p className="text-sm text-muted-foreground mb-5">
-                                This will permanently delete <strong className="text-foreground">{form.first_name} {form.last_name}</strong> and cannot be undone.
-                            </p>
-                            <div className="flex justify-end gap-3">
-                                <Button variant="outline" label="Cancel" onClick={() => setShowDelete(false)} />
-                                <Button variant="danger" label="Remove" onClick={handleDelete} />
-                            </div>
+                {/* ── Delete dialog ── */}
+                <Dialog open={showDelete} onOpenChange={setShowDelete}>
+                    <DialogContent className="sm:max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle>Remove User</DialogTitle>
+                        </DialogHeader>
+                        <p className="text-sm text-muted-foreground">
+                            This will permanently delete{" "}
+                            <strong className="text-foreground">
+                                {form.first_name} {form.last_name}
+                            </strong>{" "}
+                            and cannot be undone.
+                        </p>
+                        <div className="flex justify-end gap-3 pt-2">
+                            <DialogClose asChild>
+                                <Button
+                                    variant="outline"
+                                    label="Cancel"
+                                    onClick={() => setShowDelete(false)}
+                                />
+                            </DialogClose>
+                            <Button
+                                variant="danger"
+                                label={
+                                    deleteUser.isPending
+                                        ? "Removing…"
+                                        : "Remove"
+                                }
+                                disabled={deleteUser.isPending}
+                                onClick={handleDelete}
+                            />
                         </div>
-                    </div>
-                )}
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
     );

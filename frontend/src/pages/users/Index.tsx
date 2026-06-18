@@ -1,23 +1,19 @@
-// users/Index.tsx
-import React, { useState, useMemo, useEffect } from "react";
-import { Plus, Search } from "lucide-react";
+// pages/users/Index.tsx
+import { useState, useMemo } from "react";
+import { Plus, Search, Users2, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import ProfileCard from "@/components/ProfileCard";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type Role = "Admin" | "Secoops";
-
-interface User {
-    id: number;
-    first_name: string;
-    last_name: string;
-    email: string;
-    username: string;
-    role: { id: number; role_name: string };
-    status: "active" | "inactive";
-    avatar?: string;
-}
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogClose,
+} from "@/components/ui/dialog";
+import { useUsers, useDeleteUser } from "@/hooks/useUsers";
+import { cn } from "@/lib/utils";
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
@@ -25,55 +21,72 @@ function StatCard({
     label,
     value,
     sub,
+    loading,
 }: {
     label: string;
     value: number | string;
     sub?: string;
+    loading?: boolean;
 }) {
+    if (loading) {
+        return (
+            <div className="bg-card border border-border rounded-lg px-4 py-3 animate-pulse">
+                <div className="h-2.5 w-16 bg-muted rounded mb-2" />
+                <div className="h-7 w-10 bg-muted rounded" />
+            </div>
+        );
+    }
     return (
-        <div className="bg-gray-50 border border-gray-100 rounded-lg px-4 py-3">
-            <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mb-0.5">
+        <div className="bg-card border border-border rounded-lg px-4 py-3">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-0.5">
                 {label}
             </p>
-            <p className="text-2xl font-semibold text-gray-900">{value}</p>
-            {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
+            <p className="text-2xl font-semibold text-foreground">{value}</p>
+            {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
         </div>
     );
 }
 
 // ─── Filter tabs ──────────────────────────────────────────────────────────────
 
-type FilterTab = "all" | "active" | "inactive" | Role;
+type FilterTab = "all" | "active" | "inactive" | "Admin" | "Secoops";
 
 const TABS: { label: string; value: FilterTab }[] = [
-    { label: "All", value: "all" },
-    { label: "Active", value: "active" },
+    { label: "All",      value: "all" },
+    { label: "Active",   value: "active" },
     { label: "Inactive", value: "inactive" },
-    { label: "Admin", value: "Admin" },
-    { label: "Secoops", value: "Secoops" },
+    { label: "Admin",    value: "Admin" },
+    { label: "Secoops",  value: "Secoops" },
 ];
+
+// ─── Skeleton grid ────────────────────────────────────────────────────────────
+
+function SkeletonGrid() {
+    return (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                    key={i}
+                    className="bg-card border border-border rounded-lg p-6 flex flex-col items-center gap-3 animate-pulse"
+                >
+                    <div className="w-24 h-24 rounded-full bg-muted" />
+                    <div className="h-4 w-28 bg-muted rounded" />
+                    <div className="h-3 w-36 bg-muted rounded" />
+                    <div className="h-3 w-20 bg-muted rounded" />
+                </div>
+            ))}
+        </div>
+    );
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const Users = () => {
     const navigate = useNavigate();
-    const [users, setUsers] = useState<User[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { data: users = [], isLoading, isError, refetch } = useUsers();
+    const deleteUser = useDeleteUser();
 
-
-    const [deleteId, setDeleteId] = useState<number | null>(null);
-    const [deleteName, setDeleteName] = useState("");
-    useEffect(() => {
-        fetch("/api/users", {
-            headers: { "Accept": "application/json" },
-        })
-            .then((res) => res.json())
-            .then((data) => {
-                setUsers(data);
-                setLoading(false);
-            })
-            .catch(() => setLoading(false));
-    }, []);
+    const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<FilterTab>("all");
 
@@ -86,37 +99,39 @@ const Users = () => {
                 u.email.toLowerCase().includes(q) ||
                 u.username.toLowerCase().includes(q);
             const matchFilter =
-                filter === "all" || u.status === filter || u.role?.role_name === filter;
+                filter === "all" ||
+                u.status === filter ||
+                u.role?.role_name === filter;
             return matchSearch && matchFilter;
         });
     }, [search, filter, users]);
 
-    const handleDelete = (id: number) => {
+    const handleDeleteRequest = (id: number) => {
         const user = users.find((u) => u.id === id);
-        setDeleteId(id);
-        setDeleteName(`${user?.first_name} ${user?.last_name}`);
+        if (user) setDeleteTarget({ id, name: `${user.first_name} ${user.last_name}` });
     };
 
     const confirmDelete = async () => {
-        if (!deleteId) return;
-        await fetch(`/api/users/${deleteId}`, {
-            method: "DELETE",
-            headers: { "Accept": "application/json" },
-        });
-        setUsers((prev) => prev.filter((u) => u.id !== deleteId));
-        setDeleteId(null);
+        if (!deleteTarget) return;
+        try {
+            await deleteUser.mutateAsync(deleteTarget.id);
+            toast.success(`${deleteTarget.name} has been removed.`);
+            setDeleteTarget(null);
+        } catch {
+            toast.error("Failed to delete user. Please try again.");
+        }
     };
-    const activeCount = users.filter((u) => u.status === "active").length;
+
+    const activeCount   = users.filter((u) => u.status === "active").length;
     const inactiveCount = users.filter((u) => u.status === "inactive").length;
-    const adminCount = users.filter((u) => u.role?.role_name === "Admin").length;
+    const adminCount    = users.filter((u) => u.role?.role_name === "Admin").length;
+
     return (
         <div className="flex flex-col gap-5">
             {/* ── Header ── */}
             <div>
-                <h1 className="text-xl font-semibold text-gray-900">
-                    User Management
-                </h1>
-                <p className="text-sm text-gray-400 mt-0.5">
+                <h1 className="text-xl font-semibold text-foreground">User Management</h1>
+                <p className="text-sm text-muted-foreground mt-0.5">
                     Manage accounts and assign roles.
                 </p>
             </div>
@@ -127,25 +142,27 @@ const Users = () => {
                     <div className="relative flex-1 max-w-xs">
                         <Search
                             size={14}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
                         />
                         <input
                             type="text"
                             placeholder="Search users…"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-gray-400 placeholder:text-gray-400"
+                            className="w-full pl-8 pr-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground transition-colors"
                         />
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-wrap">
                         {TABS.map((t) => (
                             <button
                                 key={t.value}
                                 onClick={() => setFilter(t.value)}
-                                className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${filter === t.value
-                                    ? "bg-gray-900 text-white border-gray-900"
-                                    : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
-                                    }`}
+                                className={cn(
+                                    "px-3 py-1.5 text-xs rounded-full border transition-colors",
+                                    filter === t.value
+                                        ? "bg-foreground text-background border-foreground"
+                                        : "bg-transparent text-muted-foreground border-border hover:bg-muted",
+                                )}
                             >
                                 {t.label}
                             </button>
@@ -153,44 +170,62 @@ const Users = () => {
                     </div>
                 </div>
 
-                <button
+                <Button
+                    icon={<Plus size={15} />}
+                    label="Add user"
                     onClick={() => navigate("/users/create")}
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                    <Plus size={15} /> Add user
-                </button>
+                />
             </div>
 
             {/* ── Stats ── */}
             <div className="grid grid-cols-4 gap-3">
-                <StatCard label="Total users" value={users.length} />
+                <StatCard label="Total users"  value={users.length} loading={isLoading} />
                 <StatCard
                     label="Active"
                     value={activeCount}
-                    sub={`${Math.round((activeCount / users.length) * 100)}% of total`}
+                    sub={users.length ? `${Math.round((activeCount / users.length) * 100)}% of total` : undefined}
+                    loading={isLoading}
                 />
-                <StatCard label="Inactive" value={inactiveCount} />
-                <StatCard
-                    label="Admins"
-                    value={adminCount}
-                    sub="Secoops below admin"
-                />
+                <StatCard label="Inactive" value={inactiveCount} loading={isLoading} />
+                <StatCard label="Admins" value={adminCount} sub="Secoops below admin" loading={isLoading} />
             </div>
-            {loading && (
-                <p className="text-sm text-gray-400">Loading users...</p>
+
+            {/* ── Error state ── */}
+            {isError && (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+                    <Users2 size={32} className="opacity-30" />
+                    <p className="text-sm">Failed to load users.</p>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        icon={<RefreshCw size={14} />}
+                        label="Retry"
+                        onClick={() => refetch()}
+                    />
+                </div>
             )}
-            {/* ── Section label ── */}
-            <p className="text-xs uppercase tracking-widest text-gray-400 font-medium">
-                {visible.length} user{visible.length !== 1 ? "s" : ""}
-            </p>
+
+            {/* ── Count label ── */}
+            {!isLoading && !isError && (
+                <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
+                    {visible.length} user{visible.length !== 1 ? "s" : ""}
+                </p>
+            )}
+
+            {/* ── Loading skeleton ── */}
+            {isLoading && <SkeletonGrid />}
+
+            {/* ── Empty state ── */}
+            {!isLoading && !isError && visible.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
+                    <Users2 size={40} className="opacity-20" />
+                    <p className="text-sm font-medium">No users match your search.</p>
+                    <p className="text-xs opacity-60">Try adjusting your filters or search term.</p>
+                </div>
+            )}
 
             {/* ── Card grid ── */}
-            {visible.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                    <Search size={32} className="mb-3 opacity-30" />
-                    <p className="text-sm">No users match your search.</p>
-                </div>
-            ) : (
+            {!isLoading && !isError && visible.length > 0 && (
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
                     {visible.map((u) => (
                         <ProfileCard
@@ -201,35 +236,39 @@ const Users = () => {
                             role={u.role?.role_name === "Admin" ? "Admin" : "Secoops"}
                             imageUrl={u.avatar}
                             status={u.status}
-                            onDelete={handleDelete}
+                            onDelete={handleDeleteRequest}
                         />
                     ))}
                 </div>
             )}
-            {deleteId && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-                    <div className="bg-white rounded-xl border border-gray-100 shadow-lg p-6 max-w-sm w-full mx-4">
-                        <h2 className="text-base font-semibold text-gray-900 mb-1">Remove user?</h2>
-                        <p className="text-sm text-gray-500 mb-5">
-                            This will permanently delete <strong>{deleteName}</strong> and cannot be undone.
-                        </p>
-                        <div className="flex justify-end gap-3">
-                            <button
-                                onClick={() => setDeleteId(null)}
-                                className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={confirmDelete}
-                                className="px-4 py-2 text-sm font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                            >
-                                Remove
-                            </button>
-                        </div>
+
+            {/* ── Delete dialog ── */}
+            <Dialog
+                open={!!deleteTarget}
+                onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+            >
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Remove User</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                        Are you sure you want to permanently delete{" "}
+                        <span className="font-medium text-foreground">{deleteTarget?.name}</span>?
+                        This action cannot be undone.
+                    </p>
+                    <div className="flex justify-end gap-2 pt-2">
+                        <DialogClose asChild>
+                            <Button variant="outline" label="Cancel" onClick={() => setDeleteTarget(null)} />
+                        </DialogClose>
+                        <Button
+                            variant="danger"
+                            label={deleteUser.isPending ? "Removing…" : "Remove"}
+                            disabled={deleteUser.isPending}
+                            onClick={confirmDelete}
+                        />
                     </div>
-                </div>
-            )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

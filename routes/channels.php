@@ -7,3 +7,5 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 });
 
 Broadcast::channel('dashboard', fn ($user) => true);
+
+Broadcast::channel('server.{serverId}', fn ($user, $serverId) => true);

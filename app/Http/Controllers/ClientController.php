@@ -32,9 +32,6 @@ class ClientController extends Controller
 
     public function store(ClientData $clientdata, Request $request): JsonResponse
     {
-       
-        
-
         $bannerImageUrl = $this->handleBannerUpload($request);
 
         $client = Client::create([
@@ -44,7 +41,6 @@ class ClientController extends Controller
             'email' => $clientdata->email,
             'contact_number' => $clientdata->contact_number,
             'banner_image_url' => $bannerImageUrl,
-            'status' => 'active',
         ]);
 
         $client->loadCount('servers');
@@ -143,6 +139,26 @@ class ClientController extends Controller
         $path = $request->file('banner_image')->store('client-banners', 'public');
 
         return Storage::url($path);
+    }
+
+    public function servers(int $id): JsonResponse
+    {
+        $client = Client::findOrFail($id);
+        $servers = $client->servers()->get()->map(fn ($s) => [
+            'id' => $s->id,
+            'client_id' => $s->client_id,
+            'server_name' => $s->server_name,
+            'device_name' => $s->device_name,
+            'internal_ip' => $s->internal_ip,
+            'external_ip' => $s->external_ip,
+            'cpu_cores' => $s->cpu_cores,
+            'ram' => $s->ram,
+            'operating_system' => $s->operating_system,
+            'created_at' => $s->created_at?->toIso8601String() ?? '',
+            'updated_at' => $s->updated_at?->toIso8601String() ?? '',
+        ]);
+
+        return response()->json($servers);
     }
 
     public function destroy(int $id): JsonResponse

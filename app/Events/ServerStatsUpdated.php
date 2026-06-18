@@ -12,32 +12,24 @@ class ServerStatsUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    /**
-     * The payload that will be sent to the frontend.
-     * In a real app, this might be an array of Client objects or a specific Server.
-     */
-    public array $clients;
+    public int $server_id;
+    public array $stats;
+    public array $server;
 
-    public function __construct(array $clients)
+    public function __construct(int $server_id, array $stats, array $server)
     {
-        $this->clients = $clients;
+        $this->server_id = $server_id;
+        $this->stats = $stats;
+        $this->server = $server;
     }
 
-    /**
-     * Get the channels the event should broadcast on.
-     */
     public function broadcastOn(): array
     {
-        // Broadcasts to the public 'dashboard' channel. 
-        // Use PrivateChannel('dashboard') if you want to restrict it to authenticated users only.
         return [
-            new PrivateChannel('dashboard'),
+            new PrivateChannel('server.' . $this->server_id),
         ];
     }
 
-    /**
-     * The event's broadcast name.
-     */
     public function broadcastAs(): string
     {
         return 'ServerStatsUpdated';

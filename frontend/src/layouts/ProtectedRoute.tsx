@@ -12,6 +12,7 @@ import { BreadcrumbProvider } from "@/contexts/BreadCrumbContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import TopBarNav from "@/components/TopBarNav";
 import { useAuthContext } from "@/hooks/useAuthContext";
+import { Toaster } from "sonner";
 
 const sidebarLinks = [
     { name: "Dashboard", href: "/", icon: Activity },
@@ -54,6 +55,7 @@ export function ProtectedRoute() {
                     </main>
                 </div>
             </BreadcrumbProvider>
+            <Toaster richColors position="top-right" />
         </TooltipProvider>
     );
 }
