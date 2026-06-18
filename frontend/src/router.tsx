@@ -8,7 +8,6 @@ import UserDetail from "./pages/UserDetail";
 import ClientDetail from "./pages/clients/ClientDetail";
 import Settings from "./pages/Settings";
 import Logs from "./pages/Logs";
-import ServerDetail from "./pages/ServerDetail";
 
 const router = createBrowserRouter([
     {

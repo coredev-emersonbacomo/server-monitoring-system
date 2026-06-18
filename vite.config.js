@@ -17,8 +17,10 @@ export default defineConfig({
         tailwindcss(),
     ],
     server: {
-        watch: {
-            ignored: ["**/storage/framework/views/**"],
+        host: "0.0.0.0",
+        allowedHosts: true, // ✅ change THIS (not "all")
+        hmr: {
+            host: "thigh-gigantic-geometric.ngrok-free.dev", 
         },
     },
-});
+}); 

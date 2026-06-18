@@ -1,6 +1,10 @@
+// File path: frontend/src/hooks/useAuth.ts
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import client, { getCsrfCookie } from "@/api/api";
 import type { components } from "@/api/schema.d";
+import AuthContext from "@/contexts/AuthContext";
+import { useContext } from "react";
+
 
 type UserData = components["schemas"]["UserData"];
 
@@ -62,4 +66,11 @@ export const useLogout = () => {
             queryClient.removeQueries(); // Clear all sensitive cached data
         },
     });
+};
+export const useAuthContext = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuthContext must be used within an AuthProvider");
+  }
+  return context;
 };
