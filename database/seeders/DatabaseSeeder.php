@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             AdminSeeder::class,
             ClientSeeder::class,
+            GlobalAlertSeeder::class,
+            LocalAlertSeeder::class,
         ]);
     }
 }
