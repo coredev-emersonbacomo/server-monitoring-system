@@ -2,14 +2,13 @@ import { createBrowserRouter } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
-import Clients from "./pages/Clients";
+import Clients from "./pages/clients/Index";
 import UsersIndex from "./pages/users/Index";
-import UsersCreate from "./pages/users/Create";
-import UsersEdit from "./pages/users/Edit";
-import ClientCreate from "./pages/ClientCreate";
-import ClientEdit from "./pages/ClientEdit";
+import UserDetail from "./pages/UserDetail";
+import ClientDetail from "./pages/ClientDetail";
 import Settings from "./pages/Settings";
 import Logs from "./pages/Logs";
+import ServerDetail from "./pages/ServerDetail";
 
 const router = createBrowserRouter([
     {
@@ -24,17 +23,20 @@ const router = createBrowserRouter([
                 element: <Dashboard />,
             },
             {
+                path: "/servers/:id",
+                element: <ServerDetail />,
+            },
+            {
                 path: "/clients",
                 element: <Clients />,
             },
-            // ── Users ──────────────────────────────────
             {
                 path: "/clients/create",
-                element: <ClientCreate />,
+                element: <ClientDetail />,
             },
             {
-                path: "/clients/:id/edit",
-                element: <ClientEdit />,
+                path: "/clients/:id",
+                element: <ClientDetail />,
             },
             {
                 path: "/users",
@@ -42,11 +44,11 @@ const router = createBrowserRouter([
             },
             {
                 path: "/users/create",
-                element: <UsersCreate />,
+                element: <UserDetail />,
             },
             {
-                path: "/users/:id/edit",
-                element: <UsersEdit />,
+                path: "/users/:id",
+                element: <UserDetail />,
             },
             {
                 path: "/logs",

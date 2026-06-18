@@ -24,8 +24,8 @@ class ClientController extends Controller
                 'contact_number' => (string) ($client->contact_number ?? ''),
                 'banner_image_url' => $client->banner_image_url ?? '',
                 'servers_count' => $client->servers_count,
-                'created_at' => $client->created_at->toIso8601String(),
-                'updated_at' => $client->updated_at->toIso8601String(),
+                'created_at' => $client->created_at?->toIso8601String() ?? '',
+                'updated_at' => $client->updated_at?->toIso8601String() ?? '',
             ])),
         );
     }
@@ -59,8 +59,8 @@ class ClientController extends Controller
                 'contact_number' => (string) $client->contact_number,
                 'banner_image_url' => $client->banner_image_url,
                 'servers_count' => $client->servers_count,
-                'created_at' => $client->created_at->toIso8601String(),
-                'updated_at' => $client->updated_at->toIso8601String(),
+                'created_at' => $client->created_at?->toIso8601String() ?? '',
+                'updated_at' => $client->updated_at?->toIso8601String() ?? '',
             ]),
             201,
         );
@@ -80,8 +80,8 @@ class ClientController extends Controller
                 'contact_number' => (string) ($client->contact_number ?? ''),
                 'banner_image_url' => $client->banner_image_url ?? '',
                 'servers_count' => $client->servers_count,
-                'created_at' => $client->created_at->toIso8601String(),
-                'updated_at' => $client->updated_at->toIso8601String(),
+                'created_at' => $client->created_at?->toIso8601String() ?? '',
+                'updated_at' => $client->updated_at?->toIso8601String() ?? '',
             ]),
         );
     }
@@ -128,8 +128,8 @@ class ClientController extends Controller
                 'contact_number' => (string) $client->contact_number,
                 'banner_image_url' => $client->banner_image_url,
                 'servers_count' => $client->servers_count,
-                'created_at' => $client->created_at->toIso8601String(),
-                'updated_at' => $client->updated_at->toIso8601String(),
+                'created_at' => $client->created_at?->toIso8601String() ?? '',
+                'updated_at' => $client->updated_at?->toIso8601String() ?? '',
             ]),
         );
     }

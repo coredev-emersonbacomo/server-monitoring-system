@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use App\Http\Middleware\RequestLogger;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -23,8 +24,11 @@ return Application::configure(basePath: dirname(__DIR__))
         //   5. ValidateCsrfToken     — rejects any state-mutating request (POST/PUT/DELETE) that lacks a matching X-XSRF-TOKEN header
         //   6. SubstituteBindings    — resolves route model bindings
         // Without this, api/* routes are stateless by default and Auth::user() always returns null,
-        // since Laravel does not start a session or validate CSRF tokens for API routes out of the box.
+        // since Laravel does not start a session or validate CSRF tokens for API routes out of the cart.
         $middleware->statefulApi();
+        $middleware->api(prepend: [
+            RequestLogger::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
