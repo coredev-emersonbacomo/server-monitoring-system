@@ -75,12 +75,12 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                             <button
                                 onClick={() => {
                                     setMenuOpen(false);
-                                    navigate(`/users/${id}/edit`);
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-                            >
-                                <Pencil size={13} className="text-gray-400" />
-                                Edit user
+                                navigate(`/users/${id}`);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                            <Pencil size={13} className="text-gray-400" />
+                            View / Edit
                             </button>
                             <button
                                 onClick={() => {
@@ -115,7 +115,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
             {/* ── Info ── */}
             <div className="text-center w-full flex flex-col items-center gap-2">
                 <h3
-                    onClick={() => navigate(`/users/${id}/edit`)}
+                    onClick={() => navigate(`/users/${id}`)}
                     className="text-[#1a629d] font-semibold text-base hover:underline cursor-pointer"
                 >
                     {name}

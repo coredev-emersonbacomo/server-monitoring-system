@@ -93,7 +93,7 @@ export default function Clients() {
                                         <td className="px-4 py-3 text-muted-foreground">{client.contact_number}</td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                <Link to={`/clients/${client.id}/edit`}>
+                                                <Link to={`/clients/${client.id}`}>
                                                     <Button variant="outline" icon={<Pencil className="w-4 h-4" />} className="px-2 py-1" />
                                                 </Link>
                                                 <Dialog
