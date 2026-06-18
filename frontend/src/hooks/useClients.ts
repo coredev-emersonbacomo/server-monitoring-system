@@ -67,6 +67,34 @@ export const useUpdateClient = (id: number) => {
     });
 };
 
+export interface ClientServer {
+    id: number;
+    client_id: number;
+    server_name: string;
+    device_name: string;
+    internal_ip: string;
+    external_ip: string;
+    cpu_cores: number | null;
+    ram: number | null;
+    operating_system: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export const useClientServers = (clientId: number) => {
+    return useQuery({
+        queryKey: ["clients", clientId, "servers"],
+        queryFn: async (): Promise<ClientServer[]> => {
+            const res = await fetch(`/api/clients/${clientId}/servers`, {
+                credentials: "include",
+            });
+            if (!res.ok) throw new Error("Failed to fetch servers");
+            return res.json();
+        },
+        enabled: !!clientId,
+    });
+};
+
 export const useDeleteClient = () => {
     const queryClient = useQueryClient();
 

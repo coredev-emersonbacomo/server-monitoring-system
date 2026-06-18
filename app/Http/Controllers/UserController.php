@@ -2,21 +2,30 @@
 
 namespace App\Http\Controllers;
 
+use App\Data\FullUserData;
+use App\Data\UpdateUserData;
 use App\Data\CreateUserData;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
-//  UserController 
+
+// UserController
 class UserController extends Controller
 {
-    public function index(): JsonResponse
+    /**
+     * @return \Spatie\LaravelData\DataCollection<\App\Data\FullUserData>
+     */
+    public function index()
     {
         $users = User::with('role')->get();
 
-        return response()->json($users);
+        return FullUserData::collect($users);
     }
 
-    public function store(CreateUserData $data): JsonResponse
+    /**
+     * @return \App\Data\FullUserData
+     */
+    public function store(CreateUserData $data)
     {
         $user = User::create([
             'first_name' => $data->first_name,
@@ -27,10 +36,52 @@ class UserController extends Controller
             'password'   => Hash::make($data->password),
         ]);
 
-        return response()->json($user->load('role'), 201);
+        return FullUserData::from($user->load('role'))->toResponse(request())->setStatusCode(201);
     }
-    public function show(User $user): JsonResponse
+
+    /**
+     * @return \App\Data\FullUserData
+     */
+    public function show(User $user)
     {
-        return response()->json($user->load('role'));
+        return FullUserData::from($user->load('role'));
+    }
+
+    /**
+     * @return \App\Data\FullUserData
+     */
+    public function update(UpdateUserData $data, User $user)
+    {
+        $payload = [];
+
+        if (!($data->first_name instanceof \Spatie\LaravelData\Optional)) {
+            $payload['first_name'] = $data->first_name;
+        }
+        if (!($data->last_name instanceof \Spatie\LaravelData\Optional)) {
+            $payload['last_name'] = $data->last_name;
+        }
+        if (!($data->email instanceof \Spatie\LaravelData\Optional)) {
+            $payload['email'] = $data->email;
+        }
+        if (!($data->username instanceof \Spatie\LaravelData\Optional)) {
+            $payload['username'] = $data->username;
+        }
+        if (!($data->role_id instanceof \Spatie\LaravelData\Optional)) {
+            $payload['role_id'] = $data->role_id;
+        }
+        if (!($data->password instanceof \Spatie\LaravelData\Optional) && $data->password !== null) {
+            $payload['password'] = Hash::make($data->password);
+        }
+
+        $user->update($payload);
+
+        return FullUserData::from($user->load('role'));
+    }
+
+    public function destroy(User $user): JsonResponse
+    {
+        $user->delete();
+
+        return response()->json(null, 204);
     }
 }
