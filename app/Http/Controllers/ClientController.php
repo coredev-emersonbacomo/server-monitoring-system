@@ -30,25 +30,19 @@ class ClientController extends Controller
         );
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(ClientData $clientdata, Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => 'required|string|min:2|max:255',
-            'description' => 'nullable|string|min:5',
-            'location' => 'required|string|min:5',
-            'email' => 'required|email|min:5|max:255',
-            'contact_number' => 'required|string|min:5',
-            'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:4096',
-        ]);
+       
+        
 
         $bannerImageUrl = $this->handleBannerUpload($request);
 
         $client = Client::create([
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? '',
-            'location' => $validated['location'],
-            'email' => $validated['email'],
-            'contact_number' => $validated['contact_number'],
+            'name' => $clientdata->name,
+            'description' => $clientdata->description ?? '',
+            'location' => $clientdata->location,
+            'email' => $clientdata->email,
+            'contact_number' => $clientdata->contact_number,
             'banner_image_url' => $bannerImageUrl,
             'status' => 'active',
         ]);
