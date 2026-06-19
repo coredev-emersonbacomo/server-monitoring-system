@@ -21,7 +21,6 @@ class DatabaseSeeder extends Seeder
             AdminSeeder::class,
             ClientSeeder::class,
             GlobalAlertSeeder::class,
-            LocalAlertSeeder::class,
         ]);
     }
 }
