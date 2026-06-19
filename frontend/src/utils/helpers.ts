@@ -24,3 +24,4 @@ export function toLabelCase(
 
     return result.trim();
 }
+

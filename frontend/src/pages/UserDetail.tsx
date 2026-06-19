@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-    ArrowLeft,
     Pencil,
     Upload,
     AlertTriangle,
+    Trash2,
     RefreshCw,
+    User as UserIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
@@ -33,17 +34,30 @@ import {
 function FormSkeleton() {
     return (
         <div className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-6 animate-pulse">
-            <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-muted shrink-0" />
-                <div className="h-8 w-28 bg-muted rounded-lg" />
+            <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-muted shrink-0" />
+                <div className="space-y-2 flex-1">
+                    <div className="h-5 w-40 bg-muted rounded" />
+                    <div className="h-3 w-24 bg-muted rounded" />
+                </div>
             </div>
             <div className="h-px bg-border" />
             {[0, 1, 2].map((i) => (
-                <div key={i} className="grid grid-cols-2 gap-4">
-                    <div className="h-9 bg-muted rounded-md" />
-                    <div className="h-9 bg-muted rounded-md" />
+                <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <div className="h-3 w-16 bg-muted rounded" />
+                        <div className="h-9 bg-muted rounded-md" />
+                    </div>
+                    <div className="space-y-2">
+                        <div className="h-3 w-16 bg-muted rounded" />
+                        <div className="h-9 bg-muted rounded-md" />
+                    </div>
                 </div>
             ))}
+            <div className="h-px bg-border" />
+            <div className="flex justify-end">
+                <div className="h-9 w-28 bg-muted rounded-md" />
+            </div>
         </div>
     );
 }
@@ -54,26 +68,49 @@ function Field({
     label,
     required,
     children,
-    hint,
     error,
+    hint,
+    isEdit = true,
 }: {
     label: string;
     required?: boolean;
     children: React.ReactNode;
-    hint?: string;
     error?: string;
+    hint?: string;
+    isEdit?: boolean;
 }) {
     return (
         <div className="flex flex-col gap-1">
             <Label>
                 {label}
-                {required && <span className="text-destructive ml-0.5">*</span>}
+                {required && isEdit && (
+                    <span className="text-destructive ml-0.5">*</span>
+                )}
             </Label>
             {children}
-            {hint && (
-                <p className="text-[11px] text-muted-foreground">{hint}</p>
-            )}
+            {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
             {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+    );
+}
+
+// ─── Section header ───────────────────────────────────────────────────────────
+
+function SectionHeader({
+    title,
+    description,
+}: {
+    title: string;
+    description?: string;
+}) {
+    return (
+        <div>
+            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+            {description && (
+                <p className="text-xs text-muted-foreground mt-0.5">
+                    {description}
+                </p>
+            )}
         </div>
     );
 }
@@ -84,15 +121,15 @@ export default function UserDetail() {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
     const { setTrail } = useBreadcrumb();
-    const isCreate = !id;
-    const userId = id ? Number(id) : 0;
+    const userId = Number(id);
+
+    const [mode, setMode] = useState<"view" | "create" | "edit">(
+        id ? "view" : "create",
+    );
+    const showEdit = mode !== "view";
 
     // ── Data fetching ──────────────────────────────────────────────────────────
-    const {
-        data: userRecord,
-        isLoading: userLoading,
-        isError: userError,
-    } = useUser(userId);
+    const { data: user, isLoading, isError } = useUser(userId);
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createUser = useCreateUser();
@@ -100,8 +137,8 @@ export default function UserDetail() {
     const deleteUser = useDeleteUser();
 
     // ── Local state ────────────────────────────────────────────────────────────
-    const [isEditing, setIsEditing] = useState(isCreate);
     const [showDelete, setShowDelete] = useState(false);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -116,68 +153,100 @@ export default function UserDetail() {
         password_confirmation: "",
     });
 
-    // Populate form when user data arrives
+    // Reset mode when navigating between users / to create
     useEffect(() => {
-        if (userRecord) {
+        const next = id ? "view" : "create";
+        setMode(next);
+        if (next === "create") {
             setForm({
-                first_name: userRecord.first_name,
-                last_name: userRecord.last_name,
-                email: userRecord.email,
-                username: userRecord.username,
-                role_id: userRecord.role_id,
-                status: userRecord.status ?? "active",
+                first_name: "",
+                last_name: "",
+                email: "",
+                username: "",
+                role_id: 2,
+                status: "active",
                 password: "",
                 password_confirmation: "",
             });
+            setAvatarPreview(null);
+            setAvatarFile(null);
+            setErrors({});
         }
-    }, [userRecord]);
+    }, [id]);
+
+    // Populate form when user data arrives
+    useEffect(() => {
+        if (user) {
+            setForm({
+                first_name: user.first_name,
+                last_name: user.last_name,
+                email: user.email,
+                username: user.username,
+                role_id: user.role_id,
+                status: user.status ?? "active",
+                password: "",
+                password_confirmation: "",
+            });
+            setAvatarPreview(user.avatar ?? null);
+        }
+    }, [user]);
 
     // Breadcrumb
     useEffect(() => {
-        if (isCreate) {
+        if (mode === "create") {
             setTrail([
                 { label: "Users", href: "/users" },
                 { label: "Create", href: "/users/create" },
             ]);
-        } else if (userRecord) {
+        } else if (user) {
             setTrail([
                 { label: "Users", href: "/users" },
                 {
-                    label: `${userRecord.first_name} ${userRecord.last_name}`,
-                    href: `/users/${userId}`,
+                    label: `${user.first_name} ${user.last_name}`,
+                    href: `/users/${user.id}`,
                 },
             ]);
         }
-    }, [setTrail, isCreate, userRecord, userId]);
+    }, [setTrail, mode, user]);
 
     const set =
         (key: keyof typeof form) =>
-        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-            setForm((f) => ({ ...f, [key]: e.target.value }));
+            (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+                setForm((f) => ({ ...f, [key]: e.target.value }));
 
-    const validate = (): boolean => {
-        const schema = z.object({
+    // ── Validation ─────────────────────────────────────────────────────────────
+    const isCreate = mode === "create";
+
+    const schema = z
+        .object({
             first_name: z.string().trim().min(1, "Required"),
             last_name: z.string().trim().min(1, "Required"),
             email: z.string().trim().min(1, "Required").email("Invalid email"),
             username: z.string().trim().min(1, "Required"),
             password: z.string().superRefine((val, ctx) => {
-                if (isCreate && !val) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required" });
-                else if (val && val.length < 8) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Minimum 8 characters" });
+                if (isCreate && !val)
+                    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required" });
+                else if (val && val.length < 8)
+                    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Minimum 8 characters" });
             }),
-            password_confirmation: z.string()
-        }).superRefine((data, ctx) => {
+            password_confirmation: z.string(),
+        })
+        .superRefine((data, ctx) => {
             if (data.password && data.password !== data.password_confirmation) {
-                ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["password_confirmation"], message: "Passwords do not match" });
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["password_confirmation"],
+                    message: "Passwords do not match",
+                });
             }
         });
 
+    const validate = (): boolean => {
         const result = schema.safeParse(form);
         if (result.success) {
             setErrors({});
             return true;
         }
-
         const newErrors: Record<string, string> = {};
         for (const issue of result.error.issues) {
             const key = issue.path[0] as string;
@@ -187,12 +256,13 @@ export default function UserDetail() {
         return false;
     };
 
+    // ── Handlers ───────────────────────────────────────────────────────────────
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validate()) return;
 
         try {
-            if (isCreate) {
+            if (mode === "create") {
                 await createUser.mutateAsync({
                     first_name: form.first_name,
                     last_name: form.last_name,
@@ -211,6 +281,7 @@ export default function UserDetail() {
                     email: form.email,
                     username: form.username,
                     role_id: Number(form.role_id),
+                    status: form.status,
                 };
                 if (form.password) {
                     payload.password = form.password;
@@ -218,17 +289,12 @@ export default function UserDetail() {
                 }
                 await updateUser.mutateAsync(payload);
                 toast.success("User updated successfully.");
-                setIsEditing(false);
-                setForm((f) => ({
-                    ...f,
-                    password: "",
-                    password_confirmation: "",
-                }));
+                setMode("view");
+                setForm((f) => ({ ...f, password: "", password_confirmation: "" }));
             }
         } catch (err: unknown) {
-            const data = err as Record<string, Record<string, string>>;
+            const data = err as Record<string, Record<string, string[]>>;
             if (data?.errors) {
-                // Map Laravel validation errors to field-level display
                 const mapped: Record<string, string> = {};
                 for (const [k, v] of Object.entries(data.errors)) {
                     mapped[k] = Array.isArray(v) ? v[0] : String(v);
@@ -236,9 +302,7 @@ export default function UserDetail() {
                 setErrors(mapped);
             } else {
                 toast.error(
-                    isCreate
-                        ? "Failed to create user."
-                        : "Failed to update user.",
+                    mode === "create" ? "Failed to create user." : "Failed to update user.",
                 );
             }
         }
@@ -254,18 +318,44 @@ export default function UserDetail() {
         }
     };
 
-    const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) setAvatarPreview(URL.createObjectURL(file));
+    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] ?? null;
+        setAvatarFile(file);
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = () => setAvatarPreview(reader.result as string);
+            reader.readAsDataURL(file);
+        } else {
+            setAvatarPreview(user?.avatar ?? null);
+        }
+    };
+
+    const cancelEdit = () => {
+        setMode("view");
+        setErrors({});
+        if (user) {
+            setForm({
+                first_name: user.first_name,
+                last_name: user.last_name,
+                email: user.email,
+                username: user.username,
+                role_id: user.role_id,
+                status: user.status ?? "active",
+                password: "",
+                password_confirmation: "",
+            });
+            setAvatarPreview(user.avatar ?? null);
+            setAvatarFile(null);
+        }
     };
 
     // ── Loading state ──────────────────────────────────────────────────────────
-    if (!isCreate && userLoading) {
+    if (mode !== "create" && isLoading) {
         return (
             <div className="w-full flex flex-col items-center px-4 py-6">
-                <div className="w-full max-w-2xl flex flex-col gap-6">
+                <div className="w-full max-w-3xl flex flex-col gap-6">
                     <div className="h-5 w-24 bg-muted rounded animate-pulse" />
-                    <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+                    <div className="h-6 w-48 bg-muted rounded animate-pulse" />
                     <FormSkeleton />
                 </div>
             </div>
@@ -273,7 +363,7 @@ export default function UserDetail() {
     }
 
     // ── Error / not found state ────────────────────────────────────────────────
-    if (!isCreate && (userError || (!userLoading && !userRecord))) {
+    if (mode !== "create" && (isError || (!isLoading && !user))) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
                 <AlertTriangle size={32} className="opacity-40" />
@@ -289,383 +379,401 @@ export default function UserDetail() {
         );
     }
 
-    const showEdit = isEditing || isCreate;
-    const currentAvatar = avatarPreview ?? userRecord?.avatar;
-    const initials =
-        `${form.first_name[0] ?? ""}${form.last_name[0] ?? ""}`.toUpperCase() ||
-        "?";
+    // ── Derived state ──────────────────────────────────────────────────────────
+    const hasAvatar = !!avatarPreview;
     const isSaving = createUser.isPending || updateUser.isPending;
+    const initials =
+        `${form.first_name?.[0] ?? ""}${form.last_name?.[0] ?? ""}`.toUpperCase() || "?";
+    const avatarInputId = "avatar-upload";
+
+    const roleName = user?.role?.role_name ?? (user?.role_id === 1 ? "Admin" : "Secoops");
 
     return (
-        <div className="w-full flex flex-col items-center px-4 py-6">
-            <div className="w-full max-w-2xl flex flex-col gap-6">
-                {/* ── Back + actions ── */}
-                <div className="flex items-center justify-between">
-                    <button
-                        onClick={() => navigate("/users")}
-                        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        <ArrowLeft size={15} /> Users
-                    </button>
-                    <div className="flex items-center gap-2">
-                        {!isCreate && !showEdit && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                icon={<Pencil className="w-4 h-4" />}
-                                label="Edit"
-                                onClick={() => setIsEditing(true)}
-                            />
-                        )}
-                        {showEdit && !isCreate && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                label="Cancel"
-                                onClick={() => {
-                                    setIsEditing(false);
-                                    setErrors({});
-                                    if (userRecord) {
-                                        setForm({
-                                            first_name: userRecord.first_name,
-                                            last_name: userRecord.last_name,
-                                            email: userRecord.email,
-                                            username: userRecord.username,
-                                            role_id: userRecord.role_id,
-                                            status:
-                                                userRecord.status ?? "active",
-                                            password: "",
-                                            password_confirmation: "",
-                                        });
-                                    }
-                                }}
-                            />
-                        )}
-                        {!isCreate && !showEdit && (
-                            <button
-                                onClick={() => setShowDelete(true)}
-                                className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-                            >
-                                Delete
-                            </button>
-                        )}
-                    </div>
+        <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
+            {/* ── Banner / Hero ── */}
+            <div className="relative">
+                <div className="absolute inset-0 overflow-hidden rounded-t-xl">
+                    <div
+                        className="w-full h-full"
+                        style={{
+                            background:
+                                "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                        }}
+                    />
+                    <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-r from-background/40 to-transparent" />
                 </div>
 
-                {/* ── Header ── */}
-                <div>
-                    <h1 className="text-xl font-semibold text-foreground">
-                        {isCreate
-                            ? "Add User"
-                            : showEdit
-                              ? "Edit User"
-                              : `${userRecord?.first_name} ${userRecord?.last_name}`}
-                    </h1>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                        {isCreate
-                            ? "Create a new account and assign a role."
-                            : showEdit
-                              ? `${form.first_name || "…"} ${form.last_name || "…"} · @${form.username || "…"}`
-                              : `${userRecord?.email} · @${userRecord?.username}`}
-                    </p>
-                </div>
-
-                {/* ── Form ── */}
-                <form
-                    onSubmit={handleSubmit}
-                    className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-6"
-                >
-                    {/* Avatar */}
-                    <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-full bg-muted border border-border flex items-center justify-center overflow-hidden shrink-0">
-                            {currentAvatar ? (
-                                <img
-                                    src={currentAvatar}
-                                    alt="Avatar"
-                                    className="w-full h-full object-cover"
+                <div className="relative z-10 px-6 sm:px-8 lg:px-10 pt-6 pb-20">
+                    {/* ── Top bar: actions ── */}
+                    <div className="flex items-center justify-end mb-6">
+                        <div className="flex items-center gap-2">
+                            {mode === "edit" && (
+                                <Button
+                                    variant="danger"
+                                    size="sm"
+                                    icon={<Trash2 size={13} />}
+                                    label="Delete"
+                                    className="bg-red-600/70"
+                                    onClick={() => setShowDelete(true)}
                                 />
-                            ) : (
-                                <span className="text-xl text-muted-foreground font-semibold">
-                                    {initials}
-                                </span>
                             )}
-                        </div>
-                        {showEdit && (
-                            <label className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors text-muted-foreground">
-                                <Upload size={14} />
-                                {currentAvatar
-                                    ? "Change photo"
-                                    : "Upload photo"}
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={handleAvatar}
-                                />
-                            </label>
-                        )}
-                    </div>
 
-                    <div className="h-px bg-border" />
-
-                    {/* Name */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Field
-                            label="First name"
-                            required
-                            error={errors.first_name}
-                        >
-                            {showEdit ? (
-                                <Input
-                                    placeholder="Ruby"
-                                    value={form.first_name}
-                                    onChange={set("first_name")}
-                                    className={cn(
-                                        errors.first_name &&
-                                            "border-destructive",
-                                    )}
-                                />
-                            ) : (
-                                <p className="text-sm text-foreground py-1">
-                                    {userRecord?.first_name}
-                                </p>
-                            )}
-                        </Field>
-                        <Field
-                            label="Last name"
-                            required
-                            error={errors.last_name}
-                        >
-                            {showEdit ? (
-                                <Input
-                                    placeholder="Arnold"
-                                    value={form.last_name}
-                                    onChange={set("last_name")}
-                                    className={cn(
-                                        errors.last_name &&
-                                            "border-destructive",
-                                    )}
-                                />
-                            ) : (
-                                <p className="text-sm text-foreground py-1">
-                                    {userRecord?.last_name}
-                                </p>
-                            )}
-                        </Field>
-                    </div>
-
-                    {/* Email + Username */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Field label="Email" required error={errors.email}>
-                            {showEdit ? (
-                                <Input
-                                    type="email"
-                                    placeholder="ruby@devify.com"
-                                    value={form.email}
-                                    onChange={set("email")}
-                                    className={cn(
-                                        errors.email && "border-destructive",
-                                    )}
-                                />
-                            ) : (
-                                <p className="text-sm text-foreground py-1">
-                                    {userRecord?.email}
-                                </p>
-                            )}
-                        </Field>
-                        <Field
-                            label="Username"
-                            required
-                            hint="Letters, numbers, and dots only"
-                            error={errors.username}
-                        >
-                            {showEdit ? (
-                                <Input
-                                    placeholder="ruby.arnold"
-                                    value={form.username}
-                                    onChange={set("username")}
-                                    className={cn(
-                                        errors.username && "border-destructive",
-                                    )}
-                                />
-                            ) : (
-                                <p className="text-sm text-foreground py-1">
-                                    @{userRecord?.username}
-                                </p>
-                            )}
-                        </Field>
-                    </div>
-
-                    {/* Role + Status */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Field label="Role" required>
-                            {showEdit ? (
-                                <select
-                                    value={form.role_id}
-                                    onChange={(e) =>
-                                        setForm((f) => ({
-                                            ...f,
-                                            role_id: Number(e.target.value),
-                                        }))
-                                    }
-                                    className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
-                                >
-                                    <option value={1}>Admin</option>
-                                    <option value={2}>Secoops</option>
-                                </select>
-                            ) : (
-                                <span
-                                    className={cn(
-                                        "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-                                        userRecord?.role_id === 1
-                                            ? "bg-primary/10 text-foreground"
-                                            : "bg-muted text-muted-foreground",
-                                    )}
-                                >
-                                    {userRecord?.role?.role_name ??
-                                        (userRecord?.role_id === 1
-                                            ? "Admin"
-                                            : "Secoops")}
-                                </span>
-                            )}
-                        </Field>
-                        <Field label="Status">
-                            {showEdit ? (
-                                <select
-                                    value={form.status}
-                                    onChange={set("status")}
-                                    className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
-                                >
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
-                                </select>
-                            ) : (
-                                <span
-                                    className={cn(
-                                        "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium",
-                                        userRecord?.status === "active"
-                                            ? "bg-emerald-500/10 text-emerald-400"
-                                            : "bg-red-500/10 text-red-400",
-                                    )}
-                                >
-                                    {userRecord?.status === "active"
-                                        ? "Active"
-                                        : "Inactive"}
-                                </span>
-                            )}
-                        </Field>
-                    </div>
-
-                    <div className="h-px bg-border" />
-
-                    {/* Password */}
-                    {showEdit && (
-                        <div>
-                            <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium mb-3">
-                                {isCreate ? "Password" : "Change password"}
-                                {!isCreate && (
-                                    <span className="normal-case tracking-normal font-normal">
-                                        {" "}
-                                        (leave blank to keep current)
-                                    </span>
-                                )}
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <Field
-                                    label={
-                                        isCreate ? "Password" : "New password"
-                                    }
-                                    required={isCreate}
-                                    error={errors.password}
-                                >
-                                    <Input
-                                        type="password"
-                                        placeholder={
-                                            isCreate
-                                                ? "Min. 8 characters"
-                                                : "New password"
-                                        }
-                                        value={form.password}
-                                        onChange={set("password")}
-                                        className={cn(
-                                            errors.password &&
-                                                "border-destructive",
-                                        )}
-                                    />
-                                </Field>
-                                <Field
-                                    label="Confirm password"
-                                    required={isCreate}
-                                    error={errors.password_confirmation}
-                                >
-                                    <Input
-                                        type="password"
-                                        placeholder="Repeat password"
-                                        value={form.password_confirmation}
-                                        onChange={set("password_confirmation")}
-                                        className={cn(
-                                            errors.password_confirmation &&
-                                                "border-destructive",
-                                        )}
-                                    />
-                                </Field>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Actions */}
-                    {showEdit && (
-                        <div className="flex items-center justify-end gap-3 pt-2 border-t border-border/40">
-                            <Button
-                                type="submit"
-                                disabled={isSaving}
-                                label={
-                                    isSaving
-                                        ? "Saving…"
-                                        : isCreate
-                                          ? "Create User"
-                                          : "Save Changes"
-                                }
-                            />
-                        </div>
-                    )}
-                </form>
-
-                {/* ── Delete dialog ── */}
-                <Dialog open={showDelete} onOpenChange={setShowDelete}>
-                    <DialogContent className="sm:max-w-sm">
-                        <DialogHeader>
-                            <DialogTitle>Remove User</DialogTitle>
-                        </DialogHeader>
-                        <p className="text-sm text-muted-foreground">
-                            This will permanently delete{" "}
-                            <strong className="text-foreground">
-                                {form.first_name} {form.last_name}
-                            </strong>{" "}
-                            and cannot be undone.
-                        </p>
-                        <div className="flex justify-end gap-3 pt-2">
-                            <DialogClose asChild>
+                            {mode !== "create" && !showEdit && (
                                 <Button
                                     variant="outline"
-                                    label="Cancel"
-                                    onClick={() => setShowDelete(false)}
+                                    size="sm"
+                                    icon={<Pencil className="w-4 h-4" />}
+                                    label="Edit"
+                                    onClick={() => setMode("edit")}
                                 />
-                            </DialogClose>
-                            <Button
-                                variant="danger"
-                                label={
-                                    deleteUser.isPending
-                                        ? "Removing…"
-                                        : "Remove"
-                                }
-                                disabled={deleteUser.isPending}
-                                onClick={handleDelete}
-                            />
+                            )}
+                            {showEdit && mode !== "create" && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    label="Cancel"
+                                    onClick={cancelEdit}
+                                />
+                            )}
+                            {showEdit && mode === "create" && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    label="Cancel"
+                                    onClick={() => navigate("/users")}
+                                />
+                            )}
                         </div>
-                    </DialogContent>
-                </Dialog>
+                    </div>
+
+                    {/* ── Avatar + Name ── */}
+                    <div className="flex items-end gap-5">
+                        {/* Avatar */}
+                        <div className="relative shrink-0">
+                            <div className="w-20 h-20 rounded-full bg-card border-4 border-background shadow-sm flex items-center justify-center overflow-hidden">
+                                {hasAvatar ? (
+                                    <img
+                                        src={avatarPreview!}
+                                        alt="Avatar"
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <span className="text-xl font-semibold text-muted-foreground">
+                                        {initials}
+                                    </span>
+                                )}
+                            </div>
+                            {showEdit && (
+                                <label
+                                    htmlFor={avatarInputId}
+                                    className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-foreground text-background flex items-center justify-center cursor-pointer shadow-sm hover:opacity-90 transition-opacity"
+                                >
+                                    <Upload size={12} />
+                                    <input
+                                        id={avatarInputId}
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+                                        onChange={handleAvatarChange}
+                                        className="hidden"
+                                    />
+                                </label>
+                            )}
+                        </div>
+
+                        {/* Name */}
+                        <div className="flex-1 min-w-0 pb-1">
+                            {showEdit ? (
+                                <div className="grid grid-cols-2 gap-3 max-w-md">
+                                    <div>
+                                        <Label className="text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-1">
+                                            First name
+                                        </Label>
+                                        <input
+                                            value={form.first_name}
+                                            onChange={set("first_name")}
+                                            placeholder="First name"
+                                            className="w-full text-xl sm:text-2xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
+                                        />
+                                        {errors.first_name && (
+                                            <p className="text-xs text-destructive mt-1">
+                                                {errors.first_name}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <Label className="text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-1">
+                                            Last name
+                                        </Label>
+                                        <input
+                                            value={form.last_name}
+                                            onChange={set("last_name")}
+                                            placeholder="Last name"
+                                            className="w-full text-xl sm:text-2xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
+                                        />
+                                        {errors.last_name && (
+                                            <p className="text-xs text-destructive mt-1">
+                                                {errors.last_name}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground truncate">
+                                        {user ? `${user.first_name} ${user.last_name}` : "New User"}
+                                    </h1>
+                                    {user && (
+                                        <p className="text-sm text-muted-foreground mt-1">
+                                            @{user.username}
+                                        </p>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* ── Role / Status badges (view mode only) ── */}
+                    {!showEdit && user && (
+                        <div className="flex items-center gap-2 mt-4">
+                            <span
+                                className={cn(
+                                    "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
+                                    user.role_id === 1
+                                        ? "bg-primary/10 text-foreground"
+                                        : "bg-muted text-muted-foreground",
+                                )}
+                            >
+                                <UserIcon size={11} />
+                                {roleName}
+                            </span>
+                            <span
+                                className={cn(
+                                    "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
+                                    user.status === "active"
+                                        ? "bg-emerald-500/10 text-emerald-400"
+                                        : "bg-red-500/10 text-red-400",
+                                )}
+                            >
+                                <span
+                                    className={cn(
+                                        "w-1.5 h-1.5 rounded-full",
+                                        user.status === "active" ? "bg-emerald-400" : "bg-red-400",
+                                    )}
+                                />
+                                {user.status === "active" ? "Active" : "Inactive"}
+                            </span>
+                        </div>
+                    )}
+                </div>
             </div>
+
+            {/* ── Content ── */}
+            <div className="flex-1 -mt-12 relative z-20 px-6 sm:px-8 lg:px-10 pb-8">
+                <div className="max-w-3xl mx-auto flex flex-col gap-6">
+                    {/* ── Form card ── */}
+                    <form
+                        onSubmit={handleSubmit}
+                        className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8"
+                    >
+                        {/* Basic Information */}
+                        <section className="space-y-4">
+                            <SectionHeader
+                                title="Basic Information"
+                                description="Core identity details for this account."
+                            />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Field
+                                    label="Email Address"
+                                    required
+                                    error={errors.email}
+                                    isEdit={showEdit}
+                                >
+                                    {showEdit ? (
+                                        <Input
+                                            type="email"
+                                            placeholder="ruby@devify.com"
+                                            value={form.email}
+                                            onChange={set("email")}
+                                            className={cn(errors.email && "border-destructive")}
+                                        />
+                                    ) : (
+                                        <p className="text-sm text-foreground py-1">{user?.email}</p>
+                                    )}
+                                </Field>
+                                <Field
+                                    label="Username"
+                                    required
+                                    hint={showEdit ? "Letters, numbers, and dots only" : undefined}
+                                    error={errors.username}
+                                    isEdit={showEdit}
+                                >
+                                    {showEdit ? (
+                                        <Input
+                                            placeholder="ruby.arnold"
+                                            value={form.username}
+                                            onChange={set("username")}
+                                            className={cn(errors.username && "border-destructive")}
+                                        />
+                                    ) : (
+                                        <p className="text-sm text-foreground py-1">@{user?.username}</p>
+                                    )}
+                                </Field>
+                            </div>
+                        </section>
+
+                        <div className="h-px bg-border" />
+
+                        {/* Role & Access */}
+                        <section className="space-y-4">
+                            <SectionHeader
+                                title="Role & Access"
+                                description="Determines what this user can see and do."
+                            />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Field label="Role" required isEdit={showEdit}>
+                                    {showEdit ? (
+                                        <select
+                                            value={form.role_id}
+                                            onChange={(e) =>
+                                                setForm((f) => ({
+                                                    ...f,
+                                                    role_id: Number(e.target.value),
+                                                }))
+                                            }
+                                            className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
+                                        >
+                                            <option value={1}>Admin</option>
+                                            <option value={2}>Secoops</option>
+                                        </select>
+                                    ) : (
+                                        <p className="text-sm text-foreground py-1">{roleName}</p>
+                                    )}
+                                </Field>
+                                <Field label="Status" isEdit={showEdit}>
+                                    {showEdit ? (
+                                        <select
+                                            value={form.status}
+                                            onChange={set("status")}
+                                            className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
+                                        >
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                    ) : (
+                                        <p className="text-sm text-foreground py-1">
+                                            {user?.status === "active" ? "Active" : "Inactive"}
+                                        </p>
+                                    )}
+                                </Field>
+                            </div>
+                        </section>
+
+                        {/* Password */}
+                        {showEdit && (
+                            <>
+                                <div className="h-px bg-border" />
+                                <section className="space-y-4">
+                                    <SectionHeader
+                                        title={isCreate ? "Password" : "Change Password"}
+                                        description={
+                                            isCreate
+                                                ? "Set an initial password for this account."
+                                                : "Leave blank to keep the current password."
+                                        }
+                                    />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <Field
+                                            label={isCreate ? "Password" : "New password"}
+                                            required={isCreate}
+                                            error={errors.password}
+                                        >
+                                            <Input
+                                                type="password"
+                                                placeholder={
+                                                    isCreate ? "Min. 8 characters" : "New password"
+                                                }
+                                                value={form.password}
+                                                onChange={set("password")}
+                                                className={cn(
+                                                    errors.password && "border-destructive",
+                                                )}
+                                            />
+                                        </Field>
+                                        <Field
+                                            label="Confirm password"
+                                            required={isCreate}
+                                            error={errors.password_confirmation}
+                                        >
+                                            <Input
+                                                type="password"
+                                                placeholder="Repeat password"
+                                                value={form.password_confirmation}
+                                                onChange={set("password_confirmation")}
+                                                className={cn(
+                                                    errors.password_confirmation &&
+                                                    "border-destructive",
+                                                )}
+                                            />
+                                        </Field>
+                                    </div>
+                                </section>
+                            </>
+                        )}
+
+                        {/* Actions */}
+                        {showEdit && (
+                            <>
+                                <div className="h-px bg-border" />
+                                <div className="flex items-center justify-end gap-3">
+                                    <Button
+                                        type="submit"
+                                        disabled={isSaving}
+                                        label={
+                                            isSaving
+                                                ? "Saving…"
+                                                : isCreate
+                                                    ? "Create User"
+                                                    : "Save Changes"
+                                        }
+                                    />
+                                </div>
+                            </>
+                        )}
+                    </form>
+                </div>
+            </div>
+
+            {/* ── Delete dialog ── */}
+            <Dialog open={showDelete} onOpenChange={setShowDelete}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Delete User</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground">
+                        This will permanently delete{" "}
+                        <strong className="text-foreground">
+                            {user?.first_name} {user?.last_name}
+                        </strong>{" "}
+                        and all associated data. This cannot be undone.
+                    </p>
+                    <div className="flex justify-end gap-3 pt-2">
+                        <DialogClose asChild>
+                            <Button
+                                variant="outline"
+                                label="Cancel"
+                                onClick={() => setShowDelete(false)}
+                            />
+                        </DialogClose>
+                        <Button
+                            variant="danger"
+                            label={deleteUser.isPending ? "Deleting…" : "Delete"}
+                            disabled={deleteUser.isPending}
+                            onClick={handleDelete}
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

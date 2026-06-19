@@ -3,8 +3,20 @@
 use App\Data\ServerData;
 use App\Data\ServerUpdatesData;
 use App\Events\ServerStatsUpdated;
+use App\Http\Controllers\ServerController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+
+Route::middleware('auth:sanctum')->group(function () {
+    // Prefix client ex. {clients/1/servers/1}
+    Route::prefix('/clients/{client_id}')->whereNumber('client_id')->group(function () {
+        Route::get('/servers', [ServerController::class, 'index']);
+        Route::post('/servers', [ServerController::class, 'store']);
+        Route::get('/servers/{id}', [ServerController::class, 'show']);
+        Route::put('/servers/{id}', [ServerController::class, 'update']);
+        Route::delete('/servers/{id}', [ServerController::class, 'destroy']);
+    });
+});
 
 // Compute MB/s from two consecutive rows
 function computeStatPoint(object $row, ?object $prev): array
@@ -58,18 +70,18 @@ Route::get('/servers/{id}', function (int $id) {
         ->first();
 
     return ServerData::from([
-            'id'               => $server->id,
-            'server_name'      => $server->server_name,
-            'device_name'      => $server->device_name,
-            'internal_ip'      => $server->internal_ip,
-            'external_ip'      => $server->external_ip,
-            'cpu_cores'        => $server->cpu_cores ?? null,
-            'ram'              => $server->ram ?? null,
-            'operating_system' => $server->operating_system ?? null,
-            'client_id'        => $server->client_id,
-            'client_name'      => $client?->name ?? 'Unknown',
-            'stats'            => $stats,
-        ]);
+        'id'               => $server->id,
+        'server_name'      => $server->server_name,
+        'device_name'      => $server->device_name,
+        'internal_ip'      => $server->internal_ip,
+        'external_ip'      => $server->external_ip,
+        'cpu_cores'        => $server->cpu_cores ?? null,
+        'ram'              => $server->ram ?? null,
+        'operating_system' => $server->operating_system ?? null,
+        'client_id'        => $server->client_id,
+        'client_name'      => $client?->name ?? 'Unknown',
+        'stats'            => $stats,
+    ]);
 })->whereNumber('id');
 
 // ── Ingest agent stats ──────────────────────────────────────────────────────

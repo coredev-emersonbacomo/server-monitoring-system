@@ -23,4 +23,4 @@ export default defineConfig({
             host: "https://urology-single-mantis.ngrok-free.dev",
         },
     },
-});
+}); 
