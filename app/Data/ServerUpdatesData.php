@@ -21,22 +21,24 @@ class ServerUpdatesData extends Data
         public int $timestamp,
 
         // Tell Spatie to look inside the 'cpu' array for 'load1'
-        #[Required, MinDigits(0), MapInputName('cpu.load1')]
+        #[Required, MapInputName('cpu.load1')]
         public float $cpu_usage,
 
         // Tell Spatie to look inside the 'memory' array for 'percent'
-        #[Required, MinDigits(0), MapInputName('memory.percent')]
+        #[Required, MapInputName('memory.percent')]
         public float $memory_usage,
 
         // Tell Spatie to look inside the 'disk' array for 'percent'
-        #[Required, MinDigits(0), MapInputName('disk.percent')]
+        #[Required,  MapInputName('disk.percent')]
         public float $storage,
 
-        #[Required, MinDigits(0)]
+        #[Required]
         public int $uptime,
 
         // We can handle the network totals inside a custom mapping method below
+        #[Required]
         public int $network_rbytes,
+        #[Required]
         public int $network_tbytes
     ) {}
 
