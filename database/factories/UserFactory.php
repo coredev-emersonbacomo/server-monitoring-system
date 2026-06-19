@@ -19,7 +19,7 @@ class UserFactory extends Factory
             'last_name' => fake()->lastName(),
             'email' => fake()->unique()->safeEmail(),
             'contact_number' => fake()->numerify('09##########'),
-            'role_id' => Role::factory(),
+            'role_id' => Role::inRandomOrder()->first()?->id ?? Role::factory(),
             'username' => fake()->unique()->userName(),
             'password' => static::$password ??= Hash::make('password'),
             'last_login' => fake()->dateTimeThisMonth(),
