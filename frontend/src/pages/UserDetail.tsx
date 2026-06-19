@@ -386,7 +386,7 @@ export default function UserDetail() {
         `${form.first_name?.[0] ?? ""}${form.last_name?.[0] ?? ""}`.toUpperCase() || "?";
     const avatarInputId = "avatar-upload";
 
-    const roleName = user?.role?.role_name ?? (user?.role_id === 1 ? "Admin" : "Secoops");
+    const roleName = user?.role?.role_name ?? (user?.role_id === 1 ? "Admin" : "SecOps");
 
     return (
         <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
@@ -644,7 +644,7 @@ export default function UserDetail() {
                                             className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
                                         >
                                             <option value={1}>Admin</option>
-                                            <option value={2}>Secoops</option>
+                                            <option value={2}>SecOps</option>
                                         </select>
                                     ) : (
                                         <p className="text-sm text-foreground py-1">{roleName}</p>
