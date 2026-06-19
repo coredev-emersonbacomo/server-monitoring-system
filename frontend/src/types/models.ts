@@ -13,4 +13,4 @@ export type AuthLoginPayload = operations["auth.login"]["requestBody"]["content"
 export type ClientStorePayload = operations["client.store"]["requestBody"]["content"]["application/json"];
 export type ClientUpdatePayload = operations["client.update"]["requestBody"]["content"]["multipart/form-data"];
 export type UsersStorePayload = operations["users.store"]["requestBody"]["content"]["application/json"];
-export type UsersUpdatePayload = operations["users.update"]["requestBody"]["content"]["application/json"];
+export type UsersUpdatePayload = NonNullable<operations["users.update"]["requestBody"]>["content"]["application/json"];

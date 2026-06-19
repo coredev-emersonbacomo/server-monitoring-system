@@ -2,7 +2,7 @@ import { createContext, type ReactNode } from "react";
 import { useAuth, useLogin, useLogout } from "@/hooks/useAuth";
 import type { components } from "@/api/schema.d";
 
-type UserData = components["schemas"]["UserData"];
+type UserData = components["schemas"]["FullUserData"];
 
 interface AuthContextType {
     user: UserData | null | undefined;

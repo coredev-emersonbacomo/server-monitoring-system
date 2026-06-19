@@ -10,6 +10,8 @@ import Settings from "./pages/Settings";
 import Logs from "./pages/Logs";
 import ServerDetail from "./pages/ServerDetail";
 import { Profile } from "./pages/Profile";
+import CreateServer from "./pages/servers/Create";
+
 const router = createBrowserRouter([
     {
         path: "/login",
@@ -21,6 +23,10 @@ const router = createBrowserRouter([
             {
                 path: "/",
                 element: <Dashboard />,
+            },
+            {
+                path: "/servers/create",
+                element: <CreateServer />,
             },
             {
                 path: "/servers/:id",

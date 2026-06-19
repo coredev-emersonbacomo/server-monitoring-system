@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import Echo from 'laravel-echo'
 import Pusher from 'pusher-js'
-import type { StatPoint } from '../data/mockDashboard'
+import type { StatPoint } from '@/types/stats'
 
 declare global {
     interface Window {

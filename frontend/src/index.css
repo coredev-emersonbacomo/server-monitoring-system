@@ -52,7 +52,7 @@
     --size-icon: var(--size-icon);
     --spacing-sidebar-padding: var(--sidebar-padding);
     --spacing-sidebar-item-padding: var(--sidebar-item-padding);
-    --spacing-sidebar-section-gap: calc(var(--sidebar-item-padding) + 1rem);
+    --spacing-sidebar-section-gap: calc(var(--sidebar-item-padding) + 0.5rem);
     --spacing-15: 3.75rem;
     --z-index-9999: 9999;
 
@@ -166,6 +166,10 @@
     html {
         @apply font-sans;
     }
-    .recharts-wrapper .recharts-surface { overflow: visible; }
-    .recharts-wrapper [clip-path] { clip-path: none !important; }
+    .recharts-wrapper .recharts-surface {
+        overflow: visible;
+    }
+    .recharts-wrapper [clip-path] {
+        clip-path: none !important;
+    }
 }

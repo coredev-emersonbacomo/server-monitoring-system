@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Server extends Model
 {
-        use HasFactory;
+    use HasFactory;
+    protected $guarded = [];
 
     public function client(): BelongsTo
     {

@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCsrfCookie } from "@/api/api";
-import type { User, UsersStorePayload as CreateUserPayload, UsersUpdatePayload as UpdateUserPayload } from "@/types/models";
+import type { FullUserData, UsersStorePayload as CreateUserPayload, UsersUpdatePayload as UpdateUserPayload } from "@/types/models";
 
-type FullUser = User & { role?: { role_name: string }, status?: "active" | "inactive", avatar?: string };
+type FullUser = FullUserData & { role?: { role_name: string }, status?: "active" | "inactive", avatar?: string };
 
 const API_BASE = "/api";
 
