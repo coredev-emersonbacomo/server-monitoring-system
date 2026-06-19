@@ -21,11 +21,19 @@ class ServerUpdatesData extends Data
         public int $timestamp,
 
         // Tell Spatie to look inside the 'cpu' array for 'load1'
+<<<<<<< HEAD
         #[Required, MapInputName('cpu.load1')]
         public float $cpu_usage,
 
         // Tell Spatie to look inside the 'memory' array for 'percent'
         #[Required, MapInputName('memory.percent')]
+=======
+        #[Required,  MapInputName('cpu.load1')]
+        public float $cpu_usage,
+
+        // Tell Spatie to look inside the 'memory' array for 'percent'
+        #[Required,  MapInputName('memory.percent')]
+>>>>>>> 8f12e11e43fdb1aa1758801785bc1571056a6885
         public float $memory_usage,
 
         // Tell Spatie to look inside the 'disk' array for 'percent'
