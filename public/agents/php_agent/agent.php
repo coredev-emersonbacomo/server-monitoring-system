@@ -98,62 +98,65 @@ function topProcesses()
     return explode("\n", trim($output));
 }
 
-$payload = [
+while (true) {
+    $payload = [
 
-    'server_id' =>
-    $config['server_id'],
+        'server_id' =>
+        $config['server_id'],
 
-    'token' =>
-    $config['token'],
+        'token' =>
+        $config['token'],
 
-    'timestamp' =>
-    time(),
+        'timestamp' =>
+        time(),
 
-    'hostname' =>
-    gethostname(),
+        'hostname' =>
+        gethostname(),
 
-    'cpu' =>
-    cpuUsage(),
+        'cpu' =>
+        cpuUsage(),
 
-    'memory' =>
-    memoryUsage(),
+        'memory' =>
+        memoryUsage(),
 
-    'disk' =>
-    diskUsage(),
+        'disk' =>
+        diskUsage(),
 
-    'uptime' =>
-    uptime(),
+        'uptime' =>
+        uptime(),
 
-    'network' =>
-    networkStats(),
+        'network' =>
+        networkStats(),
 
-    'top_processes' =>
-    topProcesses()
-];
+        'top_processes' =>
+        topProcesses()
+    ];
 
-$ch = curl_init();
+    $ch = curl_init();
 
-curl_setopt_array($ch, [
+    curl_setopt_array($ch, [
 
-    CURLOPT_URL =>
-    $config['api_url'],
+        CURLOPT_URL =>
+        $config['api_url'],
 
-    CURLOPT_POST =>
-    true,
+        CURLOPT_POST =>
+        true,
 
-    CURLOPT_RETURNTRANSFER =>
-    true,
+        CURLOPT_RETURNTRANSFER =>
+        true,
 
-    CURLOPT_HTTPHEADER => [
-        'Content-Type: application/json'
-    ],
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json'
+        ],
 
-    CURLOPT_POSTFIELDS =>
-    json_encode($payload)
-]);
+        CURLOPT_POSTFIELDS =>
+        json_encode($payload)
+    ]);
 
-print_r($payload);
+    print_r($payload);
 
-curl_exec($ch);
+    curl_exec($ch);
 
-sleep(10);
+    sleep(1);
+}
+
