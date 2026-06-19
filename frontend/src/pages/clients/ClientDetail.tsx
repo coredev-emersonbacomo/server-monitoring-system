@@ -12,6 +12,7 @@ import {
     Globe,
     RefreshCw,
     Network,
+    Plus,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -719,6 +720,16 @@ export default function ClientDetail() {
                                             : "No servers are currently associated with this client."}
                                     </p>
                                 </div>
+                                <Link
+                                    to={`/servers/create?client_id=${client.id}`}
+                                >
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        icon={<Plus size={14} />}
+                                        label="Add Server"
+                                    />
+                                </Link>
                             </div>
 
                             {serversLoading ? (

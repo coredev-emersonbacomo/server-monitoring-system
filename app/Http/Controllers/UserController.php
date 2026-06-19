@@ -42,7 +42,7 @@ class UserController extends Controller
     /**
      * @return \App\Data\FullUserData
      */
-    public function show(User $user)
+    public function show(User $user): FullUserData
     {
         return FullUserData::from($user->load('role'));
     }

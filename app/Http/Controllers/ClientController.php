@@ -162,6 +162,11 @@ class ClientController extends Controller
         return response()->json($servers);
     }
 
+    public function initializeServer(Request $request, int $id)//: JsonResponse
+    {
+
+    }
+
     public function destroy(int $id): JsonResponse
     {
         $client = Client::findOrFail($id);

@@ -16,6 +16,13 @@ export default defineConfig({
         }),
         tailwindcss(),
     ],
+    //  server: {
+    //     host: "0.0.0.0",
+    //     allowedHosts: ["chip-colt-fretted.ngrok-free.dev"],
+    //     hmr: {
+    //         host: "chip-colt-fretted.ngrok-free.dev",
+    //     },
+    // },
     server: {
         host: "0.0.0.0",
         allowhosts: true,

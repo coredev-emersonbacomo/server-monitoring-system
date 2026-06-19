@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { StatPoint } from "@/data/mockDashboard";
+import type { StatPoint } from "@/types/stats";
 
 export interface ServerDetailData {
     id: number;

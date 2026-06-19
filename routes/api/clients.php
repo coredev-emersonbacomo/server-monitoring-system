@@ -10,4 +10,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/clients/{id}', [ClientController::class, 'update'])->whereNumber('id');
     Route::delete('/clients/{id}', [ClientController::class, 'destroy'])->whereNumber('id');
     Route::get('/clients/{id}/servers', [ClientController::class, 'servers'])->whereNumber('id');
+    Route::post('/clients/{id}/servers', [ClientController::class, 'initializeServer'])->whereNumber('id');
 });

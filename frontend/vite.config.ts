@@ -19,6 +19,7 @@ export default defineConfig({
         },
     },
     server: {
+        // allowedHosts: ["chip-colt-fretted.ngrok-free.dev"],
         proxy: {
             "/api": {
                 target: "http://localhost:8000",

@@ -400,7 +400,7 @@ export default function Dashboard() {
                     <div className="flex items-center gap-2 mb-4">
                         <Gauge className="w-4 h-4 text-muted-foreground" />
                         <h2 className="text-sm font-semibold text-foreground">
-                            Top Usage Rankings
+                            Top Usage
                         </h2>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
