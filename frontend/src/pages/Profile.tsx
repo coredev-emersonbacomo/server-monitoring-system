@@ -1,116 +1,96 @@
-// Path path: frontend/src/pages/Profile.tsx
-import React from 'react';
-import { useAuthContext } from '@/hooks/useAuthContext'; // Path to the hook created above
-import { MoreHorizontal, User, Mail, LogOut, Loader2, ShieldCheck } from 'lucide-react';
-import { Avatar } from 'radix-ui';
+// frontend/src/pages/Profile.tsx
+import React from "react";
+import { useAuthContext } from "@/hooks/useAuthContext";
+import { LogOut, Loader2, ShieldCheck, Mail, User, AtSign, Shield } from "lucide-react";
 
-export const ProfilePage: React.FC = () => {
+export const Profile: React.FC = () => {
     const { user, isLoading, logout, isLoggingOut } = useAuthContext();
 
-    // 1. Loading State
     if (isLoading) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-                <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                <p className="text-gray-500 text-sm font-medium">Loading user profile...</p>
+            <div className="flex items-center justify-center min-h-[60vh] gap-3">
+                <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                <p className="text-gray-400 text-sm">Loading profile...</p>
             </div>
         );
     }
 
-    // 2. Unauthenticated State
     if (!user) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
-                <div className="bg-red-50 p-3 rounded-full text-red-500 mb-3">
-                    <ShieldCheck size={32} />
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
+                <div className="bg-gray-100 p-3 rounded-full">
+                    <ShieldCheck size={28} className="text-gray-400" />
                 </div>
-                <h2 className="text-xl font-bold text-gray-800">Access Denied</h2>
-                <p className="text-gray-500 text-sm max-w-sm mt-1">
-                    Please log in to view your profile settings and information.
-                </p>
+                <p className="text-gray-500 text-sm">Please log in to view your profile.</p>
             </div>
         );
     }
 
-    // 3. Fallback extraction based on standard schema patterns (adjust keys based on your real `UserData` keys)
     const fullName = `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim();
-    const emailAddress = user.email ?? "";
-    const userRole = (user.role_id as any)?.role_name ?? "—";
+    const email = user.email ?? "";
+    const username = user.username ?? email.split("@")[0];
+    const roleName = (user.role as any)?.role_name ?? "—";
     const initials = `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase();
+
     return (
-        <div className="container mx-auto px-4 py-12 max-w-md flex flex-col items-center">
+        <div className="flex flex-col gap-6 w-full h-full">
 
-            {/* The Profile Card Container */}
-            <div className="relative w-full max-w-[320px] bg-white rounded-xl border border-gray-100 p-6 shadow-md hover:shadow-lg transition-shadow duration-300 flex flex-col items-center font-sans">
-
-                {/* Top Action Bar */}
-                <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
-                    {/* Custom Checkbox / Status indicator */}
-                    <input
-                        type="checkbox"
-                        defaultChecked
-                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                    {/* More Options Menu */}
-                    <button className="text-gray-400 hover:text-gray-600 transition-colors">
-                        <MoreHorizontal size={20} />
-                    </button>
-                </div>
-
-                {/* Profile Image */}
-                <div className="mt-4 mb-4">
-                    <div className="w-24 h-24 rounded-full bg-gray-100 border-2 border-gray-50 shadow-sm flex items-center justify-center">
-                        <span className="text-2xl font-semibold text-gray-500">{initials}</span>
-                    </div>
-                </div>
-
-                {/* User Data Sections */}
-                <div className="text-center w-full flex flex-col items-center gap-2">
-                    {/* Dynamic Name */}
-                    <h3 className="text-[#1a629d] font-semibold text-lg hover:underline cursor-pointer">
-                        {fullName}
-                    </h3>
-
-                    {/* Primary Contact Email */}
-                    <p className="text-gray-500 text-sm font-normal break-all px-2">
-                        {emailAddress}
-                    </p>
-
-                    {/* Role badge */}
-                    <div className="flex items-center gap-1.5 text-[#1a629d] font-medium text-sm mt-1">
-                        <User size={16} className="text-gray-400" />
-                        <span className="capitalize">{userRole}</span>
-                    </div>
-
-                    {/* Secondary Truncated Data Row */}
-                    <div className="flex items-center gap-2 text-[#1a629d] text-sm mt-1 max-w-full px-2">
-                        <Mail size={16} className="text-gray-400 flex-shrink-0" />
-                        <span className="truncate block max-w-[180px]" title={emailAddress}>
-                            {emailAddress}
-                        </span>
-                    </div>
-                </div>
-
-                {/* Action Button: Logout */}
-                <div className="w-full mt-6 pt-4 border-t border-gray-100">
-                    <button
-                        onClick={() => logout()}
-                        disabled={isLoggingOut}
-                        className="w-full flex items-center justify-center gap-2 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 transition-colors"
-                    >
-                        {isLoggingOut ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                            <LogOut size={16} />
-                        )}
-                        <span>{isLoggingOut ? "Logging out..." : "Log Out"}</span>
-                    </button>
-                </div>
-
+            {/* ── Page header ── */}
+            <div>
+                <h1 className="text-xl font-semibold text-gray-900">Profile</h1>
+                <p className="text-sm text-gray-400 mt-0.5">Your account information and preferences.</p>
             </div>
 
+            {/* ── Main card ── */}
+            <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+
+                {/* Top banner */}
+                <div className="h-24 bg-gray-900" />
+
+                {/* Identity row */}
+                <div className="px-8 pb-8">
+                    <div className="flex flex-col items-center -mt-12 mb-6">
+                        {/* Avatar */}
+                        <div className="w-24 h-24 rounded-full bg-white border-4 border-white shadow-sm flex items-center justify-center flex-shrink-0">
+                            <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center">
+                                <span className="text-2xl font-semibold text-gray-500">{initials}</span>
+                            </div>
+                        </div>
+
+                        {/* Name + role */}
+                        <div className="mt-4 flex flex-col items-center">
+                            <h2 className="text-xl font-bold text-gray-900">{fullName}</h2>
+                            <span className="inline-flex items-center font-semibold gap-1 mt-1.5 px-2 py-0.5 text-xs border border-gray-200 rounded-full text-gray-500">
+                                <Shield size={11} />
+                                {roleName}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Info grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+                        <InfoBlock icon={<Mail size={15} />} label="Email" value={email} />
+                        <InfoBlock icon={<AtSign size={15} />} label="Username" value={`@${username}`} />
+                        <InfoBlock icon={<User size={15} />} label="Full name" value={fullName} />
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
 
-export default ProfilePage;
+// ── Info block ────────────────────────────────────────────────────────────────
+
+function InfoBlock({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+    return (
+        <div className="bg-gray-50 border border-gray-100 rounded-lg px-4 py-3">
+            <div className="flex items-center gap-1.5 text-gray-400 mb-1">
+                {icon}
+                <span className="text-[10px] uppercase tracking-widest font-medium">{label}</span>
+            </div>
+            <p className="text-sm font-medium text-gray-800 truncate">{value}</p>
+        </div>
+    );
+}
+
+export default Profile;
