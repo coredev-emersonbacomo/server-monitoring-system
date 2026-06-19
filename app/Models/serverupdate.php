@@ -14,4 +14,5 @@ class ServerUpdate extends Model
     {
         return $this->belongsTo(Server::class, 'server_id');
     }
+    
 }

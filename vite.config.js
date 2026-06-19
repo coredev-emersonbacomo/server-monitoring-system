@@ -17,8 +17,10 @@ export default defineConfig({
         tailwindcss(),
     ],
     server: {
-        watch: {
-            ignored: ["**/storage/framework/views/**"],
+        host: "0.0.0.0",
+        allowhosts: true,
+        hmr: {
+            host: "https://urology-single-mantis.ngrok-free.dev",
         },
     },
 });
