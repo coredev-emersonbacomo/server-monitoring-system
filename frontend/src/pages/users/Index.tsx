@@ -49,14 +49,14 @@ function StatCard({
 
 // ─── Filter tabs ──────────────────────────────────────────────────────────────
 
-type FilterTab = "all" | "active" | "inactive" | "Admin" | "Secoops";
+type FilterTab = "all" | "active" | "inactive" | "Admin" | "SecOps";
 
 const TABS: { label: string; value: FilterTab }[] = [
     { label: "All",      value: "all" },
     { label: "Active",   value: "active" },
     { label: "Inactive", value: "inactive" },
     { label: "Admin",    value: "Admin" },
-    { label: "Secoops",  value: "Secoops" },
+    { label: "SecOps",  value: "SecOps" },
 ];
 
 // ─── Skeleton grid ────────────────────────────────────────────────────────────
@@ -187,7 +187,7 @@ const Users = () => {
                     loading={isLoading}
                 />
                 <StatCard label="Inactive" value={inactiveCount} loading={isLoading} />
-                <StatCard label="Admins" value={adminCount} sub="Secoops below admin" loading={isLoading} />
+                <StatCard label="Admins" value={adminCount} sub="SecOps below admin" loading={isLoading} />
             </div>
 
             {/* ── Error state ── */}
@@ -233,7 +233,7 @@ const Users = () => {
                             id={u.id}
                             name={`${u.first_name} ${u.last_name}`}
                             email={u.email}
-                            role={u.role?.role_name === "Admin" ? "Admin" : "Secoops"}
+                            role={u.role?.role_name === "Admin" ? "Admin" : "SecOps"}
                             imageUrl={u.avatar}
                             status={u.status}
                             onDelete={handleDeleteRequest}
