@@ -8,7 +8,8 @@ import UserDetail from "./pages/UserDetail";
 import ClientDetail from "./pages/clients/ClientDetail";
 import Settings from "./pages/Settings";
 import Logs from "./pages/Logs";
-
+import ServerDetail from "./pages/ServerDetail";
+import { Profile } from "./pages/Profile";
 const router = createBrowserRouter([
     {
         path: "/login",
@@ -57,6 +58,10 @@ const router = createBrowserRouter([
             {
                 path: "/settings",
                 element: <Settings />,
+            },
+            {
+                path: "/profile",
+                element: <Profile />,
             },
         ],
     },
