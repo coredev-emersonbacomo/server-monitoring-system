@@ -4,6 +4,7 @@ namespace App\Data;
 
 use Spatie\LaravelData\Attributes\Validation\IPv4;
 use Spatie\LaravelData\Attributes\Validation\Max;
+use Spatie\LaravelData\Attributes\Validation\Size;
 use Spatie\LaravelData\Data;
 use Symfony\Contracts\Service\Attribute\Required;
 
@@ -23,6 +24,9 @@ class ServerData extends Data
         public string $internal_ip,
         #[Required, IPv4]
         public string $external_ip,
+
+        #[Required, Size(43)]
+        public string $api_key,
 
         public ?int $cpu_cores,
         public ?int $ram,
