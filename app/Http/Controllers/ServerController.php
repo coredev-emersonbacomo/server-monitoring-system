@@ -6,18 +6,20 @@ use App\Data\ServerData;
 use App\Models\Client;
 use App\Models\Server;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+
+// Api Key Generator
+use Infrastructure\Api\ApiGenerator;
 
 class ServerController extends Controller
 {
-    public function index($client_id): JsonResponse
+    public function index(int $client_id): JsonResponse
     {
         $servers = Server::where('client_id', $client_id)->get();
 
         return response()->json($servers);
     }
 
-    public function store(ServerData $data, $client_id): JsonResponse
+    public function store(ServerData $data, int $client_id): JsonResponse
     {
         $clientExist = Client::where('id', $client_id)->exists();
 
@@ -31,6 +33,7 @@ class ServerController extends Controller
             'device_name' => $data->device_name,
             'internal_ip' => $data->internal_ip,
             'external_ip' => $data->external_ip,
+            'api_key' => ApiGenerator::GenerateApiKey()
         ]);
 
         return response()->json([
@@ -39,7 +42,7 @@ class ServerController extends Controller
         ], 201);
     }
 
-    public function show($client_id, $id): JsonResponse
+    public function show(int $client_id, int $id): JsonResponse
     {
         $server = Server::where('client_id', $client_id)
             ->where('id', $id)
@@ -51,7 +54,7 @@ class ServerController extends Controller
         ]);
     }
 
-    public function update(ServerData $data, $client_id, $id): JsonResponse
+    public function update(ServerData $data, int $client_id, int $id): JsonResponse
     {
         $server = Server::where('client_id', $client_id)
             ->where('id', $id)
@@ -70,7 +73,7 @@ class ServerController extends Controller
         ]);
     }
 
-    public function destroy($client_id, $id): JsonResponse
+    public function destroy(int $client_id, int $id): JsonResponse
     {
         $server = Server::where('client_id', $client_id)
             ->where('id', $id)

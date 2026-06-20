@@ -19,6 +19,9 @@ return new class extends Migration
             $table->string('internal_ip');
             $table->string('external_ip');
 
+            // API Key
+            $table->string('api_key');
+
             // TODO: add autoscript for getting specs
             $table->integer('cpu_cores')->nullable();
             $table->integer('ram')->nullable();

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Infrastructure\Api\ApiGenerator;
 
 class ClientSeeder extends Seeder
 {
@@ -29,6 +30,7 @@ class ClientSeeder extends Seeder
             'internal_ip' => '192.168.1.1',
             'external_ip' => '127.0.0.1',
             'operating_system' => 'Ubuntu 20.04',
+            'api_key' => ApiGenerator::GenerateApiKey()
         ]);
     }
 }
