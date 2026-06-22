@@ -4,6 +4,7 @@ use App\Data\ServerData;
 use App\Data\ServerUpdatesData;
 use App\Events\ServerStatsUpdated;
 use App\Http\Controllers\ServerController;
+use App\Models\Server;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -54,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/servers/{id}', [ServerController::class, 'show']);
         Route::put('/servers/{id}', [ServerController::class, 'update']);
         Route::delete('/servers/{id}', [ServerController::class, 'destroy']);
+        Route::post('/servers/install', [ServerController::class, 'installServer']);
     });
 });
 
