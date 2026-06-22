@@ -10,12 +10,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Server extends Model
 {
     use HasFactory;
+
     protected $guarded = [];
+
+    protected $hidden = [
+        'ssh_password',
+    ];
 
     public function client(): BelongsTo
     {
         return $this->belongsTo(Client::class, 'client_id');
     }
-
-   
 }
