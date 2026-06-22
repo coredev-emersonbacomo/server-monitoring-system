@@ -4,6 +4,41 @@
  */
 
 export interface paths {
+    "/servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": Record<string, never>[];
+                    };
+                };
+                401: components["responses"]["AuthenticationException"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/servers/{id}": {
         parameters: {
             query?: never;
@@ -193,7 +228,7 @@ export interface paths {
         };
         get: operations["client.servers"];
         put?: never;
-        post?: never;
+        post: operations["client.initializeServer"];
         delete?: never;
         options?: never;
         head?: never;
@@ -211,6 +246,102 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["dashboard.actions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/actions/completed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["dashboard.completed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/actions/{actionId}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["dashboard.claim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/actions/{actionId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["dashboard.updateStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clients/{client_id}/servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["server.index"];
+        put?: never;
+        post: operations["server.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clients/{client_id}/servers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["server.show"];
+        put: operations["server.update"];
+        post?: never;
+        delete: operations["server.destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -252,6 +383,20 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActionItemData */
+        ActionItemData: {
+            id: number;
+            action_type: string;
+            message: string;
+            severity: string;
+            server_id?: number | null;
+            client_id?: number | null;
+            client_name?: string | null;
+            server_name?: string | null;
+            assigned_to?: number | null;
+            assigned_to_name?: string | null;
+            status: string;
+        };
         /** ClientData */
         ClientData: {
             id: number;
@@ -302,6 +447,7 @@ export interface components {
             email: string;
             role_id: number;
             username: string;
+            contact_number: string;
             last_login?: string | null;
             profile_picture_url?: string | null;
             avatar?: string | null;
@@ -314,17 +460,36 @@ export interface components {
             /** Format: date-time */
             updated_at?: string | null;
         };
-        /** ServerData */
-        ServerData: {
+        /** Server */
+        Server: {
             id: number;
+            client_id: number;
             server_name: string;
             device_name: string;
             internal_ip: string;
             external_ip: string;
+            api_key: string;
+            cpu_cores: number | null;
+            ram: number | null;
+            operating_system: string | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+        };
+        /** ServerData */
+        ServerData: {
+            id: number;
+            client_id: number;
+            server_name: string;
+            device_name: string;
+            /** Format: ipv4 */
+            internal_ip: string;
+            /** Format: ipv4 */
+            external_ip: string;
             cpu_cores?: number | null;
             ram?: number | null;
             operating_system?: string | null;
-            client_id: number;
             client_name: string;
             stats: {
                 [key: string]: unknown;
@@ -479,13 +644,11 @@ export interface operations {
             content: {
                 "multipart/form-data": {
                     name: string;
-                    description?: string | null;
                     location: string;
-                    /** Format: email */
                     email: string;
                     contact_number: string;
-                    /** Format: binary */
-                    banner_image?: string | null;
+                    description?: string | null;
+                    banner_image?: Record<string, never> | null;
                 };
             };
         };
@@ -605,6 +768,26 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
+    "client.initializeServer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
     "dashboard.stats": {
         parameters: {
             query?: never;
@@ -621,6 +804,268 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DashboardStatsData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "dashboard.actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "dashboard.completed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "dashboard.claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                actionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ActionItemData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionItemData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "dashboard.updateStatus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                actionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ActionItemData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionItemData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "server.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Server"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "server.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    id: number;
+                    client_id: number;
+                    server_name: string;
+                    device_name: string;
+                    /** Format: ipv4 */
+                    internal_ip: string;
+                    /** Format: ipv4 */
+                    external_ip: string;
+                    cpu_cores?: number | null;
+                    ram?: number | null;
+                    operating_system?: string | null;
+                    client_name: string;
+                    stats: {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        data: components["schemas"]["Server"];
+                    };
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        error: "Client not found.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "server.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: number;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        data: components["schemas"]["Server"];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "server.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: number;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    id: number;
+                    client_id: number;
+                    server_name: string;
+                    device_name: string;
+                    /** Format: ipv4 */
+                    internal_ip: string;
+                    /** Format: ipv4 */
+                    external_ip: string;
+                    cpu_cores?: number | null;
+                    ram?: number | null;
+                    operating_system?: string | null;
+                    client_name: string;
+                    stats: {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        data: components["schemas"]["Server"];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "server.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: number;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        data: components["schemas"]["Server"];
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -663,6 +1108,8 @@ export interface operations {
                      * @description Must be unique in `users`.
                      */
                     email: string;
+                    /** @description Must be unique in `users`. */
+                    contact_number: string;
                     /** @description Must be unique in `users`. */
                     username: string;
                     role_id: number;
@@ -720,13 +1167,14 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
                     first_name?: string;
                     last_name?: string;
                     /** Format: email */
                     email?: string;
+                    contact_number: string;
                     username?: string;
                     role_id?: number;
                     /** @description Must be confirmed by a matching `_confirmation` field. */

@@ -39,6 +39,7 @@ export const Profile: React.FC = () => {
     const fullName = `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim();
     const email = user.email ?? "";
     const username = user.username ?? email.split("@")[0];
+    const contact_number = user.contact_number ? user.contact_number.replace(/\D/g, "").replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3") : "—";
     const roleName = (user.role as any)?.role_name ?? "—";
     const defaultProfile = import.meta.env
         .VITE_DEFAULT_PROFILE_PICTURE as string;
@@ -97,7 +98,7 @@ export const Profile: React.FC = () => {
                         </div>
 
                         {/* Info grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+                        <div className="grid grid-cols-2 sm:grid-cols-2 gap-4 w-full">
                             <InfoBlock
                                 icon={<Mail size={15} />}
                                 label="Email"
@@ -112,6 +113,11 @@ export const Profile: React.FC = () => {
                                 icon={<User size={15} />}
                                 label="Full name"
                                 value={fullName}
+                            />
+                            <InfoBlock
+                                icon={<User size={15} />}
+                                label="Contact Number"
+                                value={contact_number}
                             />
                         </div>
                     </div>
