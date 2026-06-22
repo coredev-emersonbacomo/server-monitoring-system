@@ -28,7 +28,7 @@ function fmtDatetime(ts: number) {
 
 interface ServerStatChartProps {
     title: string;
-    data: StatPoint[];
+    data?: StatPoint[];
     dataKey: keyof Omit<StatPoint, "timestamp">;
     color: string;
     unit?: string;
@@ -37,7 +37,7 @@ interface ServerStatChartProps {
 
 export const ServerStatChart = memo(function ServerStatChart({
     title,
-    data,
+    data = [],
     dataKey,
     color,
     unit = "",

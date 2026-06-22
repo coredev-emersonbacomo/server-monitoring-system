@@ -33,11 +33,18 @@ export function ProtectedRoute() {
     const location = useLocation();
 
     if (isLoading) {
-        return <div className="flex min-h-screen items-center justify-center" />;
+        return (
+            <div className="flex min-h-screen items-center justify-center" />
+        );
     }
 
     if (!user) {
-        return <Navigate to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+        return (
+            <Navigate
+                to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}
+                replace
+            />
+        );
     }
 
     return (
@@ -46,10 +53,10 @@ export function ProtectedRoute() {
                 <div className="flex min-h-screen">
                     <SidebarNav links={sidebarLinks} />
 
-                    <main className="flex-1 flex flex-col min-h-0 overflow-auto p-5 gap-5">
+                    <main className="flex-1 flex flex-col min-h-0 overflow-auto px-8 sm:px-10 lg:px-12 py-5 gap-5">
                         <TopBarNav />
 
-                        <div className="flex-1 flex flex-col min-h-0 px-4 sm:px-6 lg:px-8">
+                        <div className="flex-1 flex flex-col min-h-0">
                             <Outlet />
                         </div>
                     </main>

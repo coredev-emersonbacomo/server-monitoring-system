@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Loader2, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
@@ -71,6 +71,8 @@ const PROGRESS_STEPS: LogLine[][] = [
     ],
 ];
 
+const ipPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+
 export default function CreateServer() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -81,10 +83,13 @@ export default function CreateServer() {
     const logEndRef = useRef<HTMLDivElement>(null);
 
     const [ip, setIp] = useState("");
-    const [ipError, setIpError] = useState("");
-    const [phase, setPhase] = useState<
-        "input" | "connecting" | "done" | "error"
-    >("input");
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [phase, setPhase] = useState<"input" | "connecting" | "error">(
+        "input",
+    );
     const [logs, setLogs] = useState<LogLine[]>([]);
     const [stepIndex, setStepIndex] = useState(0);
     const [lineIndex, setLineIndex] = useState(0);
@@ -103,8 +108,7 @@ export default function CreateServer() {
     useEffect(() => {
         if (phase !== "connecting") return;
         if (stepIndex >= PROGRESS_STEPS.length) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setPhase("done");
+            navigate(`/servers/${createdId}`);
             return;
         }
 
@@ -127,24 +131,50 @@ export default function CreateServer() {
         );
 
         return () => clearTimeout(t);
-    }, [phase, stepIndex, lineIndex]);
+    }, [phase, stepIndex, lineIndex, navigate, createdId]);
 
     useEffect(() => {
         logEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [logs]);
 
+    const clearError = (field: string) => {
+        setErrors((prev) => {
+            const next = { ...prev };
+            delete next[field];
+            return next;
+        });
+    };
+
+    const validate = (): boolean => {
+        const newErrors: Record<string, string> = {};
+
+        if (!ip.trim()) {
+            newErrors.ip = "IP address is required";
+        } else if (!ipPattern.test(ip.trim())) {
+            newErrors.ip = "Invalid IP address format";
+        } else {
+            const parts = ip.trim().split(".").map(Number);
+            if (parts.some((p) => p < 0 || p > 255)) {
+                newErrors.ip = "Invalid IP address range";
+            }
+        }
+
+        if (!username.trim()) {
+            newErrors.username = "Username is required";
+        }
+
+        if (!password) {
+            newErrors.password = "Password is required";
+        } else if (password.length < 6) {
+            newErrors.password = "Minimum 6 characters";
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSubmit = async () => {
-        const trimmed = ip.trim();
-        const ipPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
-        if (!trimmed) {
-            setIpError("Required");
-            return;
-        }
-        if (!ipPattern.test(trimmed)) {
-            setIpError("Invalid IP address");
-            return;
-        }
-        setIpError("");
+        if (!validate()) return;
 
         if (!clientId) {
             toast.error("No client selected.");
@@ -156,7 +186,7 @@ export default function CreateServer() {
         setStepIndex(0);
         setLineIndex(0);
 
-        const serverName = `server-${trimmed.replace(/\./g, "-")}`;
+        const serverName = `server-${ip.trim().replace(/\./g, "-")}`;
 
         try {
             const res = await fetch(`/api/clients/${clientId}/servers`, {
@@ -167,14 +197,24 @@ export default function CreateServer() {
                 },
                 credentials: "include",
                 body: JSON.stringify({
-                    internal_ip: trimmed,
                     server_name: serverName,
+                    internal_ip: ip.trim(),
+                    ssh_username: username.trim(),
+                    ssh_password: password,
                 }),
             });
 
             if (!res.ok) {
                 const data = await res.json();
-                toast.error(data?.error ?? "Failed to create server.");
+                if (data?.errors) {
+                    const mapped: Record<string, string> = {};
+                    for (const [k, v] of Object.entries(data.errors)) {
+                        mapped[k] = Array.isArray(v) ? v[0] : String(v);
+                    }
+                    setErrors(mapped);
+                } else {
+                    toast.error(data?.error ?? "Failed to create server.");
+                }
                 setPhase("error");
                 return;
             }
@@ -207,77 +247,11 @@ export default function CreateServer() {
         );
     }
 
-    if (phase === "done") {
-        return (
-            <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
-                <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8">
-                    <div className="w-full max-w-xl bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
-                        <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 border-b border-border/60 font-mono text-xs text-muted-foreground select-none">
-                            <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
-                            <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                            <span className="w-3 h-3 rounded-full bg-red-500/80" />
-                            <span className="ml-2">
-                                Administrator: Command Prompt — Setup Complete
-                            </span>
-                        </div>
-                        <div className="p-5 sm:p-6 font-mono text-sm space-y-2 max-h-96 overflow-y-auto">
-                            {logs.map((line, i) => (
-                                <p
-                                    key={i}
-                                    className={lineVariant(line.variant)}
-                                >
-                                    {line.variant === "input" && (
-                                        <span className="text-muted-foreground/50 mr-1">
-                                            {">"}
-                                        </span>
-                                    )}
-                                    {line.text}
-                                </p>
-                            ))}
-                            <p className="text-[10px] text-muted-foreground pt-2 border-t border-border/40 mt-3">
-                                C:\Users\Admin&gt;{" "}
-                                <span className="animate-pulse">_</span>
-                            </p>
-                        </div>
-                        <div className="flex items-center justify-end gap-3 px-5 pb-5">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                label="Back to Client"
-                                onClick={() => navigate(`/clients/${clientId}`)}
-                            />
-                            {createdId && (
-                                <Button
-                                    size="sm"
-                                    label="View Server"
-                                    onClick={() =>
-                                        navigate(`/servers/${createdId}`)
-                                    }
-                                />
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className="w-full h-full bg-background text-foreground font-mono flex flex-col overflow-hidden">
             {/* Title Bar */}
             <div className="h-8 bg-muted border-b border-border flex items-center justify-between px-3 text-xs select-none">
-                <span>Terminal — Add Server</span>
-                <div className="flex">
-                    <button className="w-10 h-8 hover:bg-muted-foreground/10">
-                        ─
-                    </button>
-                    <button className="w-10 h-8 hover:bg-muted-foreground/10">
-                        □
-                    </button>
-                    <button className="w-10 h-8 hover:bg-destructive hover:text-destructive-foreground">
-                        ✕
-                    </button>
-                </div>
+                <span>Terminal</span>
             </div>
 
             {/* Terminal */}
@@ -290,27 +264,93 @@ export default function CreateServer() {
 
                 {phase === "input" && (
                     <>
-                        <div className="flex items-center">
-                            <span>Enter server IP: </span>
+                        {/* IP */}
+                        <div className="flex items-center flex-wrap">
+                            <span className="shrink-0">Enter server IP: </span>
                             <input
                                 ref={inputRef}
                                 value={ip}
                                 onChange={(e) => {
                                     setIp(e.target.value);
-                                    setIpError("");
+                                    if (errors.ip) clearError("ip");
                                 }}
+                                onFocus={() => clearError("ip")}
                                 onKeyDown={handleKeyDown}
                                 autoFocus
                                 spellCheck={false}
-                                className="bg-transparent outline-none border-none text-foreground flex-1 ml-2"
+                                className="bg-transparent outline-none border-none text-foreground flex-1 ml-2 min-w-30"
                             />
-                            <span className="animate-pulse">█</span>
                         </div>
-                        {ipError && (
-                            <p className="text-destructive mt-1">
-                                ERROR: {ipError}
+                        {errors.ip && (
+                            <p className="text-red-500 text-xs mt-0.5 ml-35">
+                                ERROR: {errors.ip}
                             </p>
                         )}
+
+                        <br />
+
+                        {/* Username */}
+                        <div className="flex items-center flex-wrap">
+                            <span className="shrink-0">SSH username: </span>
+                            <input
+                                value={username}
+                                onChange={(e) => {
+                                    setUsername(e.target.value);
+                                    if (errors.username) clearError("username");
+                                }}
+                                onFocus={() => clearError("username")}
+                                onKeyDown={handleKeyDown}
+                                spellCheck={false}
+                                className="bg-transparent outline-none border-none text-foreground flex-1 ml-2 min-w-30"
+                            />
+                        </div>
+                        {errors.username && (
+                            <p className="text-red-500 text-xs mt-0.5 ml-35">
+                                ERROR: {errors.username}
+                            </p>
+                        )}
+
+                        <br />
+
+                        {/* Password */}
+                        <div className="flex items-center flex-wrap">
+                            <span className="shrink-0">SSH password: </span>
+                            <div className="relative flex-1 ml-2 min-w-30 flex items-center">
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    value={password}
+                                    onChange={(e) => {
+                                        setPassword(e.target.value);
+                                        if (errors.password)
+                                            clearError("password");
+                                    }}
+                                    onFocus={() => clearError("password")}
+                                    onKeyDown={handleKeyDown}
+                                    spellCheck={false}
+                                    className="bg-transparent outline-none border-none text-foreground w-full pr-5"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setShowPassword(!showPassword)
+                                    }
+                                    className="absolute right-0 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                    tabIndex={-1}
+                                >
+                                    {showPassword ? (
+                                        <EyeOff size={14} />
+                                    ) : (
+                                        <Eye size={14} />
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                        {errors.password && (
+                            <p className="text-red-500 text-xs mt-0.5 ml-35">
+                                ERROR: {errors.password}
+                            </p>
+                        )}
+
                         <br />
                         <p className="text-muted-foreground">
                             Press ENTER to connect
@@ -321,6 +361,8 @@ export default function CreateServer() {
                 {phase === "connecting" && (
                     <>
                         <p>Enter server IP: {ip}</p>
+                        <p>SSH username: {username}</p>
+                        <p>SSH password: {"*".repeat(password.length)}</p>
                         <br />
                         {logs.map((line, i) => (
                             <p key={i} className={lineVariant(line.variant)}>
@@ -338,47 +380,19 @@ export default function CreateServer() {
                     </>
                 )}
 
-                {phase === "done" && (
-                    <>
-                        <p>Enter server IP: {ip}</p>
-                        <br />
-                        {logs.map((line, i) => (
-                            <p key={i} className={lineVariant(line.variant)}>
-                                {line.text}
-                            </p>
-                        ))}
-                        <br />
-                        <p className="text-emerald-500">Setup complete.</p>
-                        <br />
-                        <p>
-                            C:\Users\Admin&gt;
-                            <span className="animate-pulse">█</span>
-                        </p>
-                        <br />
-                        <div className="space-y-1 text-xs">
-                            <p
-                                className="cursor-pointer hover:text-foreground"
-                                onClick={() => navigate(`/clients/${clientId}`)}
-                            >
-                                [1] Back to Client
-                            </p>
-                            {createdId && (
-                                <p
-                                    className="cursor-pointer hover:text-foreground"
-                                    onClick={() =>
-                                        navigate(`/servers/${createdId}`)
-                                    }
-                                >
-                                    [2] View Server
-                                </p>
-                            )}
-                        </div>
-                    </>
-                )}
-
                 {phase === "error" && (
                     <>
                         <p className="text-destructive">Connection failed.</p>
+                        <br />
+                        <button
+                            onClick={() => {
+                                setPhase("input");
+                                setErrors({});
+                            }}
+                            className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                        >
+                            Press ENTER to retry
+                        </button>
                         <br />
                         <p>
                             C:\Users\Admin&gt;
