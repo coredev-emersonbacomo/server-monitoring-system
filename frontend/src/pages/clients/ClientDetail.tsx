@@ -289,8 +289,8 @@ export default function ClientDetail() {
 
     const set =
         (key: keyof typeof form) =>
-        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-            setForm((f) => ({ ...f, [key]: e.target.value }));
+            (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+                setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const schema = z.object({
@@ -470,14 +470,14 @@ export default function ClientDetail() {
                         style={
                             hasBanner
                                 ? {
-                                      backgroundImage: `url(${bannerPreview})`,
-                                      backgroundSize: "cover",
-                                      backgroundPosition: "center",
-                                  }
+                                    backgroundImage: `url(${bannerPreview})`,
+                                    backgroundSize: "cover",
+                                    backgroundPosition: "center",
+                                }
                                 : {
-                                      background:
-                                          "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                  }
+                                    background:
+                                        "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                }
                         }
                     />
                     <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -509,7 +509,7 @@ export default function ClientDetail() {
                                                 setBannerFile(null);
                                                 setBannerPreview(
                                                     client?.banner_image_url ??
-                                                        defaultBanner,
+                                                    defaultBanner,
                                                 );
                                                 const input =
                                                     document.getElementById(
@@ -605,7 +605,7 @@ export default function ClientDetail() {
                                     className={cn(
                                         "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none",
                                         errors.description &&
-                                            "border-destructive",
+                                        "border-destructive",
                                     )}
                                 />
                             </div>
@@ -648,7 +648,7 @@ export default function ClientDetail() {
                                             onChange={set("location")}
                                             className={cn(
                                                 errors.location &&
-                                                    "border-destructive",
+                                                "border-destructive",
                                             )}
                                         />
                                     ) : (
@@ -683,7 +683,7 @@ export default function ClientDetail() {
                                             onChange={set("email")}
                                             className={cn(
                                                 errors.email &&
-                                                    "border-destructive",
+                                                "border-destructive",
                                             )}
                                         />
                                     ) : (
@@ -700,13 +700,36 @@ export default function ClientDetail() {
                                 >
                                     {showEdit ? (
                                         <Input
-                                            placeholder="+1 (555) 123-4567"
+                                            placeholder="095-1234-5678"
                                             value={form.contact_number}
-                                            onChange={set("contact_number")}
-                                            className={cn(
-                                                errors.contact_number &&
-                                                    "border-destructive",
-                                            )}
+                                            onChange={(e) => {
+                                                const numeric = e.target.value.replace(/\D/g, "");
+                                                // Enforce starts with 09
+                                                if (numeric.length >= 2 && !numeric.startsWith("09")) return;
+                                                set("contact_number")({ ...e, target: { ...e.target, value: numeric.slice(0, 11) } });
+                                            }}
+                                            onBlur={(e) => {
+                                                const numeric = e.target.value.replace(/\D/g, "");
+                                                // Only format if valid (starts with 09 and 11 digits)
+                                                if (!numeric.startsWith("09") || numeric.length !== 11) return;
+                                                const formatted = `${numeric.slice(0, 3)}-${numeric.slice(3, 7)}-${numeric.slice(7, 11)}`;
+                                                set("contact_number")({ ...e, target: { ...e.target, value: formatted } });
+                                            }}
+                                            onKeyDown={(e) => {
+                                                const allowedKeys = [
+                                                    "Backspace", "Delete", "Tab", "Escape", "Enter",
+                                                    "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+                                                    "Home", "End",
+                                                ];
+                                                if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x"].includes(e.key.toLowerCase())) {
+                                                    return;
+                                                }
+                                                if (/^\d$/.test(e.key) || allowedKeys.includes(e.key)) {
+                                                    return;
+                                                }
+                                                e.preventDefault();
+                                            }}
+                                            className={cn(errors.contact_number && "border-destructive")}
                                         />
                                     ) : (
                                         <p className="text-sm text-foreground py-1">
@@ -729,8 +752,8 @@ export default function ClientDetail() {
                                             isSaving
                                                 ? "Saving…"
                                                 : mode === "create"
-                                                  ? "Create Client"
-                                                  : "Save Changes"
+                                                    ? "Create Client"
+                                                    : "Save Changes"
                                         }
                                     />
                                 </div>

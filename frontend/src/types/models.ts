@@ -3,14 +3,18 @@
 
 import type { components, operations } from "@/api/schema";
 
+export type ActionItemData = components["schemas"]["ActionItemData"];
 export type ClientData = components["schemas"]["ClientData"];
 export type DashboardStatsData = components["schemas"]["DashboardStatsData"];
 export type FullUserData = components["schemas"]["FullUserData"];
+export type Server = components["schemas"]["Server"];
 export type ServerData = components["schemas"]["ServerData"];
 
 // --- Inlined Operation Payloads ---
 export type AuthLoginPayload = operations["auth.login"]["requestBody"]["content"]["application/json"];
-export type ClientStorePayload = operations["client.store"]["requestBody"]["content"]["application/json"];
+export type ClientStorePayload = operations["client.store"]["requestBody"]["content"]["multipart/form-data"];
 export type ClientUpdatePayload = operations["client.update"]["requestBody"]["content"]["multipart/form-data"];
+export type ServerStorePayload = operations["server.store"]["requestBody"]["content"]["application/json"];
+export type ServerUpdatePayload = operations["server.update"]["requestBody"]["content"]["application/json"];
 export type UsersStorePayload = operations["users.store"]["requestBody"]["content"]["application/json"];
-export type UsersUpdatePayload = NonNullable<operations["users.update"]["requestBody"]>["content"]["application/json"];
+export type UsersUpdatePayload = operations["users.update"]["requestBody"]["content"]["application/json"];
