@@ -23,6 +23,9 @@ class UpdateUserData extends Data
 
         #[Sometimes, Email, Max(255)]
         public string|Optional $email,
+        
+        #[Required, Min(11), Max(255), Unique('users', 'contact_number')]
+        public string $contact_number,
 
         #[Sometimes, Max(255)]
         public string|Optional $username,
