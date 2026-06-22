@@ -14,6 +14,8 @@ interface ProfileCardProps {
     onDelete?: (id: number) => void;
 }
 
+const defaultProfile = import.meta.env.VITE_DEFAULT_PROFILE_PICTURE as string;
+
 export const ProfileCard: React.FC<ProfileCardProps> = ({
     id,
     name = "Ruby A Arnold",
@@ -39,13 +41,6 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, []);
-
-    const initials = name
-        .split(" ")
-        .map((p) => p[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase();
 
     return (
         <div className="relative w-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans transition-shadow hover:shadow-md">
@@ -106,17 +101,11 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
             {/* ── Avatar ── */}
             <div className="mt-4 mb-4">
-                {imageUrl ? (
-                    <img
-                        src={imageUrl}
-                        alt={name}
-                        className="w-24 h-24 rounded-full object-cover border border-border shadow-sm"
-                    />
-                ) : (
-                    <div className="w-24 h-24 rounded-full bg-muted border border-border flex items-center justify-center text-muted-foreground text-2xl font-semibold shadow-sm">
-                        {initials}
-                    </div>
-                )}
+                <img
+                    src={imageUrl || defaultProfile}
+                    alt={name}
+                    className="w-24 h-24 rounded-full object-cover border border-border shadow-sm"
+                />
             </div>
 
             {/* ── Info ── */}

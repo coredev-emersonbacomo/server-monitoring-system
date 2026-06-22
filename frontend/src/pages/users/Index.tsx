@@ -1,6 +1,6 @@
 // pages/users/Index.tsx
 import { useState, useMemo } from "react";
-import { Plus, Search, Users2, RefreshCw } from "lucide-react";
+import { Plus, Search, Users2, RefreshCw, Filter, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import ProfileCard from "@/components/ProfileCard";
@@ -12,52 +12,15 @@ import {
     DialogTitle,
     DialogClose,
 } from "@/components/ui/dialog";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 import { useUsers, useDeleteUser } from "@/hooks/useUsers";
 import { cn } from "@/lib/utils";
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
-
-function StatCard({
-    label,
-    value,
-    sub,
-    loading,
-}: {
-    label: string;
-    value: number | string;
-    sub?: string;
-    loading?: boolean;
-}) {
-    if (loading) {
-        return (
-            <div className="bg-card border border-border rounded-lg px-4 py-3 animate-pulse">
-                <div className="h-2.5 w-16 bg-muted rounded mb-2" />
-                <div className="h-7 w-10 bg-muted rounded" />
-            </div>
-        );
-    }
-    return (
-        <div className="bg-card border border-border rounded-lg px-4 py-3">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-0.5">
-                {label}
-            </p>
-            <p className="text-2xl font-semibold text-foreground">{value}</p>
-            {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
-        </div>
-    );
-}
-
-// ─── Filter tabs ──────────────────────────────────────────────────────────────
-
 type FilterTab = "all" | "active" | "inactive" | "Admin" | "SecOps";
-
-const TABS: { label: string; value: FilterTab }[] = [
-    { label: "All",      value: "all" },
-    { label: "Active",   value: "active" },
-    { label: "Inactive", value: "inactive" },
-    { label: "Admin",    value: "Admin" },
-    { label: "SecOps",  value: "SecOps" },
-];
 
 // ─── Skeleton grid ────────────────────────────────────────────────────────────
 
@@ -125,16 +88,42 @@ const Users = () => {
     const activeCount   = users.filter((u) => u.status === "active").length;
     const inactiveCount = users.filter((u) => u.status === "inactive").length;
     const adminCount    = users.filter((u) => u.role?.role_name === "Admin").length;
+    const secopsCount   = users.filter((u) => u.role?.role_name === "SecOps").length;
+
+    const filterOptions = [
+        { label: "All",      value: "all" as FilterTab, count: users.length },
+        { label: "Active",   value: "active" as FilterTab, count: activeCount },
+        { label: "Inactive", value: "inactive" as FilterTab, count: inactiveCount },
+        { label: "Admin",    value: "Admin" as FilterTab, count: adminCount },
+        { label: "SecOps",   value: "SecOps" as FilterTab, count: secopsCount },
+    ];
+
+    const currentFilterLabel = filterOptions.find((o) => o.value === filter)?.label ?? "All";
 
     return (
-        <div className="flex flex-col gap-5">
+        <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
             {/* ── Header ── */}
-            <div>
-                <h1 className="text-xl font-semibold text-foreground">User Management</h1>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                    Manage accounts and assign roles.
-                </p>
-            </div>
+            <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
+                <div>
+                    <div className="flex items-start justify-between gap-4 py-3">
+                        <div className="flex items-start gap-3">
+                            <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
+                                <Users2 className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                                <h1 className="text-lg font-semibold tracking-tight">
+                                    User Management
+                                </h1>
+                                <p className="text-sm text-muted-foreground mt-0.5">
+                                    Manage accounts and assign roles.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <main className="py-6 w-full flex-1 min-h-0 overflow-auto flex flex-col gap-5">
 
             {/* ── Toolbar ── */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -152,22 +141,37 @@ const Users = () => {
                             className="w-full pl-8 pr-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground transition-colors"
                         />
                     </div>
-                    <div className="flex gap-1 flex-wrap">
-                        {TABS.map((t) => (
-                            <button
-                                key={t.value}
-                                onClick={() => setFilter(t.value)}
-                                className={cn(
-                                    "px-3 py-1.5 text-xs rounded-full border transition-colors",
-                                    filter === t.value
-                                        ? "bg-foreground text-background border-foreground"
-                                        : "bg-transparent text-muted-foreground border-border hover:bg-muted",
-                                )}
+
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                icon={<Filter size={14} />}
+                                className="gap-1"
                             >
-                                {t.label}
-                            </button>
-                        ))}
-                    </div>
+                                {currentFilterLabel}
+                                <ChevronDown size={14} />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="w-48 p-1">
+                            {filterOptions.map((option) => (
+                                <button
+                                    key={option.value}
+                                    onClick={() => setFilter(option.value)}
+                                    className={cn(
+                                        "flex items-center justify-between w-full px-2 py-1.5 rounded-md text-sm transition-colors",
+                                        filter === option.value
+                                            ? "bg-accent text-accent-foreground"
+                                            : "hover:bg-muted text-foreground",
+                                    )}
+                                >
+                                    <span>{option.label}</span>
+                                    <span className="text-xs text-muted-foreground">{option.count}</span>
+                                </button>
+                            ))}
+                        </PopoverContent>
+                    </Popover>
                 </div>
 
                 <Button
@@ -175,19 +179,6 @@ const Users = () => {
                     label="Add user"
                     onClick={() => navigate("/users/create")}
                 />
-            </div>
-
-            {/* ── Stats ── */}
-            <div className="grid grid-cols-4 gap-3">
-                <StatCard label="Total users"  value={users.length} loading={isLoading} />
-                <StatCard
-                    label="Active"
-                    value={activeCount}
-                    sub={users.length ? `${Math.round((activeCount / users.length) * 100)}% of total` : undefined}
-                    loading={isLoading}
-                />
-                <StatCard label="Inactive" value={inactiveCount} loading={isLoading} />
-                <StatCard label="Admins" value={adminCount} sub="SecOps below admin" loading={isLoading} />
             </div>
 
             {/* ── Error state ── */}
@@ -269,6 +260,7 @@ const Users = () => {
                     </div>
                 </DialogContent>
             </Dialog>
+            </main>
         </div>
     );
 };

@@ -219,8 +219,11 @@ export default function ClientDetail() {
 
     // ── Local state ────────────────────────────────────────────────────────────
     const [showDelete, setShowDelete] = useState(false);
+    const defaultBanner = import.meta.env.VITE_DEFAULT_CLIENT_BANNER as string;
     const [bannerFile, setBannerFile] = useState<File | null>(null);
-    const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+    const [bannerPreview, setBannerPreview] = useState<string | null>(
+        id ? null : defaultBanner,
+    );
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     const [form, setForm] = useState({
@@ -244,11 +247,11 @@ export default function ClientDetail() {
                 email: "",
                 contact_number: "",
             });
-            setBannerPreview(null);
+            setBannerPreview(defaultBanner);
             setBannerFile(null);
             setErrors({});
         }
-    }, [id]);
+    }, [defaultBanner, id]);
 
     // Populate form when client data arrives
     useEffect(() => {
@@ -314,7 +317,7 @@ export default function ClientDetail() {
     };
 
     // ── Handlers ───────────────────────────────────────────────────────────────
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.SubmitEvent) => {
         e.preventDefault();
         if (!validate()) return;
 
@@ -477,7 +480,7 @@ export default function ClientDetail() {
                                                 setBannerFile(null);
                                                 setBannerPreview(
                                                     client?.banner_image_url ??
-                                                        null,
+                                                        defaultBanner,
                                                 );
                                                 const input =
                                                     document.getElementById(

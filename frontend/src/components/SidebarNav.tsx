@@ -178,7 +178,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                     align="end"
                     side="right"
                     sideOffset={8}
-                    className="w-64 bg-background p-5 rounded-lg flex flex-col gap-sidebar-section-gap ring-transparent z-9999"
+                    className="w-64 bg-background p-5 rounded-lg flex flex-col gap-sidebar-section-gap ring-foreground/50 z-9999"
                 >
                     {isCollapsed ? (
                         <ProfileBar
@@ -219,9 +219,11 @@ const ProfileBar = ({
     const navigate = useNavigate();
     if (!user) return;
 
+    const defaultProfile = import.meta.env.VITE_DEFAULT_PROFILE_PICTURE as string;
     const firstName = user.first_name;
     const lastName = user.last_name;
     const username = user.email?.split("@")[0] ?? "";
+    const avatarSrc = user.profile_picture_url || defaultProfile;
 
     return (
         <div
@@ -242,11 +244,12 @@ const ProfileBar = ({
             )}
         >
             <div className="flex items-center gap-sidebar-section-gap p-[calc(var(--spacing-sidebar-item-padding)-0.25rem)] w-sidebar-button">
-                <div className="size-[calc(var(--size-icon)+0.5rem)] rounded-full overflow-hidden bg-foreground/10 flex items-center justify-center">
-                    <span className="text-xs font-semibold text-foreground/60">
-                        {firstName[0]}
-                        {lastName[0]}
-                    </span>
+                <div className="size-[calc(var(--size-icon)+0.5rem)] rounded-full overflow-hidden bg-foreground/10">
+                    <img
+                        src={avatarSrc}
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                    />
                 </div>
                 <div className="leading-6 flex-1 w-full flex flex-col">
                     <div className="font-semibold text-foreground/80 group-hover:text-foreground text-[1.1rem]">

@@ -49,7 +49,7 @@ export function ProtectedRoute() {
                     <main className="flex-1 flex flex-col min-h-0 overflow-auto p-5 gap-5">
                         <TopBarNav />
 
-                        <div className="flex-1 flex flex-col min-h-0">
+                        <div className="flex-1 flex flex-col min-h-0 px-4 sm:px-6 lg:px-8">
                             <Outlet />
                         </div>
                     </main>

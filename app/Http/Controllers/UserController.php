@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Data\FullUserData;
 use App\Data\UpdateUserData;
 use App\Data\CreateUserData;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use App\Data\FullUserData;
 
 // UserController
 class UserController extends Controller

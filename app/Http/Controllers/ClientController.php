@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Data\ClientData;
 use App\Data\CreateClientData;
 use App\Models\Client;
+use App\Models\Server;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -23,7 +24,7 @@ class ClientController extends Controller
                 'location' => $client->location ?? '',
                 'email' => $client->email,
                 'contact_number' => (string) ($client->contact_number ?? ''),
-                'banner_image_url' => $client->banner_image_url ?? '',
+                'banner_image_url' => $this->bannerUrlOrDefault($client->banner_image_url),
                 'servers_count' => $client->servers_count,
                 'created_at' => $client->created_at?->toIso8601String() ?? '',
                 'updated_at' => $client->updated_at?->toIso8601String() ?? '',
@@ -54,7 +55,7 @@ class ClientController extends Controller
                 'location' => $client->location,
                 'email' => $client->email,
                 'contact_number' => (string) $client->contact_number,
-                'banner_image_url' => $client->banner_image_url,
+                'banner_image_url' => $this->bannerUrlOrDefault($client->banner_image_url),
                 'servers_count' => $client->servers_count,
                 'created_at' => $client->created_at?->toIso8601String() ?? '',
                 'updated_at' => $client->updated_at?->toIso8601String() ?? '',
@@ -75,7 +76,7 @@ class ClientController extends Controller
                 'location' => $client->location ?? '',
                 'email' => $client->email,
                 'contact_number' => (string) ($client->contact_number ?? ''),
-                'banner_image_url' => $client->banner_image_url ?? '',
+                'banner_image_url' => $this->bannerUrlOrDefault($client->banner_image_url),
                 'servers_count' => $client->servers_count,
                 'created_at' => $client->created_at?->toIso8601String() ?? '',
                 'updated_at' => $client->updated_at?->toIso8601String() ?? '',
@@ -123,12 +124,17 @@ class ClientController extends Controller
                 'location' => $client->location,
                 'email' => $client->email,
                 'contact_number' => (string) $client->contact_number,
-                'banner_image_url' => $client->banner_image_url,
+                'banner_image_url' => $this->bannerUrlOrDefault($client->banner_image_url),
                 'servers_count' => $client->servers_count,
                 'created_at' => $client->created_at?->toIso8601String() ?? '',
                 'updated_at' => $client->updated_at?->toIso8601String() ?? '',
             ]),
         );
+    }
+
+    protected function bannerUrlOrDefault(?string $url): string
+    {
+        return $url ?: config('app.default_client_banner_img_unsplash');
     }
 
     protected function handleBannerUpload(Request $request): string
@@ -164,7 +170,6 @@ class ClientController extends Controller
 
     public function initializeServer(Request $request, int $id)//: JsonResponse
     {
-
     }
 
     public function destroy(int $id): JsonResponse

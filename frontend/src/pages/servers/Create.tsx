@@ -268,9 +268,15 @@ export default function CreateServer() {
             <div className="h-8 bg-muted border-b border-border flex items-center justify-between px-3 text-xs select-none">
                 <span>Terminal — Add Server</span>
                 <div className="flex">
-                    <button className="w-10 h-8 hover:bg-muted-foreground/10">─</button>
-                    <button className="w-10 h-8 hover:bg-muted-foreground/10">□</button>
-                    <button className="w-10 h-8 hover:bg-destructive hover:text-destructive-foreground">✕</button>
+                    <button className="w-10 h-8 hover:bg-muted-foreground/10">
+                        ─
+                    </button>
+                    <button className="w-10 h-8 hover:bg-muted-foreground/10">
+                        □
+                    </button>
+                    <button className="w-10 h-8 hover:bg-destructive hover:text-destructive-foreground">
+                        ✕
+                    </button>
                 </div>
             </div>
 
@@ -301,10 +307,14 @@ export default function CreateServer() {
                             <span className="animate-pulse">█</span>
                         </div>
                         {ipError && (
-                            <p className="text-destructive mt-1">ERROR: {ipError}</p>
+                            <p className="text-destructive mt-1">
+                                ERROR: {ipError}
+                            </p>
                         )}
                         <br />
-                        <p className="text-muted-foreground">Press ENTER to connect</p>
+                        <p className="text-muted-foreground">
+                            Press ENTER to connect
+                        </p>
                     </>
                 )}
 
@@ -318,7 +328,10 @@ export default function CreateServer() {
                             </p>
                         ))}
                         <p className="text-muted-foreground">
-                            <Loader2 size={12} className="inline mr-2 animate-spin" />
+                            <Loader2
+                                size={12}
+                                className="inline mr-2 animate-spin"
+                            />
                             Processing...
                         </p>
                         <div ref={logEndRef} />
@@ -352,7 +365,9 @@ export default function CreateServer() {
                             {createdId && (
                                 <p
                                     className="cursor-pointer hover:text-foreground"
-                                    onClick={() => navigate(`/servers/${createdId}`)}
+                                    onClick={() =>
+                                        navigate(`/servers/${createdId}`)
+                                    }
                                 >
                                     [2] View Server
                                 </p>

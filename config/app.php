@@ -123,4 +123,16 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Default Client Banner Image (Unsplash)
+    |--------------------------------------------------------------------------
+    |
+    | This URL is used as the default banner image for clients when no custom
+    | banner image has been uploaded.
+    |
+    */
+
+    'default_client_banner_img_unsplash' => env('DEFAULT_CLIENT_BANNER_IMG_UNSPLASH', 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?fm=jpg&q=60&w=3000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8Y29ycG9yYXRlJTIwYnVpbGRpbmd8ZW58MHx8MHx8fDA%3D'),
+
 ];
