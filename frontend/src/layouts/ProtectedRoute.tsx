@@ -14,23 +14,25 @@ import TopBarNav from "@/components/TopBarNav";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { Toaster } from "sonner";
 
-const sidebarLinks = [
-    { name: "Dashboard", href: "/", icon: Activity },
-    {
-        name: "Clients",
-        href: "/clients",
-        icon: (props: LucideProps) => (
-            <Landmark {...props} strokeWidth="1.75" />
-        ),
-    },
-    { name: "Users", href: "/users", icon: Users },
-    { name: "Logs", href: "/logs", icon: ClipboardClock },
-    { name: "Settings", href: "/settings", icon: Settings },
-];
-
 export function ProtectedRoute() {
     const { user, isLoading } = useAuthContext();
     const location = useLocation();
+
+    const sidebarLinks = [
+        { name: "Dashboard", href: "/", icon: Activity },
+        {
+            name: "Clients",
+            href: "/clients",
+            icon: (props: LucideProps) => (
+                <Landmark {...props} strokeWidth="1.75" />
+            ),
+        },
+        ...(user?.role_id === 1
+            ? [{ name: "Users", href: "/users", icon: Users }]
+            : []),
+        { name: "Logs", href: "/logs", icon: ClipboardClock },
+        { name: "Settings", href: "/settings", icon: Settings },
+    ];
 
     if (isLoading) {
         return (
