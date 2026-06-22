@@ -1,8 +1,8 @@
 export function toLabelCase(
-    key: string,
+    key: string | null | undefined,
     preserveDash: boolean = false,
 ): string {
-    let result = key;
+    let result = key ?? "";
 
     // Replace underscores with space
     result = result.replace(/_/g, " ");

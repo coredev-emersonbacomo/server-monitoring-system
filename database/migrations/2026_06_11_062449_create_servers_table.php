@@ -19,6 +19,9 @@ return new class extends Migration
             $table->string('internal_ip');
             $table->string('external_ip');
 
+            $table->string('ssh_username')->nullable();
+            $table->text('ssh_password')->nullable();
+
             // API Key
             $table->string('api_key');
 

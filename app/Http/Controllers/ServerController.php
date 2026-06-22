@@ -6,15 +6,27 @@ use App\Data\ServerData;
 use App\Models\Client;
 use App\Models\Server;
 use Illuminate\Http\JsonResponse;
-
-// Api Key Generator
+use Illuminate\Support\Facades\Crypt;
 use Infrastructure\Api\ApiGenerator;
 
 class ServerController extends Controller
 {
     public function index(int $client_id): JsonResponse
     {
-        $servers = Server::where('client_id', $client_id)->get();
+        $servers = Server::where('client_id', $client_id)->get()->map(fn ($s) => [
+            'id' => $s->id,
+            'client_id' => $s->client_id,
+            'server_name' => $s->server_name,
+            'device_name' => $s->device_name,
+            'internal_ip' => $s->internal_ip,
+            'external_ip' => $s->external_ip,
+            'ssh_username' => $s->ssh_username,
+            'cpu_cores' => $s->cpu_cores,
+            'ram' => $s->ram,
+            'operating_system' => $s->operating_system,
+            'created_at' => $s->created_at?->toIso8601String() ?? '',
+            'updated_at' => $s->updated_at?->toIso8601String() ?? '',
+        ]);
 
         return response()->json($servers);
     }
@@ -30,15 +42,17 @@ class ServerController extends Controller
         $server = Server::create([
             'client_id' => $client_id,
             'server_name' => $data->server_name,
-            'device_name' => $data->device_name,
+            'device_name' => $data->device_name ?? $data->server_name,
             'internal_ip' => $data->internal_ip,
-            'external_ip' => $data->external_ip,
-            'api_key' => ApiGenerator::GenerateApiKey()
+            'external_ip' => $data->external_ip ?? $data->internal_ip,
+            'ssh_username' => $data->ssh_username,
+            'ssh_password' => $data->ssh_password ? Crypt::encryptString($data->ssh_password) : null,
+            'api_key' => ApiGenerator::GenerateApiKey(),
         ]);
 
         return response()->json([
             'success' => true,
-            'data' => $server
+            'data' => $server,
         ], 201);
     }
 
@@ -50,7 +64,7 @@ class ServerController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $server
+            'data' => $server,
         ]);
     }
 
@@ -60,16 +74,29 @@ class ServerController extends Controller
             ->where('id', $id)
             ->firstOrFail();
 
-        $server->update([
+        $updateData = [
             'server_name' => $data->server_name,
-            'device_name' => $data->device_name,
             'internal_ip' => $data->internal_ip,
-            'external_ip' => $data->external_ip,
-        ]);
+        ];
+
+        if ($data->device_name !== null) {
+            $updateData['device_name'] = $data->device_name;
+        }
+        if ($data->external_ip !== null) {
+            $updateData['external_ip'] = $data->external_ip;
+        }
+        if ($data->ssh_username !== null) {
+            $updateData['ssh_username'] = $data->ssh_username;
+        }
+        if ($data->ssh_password !== null) {
+            $updateData['ssh_password'] = Crypt::encryptString($data->ssh_password);
+        }
+
+        $server->update($updateData);
 
         return response()->json([
             'success' => true,
-            'data' => $server
+            'data' => $server,
         ]);
     }
 
@@ -83,7 +110,7 @@ class ServerController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $server
+            'data' => $server,
         ]);
     }
 }
