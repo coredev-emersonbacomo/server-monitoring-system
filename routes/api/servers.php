@@ -90,6 +90,7 @@ Route::post('/server/stats', function (ServerUpdatesData $serverUpdatesData) {
 
     $serverInfo = DB::table('servers')
         ->where('id', $serverUpdatesData->server_id)
+        ->where('api_key', $serverUpdatesData->token)
         ->first();
 
     if (!$serverInfo) {
