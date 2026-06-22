@@ -17,9 +17,9 @@ class FullUserData extends Data
         public string $username,
         public ?string $last_login,
         public ?string $profile_picture_url,
+        public ?string $profile_picture_public_id,
         public ?string $avatar,
         public string $status,
-        /** @var array{role_name: string}|null */
         public ?array $role,
         public ?Carbon $created_at,
         public ?Carbon $updated_at,
@@ -36,6 +36,7 @@ class FullUserData extends Data
             username: $user->username,
             last_login: $user->last_login,
             profile_picture_url: $user->profile_picture_url,
+            profile_picture_public_id: $user->profile_picture_public_id,
             avatar: $user->profile_picture_url,
             status: 'active',
             role: $user->relationLoaded('role') && $user->role ? [

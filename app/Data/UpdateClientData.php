@@ -6,9 +6,10 @@ use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Min;
 use Spatie\LaravelData\Attributes\Validation\Required;
-use Illuminate\Http\UploadedFile;
+use Spatie\LaravelData\Attributes\Validation\Sometimes;
+use Spatie\LaravelData\Optional;
 
-class CreateClientData extends Data
+class UpdateClientData extends Data
 {
     public function __construct(
         #[Required, Min(2), Max(255)]
@@ -23,12 +24,10 @@ class CreateClientData extends Data
         #[Required, Min(5)]
         public string $contact_number,
 
-        public ?string $description = null,
+        public string|Optional $description,
 
-        public ?UploadedFile $banner_image = null,
+        public string|Optional|null $cloudinary_url,
 
-        public ?string $cloudinary_url = null,
-
-        public ?string $cloudinary_public_id = null,
+        public string|Optional|null $cloudinary_public_id,
     ) {}
 }
