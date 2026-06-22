@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Check if argument exist
+if [ "$#" -ne 2 ]; then
+    echo "Error: Invalid arguments"
+    echo "Usage: $0 <server_id> <api_key>"
+    exit 1
+fi
+
 APP_DIR="/opt/monitor-agent"
 
 mkdir -p $APP_DIR
@@ -10,8 +17,8 @@ wget https://monitor.example.com/agent/agent.php
 
 cat > config.json << EOF
 {
-  "server_id": "$(hostname)-$(date +%s)",
-  "token": "REPLACE_TOKEN",
+  "server_id": "$1",
+  "token": "$2",
   "api_url": "https://monitor.example.com/api/metrics"
 }
 EOF
