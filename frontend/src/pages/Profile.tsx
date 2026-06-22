@@ -1,10 +1,10 @@
 // frontend/src/pages/Profile.tsx
 import React from "react";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { LogOut, Loader2, ShieldCheck, Mail, User, AtSign, Shield } from "lucide-react";
+import { Loader2, ShieldCheck, Mail, User, AtSign, Shield } from "lucide-react";
 
 export const Profile: React.FC = () => {
-    const { user, isLoading, logout, isLoggingOut } = useAuthContext();
+    const { user, isLoading } = useAuthContext();
 
     if (isLoading) {
         return (

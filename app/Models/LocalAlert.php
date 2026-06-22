@@ -11,6 +11,4 @@ class LocalAlert extends Model
     {
         return $this->belongsTo(Server::class, 'server_id');
     }
-
-    
 }
