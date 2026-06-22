@@ -285,11 +285,7 @@ export default function UserDetail() {
                 role_id: Number(form.role_id),
             };
 
-            if (mode === "create") {
-                payload.password = form.password;
-                payload.password_confirmation = form.password_confirmation;
-            } else {
-                payload.status = form.status;
+       
             if (mode === "create") {
                 await createUser.mutateAsync({
                     first_name: form.first_name,

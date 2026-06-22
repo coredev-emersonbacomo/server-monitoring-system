@@ -1,6 +1,6 @@
 // ProfileCard.tsx
 import React, { useState, useRef, useEffect } from "react";
-import { User, Mail, Pencil, Trash2, MoreHorizontal } from "lucide-react";
+import { User, Mail, Pencil, Trash2, MoreHorizontal, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +8,7 @@ interface ProfileCardProps {
     id: number;
     name?: string;
     email?: string;
+    contact_number?: string;
     role?: string;
     imageUrl?: string;
     status?: "active" | "inactive";
@@ -20,6 +21,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
     id,
     name = "Ruby A Arnold",
     email = "r.a.arnold@devify.com",
+    contact_number = "09123456789",
     role = "Partner",
     imageUrl,
     status = "active",
@@ -133,6 +135,15 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                     />
                     <span className="truncate block" title={email}>
                         {email}
+                    </span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground text-sm mt-1 max-w-full px-2">
+                    <Phone
+                        size={16}
+                        className="text-muted-foreground shrink-0"
+                    />
+                    <span className="truncate block" title={contact_number}>
+                        {contact_number.replace(/\D/g, "").replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")}
                     </span>
                 </div>
             </div>
