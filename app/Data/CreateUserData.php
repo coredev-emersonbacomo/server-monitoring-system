@@ -7,9 +7,7 @@ use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Min;
 use Spatie\LaravelData\Attributes\Validation\Required;
 use Spatie\LaravelData\Attributes\Validation\Unique;
-
 use Spatie\LaravelData\Data;
-//  CreateUserData.php 
 
 class CreateUserData extends Data
 {
@@ -22,7 +20,7 @@ class CreateUserData extends Data
 
         #[Required,Email, Max(255), Unique('users', 'email')]
         public string $email,
-        
+
         #[Required,Min(11),Max(255), Unique('users', 'contact_number')]
         public string $contact_number,
 
@@ -36,5 +34,9 @@ class CreateUserData extends Data
         public string $password,
 
         public string $password_confirmation,
+
+        public ?string $cloudinary_url = null,
+
+        public ?string $cloudinary_public_id = null,
     ) {}
 }
