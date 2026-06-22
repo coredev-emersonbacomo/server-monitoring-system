@@ -147,6 +147,7 @@ export default function UserDetail() {
         last_name: "",
         email: "",
         username: "",
+        contact_number: "",
         role_id: 2,
         status: "active" as "active" | "inactive",
         password: "",
@@ -163,6 +164,7 @@ export default function UserDetail() {
                 last_name: "",
                 email: "",
                 username: "",
+                contact_number: "",
                 role_id: 2,
                 status: "active",
                 password: "",
@@ -182,6 +184,7 @@ export default function UserDetail() {
                 last_name: user.last_name,
                 email: user.email,
                 username: user.username,
+                contact_number: user.contact_number,
                 role_id: user.role_id,
                 status: user.status ?? "active",
                 password: "",
@@ -223,6 +226,14 @@ export default function UserDetail() {
             last_name: z.string().trim().min(1, "Required"),
             email: z.string().trim().min(1, "Required").email("Invalid email"),
             username: z.string().trim().min(1, "Required"),
+            contact_number: z
+                .string()
+                .trim()
+                .min(1, "Required")
+                .refine(
+                    (val) => /^09\d{9}$/.test(val.replace(/\D/g, "")),
+                    "Invalid contact number"
+                ),
             password: z.string().superRefine((val, ctx) => {
                 if (isCreate && !val)
                     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required" });
@@ -268,6 +279,7 @@ export default function UserDetail() {
                     last_name: form.last_name,
                     email: form.email,
                     username: form.username,
+                    contact_number: form.contact_number,
                     role_id: Number(form.role_id),
                     password: form.password,
                     password_confirmation: form.password_confirmation,
@@ -280,6 +292,7 @@ export default function UserDetail() {
                     last_name: form.last_name,
                     email: form.email,
                     username: form.username,
+                    contact_number: form.contact_number,
                     role_id: Number(form.role_id),
                     status: form.status,
                 };
@@ -339,6 +352,7 @@ export default function UserDetail() {
                 last_name: user.last_name,
                 email: user.email,
                 username: user.username,
+                contact_number: user.contact_number,
                 role_id: user.role_id,
                 status: user.status ?? "active",
                 password: "",
@@ -610,6 +624,53 @@ export default function UserDetail() {
                                         />
                                     ) : (
                                         <p className="text-sm text-foreground py-1">@{user?.username}</p>
+                                    )}
+                                </Field>
+                                <Field
+                                    label="Contact Number"
+                                    required
+                                    error={errors.contact_number}
+                                    isEdit={showEdit}
+                                >
+                                    {showEdit ? (
+                                        <Input
+                                            placeholder="095-1234-5678"
+                                            value={form.contact_number}
+                                            onChange={(e) => {
+                                                const numeric = e.target.value.replace(/\D/g, "");
+                                                // Enforce starts with 09
+                                                if (numeric.length >= 2 && !numeric.startsWith("09")) return;
+                                                set("contact_number")({ ...e, target: { ...e.target, value: numeric.slice(0, 11) } });
+                                            }}
+                                            onBlur={(e) => {
+                                                const numeric = e.target.value.replace(/\D/g, "");
+                                                // Only format if valid (starts with 09 and 11 digits)
+                                                if (!numeric.startsWith("09") || numeric.length !== 11) return;
+                                                const formatted = `${numeric.slice(0, 3)}-${numeric.slice(3, 7)}-${numeric.slice(7, 11)}`;
+                                                set("contact_number")({ ...e, target: { ...e.target, value: formatted } });
+                                            }}
+                                            onKeyDown={(e) => {
+                                                const allowedKeys = [
+                                                    "Backspace", "Delete", "Tab", "Escape", "Enter",
+                                                    "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+                                                    "Home", "End",
+                                                ];
+                                                if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x"].includes(e.key.toLowerCase())) {
+                                                    return;
+                                                }
+                                                if (/^\d$/.test(e.key) || allowedKeys.includes(e.key)) {
+                                                    return;
+                                                }
+                                                e.preventDefault();
+                                            }}
+                                            className={cn(errors.contact_number && "border-destructive")}
+                                        />
+                                    ) : (
+                                        <p className="text-sm text-foreground py-1">
+                                            {user?.contact_number
+                                                ? user.contact_number.replace(/\D/g, "").replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")
+                                                : "—"}
+                                        </p>
                                     )}
                                 </Field>
                             </div>

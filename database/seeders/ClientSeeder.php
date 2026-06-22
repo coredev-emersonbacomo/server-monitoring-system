@@ -17,7 +17,7 @@ class ClientSeeder extends Seeder
             'name' => 'coredev',
             'description' => 'Software Company',
             'email' => 'coredev@gmail.com',
-            'contact_number' => 'coredev@gmail.com',
+            'contact_number' => '09517380165',
             'location' => 'Cebu City',
         ]);
 
