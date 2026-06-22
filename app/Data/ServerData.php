@@ -25,9 +25,6 @@ class ServerData extends Data
         #[Required, IPv4]
         public string $external_ip,
 
-        #[Required, Size(43)]
-        public string $api_key,
-
         public ?int $cpu_cores,
         public ?int $ram,
         public ?string $operating_system,
