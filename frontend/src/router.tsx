@@ -9,7 +9,8 @@ import UserDetail from "./pages/UserDetail";
 import ClientDetail from "./pages/clients/ClientDetail";
 import Settings from "./pages/Settings";
 import Logs from "./pages/Logs";
-import ServerDetail from "./pages/ServerDetail";
+import ServerLayout from "./layouts/ServerLayout";
+import ServerDetail from "./pages/servers/ServerDetail";
 import { Profile } from "./pages/Profile";
 import CreateServer from "./pages/servers/Create";
 import ServersIndex from "./pages/servers/Index";
@@ -40,8 +41,13 @@ const router = createBrowserRouter([
                 element: <CreateServer />,
             },
             {
-                path: "/servers/:id",
-                element: <ServerDetail />,
+                element: <ServerLayout />,
+                children: [
+                    {
+                        path: "/servers/:id",
+                        element: <ServerDetail />,
+                    },
+                ],
             },
             {
                 path: "/clients",
