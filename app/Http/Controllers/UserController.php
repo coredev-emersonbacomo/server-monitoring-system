@@ -5,16 +5,17 @@ namespace App\Http\Controllers;
 use App\Data\UpdateUserData;
 use App\Data\CreateUserData;
 use App\Models\User;
+use App\Services\ImageReplacementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use App\Data\FullUserData;
 
-// UserController
 class UserController extends Controller
 {
-    /**
-     * @return \Spatie\LaravelData\DataCollection<\App\Data\FullUserData>
-     */
+    public function __construct(
+        private readonly ImageReplacementService $imageReplacement,
+    ) {}
+
     public function index()
     {
         $users = User::with('role')->get();
@@ -22,9 +23,6 @@ class UserController extends Controller
         return FullUserData::collect($users);
     }
 
-    /**
-     * @return \App\Data\FullUserData
-     */
     public function store(CreateUserData $data)
     {
         $user = User::create([
@@ -35,22 +33,18 @@ class UserController extends Controller
             'username'   => $data->username,
             'role_id'    => $data->role_id,
             'password'   => Hash::make($data->password),
+            'profile_picture_url' => $data->cloudinary_url ?? '',
+            'profile_picture_public_id' => $data->cloudinary_public_id ?? null,
         ]);
 
         return FullUserData::from($user->load('role'))->toResponse(request())->setStatusCode(201);
     }
 
-    /**
-     * @return \App\Data\FullUserData
-     */
     public function show(User $user): FullUserData
     {
         return FullUserData::from($user->load('role'));
     }
 
-    /**
-     * @return \App\Data\FullUserData
-     */
     public function update(UpdateUserData $data, User $user)
     {
         $payload = [];
@@ -77,6 +71,18 @@ class UserController extends Controller
             $payload['password'] = Hash::make($data->password);
         }
 
+        if (!($data->cloudinary_url instanceof \Spatie\LaravelData\Optional) && $data->cloudinary_url !== null) {
+            $this->imageReplacement->handleReplacement(
+                newUrl: $data->cloudinary_url,
+                newPublicId: $data->cloudinary_public_id,
+                existingUrl: $user->profile_picture_url,
+                existingPublicId: $user->profile_picture_public_id,
+            );
+
+            $payload['profile_picture_url'] = $data->cloudinary_url;
+            $payload['profile_picture_public_id'] = $data->cloudinary_public_id ?? null;
+        }
+
         $user->update($payload);
 
         return FullUserData::from($user->load('role'));
@@ -84,6 +90,11 @@ class UserController extends Controller
 
     public function destroy(User $user): JsonResponse
     {
+        $this->imageReplacement->handleDeletion(
+            url: $user->profile_picture_url,
+            publicId: $user->profile_picture_public_id,
+        );
+
         $user->delete();
 
         return response()->json(null, 204);
