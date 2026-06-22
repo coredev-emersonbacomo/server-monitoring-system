@@ -28,6 +28,9 @@ import {
     useUpdateUser,
     useDeleteUser,
 } from "@/hooks/useUsers";
+import { getProfilePictureUploadSignature } from "@/api/cloudinary";
+import { uploadToCloudinary } from "@/services/cloudinary";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 
 // ─── Form skeleton ────────────────────────────────────────────────────────────
 
@@ -141,6 +144,7 @@ export default function UserDetail() {
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [uploadProgress, setUploadProgress] = useState(-1);
 
     const [form, setForm] = useState({
         first_name: "",
@@ -273,6 +277,19 @@ export default function UserDetail() {
         if (!validate()) return;
 
         try {
+            const payload: Record<string, unknown> = {
+                first_name: form.first_name,
+                last_name: form.last_name,
+                email: form.email,
+                username: form.username,
+                role_id: Number(form.role_id),
+            };
+
+            if (mode === "create") {
+                payload.password = form.password;
+                payload.password_confirmation = form.password_confirmation;
+            } else {
+                payload.status = form.status;
             if (mode === "create") {
                 await createUser.mutateAsync({
                     first_name: form.first_name,
@@ -300,7 +317,26 @@ export default function UserDetail() {
                     payload.password = form.password;
                     payload.password_confirmation = form.password_confirmation;
                 }
-                await updateUser.mutateAsync(payload);
+            }
+
+            if (avatarFile) {
+                setUploadProgress(0);
+                const signature = await getProfilePictureUploadSignature();
+                const result = await uploadToCloudinary(
+                    avatarFile,
+                    signature,
+                    (p) => setUploadProgress(p),
+                );
+                payload.cloudinary_url = result.secure_url;
+                payload.cloudinary_public_id = result.public_id;
+            }
+
+            if (mode === "create") {
+                await createUser.mutateAsync(payload as any);
+                toast.success("User created successfully.");
+                navigate("/users");
+            } else {
+                await updateUser.mutateAsync(payload as any);
                 toast.success("User updated successfully.");
                 setMode("view");
                 setForm((f) => ({ ...f, password: "", password_confirmation: "" }));
@@ -318,6 +354,8 @@ export default function UserDetail() {
                     mode === "create" ? "Failed to create user." : "Failed to update user.",
                 );
             }
+        } finally {
+            setUploadProgress(-1);
         }
     };
 
@@ -396,13 +434,19 @@ export default function UserDetail() {
     // ── Derived state ──────────────────────────────────────────────────────────
     const defaultProfile = import.meta.env.VITE_DEFAULT_PROFILE_PICTURE as string;
     const avatarSrc = avatarPreview || defaultProfile;
-    const isSaving = createUser.isPending || updateUser.isPending;
     const avatarInputId = "avatar-upload";
+    const isSaving = createUser.isPending || updateUser.isPending;
 
     const roleName = user?.role?.role_name ?? (user?.role_id === 1 ? "Admin" : "SecOps");
 
     return (
-        <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
+        <>
+            <LoadingOverlay
+                visible={isSaving && uploadProgress >= 0}
+                progress={uploadProgress}
+                message="Uploading avatar..."
+            />
+            <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
             {/* ── Banner / Hero ── */}
             <div className="relative">
                 <div className="absolute inset-0 overflow-hidden rounded-t-xl">
@@ -829,5 +873,6 @@ export default function UserDetail() {
                 </DialogContent>
             </Dialog>
         </div>
+        </>
     );
 }

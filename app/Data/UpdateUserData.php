@@ -11,7 +11,6 @@ use Spatie\LaravelData\Attributes\Validation\Sometimes;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Optional;
 
-// UpdateUserData.php — all fields optional on edit
 class UpdateUserData extends Data
 {
     public function __construct(
@@ -23,7 +22,7 @@ class UpdateUserData extends Data
 
         #[Sometimes, Email, Max(255)]
         public string|Optional $email,
-        
+
         #[Required, Min(11), Max(255), Unique('users', 'contact_number')]
         public string $contact_number,
 
@@ -37,5 +36,9 @@ class UpdateUserData extends Data
         public string|Optional|null $password,
 
         public string|Optional|null $password_confirmation,
+
+        public string|Optional|null $cloudinary_url,
+
+        public string|Optional|null $cloudinary_public_id,
     ) {}
 }

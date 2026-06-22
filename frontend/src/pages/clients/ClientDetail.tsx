@@ -36,6 +36,9 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { getClientBannerUploadSignature } from "@/api/cloudinary";
+import { uploadToCloudinary } from "@/services/cloudinary";
+import { LoadingOverlay } from "@/components/LoadingOverlay";
 
 // ─── Form skeleton ────────────────────────────────────────────────────────────
 
@@ -225,6 +228,7 @@ export default function ClientDetail() {
         id ? null : defaultBanner,
     );
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [uploadProgress, setUploadProgress] = useState(-1);
 
     const [form, setForm] = useState({
         name: "",
@@ -327,7 +331,24 @@ export default function ClientDetail() {
         fd.append("location", form.location);
         fd.append("email", form.email);
         fd.append("contact_number", form.contact_number);
-        if (bannerFile) fd.append("banner_image", bannerFile);
+
+        if (bannerFile) {
+            setUploadProgress(0);
+            try {
+                const signature = await getClientBannerUploadSignature();
+                const result = await uploadToCloudinary(
+                    bannerFile,
+                    signature,
+                    (p) => setUploadProgress(p),
+                );
+                fd.append("cloudinary_url", result.secure_url);
+                fd.append("cloudinary_public_id", result.public_id);
+            } catch {
+                toast.error("Failed to upload banner image.");
+                setUploadProgress(-1);
+                return;
+            }
+        }
 
         try {
             if (mode === "create") {
@@ -354,6 +375,8 @@ export default function ClientDetail() {
                         : "Failed to update client.",
                 );
             }
+        } finally {
+            setUploadProgress(-1);
         }
     };
 
@@ -432,7 +455,13 @@ export default function ClientDetail() {
     const bannerInputId = "banner-upload";
 
     return (
-        <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
+        <>
+            <LoadingOverlay
+                visible={isSaving && uploadProgress >= 0}
+                progress={uploadProgress}
+                message="Uploading banner..."
+            />
+            <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
             {/* ── Banner / Hero ── */}
             <div className="relative">
                 <div className="absolute inset-0 overflow-hidden rounded-t-xl">
@@ -821,5 +850,6 @@ export default function ClientDetail() {
                 </DialogContent>
             </Dialog>
         </div>
+        </>
     );
 }
