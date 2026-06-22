@@ -477,20 +477,15 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    id: number;
+                "multipart/form-data": {
                     name: string;
-                    description: string | null;
+                    description?: string | null;
                     location: string;
                     /** Format: email */
                     email: string;
                     contact_number: string;
-                    /** @description Allowed mime types: image/jpeg, image/png, image/jpg, image/gif, image/webp */
-                    banner_image_path?: string | null;
-                    banner_image_url: string;
-                    servers_count: number;
-                    created_at: string;
-                    updated_at: string;
+                    /** Format: binary */
+                    banner_image?: string | null;
                 };
             };
         };

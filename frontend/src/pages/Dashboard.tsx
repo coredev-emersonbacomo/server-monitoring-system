@@ -1,17 +1,33 @@
-import { useNavigate, Link } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Activity,
     Server,
     Landmark,
-    Wifi,
-    WifiOff,
     AlertTriangle,
     Gauge,
     RefreshCw,
+    ShieldX,
+    TimerOff,
+    UserX,
+    CheckCircle2,
+    Circle,
+    UserPlus,
+    CircleCheckBig,
+    CircleEllipsis,
+    ScrollText,
+    X,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useDashboardStats } from "@/hooks/useDashboard";
-import { useClients } from "@/hooks/useClients";
+import {
+    useDashboardActions,
+    useCompletedActions,
+    useClaimAction,
+    useUpdateActionStatus,
+    type ActionItem,
+} from "@/hooks/useDashboardActions";
+import { useAuthContext } from "@/hooks/useAuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -66,18 +82,6 @@ function ChartTooltip({ active, payload }: CustomTooltipProps) {
 
 // ─── Skeleton components ──────────────────────────────────────────────────────
 
-function StatCardSkeleton() {
-    return (
-        <div className="rounded-xl border border-border/60 bg-card p-4 flex items-center gap-3 animate-pulse">
-            <div className="w-10 h-10 rounded-lg bg-muted shrink-0" />
-            <div className="flex flex-col gap-1.5">
-                <div className="h-6 w-10 bg-muted rounded" />
-                <div className="h-3 w-16 bg-muted rounded" />
-            </div>
-        </div>
-    );
-}
-
 function PieChartSkeleton() {
     return (
         <div className="flex flex-col items-center animate-pulse">
@@ -86,23 +90,13 @@ function PieChartSkeleton() {
     );
 }
 
-function ClientCardSkeleton() {
+function ActionCardSkeleton() {
     return (
-        <div className="rounded-lg border border-border/40 p-4 animate-pulse">
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                    <div className="w-1 h-8 rounded-full bg-muted" />
-                    <div>
-                        <div className="h-4 w-24 bg-muted rounded mb-1" />
-                        <div className="h-3 w-16 bg-muted rounded" />
-                    </div>
-                </div>
-                <div className="h-4 w-16 bg-muted rounded" />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-                {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-5 w-16 bg-muted rounded" />
-                ))}
+        <div className="flex items-center gap-3 p-4 rounded-lg animate-pulse">
+            <div className="w-10 h-10 rounded-lg bg-muted shrink-0" />
+            <div className="flex-1 space-y-2">
+                <div className="h-4 w-3/4 bg-muted rounded" />
+                <div className="h-3 w-1/2 bg-muted rounded" />
             </div>
         </div>
     );
@@ -127,10 +121,93 @@ function RankingSkeleton() {
     );
 }
 
+// ─── Action icons ─────────────────────────────────────────────────────────────
+
+const ACTION_ICONS: Record<ActionItem["action_type"], typeof ShieldX> = {
+    no_secops: UserX,
+    server_offline: ShieldX,
+    server_warning: TimerOff,
+};
+
+const SEVERITY_BORDER: Record<ActionItem["severity"], string> = {
+    critical: "text-red-400 bg-red-500/10 border-red-500/20",
+    warning: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+    info: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+};
+
+// ─── Completed Modal ──────────────────────────────────────────────────────────
+
+function CompletedModal({
+    open,
+    onClose,
+}: {
+    open: boolean;
+    onClose: () => void;
+}) {
+    const { data: completed, isLoading } = useCompletedActions();
+
+    if (!open) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="bg-card border border-border rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                    <div className="flex items-center gap-2">
+                        <ScrollText className="size-4 text-muted-foreground" />
+                        <h2 className="text-sm font-semibold text-foreground">
+                            Completed Actions
+                        </h2>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-1 rounded-md hover:bg-muted transition-colors"
+                    >
+                        <X className="size-4 text-muted-foreground" />
+                    </button>
+                </div>
+                <div className="flex-1 overflow-auto p-4 space-y-2">
+                    {isLoading ? (
+                        Array.from({ length: 3 }).map((_, i) => (
+                            <ActionCardSkeleton key={i} />
+                        ))
+                    ) : !completed?.length ? (
+                        <p className="text-sm text-muted-foreground text-center py-8">
+                            No completed actions.
+                        </p>
+                    ) : (
+                        completed.map((action) => (
+                            <div
+                                key={action.id}
+                                className="flex items-center gap-3 p-3 rounded-lg bg-muted/30"
+                            >
+                                <CheckCircle2 className="size-4 text-emerald-400 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-foreground/70 line-through truncate">
+                                        {action.message}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                        {action.client_name}
+                                        {action.server_name &&
+                                            ` · ${action.server_name}`}
+                                        {action.assigned_to_name &&
+                                            ` · ${action.assigned_to_name}`}
+                                    </p>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
     const navigate = useNavigate();
+    const { user } = useAuthContext();
+    const [completedOpen, setCompletedOpen] = useState(false);
 
     const {
         data: stats,
@@ -138,7 +215,9 @@ export default function Dashboard() {
         isError: statsError,
         retry,
     } = useDashboardStats();
-    const { data: clients, isLoading: clientsLoading } = useClients();
+    const { data: actions, isLoading: actionsLoading } = useDashboardActions();
+    const claimMutation = useClaimAction();
+    const statusMutation = useUpdateActionStatus();
 
     const pieData = stats
         ? [
@@ -157,13 +236,13 @@ export default function Dashboard() {
                   value: stats.offline_count,
                   color: STATUS_COLORS.offline,
               },
-          ].filter((d) => d.value > 0)
+          ]
         : [];
 
     return (
         <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
             <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
-                <div className="px-4 sm:px-6 lg:px-8">
+                <div>
                     <div className="flex h-16 items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-primary/10 rounded-lg">
@@ -174,7 +253,6 @@ export default function Dashboard() {
                             </h1>
                         </div>
 
-                        {/* Error retry in header */}
                         {statsError && (
                             <Button
                                 variant="outline"
@@ -188,8 +266,7 @@ export default function Dashboard() {
                 </div>
             </header>
 
-            <main className="px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 min-h-0 overflow-auto">
-                {/* ── Error banner ── */}
+            <main className="py-6 w-full flex-1 min-h-0 overflow-auto">
                 {statsError && (
                     <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 p-4 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-2 text-sm text-destructive">
@@ -209,90 +286,35 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* ── Stats Grid ── */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-                    {statsLoading ? (
-                        Array.from({ length: 5 }).map((_, i) => (
-                            <StatCardSkeleton key={i} />
-                        ))
-                    ) : (
-                        <>
-                            <div className="rounded-xl border border-border/60 bg-card p-4 flex items-center gap-3">
-                                <div className="p-2.5 bg-primary/10 rounded-lg">
-                                    <Landmark className="w-5 h-5 text-primary" />
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-semibold">
-                                        {stats?.total_clients ?? 0}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Total Clients
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="rounded-xl border border-border/60 bg-card p-4 flex items-center gap-3">
-                                <div className="p-2.5 bg-primary/10 rounded-lg">
-                                    <Server className="w-5 h-5 text-primary" />
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-semibold">
-                                        {stats?.total_servers ?? 0}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Total Servers
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="rounded-xl border border-border/60 bg-card p-4 flex items-center gap-3">
-                                <div className="p-2.5 bg-emerald-500/10 rounded-lg">
-                                    <Wifi className="w-5 h-5 text-emerald-400" />
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-semibold text-emerald-400">
-                                        {stats?.online_count ?? 0}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Online
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="rounded-xl border border-border/60 bg-card p-4 flex items-center gap-3">
-                                <div className="p-2.5 bg-amber-500/10 rounded-lg">
-                                    <AlertTriangle className="w-5 h-5 text-amber-400" />
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-semibold text-amber-400">
-                                        {stats?.warning_count ?? 0}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Warning
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="rounded-xl border border-border/60 bg-card p-4 flex items-center gap-3">
-                                <div className="p-2.5 bg-red-500/10 rounded-lg">
-                                    <WifiOff className="w-5 h-5 text-red-400" />
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-semibold text-red-400">
-                                        {stats?.offline_count ?? 0}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Offline
-                                    </p>
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </div>
-
-                {/* ── Donut Chart + Client List ── */}
+                {/* ── Donut Chart + Action Board ── */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Pie chart */}
                     <div className="lg:col-span-1 rounded-xl border border-border/60 bg-card p-6">
-                        <h2 className="text-sm font-semibold text-foreground mb-4">
-                            Server Status Overview
-                        </h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-sm font-semibold text-foreground">
+                                Server Overview
+                            </h2>
+                            {!statsLoading && (
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                    <span
+                                        onClick={() => navigate("/clients")}
+                                        className="flex items-center gap-1.5 cursor-pointer hover:text-foreground transition-colors"
+                                    >
+                                        <Landmark className="size-3.5" />
+                                        <span>{stats?.total_clients ?? 0}</span>
+                                        <span className="text-muted-foreground/60">clients</span>
+                                    </span>
+                                    <span
+                                        onClick={() => navigate("/servers")}
+                                        className="flex items-center gap-1.5 cursor-pointer hover:text-foreground transition-colors"
+                                    >
+                                        <Server className="size-3.5" />
+                                        <span>{stats?.total_servers ?? 0}</span>
+                                        <span className="text-muted-foreground/60">servers</span>
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                         {statsLoading ? (
                             <PieChartSkeleton />
                         ) : pieData.length > 0 ? (
@@ -323,7 +345,12 @@ export default function Dashboard() {
                                     {pieData.map((d) => (
                                         <div
                                             key={d.name}
-                                            className="flex items-center gap-1.5 text-xs"
+                                            onClick={() =>
+                                                navigate(
+                                                    `/servers?status=${d.name.toLowerCase()}`,
+                                                )
+                                            }
+                                            className="flex items-center gap-1.5 text-xs cursor-pointer hover:opacity-80 transition-opacity"
                                         >
                                             <span
                                                 className="w-2.5 h-2.5 rounded-full"
@@ -348,48 +375,153 @@ export default function Dashboard() {
                         )}
                     </div>
 
-                    {/* Clients list */}
+                    {/* Action Board */}
                     <div className="lg:col-span-2 rounded-xl border border-border/60 bg-card p-6">
-                        <h2 className="text-sm font-semibold text-foreground mb-4">
-                            Clients
-                        </h2>
-                        <div className="space-y-3">
-                            {clientsLoading ? (
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-sm font-semibold text-foreground">
+                                Action Board
+                            </h2>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    icon={<ScrollText size={14} />}
+                                    label="Completed"
+                                    onClick={() => setCompletedOpen(true)}
+                                />
+                                {actions && actions.length > 0 && (
+                                    <span className="text-xs text-muted-foreground">
+                                        {actions.length} active
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            {actionsLoading ? (
                                 Array.from({ length: 4 }).map((_, i) => (
-                                    <ClientCardSkeleton key={i} />
+                                    <ActionCardSkeleton key={i} />
                                 ))
-                            ) : !clients?.length ? (
+                            ) : !actions?.length ? (
                                 <p className="text-sm text-muted-foreground text-center py-8">
-                                    No clients yet.
+                                    No pending actions.
                                 </p>
                             ) : (
-                                clients.map((client) => (
-                                    <Link
-                                        key={client.id}
-                                        to={`/clients/${client.id}`}
-                                        className="block rounded-lg border border-border/40 p-4 hover:bg-muted/20 transition-colors"
-                                    >
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-1 h-8 rounded-full bg-primary/60" />
-                                                <div>
-                                                    <p className="font-medium text-sm text-foreground">
-                                                        {client.name}
+                                actions.map((action) => {
+                                    const Icon =
+                                        ACTION_ICONS[action.action_type];
+                                    const border =
+                                        SEVERITY_BORDER[action.severity];
+                                    const isMine =
+                                        user &&
+                                        action.assigned_to === user.id;
+
+                                    return (
+                                        <div
+                                            key={action.id}
+                                            className={cn(
+                                                "rounded-lg border p-4 transition-colors",
+                                                isMine
+                                                    ? "border-primary/30 bg-primary/5"
+                                                    : "border-border/60 hover:bg-muted/20",
+                                            )}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div
+                                                    className={cn(
+                                                        "p-1.5 rounded-lg border shrink-0 mt-0.5",
+                                                        border,
+                                                    )}
+                                                >
+                                                    <Icon className="size-4" />
+                                                </div>
+
+                                                <div
+                                                    className="flex-1 min-w-0 cursor-pointer"
+                                                    onClick={() => {
+                                                        if (
+                                                            action.server_id
+                                                        ) {
+                                                            navigate(
+                                                                `/servers/${action.server_id}`,
+                                                            );
+                                                        } else if (
+                                                            action.client_id
+                                                        ) {
+                                                            navigate(
+                                                                `/clients/${action.client_id}`,
+                                                            );
+                                                        }
+                                                    }}
+                                                >
+                                                    <p className="text-sm font-medium text-foreground truncate">
+                                                        {action.message}
                                                     </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {client.location}
+                                                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                                        {action.client_name}
+                                                        {action.server_name &&
+                                                            ` · ${action.server_name}`}
                                                     </p>
+                                                    {action.assigned_to_name && (
+                                                        <div className="flex items-center gap-1 mt-1.5">
+                                                            <Circle className="size-2.5 fill-primary text-primary" />
+                                                            <span className="text-[11px] text-muted-foreground">
+                                                                {action.assigned_to_name}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    {action.status ===
+                                                        "completed" ? null : isMine ? (
+                                                        <>
+                                                            <button
+                                                                title="Unclaim"
+                                                                onClick={() =>
+                                                                    claimMutation.mutate(
+                                                                        action.id,
+                                                                    )
+                                                                }
+                                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                                            >
+                                                                <UserPlus className="size-4" />
+                                                            </button>
+                                                            <button
+                                                                title="Mark completed"
+                                                                onClick={() =>
+                                                                    statusMutation.mutate(
+                                                                        {
+                                                                            actionId:
+                                                                                action.id,
+                                                                            status:
+                                                                                "completed",
+                                                                        },
+                                                                    )
+                                                                }
+                                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-emerald-400 hover:text-emerald-300"
+                                                            >
+                                                                <CircleCheckBig className="size-4" />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <button
+                                                            title="Claim"
+                                                            onClick={() =>
+                                                                claimMutation.mutate(
+                                                                    action.id,
+                                                                )
+                                                            }
+                                                            className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                                        >
+                                                            <CircleEllipsis className="size-4" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
-                                            <div className="text-right text-xs text-muted-foreground">
-                                                <p>
-                                                    {client.servers_count}{" "}
-                                                    servers
-                                                </p>
-                                            </div>
                                         </div>
-                                    </Link>
-                                ))
+                                    );
+                                })
                             )}
                         </div>
                     </div>
@@ -508,6 +640,11 @@ export default function Dashboard() {
                     </div>
                 </div>
             </main>
+
+            <CompletedModal
+                open={completedOpen}
+                onClose={() => setCompletedOpen(false)}
+            />
         </div>
     );
 }

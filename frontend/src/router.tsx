@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
+import { GuestLayout } from "./layouts/GuestLayout";
 import Clients from "./pages/clients/Index";
 import UsersIndex from "./pages/users/Index";
 import UserDetail from "./pages/UserDetail";
@@ -11,11 +12,17 @@ import Logs from "./pages/Logs";
 import ServerDetail from "./pages/ServerDetail";
 import { Profile } from "./pages/Profile";
 import CreateServer from "./pages/servers/Create";
+import ServersIndex from "./pages/servers/Index";
 
 const router = createBrowserRouter([
     {
-        path: "/login",
-        element: <Login />,
+        element: <GuestLayout />,
+        children: [
+            {
+                path: "/login",
+                element: <Login />,
+            },
+        ],
     },
     {
         element: <ProtectedRoute />,
@@ -23,6 +30,10 @@ const router = createBrowserRouter([
             {
                 path: "/",
                 element: <Dashboard />,
+            },
+            {
+                path: "/servers",
+                element: <ServersIndex />,
             },
             {
                 path: "/servers/create",

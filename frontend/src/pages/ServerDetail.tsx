@@ -85,16 +85,32 @@ export default function ServerDetail() {
         <ChartZoomProvider>
             <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
                 <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
-                    <div className="px-4 sm:px-6 py-3 lg:px-8">
-                        <div className="flex items-center justify-end gap-4">
-                            <time className="tabular-nums text-sm text-muted-foreground min-w-20">
+                    <div>
+                        <div className="flex h-16 items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <button
+                                    onClick={() => navigate(-1)}
+                                    className="p-1.5 -ml-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted"
+                                >
+                                    <ArrowLeft size={18} />
+                                </button>
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                                        <Loader2 className="w-5 h-5 text-primary" />
+                                    </div>
+                                    <h1 className="text-lg font-semibold tracking-tight truncate">
+                                        {initial.server_name}
+                                    </h1>
+                                </div>
+                            </div>
+                            <time className="tabular-nums text-sm text-muted-foreground min-w-20 shrink-0">
                                 {time.toLocaleTimeString()}
                             </time>
                         </div>
                     </div>
                 </header>
 
-                <main className="px-4 sm:px-6 lg:px-8 py-3 w-full flex-1 min-h-0 overflow-auto">
+                <main className="py-3 w-full flex-1 min-h-0 overflow-auto">
                     <ServerCard server={{ ...initial, stats: allStats }} />
                 </main>
             </div>

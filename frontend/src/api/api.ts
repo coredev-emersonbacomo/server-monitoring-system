@@ -31,9 +31,6 @@ const client = createClient<paths>({
         if (token) {
             headers.set("X-XSRF-TOKEN", token);
         }
-        if (!(input.body instanceof FormData)) {
-            headers.set("Content-Type", "application/json");
-        }
         return fetch(new Request(input, { headers }));
     },
 });

@@ -380,10 +380,9 @@ export default function UserDetail() {
     }
 
     // ── Derived state ──────────────────────────────────────────────────────────
-    const hasAvatar = !!avatarPreview;
+    const defaultProfile = import.meta.env.VITE_DEFAULT_PROFILE_PICTURE as string;
+    const avatarSrc = avatarPreview || defaultProfile;
     const isSaving = createUser.isPending || updateUser.isPending;
-    const initials =
-        `${form.first_name?.[0] ?? ""}${form.last_name?.[0] ?? ""}`.toUpperCase() || "?";
     const avatarInputId = "avatar-upload";
 
     const roleName = user?.role?.role_name ?? (user?.role_id === 1 ? "Admin" : "SecOps");
@@ -451,18 +450,12 @@ export default function UserDetail() {
                     <div className="flex items-end gap-5">
                         {/* Avatar */}
                         <div className="relative shrink-0">
-                            <div className="w-20 h-20 rounded-full bg-card border-4 border-background shadow-sm flex items-center justify-center overflow-hidden">
-                                {hasAvatar ? (
-                                    <img
-                                        src={avatarPreview!}
-                                        alt="Avatar"
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <span className="text-xl font-semibold text-muted-foreground">
-                                        {initials}
-                                    </span>
-                                )}
+                            <div className="w-20 h-20 rounded-full bg-card border-4 border-background shadow-sm overflow-hidden">
+                                <img
+                                    src={avatarSrc}
+                                    alt="Avatar"
+                                    className="w-full h-full object-cover"
+                                />
                             </div>
                             {showEdit && (
                                 <label

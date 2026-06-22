@@ -8,6 +8,45 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
+    // All servers with status (for server list page)
+    Route::get('/servers', function () {
+        $onlineThreshold  = now()->subMinutes(5);
+        $warningThreshold = now()->subMinutes(15);
+
+        $servers = DB::table('servers')
+            ->leftJoinSub(
+                DB::table('server_updates')
+                    ->select('server_id', DB::raw('MAX(created_at) as last_seen'))
+                    ->groupBy('server_id'),
+                'lu',
+                'servers.id', '=', 'lu.server_id'
+            )
+            ->join('clients', 'servers.client_id', '=', 'clients.id')
+            ->select(
+                'servers.id',
+                'servers.server_name',
+                'servers.device_name',
+                'servers.internal_ip',
+                'servers.external_ip',
+                'servers.cpu_cores',
+                'servers.ram',
+                'servers.operating_system',
+                'servers.client_id',
+                'clients.name as client_name',
+                'lu.last_seen',
+            )
+            ->selectRaw("
+                CASE
+                    WHEN lu.last_seen >= ? THEN 'online'
+                    WHEN lu.last_seen < ? AND lu.last_seen >= ? THEN 'warning'
+                    ELSE 'offline'
+                END as status
+            ", [$onlineThreshold, $onlineThreshold, $warningThreshold])
+            ->get();
+
+        return response()->json($servers);
+    });
+
     // Prefix client ex. {clients/1/servers/1}
     Route::prefix('/clients/{client_id}')->whereNumber('client_id')->group(function () {
         Route::get('/servers', [ServerController::class, 'index']);
