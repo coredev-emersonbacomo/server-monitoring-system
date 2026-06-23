@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Data\FullUserData;
+use App\Data\AuthUserData;
 use App\Data\LoginData;
-use App\Data\UserData;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -16,9 +15,9 @@ class AuthController extends Controller
     /**
      * Authenticate user and initialize session
      *
-     * @return \App\Data\FullUserData
+     * @return \App\Data\AuthUserData
      */
-    public function login(LoginData $data, Request $request): FullUserData
+    public function login(LoginData $data, Request $request): AuthUserData
     {
         $this->ensureIsNotRateLimited($request);
 
@@ -34,7 +33,7 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        return FullUserData::from(Auth::user()->load('role'));
+        return AuthUserData::from(Auth::user()->load('role'));
     }
 
     /**
@@ -53,11 +52,11 @@ class AuthController extends Controller
     /**
      * Get the current authenticated user
      *
-     * @return \App\Data\FullUserData
+     * @return \App\Data\AuthUserData
      */
-    public function me(Request $request): FullUserData
+    public function me(Request $request): AuthUserData
     {
-        return FullUserData::from($request->user()->load('role'));
+        return AuthUserData::from($request->user()->load('role'));
     }
 
     protected function ensureIsNotRateLimited(Request $request): void

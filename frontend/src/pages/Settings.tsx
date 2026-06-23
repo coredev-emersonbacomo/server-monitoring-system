@@ -42,8 +42,6 @@ function Settings() {
         }
     }, [user]);
 
-    const defaultProfile = import.meta.env.VITE_DEFAULT_PROFILE_PICTURE as string;
-
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0] ?? null;
         setFileError(null);
@@ -173,7 +171,7 @@ function Settings() {
                                 <div className="relative group">
                                     <div className="w-24 h-24 rounded-full bg-card border-4 border-border shadow-sm overflow-hidden">
                                         <img
-                                            src={avatarPreview || defaultProfile}
+                                            src={avatarPreview || ''}
                                             alt="Avatar"
                                             className="w-full h-full object-cover"
                                         />
