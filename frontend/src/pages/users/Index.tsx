@@ -64,7 +64,7 @@ const Users = () => {
             const matchFilter =
                 filter === "all" ||
                 u.status === filter ||
-                u.role?.role_name === filter;
+                u.role === filter;
             return matchSearch && matchFilter;
         });
     }, [search, filter, users]);
@@ -87,8 +87,8 @@ const Users = () => {
 
     const activeCount   = users.filter((u) => u.status === "active").length;
     const inactiveCount = users.filter((u) => u.status === "inactive").length;
-    const adminCount    = users.filter((u) => u.role?.role_name === "Admin").length;
-    const secopsCount   = users.filter((u) => u.role?.role_name === "SecOps").length;
+    const adminCount    = users.filter((u) => u.role === "Admin").length;
+    const secopsCount   = users.filter((u) => u.role === "SecOps").length;
 
     const filterOptions = [
         { label: "All",      value: "all" as FilterTab, count: users.length },
@@ -224,9 +224,8 @@ const Users = () => {
                             id={u.id}
                             name={`${u.first_name} ${u.last_name}`}
                             email={u.email}
-                            role={u.role?.role_name === "Admin" ? "Admin" : "SecOps"}
-                            imageUrl={u.avatar}
-                            status={u.status}
+                            role={u.role}
+                            imageUrl={u.profile_picture_url}
                             onDelete={handleDeleteRequest}
                         />
                     ))}

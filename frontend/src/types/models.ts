@@ -4,17 +4,23 @@
 import type { components, operations } from "@/api/schema";
 
 export type ActionItemData = components["schemas"]["ActionItemData"];
+export type AuthUserData = components["schemas"]["AuthUserData"];
 export type ClientData = components["schemas"]["ClientData"];
 export type DashboardStatsData = components["schemas"]["DashboardStatsData"];
-export type FullUserData = components["schemas"]["FullUserData"];
 export type Server = components["schemas"]["Server"];
 export type ServerData = components["schemas"]["ServerData"];
+export type UploadSignatureData = components["schemas"]["UploadSignatureData"];
+export type UploadSignatureRequest = components["schemas"]["UploadSignatureRequest"];
+export type UserData = components["schemas"]["UserData"];
+export type UserRole = components["schemas"]["UserRole"];
 
 // --- Inlined Operation Payloads ---
-export type AuthLoginPayload = operations["auth.login"]["requestBody"]["content"]["application/json"];
-export type ClientStorePayload = operations["client.store"]["requestBody"]["content"]["multipart/form-data"];
-export type ClientUpdatePayload = operations["client.update"]["requestBody"]["content"]["multipart/form-data"];
-export type ServerStorePayload = operations["server.store"]["requestBody"]["content"]["application/json"];
-export type ServerUpdatePayload = operations["server.update"]["requestBody"]["content"]["application/json"];
-export type UsersStorePayload = operations["users.store"]["requestBody"]["content"]["application/json"];
-export type UsersUpdatePayload = operations["users.update"]["requestBody"]["content"]["application/json"];
+export type AuthLoginPayload = NonNullable<operations["auth.login"]["requestBody"]>["content"]["application/json"];
+export type ClientStorePayload = NonNullable<operations["client.store"]["requestBody"]>["content"]["multipart/form-data"];
+export type ClientUpdatePayload = NonNullable<operations["client.update"]["requestBody"]>["content"]["application/json"];
+export type ServerStorePayload = NonNullable<operations["server.store"]["requestBody"]>["content"]["application/json"];
+export type ServerUpdatePayload = NonNullable<operations["server.update"]["requestBody"]>["content"]["application/json"];
+export type UploadsProfilePictureSignaturePayload = NonNullable<operations["uploads.profile-picture.signature"]["requestBody"]>["content"]["application/json"];
+export type UploadsClientBannerSignaturePayload = NonNullable<operations["uploads.client-banner.signature"]["requestBody"]>["content"]["application/json"];
+export type UsersStorePayload = NonNullable<operations["users.store"]["requestBody"]>["content"]["application/json"];
+export type UsersUpdatePayload = NonNullable<operations["users.update"]["requestBody"]>["content"]["application/json"];

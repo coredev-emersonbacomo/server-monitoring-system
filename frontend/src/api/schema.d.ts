@@ -347,6 +347,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/uploads/profile-picture/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["uploads.profile-picture.signature"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/uploads/client-banner/signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["uploads.client-banner.signature"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users": {
         parameters: {
             query?: never;
@@ -397,18 +429,30 @@ export interface components {
             assigned_to_name?: string | null;
             status: string;
         };
+        /** AuthUserData */
+        AuthUserData: {
+            id: number;
+            first_name: string;
+            last_name: string;
+            email: string;
+            username: string;
+            contact_number: string;
+            last_login?: string | null;
+            profile_picture_url: string;
+            status: string;
+            role: "Admin" | "User" | "SecOps";
+        };
         /** ClientData */
         ClientData: {
             id: number;
             name: string;
-            description: string | null;
+            description: string;
             location: string;
-            /** Format: email */
             email: string;
             contact_number: string;
-            /** @description Allowed mime types: image/jpeg, image/png, image/jpg, image/gif, image/webp */
             banner_image_path?: string | null;
             banner_image_url: string;
+            banner_image_public_id?: string | null;
             servers_count: number;
             created_at: string;
             updated_at: string;
@@ -439,27 +483,6 @@ export interface components {
                 value: number;
             }[];
         };
-        /** FullUserData */
-        FullUserData: {
-            id: number;
-            first_name: string;
-            last_name: string;
-            email: string;
-            role_id: number;
-            username: string;
-            contact_number: string;
-            last_login?: string | null;
-            profile_picture_url?: string | null;
-            avatar?: string | null;
-            status: string;
-            role?: {
-                role_name: string;
-            } | null;
-            /** Format: date-time */
-            created_at?: string | null;
-            /** Format: date-time */
-            updated_at?: string | null;
-        };
         /** Server */
         Server: {
             id: number;
@@ -476,25 +499,60 @@ export interface components {
             created_at: string | null;
             /** Format: date-time */
             updated_at: string | null;
+            ssh_username: string | null;
         };
         /** ServerData */
         ServerData: {
-            id: number;
-            client_id: number;
             server_name: string;
-            device_name: string;
             /** Format: ipv4 */
             internal_ip: string;
-            /** Format: ipv4 */
-            external_ip: string;
+            device_name?: string | null;
+            external_ip?: string | null;
+            ssh_username?: string | null;
+            ssh_password?: string | null;
             cpu_cores?: number | null;
             ram?: number | null;
             operating_system?: string | null;
-            client_name: string;
-            stats: {
-                [key: string]: unknown;
-            }[];
+            id?: number | null;
+            client_id?: number | null;
+            client_name?: string | null;
+            stats?: string[];
         };
+        /** UploadSignatureData */
+        UploadSignatureData: {
+            cloud_name: string;
+            api_key: string;
+            timestamp: number;
+            folder: string;
+            signature: string;
+        };
+        /** UploadSignatureRequest */
+        UploadSignatureRequest: {
+            /** @enum {string} */
+            folder?: "profile_pictures" | "client_banner_images";
+        };
+        /** UserData */
+        UserData: {
+            id: number;
+            first_name: string;
+            last_name: string;
+            email: string;
+            username: string;
+            contact_number: string;
+            last_login?: string | null;
+            profile_picture_url: string;
+            status: string;
+            role: "Admin" | "User" | "SecOps";
+            /** Format: date-time */
+            created_at?: string | null;
+            /** Format: date-time */
+            updated_at?: string | null;
+        };
+        /**
+         * UserRole
+         * @enum {string}
+         */
+        UserRole: "Admin" | "User" | "SecOps";
     };
     responses: {
         /** @description Unauthenticated */
@@ -554,13 +612,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description `FullUserData` */
+            /** @description `AuthUserData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FullUserData"];
+                    "application/json": components["schemas"]["AuthUserData"];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -583,13 +641,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description `FullUserData` */
+            /** @description `AuthUserData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FullUserData"];
+                    "application/json": components["schemas"]["AuthUserData"];
                 };
             };
         };
@@ -649,6 +707,8 @@ export interface operations {
                     contact_number: string;
                     description?: string | null;
                     banner_image?: Record<string, never> | null;
+                    cloudinary_url?: string | null;
+                    cloudinary_public_id?: string | null;
                 };
             };
         };
@@ -699,15 +759,14 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": {
+                "application/json": {
                     name: string;
-                    description?: string | null;
                     location: string;
-                    /** Format: email */
                     email: string;
                     contact_number: string;
-                    /** Format: binary */
-                    banner_image?: string | null;
+                    description?: string;
+                    cloudinary_url?: string | null;
+                    cloudinary_public_id?: string | null;
                 };
             };
         };
@@ -722,7 +781,6 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
         };
     };
     "client.destroy": {
@@ -823,7 +881,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": string;
+                    "application/json": components["schemas"]["ActionItemData"][];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -843,7 +901,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": string;
+                    "application/json": components["schemas"]["ActionItemData"][];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -911,7 +969,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Server"][];
+                    "application/json": {
+                        id: number;
+                        client_id: number;
+                        server_name: string;
+                        device_name: string;
+                        internal_ip: string;
+                        external_ip: string;
+                        ssh_username: string | null;
+                        cpu_cores: number | null;
+                        ram: number | null;
+                        operating_system: string | null;
+                        created_at: string | "";
+                        updated_at: string | "";
+                    }[];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -929,21 +1000,20 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    id: number;
-                    client_id: number;
                     server_name: string;
-                    device_name: string;
                     /** Format: ipv4 */
                     internal_ip: string;
-                    /** Format: ipv4 */
-                    external_ip: string;
+                    device_name?: string | null;
+                    external_ip?: string | null;
+                    ssh_username?: string | null;
+                    ssh_password?: string | null;
                     cpu_cores?: number | null;
                     ram?: number | null;
                     operating_system?: string | null;
-                    client_name: string;
-                    stats: {
-                        [key: string]: unknown;
-                    }[];
+                    id?: number | null;
+                    client_id?: number | null;
+                    client_name?: string | null;
+                    stats?: string[];
                 };
             };
         };
@@ -1012,21 +1082,20 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    id: number;
-                    client_id: number;
                     server_name: string;
-                    device_name: string;
                     /** Format: ipv4 */
                     internal_ip: string;
-                    /** Format: ipv4 */
-                    external_ip: string;
+                    device_name?: string | null;
+                    external_ip?: string | null;
+                    ssh_username?: string | null;
+                    ssh_password?: string | null;
                     cpu_cores?: number | null;
                     ram?: number | null;
                     operating_system?: string | null;
-                    client_name: string;
-                    stats: {
-                        [key: string]: unknown;
-                    }[];
+                    id?: number | null;
+                    client_id?: number | null;
+                    client_name?: string | null;
+                    stats?: string[];
                 };
             };
         };
@@ -1071,6 +1140,58 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
+    "uploads.profile-picture.signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UploadSignatureRequest"];
+            };
+        };
+        responses: {
+            /** @description `UploadSignatureData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadSignatureData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "uploads.client-banner.signature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UploadSignatureRequest"];
+            };
+        };
+        responses: {
+            /** @description `UploadSignatureData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadSignatureData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "users.index": {
         parameters: {
             query?: never;
@@ -1085,7 +1206,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FullUserData"][];
+                    "application/json": components["schemas"]["UserData"][];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -1116,17 +1237,18 @@ export interface operations {
                     /** @description Must be confirmed by a matching `_confirmation` field. */
                     password: string;
                     password_confirmation: string;
+                    cloudinary_url?: string | null;
+                    cloudinary_public_id?: string | null;
                 };
             };
         };
         responses: {
-            /** @description `FullUserData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FullUserData"];
+                    "application/json": string;
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -1144,13 +1266,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description `FullUserData` */
+            /** @description `UserData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FullUserData"];
+                    "application/json": components["schemas"]["UserData"];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -1180,17 +1302,19 @@ export interface operations {
                     /** @description Must be confirmed by a matching `_confirmation` field. */
                     password?: string | null;
                     password_confirmation?: string | null;
+                    cloudinary_url?: string | null;
+                    cloudinary_public_id?: string | null;
                 };
             };
         };
         responses: {
-            /** @description `FullUserData` */
+            /** @description `UserData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FullUserData"];
+                    "application/json": components["schemas"]["UserData"];
                 };
             };
             401: components["responses"]["AuthenticationException"];

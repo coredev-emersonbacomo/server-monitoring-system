@@ -11,9 +11,8 @@ use Spatie\LaravelData\Attributes\Validation\Regex;
 use Spatie\LaravelData\Attributes\Validation\Required;
 use Spatie\LaravelData\Attributes\Validation\Numeric;
 use Spatie\LaravelData\Attributes\Validation\StringType;
-use Spatie\LaravelData\Attributes\Validation\Url;
 
-class ServerData extends Data
+class ServerSshData extends Data
 {
     public function __construct(
 
