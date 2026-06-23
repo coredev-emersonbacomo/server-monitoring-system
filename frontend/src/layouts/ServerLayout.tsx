@@ -17,7 +17,10 @@ export default function ServerLayout() {
     const { data: servers, isLoading } = useServers();
     const [search, setSearch] = useState("");
 
+    const activeServer = servers?.find((s) => s.id === activeId);
+
     const filtered = servers?.filter((s) =>
+        s.client_id === activeServer?.client_id &&
         s.server_name.toLowerCase().includes(search.toLowerCase())
     );
 
