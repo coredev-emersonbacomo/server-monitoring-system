@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Server, Search, Wifi, WifiOff, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Server, Search, Wifi, WifiOff, AlertTriangle, ArrowLeft, Building2 } from "lucide-react";
 import { useServers, type ServerListItem } from "@/hooks/useServers";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,8 +15,15 @@ export default function ServersIndex() {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const statusFilter = searchParams.get("status");
+    const clientIdParam = searchParams.get("client_id");
+    const clientId = clientIdParam ? Number(clientIdParam) : undefined;
 
-    const { data: servers, isLoading } = useServers();
+    const { data: servers, isLoading } = useServers(clientId);
+
+    const clientName = useMemo(() => {
+        if (!servers || servers.length === 0) return null;
+        return servers[0].client_name;
+    }, [servers]);
 
     const filtered = useMemo(() => {
         if (!servers) return [];
@@ -42,8 +49,26 @@ export default function ServersIndex() {
                             <div className="p-2 bg-primary/10 rounded-lg">
                                 <Server className="w-5 h-5 text-primary" />
                             </div>
-                            <h1 className="text-lg font-semibold tracking-tight">Servers</h1>
+                            <div>
+                                <h1 className="text-lg font-semibold tracking-tight">
+                                    {clientId && clientName ? `${clientName} Servers` : "Servers"}
+                                </h1>
+                                {clientId && (
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Showing servers for this client only
+                                    </p>
+                                )}
+                            </div>
                         </div>
+                        {clientId && (
+                            <button
+                                onClick={() => navigate(`/clients/${clientId}`)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                            >
+                                <Building2 className="w-3.5 h-3.5" />
+                                Back to Client
+                            </button>
+                        )}
                     </div>
                 </div>
             </header>
@@ -51,7 +76,7 @@ export default function ServersIndex() {
             <main className="py-6 w-full flex-1 min-h-0 overflow-auto">
                 <div className="flex items-center gap-2 mb-6 flex-wrap">
                     <button
-                        onClick={() => setSearchParams({})}
+                        onClick={() => setSearchParams(clientId ? { client_id: String(clientId) } : {})}
                         className={cn(
                             "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
                             !statusFilter
@@ -62,7 +87,7 @@ export default function ServersIndex() {
                         All ({servers?.length ?? 0})
                     </button>
                     <button
-                        onClick={() => setSearchParams({ status: "online" })}
+                        onClick={() => setSearchParams({ status: "online", ...(clientId ? { client_id: String(clientId) } : {}) })}
                         className={cn(
                             "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5",
                             statusFilter === "online"
@@ -74,7 +99,7 @@ export default function ServersIndex() {
                         Online ({counts.online})
                     </button>
                     <button
-                        onClick={() => setSearchParams({ status: "warning" })}
+                        onClick={() => setSearchParams({ status: "warning", ...(clientId ? { client_id: String(clientId) } : {}) })}
                         className={cn(
                             "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5",
                             statusFilter === "warning"
@@ -86,7 +111,7 @@ export default function ServersIndex() {
                         Warning ({counts.warning})
                     </button>
                     <button
-                        onClick={() => setSearchParams({ status: "offline" })}
+                        onClick={() => setSearchParams({ status: "offline", ...(clientId ? { client_id: String(clientId) } : {}) })}
                         className={cn(
                             "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5",
                             statusFilter === "offline"
@@ -108,7 +133,11 @@ export default function ServersIndex() {
                 ) : !filtered.length ? (
                     <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                         <Search className="size-8 mb-2" />
-                        <p className="text-sm">No {statusFilter} servers found.</p>
+                        <p className="text-sm">
+                            {clientId
+                                ? `No ${statusFilter ? statusFilter + " " : ""}servers found for this client.`
+                                : `No ${statusFilter ? statusFilter + " " : ""}servers found.`}
+                        </p>
                     </div>
                 ) : (
                     <div className="space-y-2">
@@ -118,7 +147,7 @@ export default function ServersIndex() {
                             return (
                                 <div
                                     key={server.id}
-                                    onClick={() => navigate(`/servers/${server.id}`)}
+                                    onClick={() => navigate(`/servers/${server.id}?client=all`)}
                                     className="flex items-center gap-4 p-4 rounded-lg border border-border/60 bg-card hover:bg-muted/20 transition-colors cursor-pointer"
                                 >
                                     <div className={cn("p-2 rounded-lg", meta.bg)}>

@@ -27,7 +27,7 @@ class ClientController extends Controller
                 'location' => $client->location ?? '',
                 'email' => $client->email,
                 'contact_number' => (string) ($client->contact_number ?? ''),
-                'banner_image_url' => $this->bannerUrlOrDefault($client->banner_image_url),
+                'banner_image_url' => $client->banner_image_url,
                 'banner_image_public_id' => $client->banner_image_public_id,
                 'servers_count' => $client->servers_count,
                 'created_at' => $client->created_at?->toIso8601String() ?? '',
@@ -58,7 +58,7 @@ class ClientController extends Controller
                 'location' => $client->location,
                 'email' => $client->email,
                 'contact_number' => (string) $client->contact_number,
-                'banner_image_url' => $this->bannerUrlOrDefault($client->banner_image_url),
+                'banner_image_url' => $client->banner_image_url,
                 'banner_image_public_id' => $client->banner_image_public_id,
                 'servers_count' => $client->servers_count,
                 'created_at' => $client->created_at?->toIso8601String() ?? '',
@@ -80,7 +80,7 @@ class ClientController extends Controller
                 'location' => $client->location ?? '',
                 'email' => $client->email,
                 'contact_number' => (string) ($client->contact_number ?? ''),
-                'banner_image_url' => $this->bannerUrlOrDefault($client->banner_image_url),
+                'banner_image_url' => $client->banner_image_url,
                 'banner_image_public_id' => $client->banner_image_public_id,
                 'servers_count' => $client->servers_count,
                 'created_at' => $client->created_at?->toIso8601String() ?? '',
@@ -124,18 +124,13 @@ class ClientController extends Controller
                 'location' => $client->location,
                 'email' => $client->email,
                 'contact_number' => (string) $client->contact_number,
-                'banner_image_url' => $this->bannerUrlOrDefault($client->banner_image_url),
+                'banner_image_url' => $client->banner_image_url,
                 'banner_image_public_id' => $client->banner_image_public_id,
                 'servers_count' => $client->servers_count,
                 'created_at' => $client->created_at?->toIso8601String() ?? '',
                 'updated_at' => $client->updated_at?->toIso8601String() ?? '',
             ]),
         );
-    }
-
-    protected function bannerUrlOrDefault(?string $url): string
-    {
-        return $url ?: config('app.default_client_banner_img_unsplash');
     }
 
     public function servers(int $id): JsonResponse
@@ -156,10 +151,6 @@ class ClientController extends Controller
         ]);
 
         return response()->json($servers);
-    }
-
-    public function initializeServer(int $id)
-    {
     }
 
     public function destroy(int $id): JsonResponse

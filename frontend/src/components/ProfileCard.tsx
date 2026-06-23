@@ -86,7 +86,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
             {/* ── Avatar ── */}
             <div className="mt-4 mb-4">
                 <img
-                    src={imageUrl || ''}
+                    src={imageUrl || import.meta.env.VITE_DEFAULT_PROFILE_PICTURE || ''}
                     alt={name}
                     className="w-24 h-24 rounded-full object-cover border border-border shadow-sm"
                 />

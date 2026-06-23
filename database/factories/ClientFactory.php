@@ -17,7 +17,6 @@ class ClientFactory extends Factory
             'email' => fake()->unique()->companyEmail(),
             'contact_number' => fake()->numerify('09##########'),
             'location' => fake()->address(),
-            'banner_image_url' => '',
         ];
     }
 }

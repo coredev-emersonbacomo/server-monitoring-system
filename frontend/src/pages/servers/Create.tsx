@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
+import jwtClient from "@/api/jwtClient";
 
 interface LogLine {
     text: string;
@@ -189,40 +190,36 @@ export default function CreateServer() {
         const serverName = `server-${ip.trim().replace(/\./g, "-")}`;
 
         try {
-            const res = await fetch(`/api/clients/${clientId}/servers`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Accept: "application/json",
-                },
-                credentials: "include",
-                body: JSON.stringify({
+            const response = await jwtClient.post(
+                `/clients/${clientId}/servers`,
+                {
                     server_name: serverName,
                     internal_ip: ip.trim(),
                     ssh_username: username.trim(),
                     ssh_password: password,
-                }),
-            });
+                },
+            );
 
-            if (!res.ok) {
-                const data = await res.json();
-                if (data?.errors) {
-                    const mapped: Record<string, string> = {};
-                    for (const [k, v] of Object.entries(data.errors)) {
-                        mapped[k] = Array.isArray(v) ? v[0] : String(v);
-                    }
-                    setErrors(mapped);
-                } else {
-                    toast.error(data?.error ?? "Failed to create server.");
-                }
-                setPhase("error");
-                return;
-            }
-
-            const server = await res.json();
+            const server = response.data as { id: number };
             setCreatedId(server.id);
-        } catch {
-            toast.error("Failed to create server.");
+        } catch (err: unknown) {
+            const axiosErr = err as {
+                response?: { data?: Record<string, unknown> };
+            } | undefined;
+            const errData = axiosErr?.response?.data;
+            if (errData?.errors) {
+                const mapped: Record<string, string> = {};
+                for (const [k, v] of Object.entries(
+                    errData.errors as Record<string, string[]>,
+                )) {
+                    mapped[k] = Array.isArray(v) ? v[0] : String(v);
+                }
+                setErrors(mapped);
+            } else {
+                toast.error(
+                    (errData?.message as string) ?? "Failed to create server.",
+                );
+            }
             setPhase("error");
         }
     };
