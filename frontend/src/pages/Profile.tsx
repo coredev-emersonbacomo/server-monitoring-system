@@ -35,14 +35,15 @@ export const Profile: React.FC = () => {
             </div>
         );
     }
-
     const fullName = `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim();
     const email = user.email ?? "";
     const username = user.username ?? email.split("@")[0];
-    const contact_number = user.contact_number ? user.contact_number.replace(/\D/g, "").replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3") : "—";
-    const roleName = (user.role as any)?.role_name ?? "—";
-    const defaultProfile = import.meta.env
-        .VITE_DEFAULT_PROFILE_PICTURE as string;
+    const contact_number = user.contact_number
+        ? user.contact_number
+              .replace(/\D/g, "")
+              .replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")
+        : "—";
+    const roleName = user.role ?? "—";
 
     return (
         <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
@@ -79,7 +80,7 @@ export const Profile: React.FC = () => {
                             {/* Avatar */}
                             <div className="w-24 h-24 rounded-full bg-white border-4 border-white shadow-sm overflow-hidden flex-shrink-0">
                                 <img
-                                    src={defaultProfile}
+                                    src={user.profile_picture_url}
                                     alt="Avatar"
                                     className="w-full h-full object-cover"
                                 />

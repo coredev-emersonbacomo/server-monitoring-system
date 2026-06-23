@@ -135,4 +135,16 @@ return [
 
     'default_client_banner_img_unsplash' => env('DEFAULT_CLIENT_BANNER_IMG_UNSPLASH', 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?fm=jpg&q=60&w=3000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8Y29ycG9yYXRlJTIwYnVpbGRpbmd8ZW58MHx8MHx8fDA%3D'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Default Profile Picture
+    |--------------------------------------------------------------------------
+    |
+    | This URL is used as the default profile picture for users when no
+    | custom profile picture has been uploaded.
+    |
+    */
+
+    'default_profile_picture' => env('DEFAULT_PROFILE_PICTURE', ''),
+
 ];

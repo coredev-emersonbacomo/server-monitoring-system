@@ -10,6 +10,7 @@ import {
     User as UserIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { UserRoles } from "@/types/user-role";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,7 +92,9 @@ function Field({
                 )}
             </Label>
             {children}
-            {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+            {hint && (
+                <p className="text-[11px] text-muted-foreground">{hint}</p>
+            )}
             {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
     );
@@ -153,7 +156,6 @@ export default function UserDetail() {
         username: "",
         contact_number: "",
         role_id: 2,
-        status: "active" as "active" | "inactive",
         password: "",
         password_confirmation: "",
     });
@@ -170,7 +172,6 @@ export default function UserDetail() {
                 username: "",
                 contact_number: "",
                 role_id: 2,
-                status: "active",
                 password: "",
                 password_confirmation: "",
             });
@@ -189,12 +190,11 @@ export default function UserDetail() {
                 email: user.email,
                 username: user.username,
                 contact_number: user.contact_number,
-                role_id: user.role_id,
-                status: user.status ?? "active",
+                role_id: UserRoles.Values[user.role],
                 password: "",
                 password_confirmation: "",
             });
-            setAvatarPreview(user.avatar ?? null);
+            setAvatarPreview(user.profile_picture_url ?? null);
         }
     }, [user]);
 
@@ -218,8 +218,8 @@ export default function UserDetail() {
 
     const set =
         (key: keyof typeof form) =>
-            (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-                setForm((f) => ({ ...f, [key]: e.target.value }));
+        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+            setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const isCreate = mode === "create";
@@ -236,20 +236,26 @@ export default function UserDetail() {
                 .min(1, "Required")
                 .refine(
                     (val) => /^09\d{9}$/.test(val.replace(/\D/g, "")),
-                    "Invalid contact number"
+                    "Invalid contact number",
                 ),
             password: z.string().superRefine((val, ctx) => {
                 if (isCreate && !val)
-                    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Required" });
+                    ctx.addIssue({
+                        code: "custom",
+                        message: "Required",
+                    });
                 else if (val && val.length < 8)
-                    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Minimum 8 characters" });
+                    ctx.addIssue({
+                        code: "custom",
+                        message: "Minimum 8 characters",
+                    });
             }),
             password_confirmation: z.string(),
         })
         .superRefine((data, ctx) => {
             if (data.password && data.password !== data.password_confirmation) {
                 ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                    code: "custom",
                     path: ["password_confirmation"],
                     message: "Passwords do not match",
                 });
@@ -277,17 +283,28 @@ export default function UserDetail() {
         if (!validate()) return;
 
         try {
-            const payload: Record<string, unknown> = {
-                first_name: form.first_name,
-                last_name: form.last_name,
-                email: form.email,
-                username: form.username,
-                role_id: Number(form.role_id),
-            };
+            let avatarResult: { secure_url: string; public_id: string } | null =
+                null;
 
-       
+            if (avatarFile) {
+                setUploadProgress(0);
+                const signature = await getProfilePictureUploadSignature();
+                avatarResult = await uploadToCloudinary(
+                    avatarFile,
+                    signature,
+                    (p) => setUploadProgress(p),
+                );
+            }
+
+            const cloudinaryFields = avatarResult
+                ? {
+                      cloudinary_url: avatarResult.secure_url,
+                      cloudinary_public_id: avatarResult.public_id,
+                  }
+                : {};
+
             if (mode === "create") {
-                await createUser.mutateAsync({
+                const createPayload = {
                     first_name: form.first_name,
                     last_name: form.last_name,
                     email: form.email,
@@ -296,46 +313,35 @@ export default function UserDetail() {
                     role_id: Number(form.role_id),
                     password: form.password,
                     password_confirmation: form.password_confirmation,
-                });
+                    ...cloudinaryFields,
+                };
+                await createUser.mutateAsync(createPayload);
                 toast.success("User created successfully.");
                 navigate("/users");
             } else {
-                const payload: Record<string, unknown> = {
+                const updatePayload = {
                     first_name: form.first_name,
                     last_name: form.last_name,
                     email: form.email,
                     username: form.username,
                     contact_number: form.contact_number,
                     role_id: Number(form.role_id),
-                    status: form.status,
+                    ...(form.password
+                        ? {
+                              password: form.password,
+                              password_confirmation: form.password_confirmation,
+                          }
+                        : {}),
+                    ...cloudinaryFields,
                 };
-                if (form.password) {
-                    payload.password = form.password;
-                    payload.password_confirmation = form.password_confirmation;
-                }
-            }
-
-            if (avatarFile) {
-                setUploadProgress(0);
-                const signature = await getProfilePictureUploadSignature();
-                const result = await uploadToCloudinary(
-                    avatarFile,
-                    signature,
-                    (p) => setUploadProgress(p),
-                );
-                payload.cloudinary_url = result.secure_url;
-                payload.cloudinary_public_id = result.public_id;
-            }
-
-            if (mode === "create") {
-                await createUser.mutateAsync(payload as any);
-                toast.success("User created successfully.");
-                navigate("/users");
-            } else {
-                await updateUser.mutateAsync(payload as any);
+                await updateUser.mutateAsync(updatePayload);
                 toast.success("User updated successfully.");
                 setMode("view");
-                setForm((f) => ({ ...f, password: "", password_confirmation: "" }));
+                setForm((f) => ({
+                    ...f,
+                    password: "",
+                    password_confirmation: "",
+                }));
             }
         } catch (err: unknown) {
             const data = err as Record<string, Record<string, string[]>>;
@@ -347,7 +353,9 @@ export default function UserDetail() {
                 setErrors(mapped);
             } else {
                 toast.error(
-                    mode === "create" ? "Failed to create user." : "Failed to update user.",
+                    mode === "create"
+                        ? "Failed to create user."
+                        : "Failed to update user.",
                 );
             }
         } finally {
@@ -373,7 +381,7 @@ export default function UserDetail() {
             reader.onload = () => setAvatarPreview(reader.result as string);
             reader.readAsDataURL(file);
         } else {
-            setAvatarPreview(user?.avatar ?? null);
+            setAvatarPreview(user?.profile_picture_url ?? null);
         }
     };
 
@@ -387,12 +395,11 @@ export default function UserDetail() {
                 email: user.email,
                 username: user.username,
                 contact_number: user.contact_number,
-                role_id: user.role_id,
-                status: user.status ?? "active",
+                role_id: UserRoles.Values[user.role],
                 password: "",
                 password_confirmation: "",
             });
-            setAvatarPreview(user.avatar ?? null);
+            setAvatarPreview(user.profile_picture_url ?? null);
             setAvatarFile(null);
         }
     };
@@ -428,12 +435,11 @@ export default function UserDetail() {
     }
 
     // ── Derived state ──────────────────────────────────────────────────────────
-    const defaultProfile = import.meta.env.VITE_DEFAULT_PROFILE_PICTURE as string;
-    const avatarSrc = avatarPreview || defaultProfile;
+    const avatarSrc = avatarPreview || "";
     const avatarInputId = "avatar-upload";
     const isSaving = createUser.isPending || updateUser.isPending;
 
-    const roleName = user?.role?.role_name ?? (user?.role_id === 1 ? "Admin" : "SecOps");
+    const roleName = user?.role ?? "—";
 
     return (
         <>
@@ -443,432 +449,534 @@ export default function UserDetail() {
                 message="Uploading avatar..."
             />
             <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
-            {/* ── Banner / Hero ── */}
-            <div className="relative">
-                <div className="absolute inset-0 overflow-hidden rounded-t-xl">
-                    <div
-                        className="w-full h-full"
-                        style={{
-                            background:
-                                "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                        }}
-                    />
-                    <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
-                    <div className="absolute inset-0 bg-linear-to-r from-background/40 to-transparent" />
-                </div>
-
-                <div className="relative z-10 px-6 sm:px-8 lg:px-10 pt-6 pb-20">
-                    {/* ── Top bar: actions ── */}
-                    <div className="flex items-center justify-end mb-6">
-                        <div className="flex items-center gap-2">
-                            {mode === "edit" && (
-                                <Button
-                                    variant="danger"
-                                    size="sm"
-                                    icon={<Trash2 size={13} />}
-                                    label="Delete"
-                                    className="bg-red-600/70"
-                                    onClick={() => setShowDelete(true)}
-                                />
-                            )}
-
-                            {mode !== "create" && !showEdit && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    icon={<Pencil className="w-4 h-4" />}
-                                    label="Edit"
-                                    onClick={() => setMode("edit")}
-                                />
-                            )}
-                            {showEdit && mode !== "create" && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    label="Cancel"
-                                    onClick={cancelEdit}
-                                />
-                            )}
-                            {showEdit && mode === "create" && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    label="Cancel"
-                                    onClick={() => navigate("/users")}
-                                />
-                            )}
-                        </div>
+                {/* ── Banner / Hero ── */}
+                <div className="relative">
+                    <div className="absolute inset-0 overflow-hidden rounded-t-xl">
+                        <div
+                            className="w-full h-full"
+                            style={{
+                                background:
+                                    "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                            }}
+                        />
+                        <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
+                        <div className="absolute inset-0 bg-linear-to-r from-background/40 to-transparent" />
                     </div>
 
-                    {/* ── Avatar + Name ── */}
-                    <div className="flex items-end gap-5">
-                        {/* Avatar */}
-                        <div className="relative shrink-0">
-                            <div className="w-20 h-20 rounded-full bg-card border-4 border-background shadow-sm overflow-hidden">
-                                <img
-                                    src={avatarSrc}
-                                    alt="Avatar"
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-                            {showEdit && (
-                                <label
-                                    htmlFor={avatarInputId}
-                                    className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-foreground text-background flex items-center justify-center cursor-pointer shadow-sm hover:opacity-90 transition-opacity"
-                                >
-                                    <Upload size={12} />
-                                    <input
-                                        id={avatarInputId}
-                                        type="file"
-                                        accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
-                                        onChange={handleAvatarChange}
-                                        className="hidden"
+                    <div className="relative z-10 px-6 sm:px-8 lg:px-10 pt-6 pb-20">
+                        {/* ── Top bar: actions ── */}
+                        <div className="flex items-center justify-end mb-6">
+                            <div className="flex items-center gap-2">
+                                {mode === "edit" && (
+                                    <Button
+                                        variant="danger"
+                                        size="sm"
+                                        icon={<Trash2 size={13} />}
+                                        label="Delete"
+                                        className="bg-red-600/70"
+                                        onClick={() => setShowDelete(true)}
                                     />
-                                </label>
-                            )}
+                                )}
+
+                                {mode !== "create" && !showEdit && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        icon={<Pencil className="w-4 h-4" />}
+                                        label="Edit"
+                                        onClick={() => setMode("edit")}
+                                    />
+                                )}
+                                {showEdit && mode !== "create" && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        label="Cancel"
+                                        onClick={cancelEdit}
+                                    />
+                                )}
+                                {showEdit && mode === "create" && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        label="Cancel"
+                                        onClick={() => navigate("/users")}
+                                    />
+                                )}
+                            </div>
                         </div>
 
-                        {/* Name */}
-                        <div className="flex-1 min-w-0 pb-1">
-                            {showEdit ? (
-                                <div className="grid grid-cols-2 gap-3 max-w-md">
-                                    <div>
-                                        <Label className="text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-1">
-                                            First name
-                                        </Label>
-                                        <input
-                                            value={form.first_name}
-                                            onChange={set("first_name")}
-                                            placeholder="First name"
-                                            className="w-full text-xl sm:text-2xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
-                                        />
-                                        {errors.first_name && (
-                                            <p className="text-xs text-destructive mt-1">
-                                                {errors.first_name}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <Label className="text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-1">
-                                            Last name
-                                        </Label>
-                                        <input
-                                            value={form.last_name}
-                                            onChange={set("last_name")}
-                                            placeholder="Last name"
-                                            className="w-full text-xl sm:text-2xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
-                                        />
-                                        {errors.last_name && (
-                                            <p className="text-xs text-destructive mt-1">
-                                                {errors.last_name}
-                                            </p>
-                                        )}
-                                    </div>
+                        {/* ── Avatar + Name ── */}
+                        <div className="flex items-end gap-5">
+                            {/* Avatar */}
+                            <div className="relative shrink-0">
+                                <div className="w-20 h-20 rounded-full bg-card border-4 border-background shadow-sm overflow-hidden">
+                                    <img
+                                        src={avatarSrc}
+                                        alt="Avatar"
+                                        className="w-full h-full object-cover"
+                                    />
                                 </div>
-                            ) : (
-                                <>
-                                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground truncate">
-                                        {user ? `${user.first_name} ${user.last_name}` : "New User"}
-                                    </h1>
-                                    {user && (
-                                        <p className="text-sm text-muted-foreground mt-1">
-                                            @{user.username}
-                                        </p>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </div>
+                                {showEdit && (
+                                    <label
+                                        htmlFor={avatarInputId}
+                                        className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-foreground text-background flex items-center justify-center cursor-pointer shadow-sm hover:opacity-90 transition-opacity"
+                                    >
+                                        <Upload size={12} />
+                                        <input
+                                            id={avatarInputId}
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+                                            onChange={handleAvatarChange}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                )}
+                            </div>
 
-                    {/* ── Role / Status badges (view mode only) ── */}
-                    {!showEdit && user && (
-                        <div className="flex items-center gap-2 mt-4">
-                            <span
-                                className={cn(
-                                    "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
-                                    user.role_id === 1
-                                        ? "bg-primary/10 text-foreground"
-                                        : "bg-muted text-muted-foreground",
+                            {/* Name */}
+                            <div className="flex-1 min-w-0 pb-1">
+                                {showEdit ? (
+                                    <div className="grid grid-cols-2 gap-3 max-w-md">
+                                        <div>
+                                            <Label className="text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-1">
+                                                First name
+                                            </Label>
+                                            <input
+                                                value={form.first_name}
+                                                onChange={set("first_name")}
+                                                placeholder="First name"
+                                                className="w-full text-xl sm:text-2xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
+                                            />
+                                            {errors.first_name && (
+                                                <p className="text-xs text-destructive mt-1">
+                                                    {errors.first_name}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <Label className="text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-1">
+                                                Last name
+                                            </Label>
+                                            <input
+                                                value={form.last_name}
+                                                onChange={set("last_name")}
+                                                placeholder="Last name"
+                                                className="w-full text-xl sm:text-2xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
+                                            />
+                                            {errors.last_name && (
+                                                <p className="text-xs text-destructive mt-1">
+                                                    {errors.last_name}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground truncate">
+                                            {user
+                                                ? `${user.first_name} ${user.last_name}`
+                                                : "New User"}
+                                        </h1>
+                                        {user && (
+                                            <p className="text-sm text-muted-foreground mt-1">
+                                                @{user.username}
+                                            </p>
+                                        )}
+                                    </>
                                 )}
-                            >
-                                <UserIcon size={11} />
-                                {roleName}
-                            </span>
-                            <span
-                                className={cn(
-                                    "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
-                                    user.status === "active"
-                                        ? "bg-emerald-500/10 text-emerald-400"
-                                        : "bg-red-500/10 text-red-400",
-                                )}
-                            >
+                            </div>
+                        </div>
+
+                        {/* ── Role / Status badges (view mode only) ── */}
+                        {!showEdit && user && (
+                            <div className="flex items-center gap-2 mt-4">
                                 <span
                                     className={cn(
-                                        "w-1.5 h-1.5 rounded-full",
-                                        user.status === "active" ? "bg-emerald-400" : "bg-red-400",
+                                        "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
+                                        user?.role === UserRoles.Admin
+                                            ? "bg-primary/10 text-foreground"
+                                            : "bg-muted text-muted-foreground",
                                     )}
-                                />
-                                {user.status === "active" ? "Active" : "Inactive"}
-                            </span>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* ── Content ── */}
-            <div className="flex-1 -mt-12 relative z-20 px-6 sm:px-8 lg:px-10 pb-8">
-                <div className="max-w-3xl mx-auto flex flex-col gap-6">
-                    {/* ── Form card ── */}
-                    <form
-                        onSubmit={handleSubmit}
-                        className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8"
-                    >
-                        {/* Basic Information */}
-                        <section className="space-y-4">
-                            <SectionHeader
-                                title="Basic Information"
-                                description="Core identity details for this account."
-                            />
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <Field
-                                    label="Email Address"
-                                    required
-                                    error={errors.email}
-                                    isEdit={showEdit}
                                 >
-                                    {showEdit ? (
-                                        <Input
-                                            type="email"
-                                            placeholder="ruby@devify.com"
-                                            value={form.email}
-                                            onChange={set("email")}
-                                            className={cn(errors.email && "border-destructive")}
-                                        />
-                                    ) : (
-                                        <p className="text-sm text-foreground py-1">{user?.email}</p>
+                                    <UserIcon size={11} />
+                                    {roleName}
+                                </span>
+                                <span
+                                    className={cn(
+                                        "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
+                                        user.status === "active"
+                                            ? "bg-emerald-500/10 text-emerald-400"
+                                            : "bg-red-500/10 text-red-400",
                                     )}
-                                </Field>
-                                <Field
-                                    label="Username"
-                                    required
-                                    hint={showEdit ? "Letters, numbers, and dots only" : undefined}
-                                    error={errors.username}
-                                    isEdit={showEdit}
                                 >
-                                    {showEdit ? (
-                                        <Input
-                                            placeholder="ruby.arnold"
-                                            value={form.username}
-                                            onChange={set("username")}
-                                            className={cn(errors.username && "border-destructive")}
-                                        />
-                                    ) : (
-                                        <p className="text-sm text-foreground py-1">@{user?.username}</p>
-                                    )}
-                                </Field>
-                                <Field
-                                    label="Contact Number"
-                                    required
-                                    error={errors.contact_number}
-                                    isEdit={showEdit}
-                                >
-                                    {showEdit ? (
-                                        <Input
-                                            placeholder="095-1234-5678"
-                                            value={form.contact_number}
-                                            onChange={(e) => {
-                                                const numeric = e.target.value.replace(/\D/g, "");
-                                                // Enforce starts with 09
-                                                if (numeric.length >= 2 && !numeric.startsWith("09")) return;
-                                                set("contact_number")({ ...e, target: { ...e.target, value: numeric.slice(0, 11) } });
-                                            }}
-                                            onBlur={(e) => {
-                                                const numeric = e.target.value.replace(/\D/g, "");
-                                                // Only format if valid (starts with 09 and 11 digits)
-                                                if (!numeric.startsWith("09") || numeric.length !== 11) return;
-                                                const formatted = `${numeric.slice(0, 3)}-${numeric.slice(3, 7)}-${numeric.slice(7, 11)}`;
-                                                set("contact_number")({ ...e, target: { ...e.target, value: formatted } });
-                                            }}
-                                            onKeyDown={(e) => {
-                                                const allowedKeys = [
-                                                    "Backspace", "Delete", "Tab", "Escape", "Enter",
-                                                    "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
-                                                    "Home", "End",
-                                                ];
-                                                if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x"].includes(e.key.toLowerCase())) {
-                                                    return;
-                                                }
-                                                if (/^\d$/.test(e.key) || allowedKeys.includes(e.key)) {
-                                                    return;
-                                                }
-                                                e.preventDefault();
-                                            }}
-                                            className={cn(errors.contact_number && "border-destructive")}
-                                        />
-                                    ) : (
-                                        <p className="text-sm text-foreground py-1">
-                                            {user?.contact_number
-                                                ? user.contact_number.replace(/\D/g, "").replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")
-                                                : "—"}
-                                        </p>
-                                    )}
-                                </Field>
-                            </div>
-                        </section>
-
-                        <div className="h-px bg-border" />
-
-                        {/* Role & Access */}
-                        <section className="space-y-4">
-                            <SectionHeader
-                                title="Role & Access"
-                                description="Determines what this user can see and do."
-                            />
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <Field label="Role" required isEdit={showEdit}>
-                                    {showEdit ? (
-                                        <select
-                                            value={form.role_id}
-                                            onChange={(e) =>
-                                                setForm((f) => ({
-                                                    ...f,
-                                                    role_id: Number(e.target.value),
-                                                }))
-                                            }
-                                            className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
-                                        >
-                                            <option value={1}>Admin</option>
-                                            <option value={2}>SecOps</option>
-                                        </select>
-                                    ) : (
-                                        <p className="text-sm text-foreground py-1">{roleName}</p>
-                                    )}
-                                </Field>
-                                <Field label="Status" isEdit={showEdit}>
-                                    {showEdit ? (
-                                        <select
-                                            value={form.status}
-                                            onChange={set("status")}
-                                            className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
-                                        >
-                                            <option value="active">Active</option>
-                                            <option value="inactive">Inactive</option>
-                                        </select>
-                                    ) : (
-                                        <p className="text-sm text-foreground py-1">
-                                            {user?.status === "active" ? "Active" : "Inactive"}
-                                        </p>
-                                    )}
-                                </Field>
-                            </div>
-                        </section>
-
-                        {/* Password */}
-                        {showEdit && (
-                            <>
-                                <div className="h-px bg-border" />
-                                <section className="space-y-4">
-                                    <SectionHeader
-                                        title={isCreate ? "Password" : "Change Password"}
-                                        description={
-                                            isCreate
-                                                ? "Set an initial password for this account."
-                                                : "Leave blank to keep the current password."
-                                        }
+                                    <span
+                                        className={cn(
+                                            "w-1.5 h-1.5 rounded-full",
+                                            user.status === "active"
+                                                ? "bg-emerald-400"
+                                                : "bg-red-400",
+                                        )}
                                     />
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <Field
-                                            label={isCreate ? "Password" : "New password"}
-                                            required={isCreate}
-                                            error={errors.password}
-                                        >
-                                            <Input
-                                                type="password"
-                                                placeholder={
-                                                    isCreate ? "Min. 8 characters" : "New password"
-                                                }
-                                                value={form.password}
-                                                onChange={set("password")}
-                                                className={cn(
-                                                    errors.password && "border-destructive",
-                                                )}
-                                            />
-                                        </Field>
-                                        <Field
-                                            label="Confirm password"
-                                            required={isCreate}
-                                            error={errors.password_confirmation}
-                                        >
-                                            <Input
-                                                type="password"
-                                                placeholder="Repeat password"
-                                                value={form.password_confirmation}
-                                                onChange={set("password_confirmation")}
-                                                className={cn(
-                                                    errors.password_confirmation &&
-                                                    "border-destructive",
-                                                )}
-                                            />
-                                        </Field>
-                                    </div>
-                                </section>
-                            </>
+                                    {user.status === "active"
+                                        ? "Active"
+                                        : "Inactive"}
+                                </span>
+                            </div>
                         )}
-
-                        {/* Actions */}
-                        {showEdit && (
-                            <>
-                                <div className="h-px bg-border" />
-                                <div className="flex items-center justify-end gap-3">
-                                    <Button
-                                        type="submit"
-                                        disabled={isSaving}
-                                        label={
-                                            isSaving
-                                                ? "Saving…"
-                                                : isCreate
-                                                    ? "Create User"
-                                                    : "Save Changes"
-                                        }
-                                    />
-                                </div>
-                            </>
-                        )}
-                    </form>
-                </div>
-            </div>
-
-            {/* ── Delete dialog ── */}
-            <Dialog open={showDelete} onOpenChange={setShowDelete}>
-                <DialogContent className="sm:max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle>Delete User</DialogTitle>
-                    </DialogHeader>
-                    <p className="text-sm text-muted-foreground">
-                        This will permanently delete{" "}
-                        <strong className="text-foreground">
-                            {user?.first_name} {user?.last_name}
-                        </strong>{" "}
-                        and all associated data. This cannot be undone.
-                    </p>
-                    <div className="flex justify-end gap-3 pt-2">
-                        <DialogClose asChild>
-                            <Button
-                                variant="outline"
-                                label="Cancel"
-                                onClick={() => setShowDelete(false)}
-                            />
-                        </DialogClose>
-                        <Button
-                            variant="danger"
-                            label={deleteUser.isPending ? "Deleting…" : "Delete"}
-                            disabled={deleteUser.isPending}
-                            onClick={handleDelete}
-                        />
                     </div>
-                </DialogContent>
-            </Dialog>
-        </div>
+                </div>
+
+                {/* ── Content ── */}
+                <div className="flex-1 -mt-12 relative z-20 px-6 sm:px-8 lg:px-10 pb-8">
+                    <div className="max-w-3xl mx-auto flex flex-col gap-6">
+                        {/* ── Form card ── */}
+                        <form
+                            onSubmit={handleSubmit}
+                            className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8"
+                        >
+                            {/* Basic Information */}
+                            <section className="space-y-4">
+                                <SectionHeader
+                                    title="Basic Information"
+                                    description="Core identity details for this account."
+                                />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field
+                                        label="Email Address"
+                                        required
+                                        error={errors.email}
+                                        isEdit={showEdit}
+                                    >
+                                        {showEdit ? (
+                                            <Input
+                                                type="email"
+                                                placeholder="ruby@devify.com"
+                                                value={form.email}
+                                                onChange={set("email")}
+                                                className={cn(
+                                                    errors.email &&
+                                                        "border-destructive",
+                                                )}
+                                            />
+                                        ) : (
+                                            <p className="text-sm text-foreground py-1">
+                                                {user?.email}
+                                            </p>
+                                        )}
+                                    </Field>
+                                    <Field
+                                        label="Username"
+                                        required
+                                        hint={
+                                            showEdit
+                                                ? "Letters, numbers, and dots only"
+                                                : undefined
+                                        }
+                                        error={errors.username}
+                                        isEdit={showEdit}
+                                    >
+                                        {showEdit ? (
+                                            <Input
+                                                placeholder="ruby.arnold"
+                                                value={form.username}
+                                                onChange={set("username")}
+                                                className={cn(
+                                                    errors.username &&
+                                                        "border-destructive",
+                                                )}
+                                            />
+                                        ) : (
+                                            <p className="text-sm text-foreground py-1">
+                                                @{user?.username}
+                                            </p>
+                                        )}
+                                    </Field>
+                                    <Field
+                                        label="Contact Number"
+                                        required
+                                        error={errors.contact_number}
+                                        isEdit={showEdit}
+                                    >
+                                        {showEdit ? (
+                                            <Input
+                                                placeholder="095-1234-5678"
+                                                value={form.contact_number}
+                                                onChange={(e) => {
+                                                    const numeric =
+                                                        e.target.value.replace(
+                                                            /\D/g,
+                                                            "",
+                                                        );
+                                                    // Enforce starts with 09
+                                                    if (
+                                                        numeric.length >= 2 &&
+                                                        !numeric.startsWith(
+                                                            "09",
+                                                        )
+                                                    )
+                                                        return;
+                                                    set("contact_number")({
+                                                        ...e,
+                                                        target: {
+                                                            ...e.target,
+                                                            value: numeric.slice(
+                                                                0,
+                                                                11,
+                                                            ),
+                                                        },
+                                                    });
+                                                }}
+                                                onBlur={(e) => {
+                                                    const numeric =
+                                                        e.target.value.replace(
+                                                            /\D/g,
+                                                            "",
+                                                        );
+                                                    // Only format if valid (starts with 09 and 11 digits)
+                                                    if (
+                                                        !numeric.startsWith(
+                                                            "09",
+                                                        ) ||
+                                                        numeric.length !== 11
+                                                    )
+                                                        return;
+                                                    const formatted = `${numeric.slice(0, 3)}-${numeric.slice(3, 7)}-${numeric.slice(7, 11)}`;
+                                                    set("contact_number")({
+                                                        ...e,
+                                                        target: {
+                                                            ...e.target,
+                                                            value: formatted,
+                                                        },
+                                                    });
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    const allowedKeys = [
+                                                        "Backspace",
+                                                        "Delete",
+                                                        "Tab",
+                                                        "Escape",
+                                                        "Enter",
+                                                        "ArrowLeft",
+                                                        "ArrowRight",
+                                                        "ArrowUp",
+                                                        "ArrowDown",
+                                                        "Home",
+                                                        "End",
+                                                    ];
+                                                    if (
+                                                        (e.ctrlKey ||
+                                                            e.metaKey) &&
+                                                        [
+                                                            "a",
+                                                            "c",
+                                                            "v",
+                                                            "x",
+                                                        ].includes(
+                                                            e.key.toLowerCase(),
+                                                        )
+                                                    ) {
+                                                        return;
+                                                    }
+                                                    if (
+                                                        /^\d$/.test(e.key) ||
+                                                        allowedKeys.includes(
+                                                            e.key,
+                                                        )
+                                                    ) {
+                                                        return;
+                                                    }
+                                                    e.preventDefault();
+                                                }}
+                                                className={cn(
+                                                    errors.contact_number &&
+                                                        "border-destructive",
+                                                )}
+                                            />
+                                        ) : (
+                                            <p className="text-sm text-foreground py-1">
+                                                {user?.contact_number
+                                                    ? user.contact_number
+                                                          .replace(/\D/g, "")
+                                                          .replace(
+                                                              /^(\d{3})(\d{4})(\d{4})$/,
+                                                              "$1-$2-$3",
+                                                          )
+                                                    : "—"}
+                                            </p>
+                                        )}
+                                    </Field>
+                                </div>
+                            </section>
+
+                            <div className="h-px bg-border" />
+
+                            {/* Role & Access */}
+                            <section className="space-y-4">
+                                <SectionHeader
+                                    title="Role & Access"
+                                    description="Determines what this user can see and do."
+                                />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field
+                                        label="Role"
+                                        required
+                                        isEdit={showEdit}
+                                    >
+                                        {showEdit ? (
+                                            <select
+                                                value={form.role_id}
+                                                onChange={(e) =>
+                                                    setForm((f) => ({
+                                                        ...f,
+                                                        role_id: Number(
+                                                            e.target.value,
+                                                        ),
+                                                    }))
+                                                }
+                                                className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
+                                            >
+                                                <option value={1}>Admin</option>
+                                                <option value={2}>
+                                                    SecOps
+                                                </option>
+                                            </select>
+                                        ) : (
+                                            <p className="text-sm text-foreground py-1">
+                                                {roleName}
+                                            </p>
+                                        )}
+                                    </Field>
+                                </div>
+                            </section>
+
+                            {/* Password */}
+                            {showEdit && (
+                                <>
+                                    <div className="h-px bg-border" />
+                                    <section className="space-y-4">
+                                        <SectionHeader
+                                            title={
+                                                isCreate
+                                                    ? "Password"
+                                                    : "Change Password"
+                                            }
+                                            description={
+                                                isCreate
+                                                    ? "Set an initial password for this account."
+                                                    : "Leave blank to keep the current password."
+                                            }
+                                        />
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <Field
+                                                label={
+                                                    isCreate
+                                                        ? "Password"
+                                                        : "New password"
+                                                }
+                                                required={isCreate}
+                                                error={errors.password}
+                                            >
+                                                <Input
+                                                    type="password"
+                                                    placeholder={
+                                                        isCreate
+                                                            ? "Min. 8 characters"
+                                                            : "New password"
+                                                    }
+                                                    value={form.password}
+                                                    onChange={set("password")}
+                                                    className={cn(
+                                                        errors.password &&
+                                                            "border-destructive",
+                                                    )}
+                                                />
+                                            </Field>
+                                            <Field
+                                                label="Confirm password"
+                                                required={isCreate}
+                                                error={
+                                                    errors.password_confirmation
+                                                }
+                                            >
+                                                <Input
+                                                    type="password"
+                                                    placeholder="Repeat password"
+                                                    value={
+                                                        form.password_confirmation
+                                                    }
+                                                    onChange={set(
+                                                        "password_confirmation",
+                                                    )}
+                                                    className={cn(
+                                                        errors.password_confirmation &&
+                                                            "border-destructive",
+                                                    )}
+                                                />
+                                            </Field>
+                                        </div>
+                                    </section>
+                                </>
+                            )}
+
+                            {/* Actions */}
+                            {showEdit && (
+                                <>
+                                    <div className="h-px bg-border" />
+                                    <div className="flex items-center justify-end gap-3">
+                                        <Button
+                                            type="submit"
+                                            disabled={isSaving}
+                                            label={
+                                                isSaving
+                                                    ? "Saving…"
+                                                    : isCreate
+                                                      ? "Create User"
+                                                      : "Save Changes"
+                                            }
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </form>
+                    </div>
+                </div>
+
+                {/* ── Delete dialog ── */}
+                <Dialog open={showDelete} onOpenChange={setShowDelete}>
+                    <DialogContent className="sm:max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle>Delete User</DialogTitle>
+                        </DialogHeader>
+                        <p className="text-sm text-muted-foreground">
+                            This will permanently delete{" "}
+                            <strong className="text-foreground">
+                                {user?.first_name} {user?.last_name}
+                            </strong>{" "}
+                            and all associated data. This cannot be undone.
+                        </p>
+                        <div className="flex justify-end gap-3 pt-2">
+                            <DialogClose asChild>
+                                <Button
+                                    variant="outline"
+                                    label="Cancel"
+                                    onClick={() => setShowDelete(false)}
+                                />
+                            </DialogClose>
+                            <Button
+                                variant="danger"
+                                label={
+                                    deleteUser.isPending
+                                        ? "Deleting…"
+                                        : "Delete"
+                                }
+                                disabled={deleteUser.isPending}
+                                onClick={handleDelete}
+                            />
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            </div>
         </>
     );
 }

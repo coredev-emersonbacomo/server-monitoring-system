@@ -108,11 +108,11 @@ class DashboardController extends Controller
 
         $actions = ActionItem::with('assignedUser')
             ->where('status', '!=', 'completed')
-            ->orderByRaw("FIELD(severity, 'critical', 'warning', 'info')")
+            ->orderByRaw("CASE severity WHEN 'critical' THEN 0 WHEN 'warning' THEN 1 WHEN 'info' THEN 2 ELSE 3 END")
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json(ActionItemData::collection($actions));
+        return response()->json(ActionItemData::collect($actions));
     }
 
     public function claim(int $actionId): JsonResponse
@@ -156,7 +156,7 @@ class DashboardController extends Controller
             ->limit(50)
             ->get();
 
-        return response()->json(ActionItemData::collection($actions));
+        return response()->json(ActionItemData::collect($actions));
     }
 
     /**
