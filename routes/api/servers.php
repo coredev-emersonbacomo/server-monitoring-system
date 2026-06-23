@@ -56,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/servers/{id}', [ServerController::class, 'update']);
         Route::delete('/servers/{id}', [ServerController::class, 'destroy']);
         Route::post('/servers/install', [ServerController::class, 'installServer']);
+        Route::post('/servers/uninstall', [ServerController::class, 'uninstallServer']);
     });
 });
 

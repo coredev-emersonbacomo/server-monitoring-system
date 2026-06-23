@@ -219,11 +219,10 @@ const ProfileBar = ({
     const navigate = useNavigate();
     if (!user) return;
 
-    const defaultProfile = import.meta.env.VITE_DEFAULT_PROFILE_PICTURE as string;
     const firstName = user.first_name;
     const lastName = user.last_name;
     const username = user.email?.split("@")[0] ?? "";
-    const avatarSrc = user.profile_picture_url || defaultProfile;
+    const avatarSrc = user.profile_picture_url;
 
     return (
         <div

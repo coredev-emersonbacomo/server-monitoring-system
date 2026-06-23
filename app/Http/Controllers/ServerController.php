@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Data\ServerData;
+use App\Data\ServerSshData;
 use App\Models\Client;
 use App\Models\Server;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +16,7 @@ class ServerController extends Controller
 {
     public function index(int $client_id): JsonResponse
     {
-        $servers = Server::where('client_id', $client_id)->get()->map(fn ($s) => [
+        $servers = Server::where('client_id', $client_id)->get()->map(fn($s) => [
             'id' => $s->id,
             'client_id' => $s->client_id,
             'server_name' => $s->server_name,
@@ -116,7 +117,34 @@ class ServerController extends Controller
         ]);
     }
 
-    public function installServer(ServerData $data): JsonResponse
+    public function installServer(ServerSshData $data): JsonResponse
+    {
+        try {
+            $installer = new InstallerService(
+                sshHost: $data->sshHost,
+                sshPort: $data->sshPort,
+                sshUser: $data->sshUser,
+                sshPassword: $data->sshPassword,
+                serverId: $data->serverId,
+                apiToken: $data->apiToken,
+            );
+
+            // Install
+            $log = $installer->install();
+
+            return response()->json([
+                'status' => 'success',
+                'log'    => $log,
+            ]);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function uninstallServer(ServerSshData $data): JsonResponse
     {
         try {
             $installer = new InstallerService(
@@ -125,16 +153,16 @@ class ServerController extends Controller
                 sshUser:     $data->sshUser,
                 sshPassword: $data->sshPassword,
                 serverId:    $data->serverId,
-                apiToken:    $data->apiToken,
+                apiToken:    $data->apiToken
             );
 
-            $log = $installer->install();
+            // Uninstall
+            $log = $installer->uninstall();
 
             return response()->json([
                 'status' => 'success',
                 'log'    => $log,
             ]);
-
         } catch (\RuntimeException $e) {
             return response()->json([
                 'status'  => 'error',

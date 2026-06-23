@@ -2,7 +2,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { User, Mail, Pencil, Trash2, MoreHorizontal, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
 
 interface ProfileCardProps {
     id: number;
@@ -11,11 +10,8 @@ interface ProfileCardProps {
     contact_number?: string;
     role?: string;
     imageUrl?: string;
-    status?: "active" | "inactive";
     onDelete?: (id: number) => void;
 }
-
-const defaultProfile = import.meta.env.VITE_DEFAULT_PROFILE_PICTURE as string;
 
 export const ProfileCard: React.FC<ProfileCardProps> = ({
     id,
@@ -24,7 +20,6 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
     contact_number = "09123456789",
     role = "Partner",
     imageUrl,
-    status = "active",
     onDelete,
 }) => {
     const navigate = useNavigate();
@@ -47,20 +42,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
     return (
         <div className="relative w-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans transition-shadow hover:shadow-md">
             {/* ── Top action bar ── */}
-            <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
-                {/* Status badge */}
-                <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <span
-                        className={cn(
-                            "w-1.5 h-1.5 rounded-full",
-                            status === "active"
-                                ? "bg-emerald-500"
-                                : "bg-muted-foreground/40",
-                        )}
-                    />
-                    {status}
-                </span>
-
+            <div className="absolute top-4 right-4">
                 {/* Kebab menu */}
                 <div className="relative" ref={menuRef}>
                     <button
@@ -104,7 +86,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
             {/* ── Avatar ── */}
             <div className="mt-4 mb-4">
                 <img
-                    src={imageUrl || defaultProfile}
+                    src={imageUrl || ''}
                     alt={name}
                     className="w-24 h-24 rounded-full object-cover border border-border shadow-sm"
                 />

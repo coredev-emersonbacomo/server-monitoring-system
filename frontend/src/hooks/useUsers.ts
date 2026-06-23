@@ -1,8 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getCsrfCookie } from "@/api/api";
-import type { FullUserData, UsersStorePayload as CreateUserPayload, UsersUpdatePayload as UpdateUserPayload } from "@/types/models";
-
-type FullUser = FullUserData & { role?: { role_name: string }, status?: "active" | "inactive", avatar?: string };
+import type { UserData, UsersStorePayload as CreateUserPayload, UsersUpdatePayload as UpdateUserPayload } from "@/types/models";
 
 const API_BASE = "/api";
 
@@ -30,15 +28,15 @@ async function apiFetch<T>(
 // ── Queries ──────────────────────────────────────────────────────────────────
 
 export const useUsers = () =>
-    useQuery<FullUser[]>({
+    useQuery<UserData[]>({
         queryKey: ["users"],
-        queryFn: () => apiFetch<FullUser[]>(`${API_BASE}/users`),
+        queryFn: () => apiFetch<UserData[]>(`${API_BASE}/users`),
     });
 
 export const useUser = (id: number | string) =>
-    useQuery<FullUser>({
+    useQuery<UserData>({
         queryKey: ["users", Number(id)],
-        queryFn: () => apiFetch<FullUser>(`${API_BASE}/users/${id}`),
+        queryFn: () => apiFetch<UserData>(`${API_BASE}/users/${id}`),
         enabled: !!id,
     });
 
@@ -46,10 +44,10 @@ export const useUser = (id: number | string) =>
 
 export const useCreateUser = () => {
     const queryClient = useQueryClient();
-    return useMutation<FullUser, unknown, CreateUserPayload>({
+    return useMutation<UserData, unknown, CreateUserPayload>({
         mutationFn: async (payload) => {
             await getCsrfCookie();
-            return apiFetch<FullUser>(`${API_BASE}/users`, {
+            return apiFetch<UserData>(`${API_BASE}/users`, {
                 method: "POST",
                 body: JSON.stringify(payload),
             });
@@ -62,10 +60,10 @@ export const useCreateUser = () => {
 
 export const useUpdateUser = (id: number | string) => {
     const queryClient = useQueryClient();
-    return useMutation<FullUser, unknown, UpdateUserPayload>({
+    return useMutation<UserData, unknown, UpdateUserPayload>({
         mutationFn: async (payload) => {
             await getCsrfCookie();
-            return apiFetch<FullUser>(`${API_BASE}/users/${id}`, {
+            return apiFetch<UserData>(`${API_BASE}/users/${id}`, {
                 method: "PUT",
                 body: JSON.stringify(payload),
             });

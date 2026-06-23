@@ -6,7 +6,7 @@ import AuthContext from "@/contexts/AuthContext";
 import { useContext } from "react";
 
 
-type UserData = components["schemas"]["FullUserData"];
+type UserData = components["schemas"]["AuthUserData"];
 
 interface LoginCredentials {
     email: string;

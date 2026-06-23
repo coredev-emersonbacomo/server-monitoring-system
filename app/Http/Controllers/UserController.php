@@ -8,7 +8,7 @@ use App\Models\User;
 use App\Services\ImageReplacementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
-use App\Data\FullUserData;
+use App\Data\UserData;
 
 class UserController extends Controller
 {
@@ -20,7 +20,7 @@ class UserController extends Controller
     {
         $users = User::with('role')->get();
 
-        return FullUserData::collect($users);
+        return $users->map(fn(User $u) => UserData::fromModel($u));
     }
 
     public function store(CreateUserData $data)
@@ -37,12 +37,12 @@ class UserController extends Controller
             'profile_picture_public_id' => $data->cloudinary_public_id ?? null,
         ]);
 
-        return FullUserData::from($user->load('role'))->toResponse(request())->setStatusCode(201);
+        return UserData::fromModel($user->load('role'))->toResponse(request())->setStatusCode(201);
     }
 
-    public function show(User $user): FullUserData
+    public function show(User $user): UserData
     {
-        return FullUserData::from($user->load('role'));
+        return UserData::fromModel($user->load('role'));
     }
 
     public function update(UpdateUserData $data, User $user)
@@ -85,7 +85,7 @@ class UserController extends Controller
 
         $user->update($payload);
 
-        return FullUserData::from($user->load('role'));
+        return UserData::fromModel($user->load('role'));
     }
 
     public function destroy(User $user): JsonResponse

@@ -2,32 +2,43 @@
 
 namespace App\Data;
 
-use Spatie\LaravelData\Attributes\Validation\Email;
+use App\Enums\UserRole;
+use App\Models\User;
 use Spatie\LaravelData\Data;
-use Spatie\LaravelData\Attributes\Validation\Min;
-use Spatie\LaravelData\Attributes\Validation\Unique;
-use Symfony\Contracts\Service\Attribute\Required;
+use Illuminate\Support\Carbon;
 
 class UserData extends Data
 {
     public function __construct(
-        #[Required]
         public int $id,
-        #[Required, Min(2)]
         public string $first_name,
-        #[Required, Min(2)]
         public string $last_name,
-        #[Required]
-        public string $contact_number,
-        #[Required]
-        public int $role_id,
-        public string $profile_picture_url,
-        #[Email, Unique("users", "email")]
         public string $email,
-        #[Min(3), Unique('users', 'username')]
         public string $username,
-        #[Min(8)]
-        public string $password,
-    ) {
+        public string $contact_number,
+        public ?string $last_login,
+        public string $profile_picture_url,
+        public string $status,
+        public UserRole $role,
+        public ?Carbon $created_at,
+        public ?Carbon $updated_at,
+    ) {}
+
+    public static function fromModel(User $user): self
+    {
+        return new self(
+            id: $user->id,
+            first_name: $user->first_name,
+            last_name: $user->last_name,
+            email: $user->email,
+            username: $user->username,
+            contact_number: $user->contact_number,
+            last_login: $user->last_login,
+            profile_picture_url: $user->profile_picture_url,
+            status: $user->status,
+            role: UserRole::from($user->role->role_name),
+            created_at: $user->created_at,
+            updated_at: $user->updated_at,
+        );
     }
 }

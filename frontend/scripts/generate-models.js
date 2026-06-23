@@ -41,9 +41,11 @@ for (const [pathUrl, pathItem] of Object.entries(apiPaths)) {
                 
                 // e.g. "users.store" -> "UsersStorePayload"
                 const nameParts = operation.operationId.split('.');
-                const typeName = nameParts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('') + 'Payload';
+                const typeName = nameParts.map(p =>
+                    p.split('-').map(sub => sub.charAt(0).toUpperCase() + sub.slice(1)).join('')
+                ).join('') + 'Payload';
                 
-                content += `export type ${typeName} = operations["${operation.operationId}"]["requestBody"]["content"]["${contentType}"];\n`;
+                content += `export type ${typeName} = NonNullable<operations["${operation.operationId}"]["requestBody"]>["content"]["${contentType}"];\n`;
             }
         }
     }
