@@ -173,3 +173,39 @@
         clip-path: none !important;
     }
 }
+
+@layer base {
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: oklch(0.922 0 0) transparent;
+    }
+
+    *::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    *::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    *::-webkit-scrollbar-thumb {
+        background: oklch(0.922 0 0);
+        border-radius: 999px;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+        background: oklch(0.708 0 0);
+    }
+
+    .dark * {
+        scrollbar-color: oklch(1 0 0 / 10%) transparent;
+    }
+
+    .dark *::-webkit-scrollbar-thumb {
+        background: oklch(1 0 0 / 10%);
+    }
+
+    .dark *::-webkit-scrollbar-thumb:hover {
+        background: oklch(0.556 0 0);
+    }
+}
