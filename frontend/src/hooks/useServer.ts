@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import jwtClient from "@/api/jwtClient";
 import type { StatPoint } from "@/types/stats";
 
 export interface ServerDetailData {
@@ -19,11 +20,8 @@ export const useServer = (id: number) => {
     return useQuery({
         queryKey: ["server", id],
         queryFn: async (): Promise<ServerDetailData> => {
-            const res = await fetch(`/api/servers/${id}`, {
-                credentials: "include",
-            });
-            if (!res.ok) throw new Error("Failed to load server");
-            return res.json();
+            const { data } = await jwtClient.get<ServerDetailData>(`/servers/${id}`);
+            return data;
         },
         enabled: !!id,
     });

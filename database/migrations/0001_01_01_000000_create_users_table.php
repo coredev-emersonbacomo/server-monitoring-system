@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('username')->unique();
             $table->string('password');
             $table->timestamp('last_login')->nullable();
-            $table->string('profile_picture_url')->default("");
+            $table->string('profile_picture_url')->default(config('app.default_profile_picture', ''));
             $table->string('status')->default('active');
 
             $table->rememberToken();
