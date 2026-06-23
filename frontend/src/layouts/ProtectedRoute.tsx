@@ -27,7 +27,7 @@ export function ProtectedRoute() {
                 <Landmark {...props} strokeWidth="1.75" />
             ),
         },
-        ...(user?.role_id === 1
+        ...(user?.role === "Admin"
             ? [{ name: "Users", href: "/users", icon: Users }]
             : []),
         { name: "Logs", href: "/logs", icon: ClipboardClock },
