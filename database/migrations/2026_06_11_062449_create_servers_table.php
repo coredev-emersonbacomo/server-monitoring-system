@@ -29,6 +29,7 @@ return new class extends Migration
             $table->integer('cpu_cores')->nullable();
             $table->integer('ram')->nullable();
             $table->string('operating_system')->nullable();
+            $table->string('status')->default('online');
             $table->timestamps();
         });
     }
