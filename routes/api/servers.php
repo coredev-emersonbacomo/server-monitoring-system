@@ -8,7 +8,7 @@ use App\Models\Server;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:jwt')->group(function () {
     // All servers with status (for server list page)
     Route::get('/servers', function () {
         $onlineThreshold  = now()->subMinutes(5);
@@ -61,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Compute MB/s from two consecutive rows
+if (!function_exists('computeStatPoint')) {
 function computeStatPoint(object $row, ?object $prev): array
 {
     $ts = strtotime($row->created_at) * 1000;
@@ -84,6 +85,7 @@ function computeStatPoint(object $row, ?object $prev): array
         'netOut'    => round($netOut, 2),
         'disk'      => round((float) $row->storage, 1),
     ];
+}
 }
 
 // ── Fetch server details + historical stats ─────────────────────────────────

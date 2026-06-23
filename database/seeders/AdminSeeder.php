@@ -25,10 +25,7 @@ class AdminSeeder extends Seeder
                 'role_id' => UserRole::Admin->id(),
                 'created_at' => now(),
                 'updated_at'=> now(),
-                'profile_picture_url'=> '',
-                'last_login' => now(),
-                'status'=> 'online',
-
+                'last_login' => now()
             ]
         );
     }

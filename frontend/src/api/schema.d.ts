@@ -136,57 +136,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get the current authenticated user */
-        get: operations["auth.me"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Authenticate user and initialize session */
-        post: operations["auth.login"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Invalidate session and logout */
-        post: operations["auth.logout"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/clients": {
         parameters: {
             query?: never;
@@ -315,6 +264,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["jwtAuth.login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["jwtAuth.refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["jwtAuth.logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logout-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["jwtAuth.logoutAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["jwtAuth.me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/clients/{client_id}/servers": {
         parameters: {
             query?: never;
@@ -342,6 +371,118 @@ export interface paths {
         put: operations["server.update"];
         post?: never;
         delete: operations["server.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clients/{client_id}/servers/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["server.installServer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["session.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/{sessionUuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["session.revoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/logout-all-others": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["session.revokeAllOthers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/{sessionUuid}/permanent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["session.permanentDelete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/security-activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["session.securityActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/active-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["session.activeSessionsCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -429,6 +570,18 @@ export interface components {
             assigned_to_name?: string | null;
             status: string;
         };
+        /** AuthAuditLogResource */
+        AuthAuditLogResource: {
+            id: number;
+            user_id: number | null;
+            session_uuid: string | null;
+            event_type: string;
+            ip_address: string | null;
+            user_agent: string | null;
+            metadata: unknown[] | null;
+            created_at: string;
+            created_at_timestamp: string;
+        };
         /** AuthUserData */
         AuthUserData: {
             id: number;
@@ -439,7 +592,6 @@ export interface components {
             contact_number: string;
             last_login?: string | null;
             profile_picture_url: string;
-            status: string;
             role: "Admin" | "User" | "SecOps";
         };
         /** ClientData */
@@ -483,6 +635,13 @@ export interface components {
                 value: number;
             }[];
         };
+        /** LoginRequest */
+        LoginRequest: {
+            /** Format: email */
+            email: string;
+            password: string;
+            remember?: boolean;
+        };
         /** Server */
         Server: {
             id: number;
@@ -491,6 +650,7 @@ export interface components {
             device_name: string;
             internal_ip: string;
             external_ip: string;
+            ssh_username: string | null;
             api_key: string;
             cpu_cores: number | null;
             ram: number | null;
@@ -499,7 +659,6 @@ export interface components {
             created_at: string | null;
             /** Format: date-time */
             updated_at: string | null;
-            ssh_username: string | null;
         };
         /** ServerData */
         ServerData: {
@@ -517,6 +676,28 @@ export interface components {
             client_id?: number | null;
             client_name?: string | null;
             stats?: string[];
+        };
+        /** SessionResource */
+        SessionResource: {
+            session_uuid: string;
+            device_name: string;
+            device_type: string;
+            browser: string;
+            operating_system: string;
+            ip_address: string;
+            remember_me: string;
+            last_activity_at: string;
+            last_activity_at_timestamp: string;
+            created_at: string;
+            created_at_timestamp: string;
+            current_session: boolean;
+            status: string;
+            compromised: string;
+            compromised_at: string;
+            compromised_at_timestamp: string;
+            compromise_reason: string;
+            revoked_at: string;
+            revoked_at_timestamp: string;
         };
         /** UploadSignatureData */
         UploadSignatureData: {
@@ -555,6 +736,22 @@ export interface components {
         UserRole: "Admin" | "User" | "SecOps";
     };
     responses: {
+        /** @description Validation error */
+        ValidationException: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /** @description Errors overview. */
+                    message: string;
+                    /** @description A detailed description of each field that failed validation. */
+                    errors: {
+                        [key: string]: string[];
+                    };
+                };
+            };
+        };
         /** @description Unauthenticated */
         AuthenticationException: {
             headers: {
@@ -579,22 +776,6 @@ export interface components {
                 };
             };
         };
-        /** @description Validation error */
-        ValidationException: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": {
-                    /** @description Errors overview. */
-                    message: string;
-                    /** @description A detailed description of each field that failed validation. */
-                    errors: {
-                        [key: string]: string[];
-                    };
-                };
-            };
-        };
     };
     parameters: never;
     requestBodies: never;
@@ -603,74 +784,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    "auth.me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description `AuthUserData` */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthUserData"];
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-        };
-    };
-    "auth.login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** Format: email */
-                    email: string;
-                    password: string;
-                };
-            };
-        };
-        responses: {
-            /** @description `AuthUserData` */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthUserData"];
-                };
-            };
-        };
-    };
-    "auth.logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            401: components["responses"]["AuthenticationException"];
-        };
-    };
     "client.index": {
         parameters: {
             query?: never;
@@ -953,6 +1066,131 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
+    "jwtAuth.login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "jwtAuth.refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    } | string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "No refresh token provided.";
+                    };
+                };
+            };
+        };
+    };
+    "jwtAuth.logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Logged out successfully.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "jwtAuth.logoutAll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "All sessions logged out.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "jwtAuth.me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `AuthUserData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthUserData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
     "server.index": {
         parameters: {
             query?: never;
@@ -1134,6 +1372,231 @@ export interface operations {
                     "application/json": {
                         success: boolean;
                         data: components["schemas"]["Server"];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "server.installServer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    server_name: string;
+                    /** Format: ipv4 */
+                    internal_ip: string;
+                    device_name?: string | null;
+                    external_ip?: string | null;
+                    ssh_username?: string | null;
+                    ssh_password?: string | null;
+                    cpu_cores?: number | null;
+                    ram?: number | null;
+                    operating_system?: string | null;
+                    id?: number | null;
+                    client_id?: number | null;
+                    client_name?: string | null;
+                    stats?: string[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "success";
+                        log: {
+                            wget: string;
+                            install: string;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "error";
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
+    "session.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SessionResource"][];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "session.revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Session revoked successfully.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Cannot revoke current session. Use logout instead.";
+                    };
+                };
+            };
+        };
+    };
+    "session.revokeAllOthers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "All other sessions logged out.";
+                        revoked_count: number;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "session.permanentDelete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Session deleted permanently.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Session must be revoked before permanent deletion.";
+                    } | {
+                        /** @constant */
+                        message: "Cannot delete current session.";
+                    };
+                };
+            };
+        };
+    };
+    "session.securityActivity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AuthAuditLogResource"][];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "session.activeSessionsCount": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        active_count: number;
                     };
                 };
             };

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { useAuth } from "@/hooks/useAuth";
 import {
     Tooltip,
     TooltipContent,
@@ -26,7 +25,7 @@ interface SidebarNavProps {
 export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { logout } = useAuthContext();
+    const { logout, user } = useAuthContext();
     const handleLogout = () => logout();
 
     const [popoverProfileOpen, setPopoverProfileOpen] = useState(false);
@@ -35,7 +34,6 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            // Only close if the click is neither on the profile button nor inside the dropdown content
             if (
                 profileRef.current &&
                 !profileRef.current.contains(event.target as Node) &&
@@ -47,24 +45,20 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
             }
         };
 
-        // Attach listener ONLY when dropdown is open
         if (popoverProfileOpen) {
             document.addEventListener("click", handleClickOutside, true);
         }
 
-        // Clean up listener when component unmounts or dropdown closes
         return () => {
             document.removeEventListener("click", handleClickOutside, true);
         };
-    }, [popoverProfileOpen]); // Re-run effect when DropdownProfileOpen changes
+    }, [popoverProfileOpen]);
 
-    // Load initial collapsed state from localStorage (default false)
     const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
         const stored = localStorage.getItem("sidebarCollapsed");
         return stored ? JSON.parse(stored) : false;
     });
 
-    // Save to localStorage whenever it changes
     useEffect(() => {
         localStorage.setItem("sidebarCollapsed", JSON.stringify(isCollapsed));
     }, [isCollapsed]);
@@ -149,10 +143,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                                 hidden={!isCollapsed}
                                 className={twMerge(
                                     "relative bg-primary text-primary-foreground ring-transparent text-md font-semibold",
-                                    // Arrow base
                                     "before:content-[''] before:absolute before:size-2 before:rotate-45",
                                     "before:bg-primary before:ring-transparent",
-                                    // Position arrow based on side
                                     "data-[side=top]:before:-bottom-1 data-[side=top]:before:left-1/2 data-[side=top]:before:-translate-x-1/2",
                                     "data-[side=bottom]:before:-top-1 data-[side=bottom]:before:left-1/2 data-[side=bottom]:before:-translate-x-1/2",
                                     "data-[side=left]:before:-right-1 data-[side=left]:before:top-1/2 data-[side=left]:before:-translate-y-1/2",
@@ -166,13 +158,12 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                 })}
             </nav>
 
-            {/* Render Dropdown Outside Sidebar */}
             <Popover
                 open={popoverProfileOpen}
                 onOpenChange={setPopoverProfileOpen}
             >
                 <PopoverTrigger>
-                    <ProfileBar isCollapsed={isCollapsed} />
+                    <ProfileBar isCollapsed={isCollapsed} user={user} />
                 </PopoverTrigger>
                 <PopoverContent
                     align="end"
@@ -184,6 +175,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                         <ProfileBar
                             asNavigation
                             setPopoverOpen={setPopoverProfileOpen}
+                            user={user}
                         />
                     ) : (
                         <Button
@@ -210,14 +202,15 @@ const ProfileBar = ({
     asNavigation,
     setPopoverOpen,
     isCollapsed = false,
+    user,
 }: {
     asNavigation?: boolean;
     setPopoverOpen?: React.Dispatch<React.SetStateAction<boolean>>;
     isCollapsed?: boolean;
+    user: { first_name?: string; last_name?: string; email?: string; profile_picture_url?: string } | null;
 }) => {
-    const { data: user } = useAuth();
     const navigate = useNavigate();
-    if (!user) return;
+    if (!user) return null;
 
     const firstName = user.first_name;
     const lastName = user.last_name;

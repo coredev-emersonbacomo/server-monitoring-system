@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import client, { getCsrfCookie } from "@/api/api";
+import client from "@/api/api";
+import jwtClient from "@/api/jwtClient";
 import type { components } from "@/api/schema.d";
 
 type ClientData = components["schemas"]["ClientData"];
@@ -34,7 +35,6 @@ export const useCreateClient = () => {
 
     return useMutation({
         mutationFn: async (formData: FormData) => {
-            await getCsrfCookie();
             const { data, error } = await client.POST("/clients", {
                 body: formData as never,
             });
@@ -52,7 +52,6 @@ export const useUpdateClient = (id: number) => {
 
     return useMutation({
         mutationFn: async (formData: FormData) => {
-            await getCsrfCookie();
             const { data, error } = await client.PUT("/clients/{id}", {
                 params: { path: { id } },
                 body: formData as never,
@@ -85,11 +84,8 @@ export const useClientServers = (clientId: number) => {
     return useQuery({
         queryKey: ["clients", clientId, "servers"],
         queryFn: async (): Promise<ClientServer[]> => {
-            const res = await fetch(`/api/clients/${clientId}/servers`, {
-                credentials: "include",
-            });
-            if (!res.ok) throw new Error("Failed to fetch servers");
-            return res.json();
+            const { data } = await jwtClient.get<ClientServer[]>(`/clients/${clientId}/servers`);
+            return data;
         },
         enabled: !!clientId,
     });
@@ -100,7 +96,6 @@ export const useDeleteClient = () => {
 
     return useMutation({
         mutationFn: async (id: number) => {
-            await getCsrfCookie();
             const { error } = await client.DELETE("/clients/{id}", {
                 params: { path: { id } },
             });

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import jwtClient from "@/api/jwtClient";
 
 export interface ActionItem {
     id: number;
@@ -14,19 +15,12 @@ export interface ActionItem {
     status: "open" | "in_progress" | "completed";
 }
 
-const API_BASE = "/api";
-
 export const useDashboardActions = () => {
     return useQuery<ActionItem[]>({
         queryKey: ["dashboard", "actions"],
         queryFn: async () => {
-            const res = await fetch(`${API_BASE}/dashboard/actions`, {
-                headers: { Accept: "application/json" },
-                credentials: "include",
-            });
-            if (!res.ok) throw new Error("Failed to load dashboard actions");
-            const json = await res.json();
-            return json.data ?? json;
+            const { data } = await jwtClient.get<ActionItem[]>("/dashboard/actions");
+            return data;
         },
         staleTime: 30_000,
         refetchInterval: 60_000,
@@ -37,13 +31,8 @@ export const useCompletedActions = () => {
     return useQuery<ActionItem[]>({
         queryKey: ["dashboard", "actions", "completed"],
         queryFn: async () => {
-            const res = await fetch(`${API_BASE}/dashboard/actions/completed`, {
-                headers: { Accept: "application/json" },
-                credentials: "include",
-            });
-            if (!res.ok) throw new Error("Failed to load completed actions");
-            const json = await res.json();
-            return json.data ?? json;
+            const { data } = await jwtClient.get<ActionItem[]>("/dashboard/actions/completed");
+            return data;
         },
         staleTime: 30_000,
     });
@@ -53,13 +42,8 @@ export const useClaimAction = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (actionId: number) => {
-            const res = await fetch(`${API_BASE}/dashboard/actions/${actionId}/claim`, {
-                method: "POST",
-                headers: { Accept: "application/json" },
-                credentials: "include",
-            });
-            if (!res.ok) throw new Error("Failed to claim action");
-            return res.json();
+            const { data } = await jwtClient.post(`/dashboard/actions/${actionId}/claim`);
+            return data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["dashboard", "actions"] });
@@ -71,17 +55,8 @@ export const useUpdateActionStatus = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ actionId, status }: { actionId: number; status: string }) => {
-            const res = await fetch(`${API_BASE}/dashboard/actions/${actionId}/status`, {
-                method: "POST",
-                headers: {
-                    Accept: "application/json",
-                    "Content-Type": "application/json",
-                },
-                credentials: "include",
-                body: JSON.stringify({ status }),
-            });
-            if (!res.ok) throw new Error("Failed to update action status");
-            return res.json();
+            const { data } = await jwtClient.post(`/dashboard/actions/${actionId}/status`, { status });
+            return data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["dashboard", "actions"] });
