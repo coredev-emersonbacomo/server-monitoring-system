@@ -11,11 +11,12 @@ import { SidebarNav } from "@/components/SidebarNav";
 import { BreadcrumbProvider } from "@/contexts/BreadCrumbContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import TopBarNav from "@/components/TopBarNav";
-import { useAuthContext } from "@/hooks/useAuthContext";
+import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { Toaster } from "sonner";
+import { UserRoles } from "@/types/user-role";
 
 export function ProtectedRoute() {
-    const { user, isLoading } = useAuthContext();
+    const { user, isLoading } = useJwtAuth();
     const location = useLocation();
 
     const sidebarLinks = [
@@ -27,13 +28,13 @@ export function ProtectedRoute() {
                 <Landmark {...props} strokeWidth="1.75" />
             ),
         },
-        ...(user?.role === "Admin"
+        ...(user?.role === UserRoles.Admin
             ? [{ name: "Users", href: "/users", icon: Users }]
             : []),
         { name: "Logs", href: "/logs", icon: ClipboardClock },
         { name: "Settings", href: "/settings", icon: Settings },
     ];
-    ``
+
     if (isLoading) {
         return (
             <div className="flex min-h-screen items-center justify-center" />
@@ -52,11 +53,13 @@ export function ProtectedRoute() {
     return (
         <TooltipProvider>
             <BreadcrumbProvider>
-                <div className="flex h-screen overflow-hidden">
+                <div className="flex min-h-screen">
                     <SidebarNav links={sidebarLinks} />
-                    <main className="flex-1 flex flex-col min-h-0 overflow-hidden px-8 sm:px-10 lg:px-12 py-5 gap-5">
+
+                    <main className="flex-1 flex flex-col min-h-0 overflow-auto px-8 sm:px-10 lg:px-12 py-5 gap-5">
                         <TopBarNav />
-                        <div className="flex-1 min-h-0 overflow-auto">
+
+                        <div className="flex-1 flex flex-col min-h-0">
                             <Outlet />
                         </div>
                     </main>

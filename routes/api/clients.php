@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ClientController;
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:jwt')->group(function () {
     Route::get('/clients', [ClientController::class, 'index']);
     Route::post('/clients', [ClientController::class, 'store']);
     Route::get('/clients/{id}', [ClientController::class, 'show'])->whereNumber('id');
