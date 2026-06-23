@@ -53,12 +53,10 @@ export function ProtectedRoute() {
     return (
         <TooltipProvider>
             <BreadcrumbProvider>
-                <div className="flex min-h-screen">
+                <div className="flex h-screen overflow-hidden">
                     <SidebarNav links={sidebarLinks} />
-
                     <main className="flex-1 flex flex-col min-h-0 overflow-auto px-8 sm:px-10 lg:px-12 py-5 gap-5">
                         <TopBarNav />
-
                         <div className="flex-1 flex flex-col min-h-0">
                             <Outlet />
                         </div>

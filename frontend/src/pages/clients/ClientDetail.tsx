@@ -463,8 +463,7 @@ export default function ClientDetail() {
     const bannerInputId = "banner-upload";
     const filteredServers = servers.filter((s) => {
         const matchSearch = s.server_name.toLowerCase().includes(serverSearch.toLowerCase());
-        const matchFilter = serverFilter === "all" || s.status === serverFilter;
-        return matchSearch && matchFilter;
+        return matchSearch;
     });
 
     return (
