@@ -16,11 +16,12 @@ export interface ServerListItem {
     last_seen: string | null;
 }
 
-export const useServers = () => {
+export const useServers = (clientId?: number) => {
     return useQuery<ServerListItem[]>({
-        queryKey: ["servers"],
+        queryKey: ["servers", clientId],
         queryFn: async () => {
-            const { data } = await jwtClient.get<ServerListItem[]>("/servers");
+            const params = clientId ? { client_id: clientId } : undefined;
+            const { data } = await jwtClient.get<ServerListItem[]>("/servers", { params });
             return data;
         },
     });

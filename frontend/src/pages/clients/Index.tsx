@@ -1,5 +1,12 @@
 import { useState, useMemo } from "react";
-import { Plus, Search, Landmark, RefreshCw, Filter, ChevronDown } from "lucide-react";
+import {
+    Plus,
+    Search,
+    Landmark,
+    RefreshCw,
+    Filter,
+    ChevronDown,
+} from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useClients, useDeleteClient } from "@/hooks/useClients";
 import { Button } from "@/components/ui/button";
@@ -52,13 +59,6 @@ function ClientCard({
     client: ClientData;
     onDelete: (c: ClientData) => void;
 }) {
-    const initials = client.name
-        .split(" ")
-        .map((p) => p[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase();
-
     return (
         <Link
             to={`/clients/${client.id}`}
@@ -70,7 +70,9 @@ function ClientCard({
                         <span
                             className={cn(
                                 "w-1.5 h-1.5 rounded-full",
-                                client.servers_count > 0 ? "bg-emerald-500" : "bg-muted-foreground/40",
+                                client.servers_count > 0
+                                    ? "bg-emerald-500"
+                                    : "bg-muted-foreground/40",
                             )}
                         />
                         {client.servers_count > 0
@@ -86,37 +88,37 @@ function ClientCard({
                 </div>
 
                 <div className="mt-4 mb-1">
-                    {client.banner_image_url ? (
-                        <img
-                            src={client.banner_image_url}
-                            alt={client.name}
-                            className="w-20 h-20 rounded-full object-cover border border-border shadow-sm"
-                        />
-                    ) : (
-                        <div className="w-20 h-20 rounded-full bg-muted border border-border flex items-center justify-center text-muted-foreground text-xl font-semibold shadow-sm">
-                            {initials}
-                        </div>
-                    )}
+                    <img
+                        src={client.banner_image_url}
+                        alt={client.name}
+                        className="w-20 h-20 rounded-full object-cover border border-border shadow-sm"
+                    />
                 </div>
 
                 <div className="text-center w-full flex flex-col items-center gap-1.5">
-
                     {client.name}
 
-                    <p className="text-muted-foreground text-sm">{client.email}</p>
+                    <p className="text-muted-foreground text-sm">
+                        {client.email}
+                    </p>
 
                     {client.location && (
-                        <p className="text-muted-foreground text-xs">{client.location}</p>
+                        <p className="text-muted-foreground text-xs">
+                            {client.location}
+                        </p>
                     )}
 
                     <div className="flex items-center gap-1.5  text-muted-foreground text-sm mt-1">
                         <Landmark size={16} className="text-muted-foreground" />
-                        <span>{client.contact_number.replace(/\D/g, "").replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")}</span>
+                        <span>
+                            {client.contact_number
+                                .replace(/\D/g, "")
+                                .replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")}
+                        </span>
                     </div>
                 </div>
             </div>
         </Link>
-
     );
 }
 
@@ -148,16 +150,31 @@ export default function Clients() {
         });
     }, [search, filter, clients]);
 
-    const clientsWithServers = clients?.filter((c) => c.servers_count > 0).length ?? 0;
-    const clientsWithoutServers = clients?.filter((c) => c.servers_count === 0).length ?? 0;
+    const clientsWithServers =
+        clients?.filter((c) => c.servers_count > 0).length ?? 0;
+    const clientsWithoutServers =
+        clients?.filter((c) => c.servers_count === 0).length ?? 0;
 
     const filterOptions = [
-        { label: "All", value: "all" as FilterTab, count: clients?.length ?? 0 },
-        { label: "With Servers", value: "with-servers" as FilterTab, count: clientsWithServers },
-        { label: "No Servers", value: "no-servers" as FilterTab, count: clientsWithoutServers },
+        {
+            label: "All",
+            value: "all" as FilterTab,
+            count: clients?.length ?? 0,
+        },
+        {
+            label: "With Servers",
+            value: "with-servers" as FilterTab,
+            count: clientsWithServers,
+        },
+        {
+            label: "No Servers",
+            value: "no-servers" as FilterTab,
+            count: clientsWithoutServers,
+        },
     ];
 
-    const currentFilterLabel = filterOptions.find((o) => o.value === filter)?.label ?? "All";
+    const currentFilterLabel =
+        filterOptions.find((o) => o.value === filter)?.label ?? "All";
 
     return (
         <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
@@ -174,7 +191,8 @@ export default function Clients() {
                                     Client Management
                                 </h1>
                                 <p className="text-sm text-muted-foreground mt-0.5">
-                                    Manage client accounts and their associated servers.
+                                    Manage client accounts and their associated
+                                    servers.
                                 </p>
                             </div>
                         </div>
@@ -183,7 +201,6 @@ export default function Clients() {
             </header>
 
             <main className="py-6 w-full flex-1 min-h-0 overflow-auto flex flex-col gap-5">
-
                 {/* ── Toolbar ── */}
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -226,7 +243,9 @@ export default function Clients() {
                                         )}
                                     >
                                         <span>{option.label}</span>
-                                        <span className="text-xs text-muted-foreground">{option.count}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {option.count}
+                                        </span>
                                     </button>
                                 ))}
                             </PopoverContent>
@@ -294,7 +313,11 @@ export default function Clients() {
                 {!isLoading && !isError && visible.length > 0 && (
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
                         {visible.map((c) => (
-                            <ClientCard key={c.id} client={c} onDelete={setDeleting} />
+                            <ClientCard
+                                key={c.id}
+                                client={c}
+                                onDelete={setDeleting}
+                            />
                         ))}
                     </div>
                 )}
@@ -302,7 +325,9 @@ export default function Clients() {
                 {/* ── Delete dialog ── */}
                 <Dialog
                     open={!!deleting}
-                    onOpenChange={(open) => { if (!open) setDeleting(null); }}
+                    onOpenChange={(open) => {
+                        if (!open) setDeleting(null);
+                    }}
                 >
                     <DialogContent className="sm:max-w-sm">
                         <DialogHeader>
@@ -310,25 +335,41 @@ export default function Clients() {
                         </DialogHeader>
                         <p className="text-sm text-muted-foreground">
                             Are you sure you want to delete{" "}
-                            <span className="font-medium text-foreground">{deleting?.name}</span>?
-                            This action cannot be undone.
+                            <span className="font-medium text-foreground">
+                                {deleting?.name}
+                            </span>
+                            ? This action cannot be undone.
                         </p>
                         <div className="flex justify-end gap-2 pt-2">
                             <DialogClose asChild>
-                                <Button variant="outline" label="Cancel" onClick={() => setDeleting(null)} />
+                                <Button
+                                    variant="outline"
+                                    label="Cancel"
+                                    onClick={() => setDeleting(null)}
+                                />
                             </DialogClose>
                             <Button
                                 variant="danger"
-                                label={deleteClient.isPending ? "Deleting…" : "Delete"}
+                                label={
+                                    deleteClient.isPending
+                                        ? "Deleting…"
+                                        : "Delete"
+                                }
                                 disabled={deleteClient.isPending}
                                 onClick={async () => {
                                     if (!deleting) return;
                                     try {
-                                        await deleteClient.mutateAsync(deleting.id);
-                                        toast.success(`${deleting.name} has been deleted.`);
+                                        await deleteClient.mutateAsync(
+                                            deleting.id,
+                                        );
+                                        toast.success(
+                                            `${deleting.name} has been deleted.`,
+                                        );
                                         setDeleting(null);
                                     } catch {
-                                        toast.error("Failed to delete client. Please try again.");
+                                        toast.error(
+                                            "Failed to delete client. Please try again.",
+                                        );
                                     }
                                 }}
                             />

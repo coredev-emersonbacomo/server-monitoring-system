@@ -435,7 +435,8 @@ export default function UserDetail() {
     }
 
     // ── Derived state ──────────────────────────────────────────────────────────
-    const avatarSrc = avatarPreview || "";
+    const DEFAULT_AVATAR = import.meta.env.VITE_DEFAULT_PROFILE_PICTURE || "";
+    const avatarSrc = avatarPreview || DEFAULT_AVATAR;
     const avatarInputId = "avatar-upload";
     const isSaving = createUser.isPending || updateUser.isPending;
 

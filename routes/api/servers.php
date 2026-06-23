@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:jwt')->group(function () {
     // All servers with status (for server list page)
-    Route::get('/servers', function () {
+    Route::get('/servers', function (Illuminate\Http\Request $request) {
         $onlineThreshold  = now()->subMinutes(5);
         $warningThreshold = now()->subMinutes(15);
 
-        $servers = DB::table('servers')
+        $query = DB::table('servers')
             ->leftJoinSub(
                 DB::table('server_updates')
                     ->select('server_id', DB::raw('MAX(created_at) as last_seen'))
@@ -42,10 +42,13 @@ Route::middleware('auth:jwt')->group(function () {
                     WHEN lu.last_seen < ? AND lu.last_seen >= ? THEN 'warning'
                     ELSE 'offline'
                 END as status
-            ", [$onlineThreshold, $onlineThreshold, $warningThreshold])
-            ->get();
+            ", [$onlineThreshold, $onlineThreshold, $warningThreshold]);
 
-        return response()->json($servers);
+        if ($clientId = $request->query('client_id')) {
+            $query->where('servers.client_id', $clientId);
+        }
+
+        return response()->json($query->get());
     });
 
     // Prefix client ex. {clients/1/servers/1}
