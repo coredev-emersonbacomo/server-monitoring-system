@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
@@ -8,7 +9,7 @@ use App\Models\ServerUpdate;
 class SimulateMetricsUpdate extends Command
 {
     protected $signature = 'server:update-metrics {--daemon}';
-    protected $description = 'Simulates incoming daemon metric updates for all servers';
+    protected $description = 'Simulates incoming daemon metric updates and hardware profiles for all servers';
 
     public function handle()
     {
@@ -17,7 +18,7 @@ class SimulateMetricsUpdate extends Command
             
             while (true) {
                 $this->fireMetrics();
-                sleep(5);
+                sleep(10);
             }
         }
 
@@ -33,7 +34,29 @@ class SimulateMetricsUpdate extends Command
             return;
         }
 
+        $statuses = ['online', 'offline'];
+        $operatingSystems = ['Ubuntu 22.04 LTS', 'Debian 12', 'CentOS Stream 9', 'Windows Server 2022'];
+        $cpuOptions = [2, 4, 8, 16, 32];
+        $ramOptions = [4, 8, 16, 32, 64, 128];
+
         foreach ($servers as $server) {
+            $randomStatus = $statuses[array_rand($statuses)];
+
+            if ($randomStatus === 'offline') {
+                $server->update([
+                    'status' => 'offline',
+                ]);
+
+                continue;
+            }
+
+            $server->update([
+                'status' => 'online',
+                'cpu_cores' => $server->cpu_cores ?? $cpuOptions[array_rand($cpuOptions)],
+                'ram' => $server->ram ?? $ramOptions[array_rand($ramOptions)],
+                'operating_system' => $server->operating_system ?? $operatingSystems[array_rand($operatingSystems)],
+            ]);
+
             ServerUpdate::create([
                 'server_id' => $server->id,
                 'cpu_usage' => rand(500, 9500) / 100,
