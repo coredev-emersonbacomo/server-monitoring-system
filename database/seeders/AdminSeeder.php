@@ -22,11 +22,13 @@ class AdminSeeder extends Seeder
                 'email' => 'admin@example.com',
                 'contact_number' => '1234567890',
                 'password' => bcrypt('admin123'),
-                'role_id' => UserRole::Admin->value,
+                'role_id' => UserRole::Admin->id(),
                 'created_at' => now(),
                 'updated_at'=> now(),
                 'profile_picture_url'=> '',
-                'last_login' => now()
+                'last_login' => now(),
+                'status'=> 'online',
+
             ]
         );
     }
