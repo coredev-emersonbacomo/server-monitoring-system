@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Client;
-
 class SecOp extends Model
 {
     public function client(): BelongsTo
@@ -16,5 +15,5 @@ class SecOp extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
-
+    
 }
