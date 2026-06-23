@@ -8,6 +8,8 @@ use App\Models\Server;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Crypt;
 use Infrastructure\Api\ApiGenerator;
+// Install Service
+use Infrastructure\Service\InstallerService;
 
 class ServerController extends Controller
 {
@@ -112,5 +114,32 @@ class ServerController extends Controller
             'success' => true,
             'data' => $server,
         ]);
+    }
+
+    public function installServer(ServerData $data): JsonResponse
+    {
+        try {
+            $installer = new InstallerService(
+                sshHost:     $data->sshHost,
+                sshPort:     $data->sshPort,
+                sshUser:     $data->sshUser,
+                sshPassword: $data->sshPassword,
+                serverId:    $data->serverId,
+                apiToken:    $data->apiToken,
+            );
+
+            $log = $installer->install();
+
+            return response()->json([
+                'status' => 'success',
+                'log'    => $log,
+            ]);
+
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 }
