@@ -40,6 +40,9 @@ import { getClientBannerUploadSignature } from "@/api/cloudinary";
 import { uploadToCloudinary } from "@/services/cloudinary";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 
+import { Search, Filter, ChevronDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 // ─── Form skeleton ────────────────────────────────────────────────────────────
 
 function FormSkeleton() {
@@ -126,6 +129,8 @@ function SectionHeader({
 // ─── Server card ──────────────────────────────────────────────────────────────
 
 function ServerCard({ server }: { server: ClientServer }) {
+
+
     return (
         <Link
             to={`/servers/${server.id}`}
@@ -229,6 +234,10 @@ export default function ClientDetail() {
     );
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [uploadProgress, setUploadProgress] = useState(-1);
+
+    // Add state inside the component
+    const [serverSearch, setServerSearch] = useState("");
+    const [serverFilter, setServerFilter] = useState<"all" | "online" | "offline">("all");
 
     const [form, setForm] = useState({
         name: "",
@@ -451,8 +460,12 @@ export default function ClientDetail() {
     // ── Derived state ──────────────────────────────────────────────────────────
     const hasBanner = !!bannerPreview;
     const isSaving = createClient.isPending || updateClient.isPending;
-
     const bannerInputId = "banner-upload";
+    const filteredServers = servers.filter((s) => {
+        const matchSearch = s.server_name.toLowerCase().includes(serverSearch.toLowerCase());
+        const matchFilter = serverFilter === "all" || s.status === serverFilter;
+        return matchSearch && matchFilter;
+    });
 
     return (
         <>
@@ -462,394 +475,443 @@ export default function ClientDetail() {
                 message="Uploading banner..."
             />
             <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
-            {/* ── Banner / Hero ── */}
-            <div className="relative">
-                <div className="absolute inset-0 overflow-hidden rounded-t-xl">
-                    <div
-                        className="w-full h-full"
-                        style={
-                            hasBanner
-                                ? {
-                                    backgroundImage: `url(${bannerPreview})`,
-                                    backgroundSize: "cover",
-                                    backgroundPosition: "center",
-                                }
-                                : {
-                                    background:
-                                        "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                }
-                        }
-                    />
-                    <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
-                    <div className="absolute inset-0 bg-linear-to-r from-background/40 to-transparent" />
-                </div>
-
-                <div className="relative z-10 px-6 sm:px-8 lg:px-10 pt-6 pb-20">
-                    {/* ── Top bar: back + actions ── */}
-                    <div className="flex items-center justify-end mb-6">
-                        <div className="flex items-center gap-2">
-                            {/* Upload — always accessible */}
-                            {showEdit && (
-                                <>
-                                    <label className="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring h-8 px-3 py-1 border border-border bg-transparent hover:bg-muted text-foreground cursor-pointer">
-                                        <Upload size={13} />
-                                        Upload Banner Image
-                                        <input
-                                            id={bannerInputId}
-                                            type="file"
-                                            accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
-                                            onChange={handleBannerChange}
-                                            className="hidden"
-                                        />
-                                    </label>
-                                    {bannerFile && (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setBannerFile(null);
-                                                setBannerPreview(
-                                                    client?.banner_image_url ??
-                                                    defaultBanner,
-                                                );
-                                                const input =
-                                                    document.getElementById(
-                                                        bannerInputId,
-                                                    ) as HTMLInputElement;
-                                                if (input) input.value = "";
-                                            }}
-                                            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                                        >
-                                            Reset
-                                        </button>
-                                    )}
-                                </>
-                            )}
-
-                            {mode === "edit" && (
-                                <Button
-                                    variant="danger"
-                                    size="sm"
-                                    icon={<Trash2 size={13} />}
-                                    label="Delete"
-                                    className="bg-red-600/70"
-                                    onClick={() => setShowDelete(true)}
-                                />
-                            )}
-
-                            {mode !== "create" && !showEdit && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    icon={<Pencil className="w-4 h-4" />}
-                                    label="Edit"
-                                    onClick={() => setMode("edit")}
-                                />
-                            )}
-                            {showEdit && mode !== "create" && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    label="Cancel"
-                                    onClick={cancelEdit}
-                                />
-                            )}
-                            {showEdit && mode === "create" && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    label="Cancel"
-                                    onClick={() => navigate("/clients")}
-                                />
-                            )}
-                        </div>
+                {/* ── Banner / Hero ── */}
+                <div className="relative">
+                    <div className="absolute inset-0 overflow-hidden rounded-t-xl">
+                        <div
+                            className="w-full h-full"
+                            style={
+                                hasBanner
+                                    ? {
+                                        backgroundImage: `url(${bannerPreview})`,
+                                        backgroundSize: "cover",
+                                        backgroundPosition: "center",
+                                    }
+                                    : {
+                                        background:
+                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                    }
+                            }
+                        />
+                        <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
+                        <div className="absolute inset-0 bg-linear-to-r from-background/40 to-transparent" />
                     </div>
 
-                    {/* ── Name ── */}
-                    <div className="flex-1 min-w-0">
-                        {showEdit ? (
-                            <div>
-                                <Label className="text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-1">
-                                    Name
-                                </Label>
-                                <input
-                                    value={form.name}
-                                    onChange={set("name")}
-                                    placeholder="Client name"
-                                    className="w-full text-2xl sm:text-3xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
-                                />
-                                {errors.name && (
-                                    <p className="text-xs text-destructive mt-1">
-                                        {errors.name}
-                                    </p>
+                    <div className="relative z-10 px-6 sm:px-8 lg:px-10 pt-6 pb-20">
+                        {/* ── Top bar: back + actions ── */}
+                        <div className="flex items-center justify-end mb-6">
+                            <div className="flex items-center gap-2">
+                                {/* Upload — always accessible */}
+                                {showEdit && (
+                                    <>
+                                        <label className="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring h-8 px-3 py-1 border border-border bg-transparent hover:bg-muted text-foreground cursor-pointer">
+                                            <Upload size={13} />
+                                            Upload Banner Image
+                                            <input
+                                                id={bannerInputId}
+                                                type="file"
+                                                accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+                                                onChange={handleBannerChange}
+                                                className="hidden"
+                                            />
+                                        </label>
+                                        {bannerFile && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setBannerFile(null);
+                                                    setBannerPreview(
+                                                        client?.banner_image_url ??
+                                                        defaultBanner,
+                                                    );
+                                                    const input =
+                                                        document.getElementById(
+                                                            bannerInputId,
+                                                        ) as HTMLInputElement;
+                                                    if (input) input.value = "";
+                                                }}
+                                                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                                            >
+                                                Reset
+                                            </button>
+                                        )}
+                                    </>
                                 )}
-                            </div>
-                        ) : (
-                            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-                                {client?.name ?? "Client"}
-                            </h1>
-                        )}
-                    </div>
 
-                    {/* ── Description (always in banner) ── */}
-                    <div className="mt-3 max-w-xl">
-                        {showEdit ? (
-                            <div>
-                                <Label className="text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-1">
-                                    Description
-                                </Label>
-                                <textarea
-                                    value={form.description}
-                                    onChange={set("description")}
-                                    placeholder="Brief description about the client..."
-                                    rows={2}
-                                    className={cn(
-                                        "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none",
-                                        errors.description &&
-                                        "border-destructive",
-                                    )}
-                                />
-                            </div>
-                        ) : (
-                            client?.description && (
-                                <p className="text-sm text-muted-foreground">
-                                    {client.description}
-                                </p>
-                            )
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* ── Content ── */}
-            <div className="flex-1 -mt-12 relative z-20 px-6 sm:px-8 lg:px-10 pb-8">
-                <div className="max-w-3xl mx-auto flex flex-col gap-6">
-                    {/* ── Form card ── */}
-                    <form
-                        onSubmit={handleSubmit}
-                        className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8"
-                    >
-                        {/* Basic Information */}
-                        <section className="space-y-4">
-                            <SectionHeader
-                                title="Basic Information"
-                                description="Core details about this client account."
-                            />
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <Field
-                                    label="Location"
-                                    required
-                                    error={errors.location}
-                                    isEdit={showEdit}
-                                >
-                                    {showEdit ? (
-                                        <Input
-                                            placeholder="New York, USA"
-                                            value={form.location}
-                                            onChange={set("location")}
-                                            className={cn(
-                                                errors.location &&
-                                                "border-destructive",
-                                            )}
-                                        />
-                                    ) : (
-                                        <p className="text-sm text-foreground py-1">
-                                            {client?.location}
-                                        </p>
-                                    )}
-                                </Field>
-                            </div>
-                        </section>
-
-                        <div className="h-px bg-border" />
-
-                        {/* Contact Details */}
-                        <section className="space-y-4">
-                            <SectionHeader
-                                title="Contact Details"
-                                description="How to reach this client."
-                            />
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <Field
-                                    label="Email Address"
-                                    required
-                                    error={errors.email}
-                                    isEdit={showEdit}
-                                >
-                                    {showEdit ? (
-                                        <Input
-                                            type="email"
-                                            placeholder="contact@acme.com"
-                                            value={form.email}
-                                            onChange={set("email")}
-                                            className={cn(
-                                                errors.email &&
-                                                "border-destructive",
-                                            )}
-                                        />
-                                    ) : (
-                                        <p className="text-sm text-foreground py-1">
-                                            {client?.email}
-                                        </p>
-                                    )}
-                                </Field>
-                                <Field
-                                    label="Contact Number"
-                                    required
-                                    error={errors.contact_number}
-                                    isEdit={showEdit}
-                                >
-                                    {showEdit ? (
-                                        <Input
-                                            placeholder="095-1234-5678"
-                                            value={form.contact_number}
-                                            onChange={(e) => {
-                                                const numeric = e.target.value.replace(/\D/g, "");
-                                                // Enforce starts with 09
-                                                if (numeric.length >= 2 && !numeric.startsWith("09")) return;
-                                                set("contact_number")({ ...e, target: { ...e.target, value: numeric.slice(0, 11) } });
-                                            }}
-                                            onBlur={(e) => {
-                                                const numeric = e.target.value.replace(/\D/g, "");
-                                                // Only format if valid (starts with 09 and 11 digits)
-                                                if (!numeric.startsWith("09") || numeric.length !== 11) return;
-                                                const formatted = `${numeric.slice(0, 3)}-${numeric.slice(3, 7)}-${numeric.slice(7, 11)}`;
-                                                set("contact_number")({ ...e, target: { ...e.target, value: formatted } });
-                                            }}
-                                            onKeyDown={(e) => {
-                                                const allowedKeys = [
-                                                    "Backspace", "Delete", "Tab", "Escape", "Enter",
-                                                    "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
-                                                    "Home", "End",
-                                                ];
-                                                if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x"].includes(e.key.toLowerCase())) {
-                                                    return;
-                                                }
-                                                if (/^\d$/.test(e.key) || allowedKeys.includes(e.key)) {
-                                                    return;
-                                                }
-                                                e.preventDefault();
-                                            }}
-                                            className={cn(errors.contact_number && "border-destructive")}
-                                        />
-                                    ) : (
-                                        <p className="text-sm text-foreground py-1">
-                                            {client?.contact_number}
-                                        </p>
-                                    )}
-                                </Field>
-                            </div>
-                        </section>
-
-                        {/* Actions */}
-                        {showEdit && (
-                            <>
-                                <div className="h-px bg-border" />
-                                <div className="flex items-center justify-end gap-3">
+                                {mode === "edit" && (
                                     <Button
-                                        type="submit"
-                                        disabled={isSaving}
-                                        label={
-                                            isSaving
-                                                ? "Saving…"
-                                                : mode === "create"
-                                                    ? "Create Client"
-                                                    : "Save Changes"
-                                        }
+                                        variant="danger"
+                                        size="sm"
+                                        icon={<Trash2 size={13} />}
+                                        label="Delete"
+                                        className="bg-red-600/70"
+                                        onClick={() => setShowDelete(true)}
                                     />
-                                </div>
-                            </>
-                        )}
-                    </form>
+                                )}
 
-                    {/* ── Server cards ── */}
-                    {mode !== "create" && client && (
-                        <section>
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <h2 className="text-base font-semibold text-foreground">
-                                        Servers
-                                    </h2>
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                        {client.servers_count > 0
-                                            ? `${client.servers_count} server${client.servers_count !== 1 ? "s" : ""} associated with this client.`
-                                            : "No servers are currently associated with this client."}
-                                    </p>
-                                </div>
-                                <Link
-                                    to={`/servers/create?client_id=${client.id}`}
-                                >
+                                {mode !== "create" && !showEdit && (
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        icon={<Plus size={14} />}
-                                        label="Add Server"
+                                        icon={<Pencil className="w-4 h-4" />}
+                                        label="Edit"
+                                        onClick={() => setMode("edit")}
                                     />
-                                </Link>
+                                )}
+                                {showEdit && mode !== "create" && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        label="Cancel"
+                                        onClick={cancelEdit}
+                                    />
+                                )}
+                                {showEdit && mode === "create" && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        label="Cancel"
+                                        onClick={() => navigate("/clients")}
+                                    />
+                                )}
                             </div>
+                        </div>
 
-                            {serversLoading ? (
-                                <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
-                                    {Array.from({
-                                        length: Math.min(
-                                            client.servers_count || 2,
-                                            4,
-                                        ),
-                                    }).map((_, i) => (
-                                        <ServerCardSkeleton key={i} />
-                                    ))}
-                                </div>
-                            ) : servers.length > 0 ? (
-                                <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
-                                    {servers.map((s) => (
-                                        <ServerCard key={s.id} server={s} />
-                                    ))}
+                        {/* ── Name ── */}
+                        <div className="flex-1 min-w-0">
+                            {showEdit ? (
+                                <div>
+                                    <Label className="text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-1">
+                                        Name
+                                    </Label>
+                                    <input
+                                        value={form.name}
+                                        onChange={set("name")}
+                                        placeholder="Client name"
+                                        className="w-full text-2xl sm:text-3xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
+                                    />
+                                    {errors.name && (
+                                        <p className="text-xs text-destructive mt-1">
+                                            {errors.name}
+                                        </p>
+                                    )}
                                 </div>
                             ) : (
-                                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2 bg-card border border-border/60 rounded-xl">
-                                    <Server size={28} className="opacity-20" />
-                                    <p className="text-sm">
-                                        No servers assigned to this client.
-                                    </p>
-                                </div>
+                                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                                    {client?.name ?? "Client"}
+                                </h1>
                             )}
-                        </section>
-                    )}
-                </div>
-            </div>
+                        </div>
 
-            {/* ── Delete dialog ── */}
-            <Dialog open={showDelete} onOpenChange={setShowDelete}>
-                <DialogContent className="sm:max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle>Delete Client</DialogTitle>
-                    </DialogHeader>
-                    <p className="text-sm text-muted-foreground">
-                        This will permanently delete{" "}
-                        <strong className="text-foreground">
-                            {client?.name}
-                        </strong>{" "}
-                        and all associated data. This cannot be undone.
-                    </p>
-                    <div className="flex justify-end gap-3 pt-2">
-                        <DialogClose asChild>
-                            <Button
-                                variant="outline"
-                                label="Cancel"
-                                onClick={() => setShowDelete(false)}
-                            />
-                        </DialogClose>
-                        <Button
-                            variant="danger"
-                            label={
-                                deleteClient.isPending ? "Deleting…" : "Delete"
-                            }
-                            disabled={deleteClient.isPending}
-                            onClick={handleDelete}
-                        />
+                        {/* ── Description (always in banner) ── */}
+                        <div className="mt-3 max-w-xl">
+                            {showEdit ? (
+                                <div>
+                                    <Label className="text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-1">
+                                        Description
+                                    </Label>
+                                    <textarea
+                                        value={form.description}
+                                        onChange={set("description")}
+                                        placeholder="Brief description about the client..."
+                                        rows={2}
+                                        className={cn(
+                                            "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none",
+                                            errors.description &&
+                                            "border-destructive",
+                                        )}
+                                    />
+                                </div>
+                            ) : (
+                                client?.description && (
+                                    <p className="text-sm text-muted-foreground">
+                                        {client.description}
+                                    </p>
+                                )
+                            )}
+                        </div>
                     </div>
-                </DialogContent>
-            </Dialog>
-        </div>
+                </div>
+
+                {/* ── Content ── */}
+                <div className="flex-1 -mt-12 relative z-20 px-6 sm:px-8 lg:px-10 pb-8">
+                    <div className="max-w-3xl mx-auto flex flex-col gap-6">
+                        {/* ── Form card ── */}
+                        <form
+                            onSubmit={handleSubmit}
+                            className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8"
+                        >
+                            {/* Basic Information */}
+                            <section className="space-y-4">
+                                <SectionHeader
+                                    title="Basic Information"
+                                    description="Core details about this client account."
+                                />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field
+                                        label="Location"
+                                        required
+                                        error={errors.location}
+                                        isEdit={showEdit}
+                                    >
+                                        {showEdit ? (
+                                            <Input
+                                                placeholder="New York, USA"
+                                                value={form.location}
+                                                onChange={set("location")}
+                                                className={cn(
+                                                    errors.location &&
+                                                    "border-destructive",
+                                                )}
+                                            />
+                                        ) : (
+                                            <p className="text-sm text-foreground py-1">
+                                                {client?.location}
+                                            </p>
+                                        )}
+                                    </Field>
+                                </div>
+                            </section>
+
+                            <div className="h-px bg-border" />
+
+                            {/* Contact Details */}
+                            <section className="space-y-4">
+                                <SectionHeader
+                                    title="Contact Details"
+                                    description="How to reach this client."
+                                />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field
+                                        label="Email Address"
+                                        required
+                                        error={errors.email}
+                                        isEdit={showEdit}
+                                    >
+                                        {showEdit ? (
+                                            <Input
+                                                type="email"
+                                                placeholder="contact@acme.com"
+                                                value={form.email}
+                                                onChange={set("email")}
+                                                className={cn(
+                                                    errors.email &&
+                                                    "border-destructive",
+                                                )}
+                                            />
+                                        ) : (
+                                            <p className="text-sm text-foreground py-1">
+                                                {client?.email}
+                                            </p>
+                                        )}
+                                    </Field>
+                                    <Field
+                                        label="Contact Number"
+                                        required
+                                        error={errors.contact_number}
+                                        isEdit={showEdit}
+                                    >
+                                        {showEdit ? (
+                                            <Input
+                                                placeholder="095-1234-5678"
+                                                value={form.contact_number}
+                                                onChange={(e) => {
+                                                    const numeric = e.target.value.replace(/\D/g, "");
+                                                    // Enforce starts with 09
+                                                    if (numeric.length >= 2 && !numeric.startsWith("09")) return;
+                                                    set("contact_number")({ ...e, target: { ...e.target, value: numeric.slice(0, 11) } });
+                                                }}
+                                                onBlur={(e) => {
+                                                    const numeric = e.target.value.replace(/\D/g, "");
+                                                    // Only format if valid (starts with 09 and 11 digits)
+                                                    if (!numeric.startsWith("09") || numeric.length !== 11) return;
+                                                    const formatted = `${numeric.slice(0, 3)}-${numeric.slice(3, 7)}-${numeric.slice(7, 11)}`;
+                                                    set("contact_number")({ ...e, target: { ...e.target, value: formatted } });
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    const allowedKeys = [
+                                                        "Backspace", "Delete", "Tab", "Escape", "Enter",
+                                                        "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+                                                        "Home", "End",
+                                                    ];
+                                                    if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x"].includes(e.key.toLowerCase())) {
+                                                        return;
+                                                    }
+                                                    if (/^\d$/.test(e.key) || allowedKeys.includes(e.key)) {
+                                                        return;
+                                                    }
+                                                    e.preventDefault();
+                                                }}
+                                                className={cn(errors.contact_number && "border-destructive")}
+                                            />
+                                        ) : (
+                                            <p className="text-sm text-foreground py-1">
+                                                {client?.contact_number.replace(/\D/g, "").replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")}
+                                            </p>
+                                        )}
+                                    </Field>
+                                </div>
+                            </section>
+
+                            {/* Actions */}
+                            {showEdit && (
+                                <>
+                                    <div className="h-px bg-border" />
+                                    <div className="flex items-center justify-end gap-3">
+                                        <Button
+                                            type="submit"
+                                            disabled={isSaving}
+                                            label={
+                                                isSaving
+                                                    ? "Saving…"
+                                                    : mode === "create"
+                                                        ? "Create Client"
+                                                        : "Save Changes"
+                                            }
+                                        />
+                                    </div>
+                                </>
+                            )}
+                        </form>
+
+                        {/* ── Server cards ── */}
+                        {mode !== "create" && client && (
+                            <section>
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h2 className="text-base font-semibold text-foreground">
+                                            Servers
+                                        </h2>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            {client.servers_count > 0
+                                                ? `${client.servers_count} server${client.servers_count !== 1 ? "s" : ""} associated with this client.`
+                                                : "No servers are currently associated with this client."}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative">
+                                            <Search
+                                                size={14}
+                                                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Search servers..."
+                                                value={serverSearch}
+                                                onChange={(e) => setServerSearch(e.target.value)}
+                                                className="w-48 pl-8 pr-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground transition-colors"
+                                            />
+                                        </div>
+
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    icon={<Filter size={14} />}
+                                                    className="gap-1"
+                                                >
+                                                    {serverFilter === "all" ? "All" : serverFilter === "online" ? "Online" : "Offline"}
+                                                    <ChevronDown size={14} />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent align="end" className="w-36 p-1">
+                                                {[
+                                                    { label: "All", value: "all" },
+                                                    { label: "Online", value: "online" },
+                                                    { label: "Offline", value: "offline" },
+                                                ].map((opt) => (
+                                                    <button
+                                                        key={opt.value}
+                                                        onClick={() => setServerFilter(opt.value as "all" | "online" | "offline")}
+                                                        className={cn(
+                                                            "flex items-center w-full px-2 py-1.5 rounded-md text-sm transition-colors",
+                                                            serverFilter === opt.value
+                                                                ? "bg-accent text-accent-foreground"
+                                                                : "hover:bg-muted text-foreground",
+                                                        )}
+                                                    >
+                                                        {opt.label}
+                                                    </button>
+                                                ))}
+                                            </PopoverContent>
+                                        </Popover>
+
+                                        <Link to={`/servers/create?client_id=${client.id}`}>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                icon={<Plus size={14} />}
+                                                label="Add Server"
+                                            />
+                                        </Link>
+                                    </div>
+                                </div>
+
+                                {serversLoading ? (
+                                    <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
+                                        {Array.from({
+                                            length: Math.min(
+                                                client.servers_count || 2,
+                                                4,
+                                            ),
+                                        }).map((_, i) => (
+                                            <ServerCardSkeleton key={i} />
+                                        ))}
+                                    </div>
+                                ) : filteredServers.length > 0 ? (
+                                    <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
+                                        {filteredServers.map((s) => (
+                                            <ServerCard key={s.id} server={s} />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2 bg-card border border-border/60 rounded-xl">
+                                        <Server size={28} className="opacity-20" />
+                                        <p className="text-sm">
+                                            No servers assigned to this client.
+                                        </p>
+                                    </div>
+                                )}
+                            </section>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── Delete dialog ── */}
+                <Dialog open={showDelete} onOpenChange={setShowDelete}>
+                    <DialogContent className="sm:max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle>Delete Client</DialogTitle>
+                        </DialogHeader>
+                        <p className="text-sm text-muted-foreground">
+                            This will permanently delete{" "}
+                            <strong className="text-foreground">
+                                {client?.name}
+                            </strong>{" "}
+                            and all associated data. This cannot be undone.
+                        </p>
+                        <div className="flex justify-end gap-3 pt-2">
+                            <DialogClose asChild>
+                                <Button
+                                    variant="outline"
+                                    label="Cancel"
+                                    onClick={() => setShowDelete(false)}
+                                />
+                            </DialogClose>
+                            <Button
+                                variant="danger"
+                                label={
+                                    deleteClient.isPending ? "Deleting…" : "Delete"
+                                }
+                                disabled={deleteClient.isPending}
+                                onClick={handleDelete}
+                            />
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            </div>
         </>
     );
 }

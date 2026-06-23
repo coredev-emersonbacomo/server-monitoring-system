@@ -33,7 +33,7 @@ export function ProtectedRoute() {
         { name: "Logs", href: "/logs", icon: ClipboardClock },
         { name: "Settings", href: "/settings", icon: Settings },
     ];
-
+    ``
     if (isLoading) {
         return (
             <div className="flex min-h-screen items-center justify-center" />
@@ -52,13 +52,11 @@ export function ProtectedRoute() {
     return (
         <TooltipProvider>
             <BreadcrumbProvider>
-                <div className="flex min-h-screen">
+                <div className="flex h-screen overflow-hidden">
                     <SidebarNav links={sidebarLinks} />
-
-                    <main className="flex-1 flex flex-col min-h-0 overflow-auto px-8 sm:px-10 lg:px-12 py-5 gap-5">
+                    <main className="flex-1 flex flex-col min-h-0 overflow-hidden px-8 sm:px-10 lg:px-12 py-5 gap-5">
                         <TopBarNav />
-
-                        <div className="flex-1 flex flex-col min-h-0">
+                        <div className="flex-1 min-h-0 overflow-auto">
                             <Outlet />
                         </div>
                     </main>
