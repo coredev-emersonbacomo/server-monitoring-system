@@ -10,8 +10,8 @@
     "types": "php artisan scramble:clear && php artisan scramble:export --path=frontend/src/api/api.json && node frontend/scripts/patch-schema.js && npm run types -w frontend",
     "resetdb": "php artisan migrate:fresh --seed",
     "pull": "git stash && git pull && git stash apply",
-    "metricsmock": "php artisan server:update-metrics --daemon"
-  },
+    "metricsmock": "php artisan server:update-metrics --daemon",
+    "loadtestfactory": "php artisan tinker --execute=\"\\App\\Models\\User::factory(25)->create(); \\App\\Models\\Client::factory(10)->create(); \\App\\Models\\Server::factory(100)->create();\""  },
   "workspaces": [
     "frontend"
   ],
