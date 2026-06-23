@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import jwtClient from "@/api/jwtClient";
 
 export interface ServerListItem {
     id: number;
@@ -19,12 +20,8 @@ export const useServers = () => {
     return useQuery<ServerListItem[]>({
         queryKey: ["servers"],
         queryFn: async () => {
-            const res = await fetch("/api/servers", {
-                headers: { Accept: "application/json" },
-                credentials: "include",
-            });
-            if (!res.ok) throw new Error("Failed to load servers");
-            return res.json();
+            const { data } = await jwtClient.get<ServerListItem[]>("/servers");
+            return data;
         },
     });
 };

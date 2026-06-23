@@ -1,10 +1,18 @@
-//File path: frontend/src/hooks/useAuthContext.ts
 import { useContext } from "react";
-import AuthContext from "../contexts/AuthContext";
+import JwtAuthContext from "@/contexts/JwtAuthContext";
 
-export function useAuthContext() {
-    const ctx = useContext(AuthContext);
-    if (!ctx)
-        throw new Error("useAuthContext must be used within an AuthProvider");
-    return ctx;
-}
+export const useAuthContext = () => {
+    const context = useContext(JwtAuthContext);
+    if (!context) {
+        throw new Error("useAuthContext must be used within JwtAuthProvider");
+    }
+    return {
+        ...context,
+        login: context.login,
+        logout: context.logout,
+        user: context.user,
+        isLoading: context.isLoading,
+        isLoggingIn: context.isLoggingIn,
+        isLoggingOut: context.isLoggingOut,
+    };
+};

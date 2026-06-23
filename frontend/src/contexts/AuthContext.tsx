@@ -1,11 +1,9 @@
 import { createContext, type ReactNode } from "react";
 import { useAuth, useLogin, useLogout } from "@/hooks/useAuth";
-import type { components } from "@/api/schema.d";
-
-type UserData = components["schemas"]["AuthUserData"];
+import type { AuthUserData } from "@/types/models";
 
 interface AuthContextType {
-    user: UserData | null | undefined;
+    user: AuthUserData | null;
     isLoading: boolean;
     login: ReturnType<typeof useLogin>["mutateAsync"];
     logout: ReturnType<typeof useLogout>["mutateAsync"];

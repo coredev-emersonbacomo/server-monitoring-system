@@ -1,42 +1,33 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getCsrfCookie } from "@/api/api";
-import type { UserData, UsersStorePayload as CreateUserPayload, UsersUpdatePayload as UpdateUserPayload } from "@/types/models";
-
-const API_BASE = "/api";
-
-async function apiFetch<T>(
-    url: string,
-    options?: RequestInit,
-): Promise<T> {
-    const res = await fetch(url, {
-        headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            ...options?.headers,
-        },
-        credentials: "include",
-        ...options,
-    });
-    if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw data;
-    }
-    if (res.status === 204) return undefined as T;
-    return res.json();
-}
+import client from "@/api/api";
+import type {
+    UsersStorePayload as CreateUserPayload,
+    UsersUpdatePayload as UpdateUserPayload,
+    UserData,
+} from "@/types/models";
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
 export const useUsers = () =>
     useQuery<UserData[]>({
         queryKey: ["users"],
-        queryFn: () => apiFetch<UserData[]>(`${API_BASE}/users`),
+        queryFn: async () => {
+            const { data, error } = await client.GET("/users");
+            if (error) throw error;
+            return data as UserData[];
+        },
     });
 
 export const useUser = (id: number | string) =>
     useQuery<UserData>({
         queryKey: ["users", Number(id)],
-        queryFn: () => apiFetch<UserData>(`${API_BASE}/users/${id}`),
+        queryFn: async () => {
+            const { data, error } = await client.GET("/users/{user}", {
+                params: { path: { user: Number(id) } },
+            });
+            if (error) throw error;
+            return data as unknown as UserData;
+        },
         enabled: !!id,
     });
 
@@ -46,11 +37,11 @@ export const useCreateUser = () => {
     const queryClient = useQueryClient();
     return useMutation<UserData, unknown, CreateUserPayload>({
         mutationFn: async (payload) => {
-            await getCsrfCookie();
-            return apiFetch<UserData>(`${API_BASE}/users`, {
-                method: "POST",
-                body: JSON.stringify(payload),
+            const { data, error } = await client.POST("/users", {
+                body: payload as never,
             });
+            if (error) throw error;
+            return data as unknown as UserData;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -62,11 +53,12 @@ export const useUpdateUser = (id: number | string) => {
     const queryClient = useQueryClient();
     return useMutation<UserData, unknown, UpdateUserPayload>({
         mutationFn: async (payload) => {
-            await getCsrfCookie();
-            return apiFetch<UserData>(`${API_BASE}/users/${id}`, {
-                method: "PUT",
-                body: JSON.stringify(payload),
+            const { data, error } = await client.PUT("/users/{user}", {
+                params: { path: { user: Number(id) } },
+                body: payload as never,
             });
+            if (error) throw error;
+            return data as unknown as UserData;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -79,10 +71,10 @@ export const useDeleteUser = () => {
     const queryClient = useQueryClient();
     return useMutation<void, unknown, number>({
         mutationFn: async (id) => {
-            await getCsrfCookie();
-            return apiFetch<void>(`${API_BASE}/users/${id}`, {
-                method: "DELETE",
+            const { error } = await client.DELETE("/users/{user}", {
+                params: { path: { user: id } },
             });
+            if (error) throw error;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["users"] });

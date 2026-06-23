@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import jwtClient from "@/api/jwtClient";
 import type { DashboardStatsData as DashboardStats } from "@/types/models";
-
-const API_BASE = "/api";
 
 export const useDashboardStats = () => {
     const queryClient = useQueryClient();
@@ -9,15 +8,11 @@ export const useDashboardStats = () => {
     const query = useQuery<DashboardStats>({
         queryKey: ["dashboard", "stats"],
         queryFn: async () => {
-            const res = await fetch(`${API_BASE}/dashboard/stats`, {
-                headers: { Accept: "application/json" },
-                credentials: "include",
-            });
-            if (!res.ok) throw new Error("Failed to load dashboard stats");
-            return res.json();
+            const { data } = await jwtClient.get<DashboardStats>("/dashboard/stats");
+            return data;
         },
-        staleTime: 30_000, // 30 seconds
-        refetchInterval: 60_000, // refresh every minute
+        staleTime: 30_000,
+        refetchInterval: 60_000,
     });
 
     const retry = () =>
