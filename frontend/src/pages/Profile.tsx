@@ -38,8 +38,8 @@ export const Profile: React.FC = () => {
     const fullName = `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim();
     const email = user.email ?? "";
     const username = user.username ?? email.split("@")[0];
-    const contact_number = user.contact_number
-        ? user.contact_number
+    const phone_number = user.phone_number
+        ? user.phone_number
               .replace(/\D/g, "")
               .replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")
         : "—";
@@ -117,8 +117,8 @@ export const Profile: React.FC = () => {
                             />
                             <InfoBlock
                                 icon={<User size={15} />}
-                                label="Contact Number"
-                                value={contact_number}
+                                label="Phone Number"
+                                value={phone_number}
                             />
                         </div>
                     </div>
