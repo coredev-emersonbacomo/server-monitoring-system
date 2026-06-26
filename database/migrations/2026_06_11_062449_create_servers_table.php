@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('servers', function (Blueprint $table) {
             $table->id();
-            $table->uuid('server_id')->unique();
+            $table->uuid('uuid')->unique();
             $table->uuid('user_id')->unique();
             $table->foreignId('client_id')->constrained();
             $table->string('server_name');
