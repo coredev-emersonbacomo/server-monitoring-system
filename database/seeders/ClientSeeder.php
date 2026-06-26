@@ -29,6 +29,7 @@ class ClientSeeder extends Seeder
             'device_name' => 'Thinkpad',
             'internal_ip' => '192.168.1.1',
             'external_ip' => '127.0.0.1',
+            'port' => 22,
             'operating_system' => 'Ubuntu 20.04',
             'api_key' => ApiGenerator::GenerateApiKey()
         ]);
