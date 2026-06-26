@@ -15,7 +15,7 @@ class ServerFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => fn () => User::inRandomOrder()->first()?->id ?? User::factory(),
+            //'user_id' => fn () => User::inRandomOrder()->first()?->id ?? User::factory(),
             'client_id' => Client::inRandomOrder()->first()?->id ?? Client::factory(),
             'server_name' => fake()->domainWord() . '-prod',
             'device_name' => fake()->word() . '-blade-' . fake()->randomDigitNotNull(),
