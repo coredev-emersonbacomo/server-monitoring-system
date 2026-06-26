@@ -54,8 +54,29 @@ class ServerController extends Controller
             'api_key' => ApiGenerator::GenerateApiKey(),
         ]);
 
+        try {
+            $installer = new InstallerService(
+                sshHost:     $server->external_ip,
+                sshPort:     $server->sshPort,
+                sshUser:     $server->sshUser,
+                sshPassword: $server->sshPassword,
+                serverId:    $server->serverId,
+                apiToken:    $server->apiToken
+            );
+
+            $log = $installer->install();
+
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        // Return the logs for installation
         return response()->json([
             'success' => true,
+            'log' => $log,
             'data' => $server,
         ], 201);
     }
