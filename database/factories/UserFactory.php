@@ -15,11 +15,10 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            
             'first_name' => fake()->firstName(),
             'last_name' => fake()->lastName(),
             'email' => fake()->unique()->safeEmail(),
-            'phone_number' => fake()->numerify('09##########'),
+            'contact_number' => fake()->numerify('09##########'),
             'username' => fake()->unique()->userName(),
             'password' => static::$password ??= Hash::make('password'),
             'last_login' => fake()->dateTimeThisMonth(),

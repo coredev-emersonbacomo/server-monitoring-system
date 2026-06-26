@@ -16,6 +16,7 @@ import ServerDetail from "./pages/servers/ServerDetail";
 import { Profile } from "./pages/Profile";
 import CreateServer from "./pages/servers/Create";
 import ServersIndex from "./pages/servers/Index";
+import SystemSettings from "./pages/SystemSettings";
 
 function RootLayout() {
   return (
@@ -101,6 +102,10 @@ const router = createBrowserRouter([
           {
             path: "/profile",
             element: <Profile />,
+          },
+          {
+            path: "/settings/system",
+            element: <SystemSettings />,
           },
         ],
       },

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AdminController;
 
 // File Path: routes/api.php 
 /*
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 Route::group([], base_path('routes/api/auth.php'));
 Route::group([], base_path('routes/api/servers.php'));
 Route::group([], base_path('routes/api/users.php'));
+Route::group([], base_path('routes/api/settings.php'));
 Route::group([], base_path('routes/api/clients.php'));
 Route::group([], base_path('routes/api/dashboard.php'));
 Route::group([], base_path('routes/api/uploads.php'));

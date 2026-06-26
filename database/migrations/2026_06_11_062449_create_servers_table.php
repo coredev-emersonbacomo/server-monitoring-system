@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('servers', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
-            $table->foreignId('client_id')->constrained()->onDelete('cascade');
+            $table->uuid('user_id')->unique();
+            $table->foreignId('client_id')->constrained();
             $table->string('server_name');
             $table->string('device_name');
 
