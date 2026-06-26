@@ -48,6 +48,7 @@ class ServerController extends Controller
             'device_name' => $data->device_name ?? $data->server_name,
             'internal_ip' => $data->internal_ip,
             'external_ip' => $data->external_ip ?? $data->internal_ip,
+            'port' => $data->port,
             'ssh_username' => $data->ssh_username,
             'ssh_password' => $data->ssh_password ? Crypt::encryptString($data->ssh_password) : null,
             'api_key' => ApiGenerator::GenerateApiKey(),

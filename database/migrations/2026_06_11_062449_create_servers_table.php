@@ -16,8 +16,11 @@ return new class extends Migration
             $table->foreignId('client_id')->constrained();
             $table->string('server_name');
             $table->string('device_name');
+
+            // Network details
             $table->string('internal_ip');
             $table->string('external_ip');
+            $table->int('port')->default(22);
 
             $table->string('ssh_username')->nullable();
             $table->text('ssh_password')->nullable();
