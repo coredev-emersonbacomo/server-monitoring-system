@@ -42,7 +42,8 @@ class InstallerService
 
         $log['install'] = $ssh->exec(
             sprintf(
-                'bash /tmp/install.sh %s %s',
+                'echo "%s" | sudo -S bash /tmp/install.sh %s %s',
+                escapeshellarg($this->sshPassword),
                 escapeshellarg($this->serverId),
                 escapeshellarg($this->apiToken)
             )
@@ -84,7 +85,11 @@ class InstallerService
 
         $ssh->exec('chmod +x /tmp/uninstall.sh');
 
-        $log['uninstall'] = $ssh->exec('bash /tmp/uninstall.sh');
+        $log['uninstall'] = $ssh->exec(
+            sprintf('echo "%s" | sudo -S bash /tmp/uninstall.sh',
+                $this->sshPassword
+            )
+        );
 
         if ($ssh->getExitStatus() !== 0) {
             $ssh->disconnect();
