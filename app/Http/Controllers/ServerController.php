@@ -153,7 +153,8 @@ class ServerController extends Controller
                 sshUser:     $data->sshUser,
                 sshPassword: $data->sshPassword,
                 serverId:    $data->serverId,
-                apiToken:    $data->apiToken
+                // No need to add api token
+                /* apiToken:    $data->apiToken */
             );
 
             // Uninstall

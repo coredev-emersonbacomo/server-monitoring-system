@@ -12,7 +12,7 @@ class InstallerService
         private string $sshUser,
         private string $sshPassword,
         private string $serverId,
-        private string $apiToken,
+        private ?string $apiToken = null,
     ) {}
 
     public function install(): array
