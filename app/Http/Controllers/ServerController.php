@@ -23,6 +23,7 @@ class ServerController extends Controller
             'device_name' => $s->device_name,
             'internal_ip' => $s->internal_ip,
             'external_ip' => $s->external_ip,
+            'port' => $s->port,
             'ssh_username' => $s->ssh_username,
             'cpu_cores' => $s->cpu_cores,
             'ram' => $s->ram,
@@ -109,6 +110,9 @@ class ServerController extends Controller
         }
         if ($data->external_ip !== null) {
             $updateData['external_ip'] = $data->external_ip;
+        }
+        if ($data->port !== null) {
+            $updateData['port'] = $data->port;
         }
         if ($data->ssh_username !== null) {
             $updateData['ssh_username'] = $data->ssh_username;
