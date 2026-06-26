@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Support\Str;
 
-#[Fillable(['first_name', 'last_name', 'email', 'password', 'username', 'role_id', 'contact_number', 'status', 'profile_picture_url', 'profile_picture_public_id'])]
+#[Fillable(['first_name', 'last_name', 'email', 'password', 'username', 'role_id', 'phone_number', 'status', 'profile_picture_url', 'profile_picture_public_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -25,7 +25,7 @@ class User extends Authenticatable
     }
     public function uniqueIds(): array
 {
-    return ['user_id'];
+    return ['uuid'];
 }
     protected function casts(): array
     {
