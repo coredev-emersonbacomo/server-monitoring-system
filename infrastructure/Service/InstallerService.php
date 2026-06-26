@@ -8,11 +8,12 @@ class InstallerService
 {
     public function __construct(
         private string $sshHost,
-        private int    $sshPort,
         private string $sshUser,
         private string $sshPassword,
         private string $serverId,
         private ?string $apiToken = null,
+        // Default port 22
+        private int    $sshPort = 22,
     ) {}
 
     public function install(): array
