@@ -17,7 +17,7 @@ class AdminSeeder extends Seeder
         DB::table("users")->updateOrInsert(
             ['username' => 'admin'],
             [
-                'user_id' => (string) Str::uuid7(),
+                'uuid' => (string) Str::uuid7(),
                 'first_name' => 'Admin',
                 'last_name'=> 'Surname',
                 'email' => 'admin@example.com',
@@ -26,8 +26,6 @@ class AdminSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at'=> now(),
                 'last_login' => now()
-                
-
             ]
         );
     }
