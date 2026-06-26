@@ -166,4 +166,54 @@ class ClientController extends Controller
 
         return response()->json(null, 204);
     }
+
+    public function secops(int $id): JsonResponse
+    {
+        $client = Client::findOrFail($id);
+        $secops = $client->secopclients()->get()->map(fn ($user) => [
+            'id' => $user->id,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'email' => $user->email,
+            'username' => $user->username,
+            'contact_number' => $user->contact_number,
+            'profile_picture_url' => $user->profile_picture_url,
+        ]);
+
+        return response()->json($secops);
+    }
+
+    public function addSecop(int $id): JsonResponse
+    {
+        $client = Client::findOrFail($id);
+        $userId = request()->input('user_id');
+
+        if (!$userId) {
+            return response()->json(['error' => 'user_id is required'], 422);
+        }
+
+        // Check if user already assigned
+        if ($client->secopclients()->where('user_id', $userId)->exists()) {
+            return response()->json(['error' => 'User already assigned to this client'], 409);
+        }
+
+        $client->secopclients()->attach($userId);
+
+        return response()->json(['message' => 'SecOps added successfully'], 201);
+    }
+
+    public function removeSecop(int $id, int $userId): JsonResponse
+    {
+        $client = Client::findOrFail($id);
+        $client->secopclients()->detach($userId);
+
+        return response()->json(null, 204);
+    }
+
+    public function initializeServer(int $id): JsonResponse
+    {
+        $client = Client::findOrFail($id);
+        // Initialize server for this client
+        return response()->json(null, 200);
+    }
 }

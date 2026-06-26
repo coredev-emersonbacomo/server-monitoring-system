@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\UserRole;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 
@@ -18,13 +17,13 @@ class SettingController extends Controller
     }
 
     /**
-     * Bulk-update settings (Admin only).
+     * Bulk-update settings for authenticated users.
      * Accepts: { "secop_limit_per_client": "3", ... }
      */
     public function update(): JsonResponse
     {
         $user = request()->user();
-        if (!$user || $user->role_id !== UserRole::Admin->id()) {
+        if (!$user) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 

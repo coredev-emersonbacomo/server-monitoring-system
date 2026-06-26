@@ -6,7 +6,6 @@ import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
 import { Button } from "@/components/ui/button";
-import { UserRoles } from "@/types/user-role";
 
 // ─── Settings field wrapper ───────────────────────────────────────────────────
 
@@ -33,7 +32,7 @@ function SettingRow({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SystemSettings() {
-    const { user } = useJwtAuth();
+    const { user, isLoading: authLoading } = useJwtAuth();
     const { setTrail } = useBreadcrumb();
     const navigate = useNavigate();
 
@@ -43,12 +42,12 @@ export default function SystemSettings() {
     const [limitValue, setLimitValue] = useState<string>("2");
     const [isDirty, setIsDirty] = useState(false);
 
-    // Guard: only Admin
+    // Guard: ensure user is authenticated via UUID
     useEffect(() => {
-        if (user && user.role !== UserRoles.Admin) {
+        if (!authLoading && !user) {
             navigate("/settings", { replace: true });
         }
-    }, [user, navigate]);
+    }, [user, authLoading, navigate]);
 
     useEffect(() => {
         setTrail([
@@ -80,8 +79,9 @@ export default function SystemSettings() {
             await updateSettings.mutateAsync({
                 secop_limit_per_client: String(parsed),
             });
-            toast.success("System settings saved.");
+            setLimitValue(String(parsed));
             setIsDirty(false);
+            toast.success("System settings saved.");
         } catch {
             toast.error("Failed to save settings.");
         }
