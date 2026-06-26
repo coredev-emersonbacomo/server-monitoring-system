@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Support\Str;
+
 class Client extends Model
 {
     use HasFactory, HasUuids;
-public function newUniqueId(): string
+    public function newUniqueId(): string
     {
         return (string) Str::uuid7();
     }
@@ -26,16 +27,16 @@ public function newUniqueId(): string
         'banner_image_public_id',
         'status',
     ];
-public function uniqueIds(): array
+    public function uniqueIds(): array
     {
-        return ['client_id'];
+        return ['uuid'];
     }
     public function servers(): hasMany
     {
         return $this->hasMany(Server::class, 'client_id');
     }
     public function secopclients(): BelongsToMany
-{
-    return $this->belongsToMany(User::class, 'secop_client', 'client_id', 'user_id');
-}
+    {
+        return $this->belongsToMany(User::class, 'secop_client', 'client_id', 'user_id');
+    }
 }
