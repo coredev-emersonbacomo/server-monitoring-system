@@ -118,12 +118,7 @@ function ClientCard({
                     </div>
                 </div>
             </div>
-<<<<<<< HEAD
-        </Link >
-
-=======
         </Link>
->>>>>>> 71da6d4829bff6e8399abf4f3d9f6dd723ad3f7e
     );
 }
 

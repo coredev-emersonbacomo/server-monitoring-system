@@ -18,8 +18,7 @@ class UserData extends Data
         public string $contact_number,
         public ?string $last_login,
         public string $profile_picture_url,
-        public string $status,
-        public UserRole $role,
+        public string $record_status,
         public ?Carbon $created_at,
         public ?Carbon $updated_at,
     ) {}
@@ -35,8 +34,7 @@ class UserData extends Data
             contact_number: $user->contact_number,
             last_login: $user->last_login,
             profile_picture_url: $user->profile_picture_url,
-            status: $user->status,
-            role: UserRole::from($user->role->role_name),
+            record_status: $user->record_status,           
             created_at: $user->created_at,
             updated_at: $user->updated_at,
         );

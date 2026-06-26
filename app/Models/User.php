@@ -11,13 +11,22 @@ use App\Models\Role;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Support\Str;
 
 #[Fillable(['first_name', 'last_name', 'email', 'password', 'username', 'role_id', 'contact_number', 'status', 'profile_picture_url', 'profile_picture_public_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
-
+    use HasFactory, Notifiable, HasUuids;
+    public function newUniqueId(): string
+    {
+        return (string) Str::uuid7();
+    }
+    public function uniqueIds(): array
+{
+    return ['user_id'];
+}
     protected function casts(): array
     {
         return [
