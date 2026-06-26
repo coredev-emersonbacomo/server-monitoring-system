@@ -27,5 +27,5 @@ export function toLabelCase(
 }
 
 export function formatPhoneNumber(value: string): string {
-    return value.replace(/\D/g, "");
+    return value.replace(/\D/g, "").slice(0, 11);
 }
