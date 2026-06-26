@@ -215,7 +215,7 @@ const ProfileBar = ({
     const firstName = user.first_name;
     const lastName = user.last_name;
     const username = user.email?.split("@")[0] ?? "";
-    const avatarSrc = user.profile_picture_url;
+    const avatarSrc = user.profile_picture_url || import.meta.env.VITE_DEFAULT_PROFILE_PICTURE || '';
 
     return (
         <div

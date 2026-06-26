@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('contact_number')->nullable();
             $table->string('location')->nullable(false);
-            $table->string('banner_image_url')->nullable();
+            $table->string('banner_image_url')->default(config('app.default_client_banner_img_unsplash'));
             $table->timestamps();
         });
     }

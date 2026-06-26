@@ -289,7 +289,7 @@ export default function Dashboard() {
                 {/* ── Donut Chart + Action Board ── */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Pie chart */}
-                    <div className="lg:col-span-1 rounded-xl border border-border/60 bg-card p-6">
+                    <div className="lg:col-span-1 rounded-xl border border-border/60 bg-card p-6 h-fit">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-sm font-semibold text-foreground">
                                 Server Overview
@@ -302,7 +302,9 @@ export default function Dashboard() {
                                     >
                                         <Landmark className="size-3.5" />
                                         <span>{stats?.total_clients ?? 0}</span>
-                                        <span className="text-muted-foreground/60">clients</span>
+                                        <span className="text-muted-foreground/60">
+                                            clients
+                                        </span>
                                     </span>
                                     <span
                                         onClick={() => navigate("/servers")}
@@ -310,7 +312,9 @@ export default function Dashboard() {
                                     >
                                         <Server className="size-3.5" />
                                         <span>{stats?.total_servers ?? 0}</span>
-                                        <span className="text-muted-foreground/60">servers</span>
+                                        <span className="text-muted-foreground/60">
+                                            servers
+                                        </span>
                                     </span>
                                 </div>
                             )}
@@ -374,27 +378,26 @@ export default function Dashboard() {
                             </p>
                         )}
                     </div>
-
-                    {/* Action Board */}
-                    <div className="lg:col-span-2 rounded-xl border border-border/60 bg-card p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-sm font-semibold text-foreground">
-                                Action Board
-                            </h2>
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    icon={<ScrollText size={14} />}
-                                    label="Completed"
-                                    onClick={() => setCompletedOpen(true)}
-                                />
+                    <div className="relative lg:col-span-2 rounded-xl border border-border/60 bg-card max-h-150 overflow-y-auto">
+                        <div className="sticky top-0 z-10 bg-card border-b border-border/60 p-6 flex items-center justify-between">
+                            <div className="flex items-center gap-6">
+                                <h2 className="text-sm font-semibold text-foreground">
+                                    Action Board
+                                </h2>
                                 {actions && actions.length > 0 && (
                                     <span className="text-xs text-muted-foreground">
                                         {actions.length} active
                                     </span>
                                 )}
                             </div>
+
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                icon={<ScrollText size={14} />}
+                                label="Completed"
+                                onClick={() => setCompletedOpen(true)}
+                            />
                         </div>
 
                         <div className="space-y-1">
@@ -413,8 +416,7 @@ export default function Dashboard() {
                                     const border =
                                         SEVERITY_BORDER[action.severity];
                                     const isMine =
-                                        user &&
-                                        action.assigned_to === user.id;
+                                        user && action.assigned_to === user.id;
 
                                     return (
                                         <div
@@ -439,9 +441,7 @@ export default function Dashboard() {
                                                 <div
                                                     className="flex-1 min-w-0 cursor-pointer"
                                                     onClick={() => {
-                                                        if (
-                                                            action.server_id
-                                                        ) {
+                                                        if (action.server_id) {
                                                             navigate(
                                                                 `/servers/${action.server_id}`,
                                                             );
@@ -466,7 +466,9 @@ export default function Dashboard() {
                                                         <div className="flex items-center gap-1 mt-1.5">
                                                             <Circle className="size-2.5 fill-primary text-primary" />
                                                             <span className="text-[11px] text-muted-foreground">
-                                                                {action.assigned_to_name}
+                                                                {
+                                                                    action.assigned_to_name
+                                                                }
                                                             </span>
                                                         </div>
                                                     )}
@@ -474,7 +476,7 @@ export default function Dashboard() {
 
                                                 <div className="flex items-center gap-1 shrink-0">
                                                     {action.status ===
-                                                        "completed" ? null : isMine ? (
+                                                    "completed" ? null : isMine ? (
                                                         <>
                                                             <button
                                                                 title="Unclaim"
@@ -494,8 +496,7 @@ export default function Dashboard() {
                                                                         {
                                                                             actionId:
                                                                                 action.id,
-                                                                            status:
-                                                                                "completed",
+                                                                            status: "completed",
                                                                         },
                                                                     )
                                                                 }

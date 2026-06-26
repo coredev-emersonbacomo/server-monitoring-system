@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Loader2, AlertTriangle, ChevronRight } from "lucide-react";
 import { useServer } from "@/hooks/useServer";
 import { useServerSocket, type WsStatus } from "@/hooks/useServerSocket";
 import { ServerCard } from "@/components/dashboard/ServerCard";
@@ -12,7 +12,9 @@ import type { StatPoint } from "@/types/stats";
 export default function ServerDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const serverId = Number(id);
+    const clientFromUrl = searchParams.get("client");
 
     const { data: initial, isLoading, isError } = useServer(serverId);
     const [, setWsStatus] = useState<WsStatus>("connecting");
@@ -39,16 +41,26 @@ export default function ServerDetail() {
     const { setTrail } = useBreadcrumb();
     useEffect(() => {
         if (initial) {
-            setTrail([
-                { label: "Clients", href: "/clients" },
-                {
-                    label: initial.client_name,
-                    href: `/clients/${initial.client_id}`,
-                },
-                { label: initial.server_name, href: `/servers/${initial.id}` },
-            ]);
+            if (clientFromUrl === "all") {
+                setTrail([
+                    { label: "Servers", href: "/servers" },
+                    { label: initial.server_name, href: `/servers/${initial.id}` },
+                ]);
+            } else if (clientFromUrl) {
+                setTrail([
+                    { label: "Clients", href: "/clients" },
+                    { label: initial.client_name, href: `/clients/${clientFromUrl}` },
+                    { label: initial.server_name, href: `/servers/${initial.id}` },
+                ]);
+            } else {
+                setTrail([
+                    { label: "Clients", href: "/clients" },
+                    { label: initial.client_name, href: `/clients/${initial.client_id}` },
+                    { label: initial.server_name, href: `/servers/${initial.id}` },
+                ]);
+            }
         }
-    }, [initial, setTrail]);
+    }, [initial, setTrail, clientFromUrl]);
 
     // ── Loading ──────────────────────────────────────────────────────────────
     if (isLoading) {
@@ -85,9 +97,28 @@ export default function ServerDetail() {
         <ChartZoomProvider>
             <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
                 <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
-                    <time className="text-sm text-muted-foreground flex justify-end mb-6">
-                        {time.toLocaleTimeString()}
-                    </time>
+                    <div className="flex items-center justify-between py-2">
+                        <button
+                            onClick={() => {
+                                if (clientFromUrl === "all") {
+                                    navigate("/servers");
+                                } else if (clientFromUrl) {
+                                    navigate(`/servers?client_id=${clientFromUrl}`);
+                                } else {
+                                    navigate(`/clients/${initial.client_id}`);
+                                }
+                            }}
+                            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            {clientFromUrl === "all"
+                                ? "Back to Servers"
+                                : initial.client_name}
+                        </button>
+                        <time className="text-sm text-muted-foreground">
+                            {time.toLocaleTimeString()}
+                        </time>
+                    </div>
                 </header>
 
                 <main className="py-3 w-full flex-1 min-h-0 overflow-auto">
