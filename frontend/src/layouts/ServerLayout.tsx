@@ -1,4 +1,4 @@
-import { Outlet, useParams, useNavigate } from "react-router-dom";
+import { Outlet, useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useServers } from "@/hooks/useServers";
 import { cn } from "@/lib/utils";
 import { Wifi, WifiOff, AlertTriangle, Search } from "lucide-react";
@@ -13,8 +13,11 @@ const STATUS_META = {
 export default function ServerLayout() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const activeId = id ? Number(id) : null;
-    const { data: servers, isLoading } = useServers();
+    const clientParam = searchParams.get("client");
+    const clientId = clientParam && clientParam !== "all" ? Number(clientParam) : undefined;
+    const { data: servers, isLoading } = useServers(clientId);
     const [search, setSearch] = useState("");
 
     const activeServer = servers?.find((s) => s.id === activeId);
@@ -30,7 +33,7 @@ export default function ServerLayout() {
                 <Outlet />
             </div>
 
-            <aside className="w-72 shrink-0 flex flex-col h-full border-l border-border/40 pl-6 overflow-hidden">
+            <aside className="w-72 shrink-0 flex flex-col max-h-[80vh] border-l border-border/40 pl-6 overflow-hidden">
                 <h2 className="text-sm font-semibold text-muted-foreground mb-3 tracking-tight shrink-0">
                     All Servers
                 </h2>

@@ -132,12 +132,12 @@ function SectionHeader({
 
 // ─── Server card ──────────────────────────────────────────────────────────────
 
-function ServerCard({ server }: { server: ClientServer }) {
+function ServerCard({ server, clientId }: { server: ClientServer; clientId: number }) {
 
 
     return (
         <Link
-            to={`/servers/${server.id}`}
+            to={`/servers/${server.id}?client=${clientId}`}
             className="bg-card border border-border/60 rounded-xl shadow-sm p-5 flex flex-col gap-3 transition-shadow hover:shadow-md group"
         >
             <div className="flex items-start justify-between">
@@ -817,6 +817,13 @@ export default function ClientDetail() {
                                             </PopoverContent>
                                         </Popover>
 
+                                        <Link to={`/servers?client_id=${client.id}`}>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                label="View All"
+                                            />
+                                        </Link>
                                         <Link to={`/servers/create?client_id=${client.id}`}>
                                             <Button
                                                 variant="outline"
@@ -842,7 +849,7 @@ export default function ClientDetail() {
                                 ) : filteredServers.length > 0 ? (
                                     <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
                                         {filteredServers.map((s) => (
-                                            <ServerCard key={s.id} server={s} />
+                                            <ServerCard key={s.id} server={s} clientId={client.id} />
                                         ))}
                                     </div>
                                 ) : (

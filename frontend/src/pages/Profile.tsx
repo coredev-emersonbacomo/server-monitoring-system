@@ -80,7 +80,7 @@ export const Profile: React.FC = () => {
                             {/* Avatar */}
                             <div className="w-24 h-24 rounded-full bg-white border-4 border-white shadow-sm overflow-hidden flex-shrink-0">
                                 <img
-                                    src={user.profile_picture_url}
+                                    src={user.profile_picture_url || import.meta.env.VITE_DEFAULT_PROFILE_PICTURE || ''}
                                     alt="Avatar"
                                     className="w-full h-full object-cover"
                                 />
