@@ -157,8 +157,7 @@ export default function UserDetail() {
         last_name: "",
         email: "",
         username: "",
-        contact_number: "",
-        role_id: 2,
+        phone_number: "",
         password: "",
         password_confirmation: "",
     });
@@ -173,8 +172,7 @@ export default function UserDetail() {
                 last_name: "",
                 email: "",
                 username: "",
-                contact_number: "",
-                role_id: 2,
+                phone_number: "",
                 password: "",
                 password_confirmation: "",
             });
@@ -192,8 +190,7 @@ export default function UserDetail() {
                 last_name: user.last_name,
                 email: user.email,
                 username: user.username,
-                contact_number: user.contact_number,
-                role_id: UserRoles.Values[user.role],
+                phone_number: user.phone_number,
                 password: "",
                 password_confirmation: "",
             });
@@ -233,14 +230,10 @@ export default function UserDetail() {
             last_name: z.string().trim().min(1, "Required"),
             email: z.string().trim().min(1, "Required").email("Invalid email"),
             username: z.string().trim().min(1, "Required"),
-            contact_number: z
-                .string()
+            phone_number:z.string()
                 .trim()
                 .min(1, "Required")
-                .refine(
-                    (val) => /^09\d{9}$/.test(val.replace(/\D/g, "")),
-                    "Invalid contact number",
-                ),
+                .regex(/^09\d{9}$/, "Must be a valid PH number starting with 09 (e.g. 09123456789)"),
             password: z.string().superRefine((val, ctx) => {
                 if (isCreate && !val)
                     ctx.addIssue({
@@ -312,8 +305,7 @@ export default function UserDetail() {
                     last_name: form.last_name,
                     email: form.email,
                     username: form.username,
-                    contact_number: form.contact_number,
-                    role_id: Number(form.role_id),
+                    phone_number: form.phone_number,
                     password: form.password,
                     password_confirmation: form.password_confirmation,
                     ...cloudinaryFields,
@@ -327,8 +319,7 @@ export default function UserDetail() {
                     last_name: form.last_name,
                     email: form.email,
                     username: form.username,
-                    contact_number: form.contact_number,
-                    role_id: Number(form.role_id),
+                    phone_number: form.phone_number,
                     ...(form.password
                         ? {
                             password: form.password,
@@ -397,8 +388,7 @@ export default function UserDetail() {
                 last_name: user.last_name,
                 email: user.email,
                 username: user.username,
-                contact_number: user.contact_number,
-                role_id: UserRoles.Values[user.role],
+                phone_number: user.phone_number,
                 password: "",
                 password_confirmation: "",
             });
@@ -697,69 +687,29 @@ export default function UserDetail() {
                                         )}
                                     </Field>
                                     <Field
-                                        label="Contact Number"
+                                        label="Phone Number"
                                         required
-                                        error={errors.contact_number}
+                                        error={errors.phone_number}
                                         isEdit={showEdit}
                                     >
                                         {showEdit ? (
                                             <Input
                                                 placeholder="e.g. 09123456789"
-                                                value={form.contact_number}
+                                                value={form.phone_number}
                                                 onChange={(e) => {
-                                                    set("contact_number")({ ...e, target: { ...e.target, value: formatPhoneNumber(e.target.value) } });
+                                                    const numeric = formatPhoneNumber(e.target.value);
+                                                    setForm((f) => ({ ...f, phone_number: numeric }));
                                                 }}
                                                 className={cn(
-                                                    errors.contact_number &&
+                                                    errors.phone_number &&
                                                     "border-destructive",
                                                 )}
                                             />
                                         ) : (
                                             <p className="text-sm text-foreground py-1">
-                                                {user?.contact_number
-                                                    ? formatPhoneNumber(user.contact_number)
+                                                {user?.phone_number
+                                                    ? formatPhoneNumber(user.phone_number)
                                                     : "—"}
-                                            </p>
-                                        )}
-                                    </Field>
-                                </div>
-                            </section>
-
-                            <div className="h-px bg-border" />
-
-                            {/* Role & Access */}
-                            <section className="space-y-4">
-                                <SectionHeader
-                                    title="Role & Access"
-                                    description="Determines what this user can see and do."
-                                />
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <Field
-                                        label="Role"
-                                        required
-                                        isEdit={showEdit}
-                                    >
-                                        {showEdit ? (
-                                            <select
-                                                value={form.role_id}
-                                                onChange={(e) =>
-                                                    setForm((f) => ({
-                                                        ...f,
-                                                        role_id: Number(
-                                                            e.target.value,
-                                                        ),
-                                                    }))
-                                                }
-                                                className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
-                                            >
-                                                <option value={1}>Admin</option>
-                                                <option value={2}>
-                                                    SecOps
-                                                </option>
-                                            </select>
-                                        ) : (
-                                            <p className="text-sm text-foreground py-1">
-                                                {roleName}
                                             </p>
                                         )}
                                     </Field>

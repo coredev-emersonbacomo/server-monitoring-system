@@ -23,9 +23,10 @@ class ClientSeeder extends Seeder
             $this->command->error('Please run AdminSeeder first, no users found.');
             return;
         }
-       $client = Client::updateOrCreate(
+        $client = Client::updateOrCreate(
             ['email' => 'coredev@gmail.com'],
             [
+                'uuid' => (string) Str::uuid7(),
                 'name' => 'coredev',
                 'description' => 'Software Company',
                 'contact_number' => '09517380165',
@@ -45,6 +46,7 @@ class ClientSeeder extends Seeder
                 'operating_system' => 'Ubuntu 20.04',
                 'api_key' => ApiGenerator::GenerateApiKey(),
                 'port' => 22,
-            ]);
+            ]
+        );
     }
 }

@@ -29,9 +29,8 @@ class UserController extends Controller
             'first_name' => $data->first_name,
             'last_name'  => $data->last_name,
             'email'      => $data->email,
-            'contact_number' => $data->contact_number,
+            'phone_number' => $data->phone_number,
             'username'   => $data->username,
-            'role_id'    => $data->role_id,
             'password'   => Hash::make($data->password),
             'profile_picture_url' => $data->cloudinary_url ?? '',
             'profile_picture_public_id' => $data->cloudinary_public_id ?? null,
@@ -58,14 +57,11 @@ class UserController extends Controller
         if (!($data->email instanceof \Spatie\LaravelData\Optional)) {
             $payload['email'] = $data->email;
         }
-        if(!($data->contact_number instanceof \Spatie\LaravelData\Optional)) {
-            $payload['contact_number'] = $data->contact_number;
+        if (!($data->phone_number instanceof \Spatie\LaravelData\Optional)) {
+            $payload['phone_number'] = $data->phone_number;
         }
         if (!($data->username instanceof \Spatie\LaravelData\Optional)) {
             $payload['username'] = $data->username;
-        }
-        if (!($data->role_id instanceof \Spatie\LaravelData\Optional)) {
-            $payload['role_id'] = $data->role_id;
         }
         if (!($data->password instanceof \Spatie\LaravelData\Optional) && $data->password !== null) {
             $payload['password'] = Hash::make($data->password);
@@ -94,9 +90,7 @@ class UserController extends Controller
             url: $user->profile_picture_url,
             publicId: $user->profile_picture_public_id,
         );
-
         $user->delete();
-
         return response()->json(null, 204);
     }
 }
