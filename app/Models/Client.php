@@ -7,11 +7,15 @@ use Illuminate\Database\Eloquent\Relations\hasMany;
 use App\Models\Server;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Support\Str;
 class Client extends Model
 {
-    use HasFactory;
-
+    use HasFactory, HasUuids;
+public function newUniqueId(): string
+    {
+        return (string) Str::uuid7();
+    }
     protected $fillable = [
         'name',
         'description',
@@ -22,7 +26,10 @@ class Client extends Model
         'banner_image_public_id',
         'status',
     ];
-
+public function uniqueIds(): array
+    {
+        return ['client_id'];
+    }
     public function servers(): hasMany
     {
         return $this->hasMany(Server::class, 'client_id');

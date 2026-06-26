@@ -13,6 +13,8 @@ return new class extends Migration
     {
         Schema::create('servers', function (Blueprint $table) {
             $table->id();
+            $table->uuid('server_id')->unique();
+            $table->uuid('user_id')->unique();
             $table->foreignId('client_id')->constrained();
             $table->string('server_name');
             $table->string('device_name');
@@ -29,7 +31,7 @@ return new class extends Migration
             $table->integer('cpu_cores')->nullable();
             $table->integer('ram')->nullable();
             $table->string('operating_system')->nullable();
-            $table->string('status')->default('online');
+            $table->string('record_status')->default('active');
             $table->timestamps();
         });
     }

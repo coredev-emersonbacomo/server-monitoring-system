@@ -13,12 +13,16 @@ return new class extends Migration
     {
         Schema::create('clients', function (Blueprint $table) {
             $table->id();
+            $table->uuid('client_id')->unique();
+            
             $table->string('name');
             $table->string('description')->nullable();
             $table->string('email')->unique();
             $table->string('contact_number')->nullable();
             $table->string('location')->nullable(false);
             $table->string('banner_image_url')->default(config('app.default_client_banner_img_unsplash'));
+            $table->string('record_status')->default('active');
+
             $table->timestamps();
         });
     }

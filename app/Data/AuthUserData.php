@@ -17,7 +17,6 @@ class AuthUserData extends Data
         public string $contact_number,
         public ?string $last_login,
         public string $profile_picture_url,
-        public UserRole $role,
     ) {}
 
     public static function fromModel(User $user): self
@@ -31,7 +30,6 @@ class AuthUserData extends Data
             contact_number: $user->contact_number,
             last_login: $user->last_login,
             profile_picture_url: $user->profile_picture_url,
-            role: UserRole::from($user->role->role_name),
         );
     }
 }
