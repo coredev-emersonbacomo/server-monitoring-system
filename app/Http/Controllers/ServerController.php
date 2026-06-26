@@ -23,6 +23,7 @@ class ServerController extends Controller
             'device_name' => $s->device_name,
             'internal_ip' => $s->internal_ip,
             'external_ip' => $s->external_ip,
+            'port' => $s->port,
             'ssh_username' => $s->ssh_username,
             'cpu_cores' => $s->cpu_cores,
             'ram' => $s->ram,
@@ -48,13 +49,35 @@ class ServerController extends Controller
             'device_name' => $data->device_name ?? $data->server_name,
             'internal_ip' => $data->internal_ip,
             'external_ip' => $data->external_ip ?? $data->internal_ip,
+            'port' => $data->port,
             'ssh_username' => $data->ssh_username,
             'ssh_password' => $data->ssh_password ? Crypt::encryptString($data->ssh_password) : null,
             'api_key' => ApiGenerator::GenerateApiKey(),
         ]);
 
+        try {
+            $installer = new InstallerService(
+                sshHost:     $server->external_ip,
+                sshPort:     $server->sshPort,
+                sshUser:     $server->sshUser,
+                sshPassword: $server->sshPassword,
+                serverId:    $server->serverId,
+                apiToken:    $server->apiToken
+            );
+
+            $log = $installer->install();
+
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+
+        // Return the logs for installation
         return response()->json([
             'success' => true,
+            'log' => $log,
             'data' => $server,
         ], 201);
     }
@@ -87,6 +110,9 @@ class ServerController extends Controller
         }
         if ($data->external_ip !== null) {
             $updateData['external_ip'] = $data->external_ip;
+        }
+        if ($data->port !== null) {
+            $updateData['port'] = $data->port;
         }
         if ($data->ssh_username !== null) {
             $updateData['ssh_username'] = $data->ssh_username;
