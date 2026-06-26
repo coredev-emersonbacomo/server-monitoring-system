@@ -6,7 +6,7 @@ import { ProtectedRoute } from "./layouts/ProtectedRoute";
 import { GuestLayout } from "./layouts/GuestLayout";
 import Clients from "./pages/clients/Index";
 import UsersIndex from "./pages/users/Index";
-import UserDetail from "./pages/UserDetail";
+import UserDetail from "./pages/users/UserDetail";
 import ClientDetail from "./pages/clients/ClientDetail";
 import Settings from "./pages/Settings";
 import Sessions from "./pages/Sessions";

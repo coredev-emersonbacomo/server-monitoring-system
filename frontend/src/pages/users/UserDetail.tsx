@@ -33,6 +33,9 @@ import { getProfilePictureUploadSignature } from "@/api/cloudinary";
 import { uploadToCloudinary } from "@/services/cloudinary";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 
+//helper function to format phone numbers
+import { formatPhoneNumber } from "@/utils/helpers";
+
 // ─── Form skeleton ────────────────────────────────────────────────────────────
 
 function FormSkeleton() {
@@ -218,8 +221,8 @@ export default function UserDetail() {
 
     const set =
         (key: keyof typeof form) =>
-        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-            setForm((f) => ({ ...f, [key]: e.target.value }));
+            (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+                setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const isCreate = mode === "create";
@@ -298,9 +301,9 @@ export default function UserDetail() {
 
             const cloudinaryFields = avatarResult
                 ? {
-                      cloudinary_url: avatarResult.secure_url,
-                      cloudinary_public_id: avatarResult.public_id,
-                  }
+                    cloudinary_url: avatarResult.secure_url,
+                    cloudinary_public_id: avatarResult.public_id,
+                }
                 : {};
 
             if (mode === "create") {
@@ -328,9 +331,9 @@ export default function UserDetail() {
                     role_id: Number(form.role_id),
                     ...(form.password
                         ? {
-                              password: form.password,
-                              password_confirmation: form.password_confirmation,
-                          }
+                            password: form.password,
+                            password_confirmation: form.password_confirmation,
+                        }
                         : {}),
                     ...cloudinaryFields,
                 };
@@ -656,7 +659,7 @@ export default function UserDetail() {
                                                 onChange={set("email")}
                                                 className={cn(
                                                     errors.email &&
-                                                        "border-destructive",
+                                                    "border-destructive",
                                                 )}
                                             />
                                         ) : (
@@ -683,7 +686,7 @@ export default function UserDetail() {
                                                 onChange={set("username")}
                                                 className={cn(
                                                     errors.username &&
-                                                        "border-destructive",
+                                                    "border-destructive",
                                                 )}
                                             />
                                         ) : (
@@ -700,108 +703,20 @@ export default function UserDetail() {
                                     >
                                         {showEdit ? (
                                             <Input
-                                                placeholder="095-1234-5678"
+                                                placeholder="e.g. 09123456789"
                                                 value={form.contact_number}
                                                 onChange={(e) => {
-                                                    const numeric =
-                                                        e.target.value.replace(
-                                                            /\D/g,
-                                                            "",
-                                                        );
-                                                    // Enforce starts with 09
-                                                    if (
-                                                        numeric.length >= 2 &&
-                                                        !numeric.startsWith(
-                                                            "09",
-                                                        )
-                                                    )
-                                                        return;
-                                                    set("contact_number")({
-                                                        ...e,
-                                                        target: {
-                                                            ...e.target,
-                                                            value: numeric.slice(
-                                                                0,
-                                                                11,
-                                                            ),
-                                                        },
-                                                    });
-                                                }}
-                                                onBlur={(e) => {
-                                                    const numeric =
-                                                        e.target.value.replace(
-                                                            /\D/g,
-                                                            "",
-                                                        );
-                                                    // Only format if valid (starts with 09 and 11 digits)
-                                                    if (
-                                                        !numeric.startsWith(
-                                                            "09",
-                                                        ) ||
-                                                        numeric.length !== 11
-                                                    )
-                                                        return;
-                                                    const formatted = `${numeric.slice(0, 3)}-${numeric.slice(3, 7)}-${numeric.slice(7, 11)}`;
-                                                    set("contact_number")({
-                                                        ...e,
-                                                        target: {
-                                                            ...e.target,
-                                                            value: formatted,
-                                                        },
-                                                    });
-                                                }}
-                                                onKeyDown={(e) => {
-                                                    const allowedKeys = [
-                                                        "Backspace",
-                                                        "Delete",
-                                                        "Tab",
-                                                        "Escape",
-                                                        "Enter",
-                                                        "ArrowLeft",
-                                                        "ArrowRight",
-                                                        "ArrowUp",
-                                                        "ArrowDown",
-                                                        "Home",
-                                                        "End",
-                                                    ];
-                                                    if (
-                                                        (e.ctrlKey ||
-                                                            e.metaKey) &&
-                                                        [
-                                                            "a",
-                                                            "c",
-                                                            "v",
-                                                            "x",
-                                                        ].includes(
-                                                            e.key.toLowerCase(),
-                                                        )
-                                                    ) {
-                                                        return;
-                                                    }
-                                                    if (
-                                                        /^\d$/.test(e.key) ||
-                                                        allowedKeys.includes(
-                                                            e.key,
-                                                        )
-                                                    ) {
-                                                        return;
-                                                    }
-                                                    e.preventDefault();
+                                                    set("contact_number")({ ...e, target: { ...e.target, value: formatPhoneNumber(e.target.value) } });
                                                 }}
                                                 className={cn(
                                                     errors.contact_number &&
-                                                        "border-destructive",
+                                                    "border-destructive",
                                                 )}
                                             />
                                         ) : (
                                             <p className="text-sm text-foreground py-1">
                                                 {user?.contact_number
-                                                    ? user.contact_number
-                                                          .replace(/\D/g, "")
-                                                          .replace(
-                                                              /^(\d{3})(\d{4})(\d{4})$/,
-                                                              "$1-$2-$3",
-                                                          )
+                                                    ? formatPhoneNumber(user.contact_number)
                                                     : "—"}
                                             </p>
                                         )}
@@ -888,7 +803,7 @@ export default function UserDetail() {
                                                     onChange={set("password")}
                                                     className={cn(
                                                         errors.password &&
-                                                            "border-destructive",
+                                                        "border-destructive",
                                                     )}
                                                 />
                                             </Field>
@@ -910,7 +825,7 @@ export default function UserDetail() {
                                                     )}
                                                     className={cn(
                                                         errors.password_confirmation &&
-                                                            "border-destructive",
+                                                        "border-destructive",
                                                     )}
                                                 />
                                             </Field>
@@ -931,8 +846,8 @@ export default function UserDetail() {
                                                 isSaving
                                                     ? "Saving…"
                                                     : isCreate
-                                                      ? "Create User"
-                                                      : "Save Changes"
+                                                        ? "Create User"
+                                                        : "Save Changes"
                                             }
                                         />
                                     </div>

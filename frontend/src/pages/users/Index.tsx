@@ -85,17 +85,17 @@ const Users = () => {
         }
     };
 
-    const activeCount   = users.filter((u) => u.status === "active").length;
+    const activeCount = users.filter((u) => u.status === "active").length;
     const inactiveCount = users.filter((u) => u.status === "inactive").length;
-    const adminCount    = users.filter((u) => u.role === "Admin").length;
-    const secopsCount   = users.filter((u) => u.role === "SecOps").length;
+    const adminCount = users.filter((u) => u.role === "Admin").length;
+    const secopsCount = users.filter((u) => u.role === "SecOps").length;
 
     const filterOptions = [
-        { label: "All",      value: "all" as FilterTab, count: users.length },
-        { label: "Active",   value: "active" as FilterTab, count: activeCount },
+        { label: "All", value: "all" as FilterTab, count: users.length },
+        { label: "Active", value: "active" as FilterTab, count: activeCount },
         { label: "Inactive", value: "inactive" as FilterTab, count: inactiveCount },
-        { label: "Admin",    value: "Admin" as FilterTab, count: adminCount },
-        { label: "SecOps",   value: "SecOps" as FilterTab, count: secopsCount },
+        { label: "Admin", value: "Admin" as FilterTab, count: adminCount },
+        { label: "SecOps", value: "SecOps" as FilterTab, count: secopsCount },
     ];
 
     const currentFilterLabel = filterOptions.find((o) => o.value === filter)?.label ?? "All";
@@ -122,143 +122,143 @@ const Users = () => {
                     </div>
                 </div>
             </header>
-            
+
             <main className="py-6 w-full flex-1 min-h-0 overflow-auto flex flex-col gap-5">
 
-            {/* ── Toolbar ── */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className="relative flex-1 max-w-xs">
-                        <Search
-                            size={14}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Search users…"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-8 pr-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground transition-colors"
-                        />
+                {/* ── Toolbar ── */}
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="relative flex-1 max-w-xs">
+                            <Search
+                                size={14}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                            />
+                            <input
+                                type="text"
+                                placeholder="Search users…"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-full pl-8 pr-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground transition-colors"
+                            />
+                        </div>
+
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    icon={<Filter size={15} />}
+                                    className="gap-1 h-9"
+                                >
+                                    {currentFilterLabel}
+                                    <ChevronDown size={15} />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="start" className="w-48 p-1">
+                                {filterOptions.map((option) => (
+                                    <button
+                                        key={option.value}
+                                        onClick={() => setFilter(option.value)}
+                                        className={cn(
+                                            "flex items-center justify-between w-full px-2 py-1.5 rounded-md text-sm transition-colors",
+                                            filter === option.value
+                                                ? "bg-accent text-accent-foreground"
+                                                : "hover:bg-muted text-foreground",
+                                        )}
+                                    >
+                                        <span>{option.label}</span>
+                                        <span className="text-xs text-muted-foreground">{option.count}</span>
+                                    </button>
+                                ))}
+                            </PopoverContent>
+                        </Popover>
                     </div>
 
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                icon={<Filter size={14} />}
-                                className="gap-1"
-                            >
-                                {currentFilterLabel}
-                                <ChevronDown size={14} />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="start" className="w-48 p-1">
-                            {filterOptions.map((option) => (
-                                <button
-                                    key={option.value}
-                                    onClick={() => setFilter(option.value)}
-                                    className={cn(
-                                        "flex items-center justify-between w-full px-2 py-1.5 rounded-md text-sm transition-colors",
-                                        filter === option.value
-                                            ? "bg-accent text-accent-foreground"
-                                            : "hover:bg-muted text-foreground",
-                                    )}
-                                >
-                                    <span>{option.label}</span>
-                                    <span className="text-xs text-muted-foreground">{option.count}</span>
-                                </button>
-                            ))}
-                        </PopoverContent>
-                    </Popover>
-                </div>
-
-                <Button
-                    icon={<Plus size={15} />}
-                    label="Add user"
-                    onClick={() => navigate("/users/create")}
-                />
-            </div>
-
-            {/* ── Error state ── */}
-            {isError && (
-                <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
-                    <Users2 size={32} className="opacity-30" />
-                    <p className="text-sm">Failed to load users.</p>
                     <Button
-                        variant="outline"
-                        size="sm"
-                        icon={<RefreshCw size={14} />}
-                        label="Retry"
-                        onClick={() => refetch()}
+                        icon={<Plus size={15} />}
+                        label="Add user"
+                        onClick={() => navigate("/users/create")}
                     />
                 </div>
-            )}
 
-            {/* ── Count label ── */}
-            {!isLoading && !isError && (
-                <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
-                    {visible.length} user{visible.length !== 1 ? "s" : ""}
-                </p>
-            )}
-
-            {/* ── Loading skeleton ── */}
-            {isLoading && <SkeletonGrid />}
-
-            {/* ── Empty state ── */}
-            {!isLoading && !isError && visible.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
-                    <Users2 size={40} className="opacity-20" />
-                    <p className="text-sm font-medium">No users match your search.</p>
-                    <p className="text-xs opacity-60">Try adjusting your filters or search term.</p>
-                </div>
-            )}
-
-            {/* ── Card grid ── */}
-            {!isLoading && !isError && visible.length > 0 && (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
-                    {visible.map((u) => (
-                        <ProfileCard
-                            key={u.id}
-                            id={u.id}
-                            name={`${u.first_name} ${u.last_name}`}
-                            email={u.email}
-                            role={u.role}
-                            imageUrl={u.profile_picture_url}
-                            onDelete={handleDeleteRequest}
-                        />
-                    ))}
-                </div>
-            )}
-
-            {/* ── Delete dialog ── */}
-            <Dialog
-                open={!!deleteTarget}
-                onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
-            >
-                <DialogContent className="sm:max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle>Remove User</DialogTitle>
-                    </DialogHeader>
-                    <p className="text-sm text-muted-foreground">
-                        Are you sure you want to permanently delete{" "}
-                        <span className="font-medium text-foreground">{deleteTarget?.name}</span>?
-                        This action cannot be undone.
-                    </p>
-                    <div className="flex justify-end gap-2 pt-2">
-                        <DialogClose asChild>
-                            <Button variant="outline" label="Cancel" onClick={() => setDeleteTarget(null)} />
-                        </DialogClose>
+                {/* ── Error state ── */}
+                {isError && (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+                        <Users2 size={32} className="opacity-30" />
+                        <p className="text-sm">Failed to load users.</p>
                         <Button
-                            variant="danger"
-                            label={deleteUser.isPending ? "Removing…" : "Remove"}
-                            disabled={deleteUser.isPending}
-                            onClick={confirmDelete}
+                            variant="outline"
+                            size="sm"
+                            icon={<RefreshCw size={14} />}
+                            label="Retry"
+                            onClick={() => refetch()}
                         />
                     </div>
-                </DialogContent>
-            </Dialog>
+                )}
+
+                {/* ── Count label ── */}
+                {!isLoading && !isError && (
+                    <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
+                        {visible.length} user{visible.length !== 1 ? "s" : ""}
+                    </p>
+                )}
+
+                {/* ── Loading skeleton ── */}
+                {isLoading && <SkeletonGrid />}
+
+                {/* ── Empty state ── */}
+                {!isLoading && !isError && visible.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
+                        <Users2 size={40} className="opacity-20" />
+                        <p className="text-sm font-medium">No users match your search.</p>
+                        <p className="text-xs opacity-60">Try adjusting your filters or search term.</p>
+                    </div>
+                )}
+
+                {/* ── Card grid ── */}
+                {!isLoading && !isError && visible.length > 0 && (
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+                        {visible.map((u) => (
+                            <ProfileCard
+                                key={u.id}
+                                id={u.id}
+                                name={`${u.first_name} ${u.last_name}`}
+                                email={u.email}
+                                role={u.role}
+                                imageUrl={u.profile_picture_url}
+                                onDelete={handleDeleteRequest}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {/* ── Delete dialog ── */}
+                <Dialog
+                    open={!!deleteTarget}
+                    onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+                >
+                    <DialogContent className="sm:max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle>Remove User</DialogTitle>
+                        </DialogHeader>
+                        <p className="text-sm text-muted-foreground">
+                            Are you sure you want to permanently delete{" "}
+                            <span className="font-medium text-foreground">{deleteTarget?.name}</span>?
+                            This action cannot be undone.
+                        </p>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <DialogClose asChild>
+                                <Button variant="outline" label="Cancel" onClick={() => setDeleteTarget(null)} />
+                            </DialogClose>
+                            <Button
+                                variant="danger"
+                                label={deleteUser.isPending ? "Removing…" : "Remove"}
+                                disabled={deleteUser.isPending}
+                                onClick={confirmDelete}
+                            />
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </main>
         </div>
     );

@@ -43,6 +43,10 @@ import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { Search, Filter, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
+
+// Helper function to format phone numbers
+import { formatPhoneNumber } from "@/utils/helpers";
+
 // ─── Form skeleton ────────────────────────────────────────────────────────────
 
 function FormSkeleton() {
@@ -712,40 +716,16 @@ export default function ClientDetail() {
                                     >
                                         {showEdit ? (
                                             <Input
-                                                placeholder="095-1234-5678"
+                                                placeholder="e.g. 09123456789"
                                                 value={form.contact_number}
                                                 onChange={(e) => {
-                                                    const numeric = e.target.value.replace(/\D/g, "");
-                                                    // Enforce starts with 09
-                                                    if (numeric.length >= 2 && !numeric.startsWith("09")) return;
-                                                    set("contact_number")({ ...e, target: { ...e.target, value: numeric.slice(0, 11) } });
-                                                }}
-                                                onBlur={(e) => {
-                                                    const numeric = e.target.value.replace(/\D/g, "");
-                                                    // Only format if valid (starts with 09 and 11 digits)
-                                                    if (!numeric.startsWith("09") || numeric.length !== 11) return;
-                                                    const formatted = `${numeric.slice(0, 3)}-${numeric.slice(3, 7)}-${numeric.slice(7, 11)}`;
-                                                    set("contact_number")({ ...e, target: { ...e.target, value: formatted } });
-                                                }}
-                                                onKeyDown={(e) => {
-                                                    const allowedKeys = [
-                                                        "Backspace", "Delete", "Tab", "Escape", "Enter",
-                                                        "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
-                                                        "Home", "End",
-                                                    ];
-                                                    if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x"].includes(e.key.toLowerCase())) {
-                                                        return;
-                                                    }
-                                                    if (/^\d$/.test(e.key) || allowedKeys.includes(e.key)) {
-                                                        return;
-                                                    }
-                                                    e.preventDefault();
+                                                    set("contact_number")({ ...e, target: { ...e.target, value: formatPhoneNumber(e.target.value) } });
                                                 }}
                                                 className={cn(errors.contact_number && "border-destructive")}
                                             />
                                         ) : (
                                             <p className="text-sm text-foreground py-1">
-                                                {client?.contact_number.replace(/\D/g, "").replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")}
+                                                {formatPhoneNumber(client?.contact_number || "")}
                                             </p>
                                         )}
                                     </Field>

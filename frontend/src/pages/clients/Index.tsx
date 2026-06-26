@@ -64,7 +64,7 @@ function ClientCard({
             to={`/clients/${client.id}`}
             className="block rounded-lg transition-transform duration-200 hover:-translate-y-1"
         >
-            <div className="relative w-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans gap-3 transition-shadow hover:shadow-md">
+            <div className="relative w-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans gap-3 transition-shadow hover:shadow-md h-72 justify-center">
                 <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
                     <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                         <span
@@ -115,7 +115,7 @@ function ClientCard({
                     </div>
                 </div>
             </div>
-        </Link>
+        </Link >
 
     );
 }
@@ -206,11 +206,11 @@ export default function Clients() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    icon={<Filter size={14} />}
-                                    className="gap-1"
+                                    icon={<Filter size={15} />}
+                                    className="gap-1 h-9"
                                 >
                                     {currentFilterLabel}
-                                    <ChevronDown size={14} />
+                                    <ChevronDown size={15} />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent align="start" className="w-48 p-1">
