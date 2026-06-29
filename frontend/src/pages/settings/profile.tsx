@@ -42,6 +42,7 @@ export const Profile: React.FC = () => {
               .replace(/\D/g, "")
               .replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")
         : "—";
+    const avatarSrc = user.profile_picture_url || import.meta.env.VITE_DEFAULT_PROFILE_PICTURE || null;
     return (
         <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
             {/* ── Page header ── */}
@@ -76,11 +77,9 @@ export const Profile: React.FC = () => {
                         <div className="flex flex-col items-center -mt-12 mb-6">
                             {/* Avatar */}
                             <div className="w-24 h-24 rounded-full bg-white border-4 border-white shadow-sm overflow-hidden flex-shrink-0">
-                                <img
-                                    src={user.profile_picture_url || import.meta.env.VITE_DEFAULT_PROFILE_PICTURE || ''}
-                                    alt="Avatar"
-                                    className="w-full h-full object-cover"
-                                />
+                                {avatarSrc ? (
+                                    <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
+                                ) : null}
                             </div>
 
                             <div className="mt-4 flex flex-col items-center">

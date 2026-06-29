@@ -43,9 +43,8 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { requestUploadIntent } from "@/api/uploads";
-import { directUpload } from "@/services/directUpload";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { uploadFile } from "@/lib/uploadToast";
 
 import { Search, Filter, ChevronDown } from "lucide-react";
 import {
@@ -265,7 +264,6 @@ export default function ClientDetail() {
         id ? null : defaultBanner,
     );
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [uploadProgress, setUploadProgress] = useState(-1);
 
     // Add state inside the component
     const [serverSearch, setServerSearch] = useState("");
@@ -370,19 +368,16 @@ export default function ClientDetail() {
         fd.append("contact_number", form.contact_number);
 
         if (bannerFile) {
-            setUploadProgress(0);
             try {
-                const intent = await requestUploadIntent({
-                    purpose: "client_banner",
-                });
-                const result = await directUpload(bannerFile, intent, (p) =>
-                    setUploadProgress(p),
+                const { storage_key, intent_id } = await uploadFile(
+                    bannerFile,
+                    "client_banner",
+                    "Uploading banner…",
                 );
-                fd.append("upload_intent_id", intent.intent_id);
-                fd.append("banner_image_storage_key", result.storage_key);
+                fd.append("upload_intent_id", intent_id);
+                fd.append("banner_image_storage_key", storage_key);
             } catch {
                 toast.error("Failed to upload banner image.");
-                setUploadProgress(-1);
                 return;
             }
         }
@@ -416,8 +411,6 @@ export default function ClientDetail() {
                         : "Failed to update client.",
                 );
             }
-        } finally {
-            setUploadProgress(-1);
         }
     };
 
@@ -502,11 +495,7 @@ export default function ClientDetail() {
 
     return (
         <>
-            <LoadingOverlay
-                visible={isSaving && uploadProgress >= 0}
-                progress={uploadProgress}
-                message="Uploading banner..."
-            />
+            <LoadingOverlay visible={isSaving} />
             <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
                 {/* ── Banner / Hero ── */}
                 <div className="relative">

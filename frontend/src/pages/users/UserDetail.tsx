@@ -21,9 +21,8 @@ import {
     useUpdateUser,
     useDeleteUser,
 } from "@/hooks/useUsers";
-import { requestUploadIntent } from "@/api/uploads";
-import { directUpload } from "@/services/directUpload";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { uploadFile } from "@/lib/uploadToast";
 
 //helper function to format phone numbers
 import { formatPhoneNumber } from "@/utils/helpers";
@@ -142,8 +141,6 @@ export default function UserDetail() {
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [uploadProgress, setUploadProgress] = useState(-1);
-
     const [form, setForm] = useState({
         first_name: "",
         last_name: "",
@@ -275,28 +272,19 @@ export default function UserDetail() {
         if (!validate()) return;
 
         try {
-            let storageKey: string | null = null;
-            let intentId: string | null = null;
+            let uploadFields: Record<string, string> = {};
 
             if (avatarFile) {
-                setUploadProgress(0);
-                const intent = await requestUploadIntent({
-                    purpose: "profile_picture",
-                });
-                const result = await directUpload(avatarFile, intent, (p) =>
-                    setUploadProgress(p),
+                const { storage_key, intent_id } = await uploadFile(
+                    avatarFile,
+                    "profile_picture",
+                    "Uploading avatar…",
                 );
-                storageKey = result.storage_key;
-                intentId = intent.intent_id;
+                uploadFields = {
+                    upload_intent_id: intent_id,
+                    profile_picture_storage_key: storage_key,
+                };
             }
-
-            const uploadFields =
-                storageKey && intentId
-                    ? {
-                          upload_intent_id: intentId,
-                          profile_picture_storage_key: storageKey,
-                      }
-                    : {};
 
             if (mode === "create") {
                 const createPayload = {
@@ -338,7 +326,7 @@ export default function UserDetail() {
             }
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
-            // 1. Log the real error to your console so you can inspect exactly what went wrong
+            // uploadFile handles toast cleanup on error
             console.error("Submission failed:", err);
 
             // 2. Safely extract validation errors from Axios or native requests
@@ -361,8 +349,6 @@ export default function UserDetail() {
                             : "Failed to update user."),
                 );
             }
-        } finally {
-            setUploadProgress(-1);
         }
     };
 
@@ -437,18 +423,14 @@ export default function UserDetail() {
     }
 
     // ── Derived state ──────────────────────────────────────────────────────────
-    const DEFAULT_AVATAR = import.meta.env.VITE_DEFAULT_PROFILE_PICTURE || "";
+    const DEFAULT_AVATAR = import.meta.env.VITE_DEFAULT_PROFILE_PICTURE || null;
     const avatarSrc = avatarPreview || DEFAULT_AVATAR;
     const avatarInputId = "avatar-upload";
     const isSaving = createUser.isPending || updateUser.isPending;
 
     return (
         <>
-            <LoadingOverlay
-                visible={isSaving && uploadProgress >= 0}
-                progress={uploadProgress}
-                message="Uploading avatar..."
-            />
+            <LoadingOverlay visible={isSaving} />
             <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
                 {/* ── Banner / Hero ── */}
                 <div className="relative">

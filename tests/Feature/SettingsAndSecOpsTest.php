@@ -87,7 +87,7 @@ test('admin can assign secops to a client within limit', function () {
         ->assertJsonPath('secops.0.id', $this->secop->id)
         ->assertJsonPath('secops.1.id', $secopTwo->id);
 
-    $this->assertDatabaseHas('sec_ops', [
+    $this->assertDatabaseHas('sec_op_clients', [
         'client_id' => $this->client->id,
         'user_id' => $this->secop->id,
         'status' => 'active',

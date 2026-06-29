@@ -7,38 +7,10 @@ interface LoadingOverlayProps {
     message?: string;
 }
 
-export function LoadingOverlay({ visible, progress, message }: LoadingOverlayProps) {
+export function LoadingOverlay({ visible }: LoadingOverlayProps) {
     if (!visible) return null;
 
-    const hasProgress = progress !== undefined && progress >= 0;
-
-    return (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
-            <div className="bg-card border border-border/60 rounded-xl shadow-lg p-8 flex flex-col items-center gap-4 min-w-[280px]">
-                {hasProgress ? (
-                    <div className="w-full flex flex-col gap-2">
-                        <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">{message ?? "Uploading..."}</span>
-                            <span className="font-mono text-foreground">{progress}%</span>
-                        </div>
-                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                            <div
-                                className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
-                                style={{ width: `${progress}%` }}
-                            />
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                        {message && (
-                            <p className="text-sm text-muted-foreground">{message}</p>
-                        )}
-                    </>
-                )}
-            </div>
-        </div>
-    );
+    return <div className="fixed inset-0 z-50 bg-background/30" />;
 }
 
 export function SavingButton({

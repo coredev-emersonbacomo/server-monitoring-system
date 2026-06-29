@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Support\Str;
 
-#[Fillable(['first_name', 'last_name', 'email', 'password', 'username', 'contact_number', 'status', 'profile_picture_url', 'profile_picture_public_id', 'profile_picture_storage_key'])]
+#[Fillable(['first_name', 'last_name', 'email', 'password', 'username', 'phone_number', 'status', 'profile_picture_url', 'profile_picture_public_id', 'profile_picture_storage_key'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {

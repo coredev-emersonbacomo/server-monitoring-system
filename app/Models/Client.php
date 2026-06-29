@@ -38,6 +38,6 @@ public function uniqueIds(): array
     }
     public function secopclients(): BelongsToMany
 {
-    return $this->belongsToMany(User::class, 'secop_client', 'client_id', 'user_id');
+    return $this->belongsToMany(User::class, 'sec_op_clients', 'client_id', 'user_id');
 }
 }

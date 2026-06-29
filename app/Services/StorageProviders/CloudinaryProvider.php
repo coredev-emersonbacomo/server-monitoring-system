@@ -43,7 +43,11 @@ class CloudinaryProvider implements StorageProvider
         ];
 
         ksort($params);
-        $signature = sha1(http_build_query($params) . $this->apiSecret);
+        $queryParts = [];
+        foreach ($params as $key => $value) {
+            $queryParts[] = "{$key}={$value}";
+        }
+        $signature = sha1(implode('&', $queryParts) . $this->apiSecret);
 
         $uploadPrefix = config('uploads.providers.cloudinary.upload_prefix');
 
