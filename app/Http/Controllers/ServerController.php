@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\Server;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Infrastructure\Api\ApiGenerator;
 // Install Service
 use Infrastructure\Service\InstallerService;
@@ -37,49 +38,64 @@ class ServerController extends Controller
 
     public function store(ServerData $data, int $client_id): JsonResponse
     {
+        // 1. Check if client exists
         $clientExist = Client::where('id', $client_id)->exists();
 
         if (!$clientExist) {
-            return response()->json(['error' => 'Client not found.'], 400);
+            return response()->json(['error' => 'Client not found.'], 404); // 404 is more accurate here
         }
-
-        $server = Server::create([
-            'client_id' => $client_id,
-            'server_name' => $data->server_name,
-            'device_name' => $data->device_name ?? $data->server_name,
-            'internal_ip' => $data->internal_ip,
-            'external_ip' => $data->external_ip ?? $data->internal_ip,
-            'port' => $data->port,
-            'ssh_username' => $data->ssh_username,
-            'ssh_password' => $data->ssh_password ? Crypt::encryptString($data->ssh_password) : null,
-            'api_key' => ApiGenerator::GenerateApiKey(),
-        ]);
 
         try {
-            $installer = new InstallerService(
-                sshHost:     $server->external_ip,
-                sshPort:     $server->sshPort,
-                sshUser:     $server->sshUser,
-                sshPassword: $server->sshPassword,
-                serverId:    $server->serverId,
-                apiToken:    $server->apiToken
-            );
+            // 2. Execute the database transaction
+            // We pass variables into the closure using 'use ($data, $client_id)'
+            $result = DB::transaction(function () use ($data, $client_id) {
 
-            $log = $installer->install();
+                // Create the server entry
+                $server = Server::create([
+                    'client_id'    => $client_id,
+                    'server_name'  => $data->server_name,
+                    'device_name'  => $data->device_name ?? $data->server_name,
+                    'internal_ip'  => $data->internal_ip,
+                    'external_ip'  => $data->external_ip ?? $data->internal_ip,
+                    'port'         => $data->port,
+                    'ssh_username' => $data->ssh_username,
+                    'ssh_password' => $data->ssh_password ? Crypt::encryptString($data->ssh_password) : null,
+                    'api_key'      => ApiGenerator::GenerateApiKey(),
+                ]);
 
+                // Initialize the installer with correct keys matching your schema
+                $installer = new InstallerService(
+                    sshHost: $server->external_ip,
+                    sshPort: $server->port,              // Fixed from $server->sshPort
+                    sshUser: $server->ssh_username,
+                    sshPassword: $data->ssh_password,     // Pass the raw password so SSH can actually log in
+                    serverId: $server->id,
+                    apiToken: $server->api_key            // Fixed from $server->apiToken
+                );
+
+                // Run the install. If this throws a RuntimeException, the transaction rolls back.
+                $log = $installer->install();
+
+                // Return both the logs and the created server model out of the transaction
+                return [
+                    'log'    => $log,
+                    'server' => $server
+                ];
+            });
+
+            // 3. Success Response (Only reached if transaction succeeds)
+            return response()->json([
+                'success' => true,
+                'log'     => $result['log'],
+                'data'    => $result['server'],
+            ], 201);
         } catch (\RuntimeException $e) {
+            // 4. Failure Response (Triggered if InstallerService fails, DB auto-rolls back)
             return response()->json([
                 'status'  => 'error',
-                'message' => $e->getMessage(),
+                'message' => 'Installation failed: ' . $e->getMessage(),
             ], 500);
         }
-
-        // Return the logs for installation
-        return response()->json([
-            'success' => true,
-            'log' => $log,
-            'data' => $server,
-        ], 201);
     }
 
     public function show(int $client_id, int $id): JsonResponse
@@ -174,11 +190,11 @@ class ServerController extends Controller
     {
         try {
             $installer = new InstallerService(
-                sshHost:     $data->sshHost,
-                sshPort:     $data->sshPort,
-                sshUser:     $data->sshUser,
+                sshHost: $data->sshHost,
+                sshPort: $data->sshPort,
+                sshUser: $data->sshUser,
                 sshPassword: $data->sshPassword,
-                serverId:    $data->serverId,
+                serverId: $data->serverId,
                 // No need to add api token
                 /* apiToken:    $data->apiToken */
             );

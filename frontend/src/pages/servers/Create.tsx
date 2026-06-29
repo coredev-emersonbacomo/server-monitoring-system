@@ -342,8 +342,9 @@ export default function CreateServer() {
             const response = await jwtClient.post(`/clients/${clientId}/servers`, {
                 server_name: form.serverName.trim(),
                 internal_ip: form.ip.trim(),
+                external_ip: form.ip.trim(),
                 port: Number(form.port),
-                sshusername: form.username.trim(),
+                ssh_username: form.username.trim(),
                 ssh_password: form.password,
             });
 

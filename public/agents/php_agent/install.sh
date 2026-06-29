@@ -48,6 +48,8 @@ done
 
 log "Starting monitor-agent installation..."
 
+exit 1
+
 # ─── Prepare directory ────────────────────────────────────────
 mkdir -p "$APP_DIR"
 chmod 750 "$APP_DIR"
