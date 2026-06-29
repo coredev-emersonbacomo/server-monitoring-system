@@ -159,44 +159,24 @@ class ServerController extends Controller
         ]);
     }
 
-    public function installServer(ServerSshData $data): JsonResponse
-    {
-        try {
-            $installer = new InstallerService(
-                sshHost: $data->sshHost,
-                sshPort: $data->sshPort,
-                sshUser: $data->sshUser,
-                sshPassword: $data->sshPassword,
-                serverId: $data->serverId,
-                apiToken: $data->apiToken,
-            );
-
-            // Install
-            $log = $installer->install();
-
-            return response()->json([
-                'status' => 'success',
-                'log'    => $log,
-            ]);
-        } catch (\RuntimeException $e) {
-            return response()->json([
-                'status'  => 'error',
-                'message' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
     public function uninstallServer(ServerSshData $data): JsonResponse
     {
+        $sshPassword = Server::where('id', $data->serverId)
+            ->value('ssh_password'); // Returns string or null
+
+        // Since firstOrFail() throws a ModelNotFoundException, you can replicate that behavior like this:
+        if (is_null($sshPassword)) {
+            throw (new \Illuminate\Database\Eloquent\ModelNotFoundException)
+                ->setModel(Server::class, [$data->serverId]);
+        }
+
         try {
             $installer = new InstallerService(
                 sshHost: $data->sshHost,
                 sshPort: $data->sshPort,
                 sshUser: $data->sshUser,
-                sshPassword: $data->sshPassword,
+                sshPassword: Crypt::decryptString($sshPassword),
                 serverId: $data->serverId,
-                // No need to add api token
-                /* apiToken:    $data->apiToken */
             );
 
             // Uninstall
