@@ -13,6 +13,7 @@ use App\Models\Client;
 use App\Services\MediaUrlService;
 use App\Services\UploadIntentService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Str;
 
 class ClientController extends Controller
 {
@@ -148,8 +149,11 @@ class ClientController extends Controller
             return response()->json(['error' => 'User already assigned to this client'], 409);
         }
 
-        $client->secopclients()->attach($data->user_id);
-
+        $client->secopclients()->attach($data->user_id, [
+            'uuid' => Str::uuid()->toString(),
+            'record_status' => 'active',
+        ]);
+        
         return response()->json(['message' => 'SecOps added successfully'], 201);
     }
 

@@ -16,7 +16,7 @@ class UserData extends Data
         public string $username,
         public string $phone_number,
         public ?string $last_login,
-        public string $profile_picture_url,
+        public ?string $profile_picture_url,
         public string $profile_picture_storage_key,
         public ?string $record_status,
         public ?Carbon $created_at,

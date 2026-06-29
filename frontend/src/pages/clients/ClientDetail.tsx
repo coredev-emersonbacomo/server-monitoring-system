@@ -227,6 +227,7 @@ export default function ClientDetail() {
     const { setTrail } = useBreadcrumb();
     const clientId = Number(id);
 
+    const [activeTab, setActiveTab] = useState<"details" | "secops">("details");
     const [mode, setMode] = useState<"view" | "create" | "edit">(
         id ? "view" : "create",
     );
@@ -328,8 +329,8 @@ export default function ClientDetail() {
 
     const set =
         (key: keyof typeof form) =>
-        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-            setForm((f) => ({ ...f, [key]: e.target.value }));
+            (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+                setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const schema = z.object({
@@ -505,14 +506,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                          backgroundImage: `url(${bannerPreview})`,
-                                          backgroundSize: "cover",
-                                          backgroundPosition: "center",
-                                      }
+                                        backgroundImage: `url(${bannerPreview})`,
+                                        backgroundSize: "cover",
+                                        backgroundPosition: "center",
+                                    }
                                     : {
-                                          background:
-                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                      }
+                                        background:
+                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                    }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -544,7 +545,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                            defaultBanner,
+                                                        defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -640,7 +641,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none",
                                             errors.description &&
-                                                "border-destructive",
+                                            "border-destructive",
                                         )}
                                     />
                                 </div>
@@ -664,232 +665,270 @@ export default function ClientDetail() {
                             className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8"
                         >
                             {/* Basic Information */}
-                            <section className="space-y-4">
-                                <SectionHeader
-                                    title="Basic Information"
-                                    description="Core details about this client account."
-                                />
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <Field
-                                        label="Location"
-                                        required
-                                        error={errors.location}
-                                        isEdit={showEdit}
-                                    >
-                                        {showEdit ? (
-                                            <Input
-                                                placeholder="New York, USA"
-                                                value={form.location}
-                                                onChange={set("location")}
-                                                className={cn(
-                                                    errors.location &&
-                                                        "border-destructive",
-                                                )}
-                                            />
-                                        ) : (
-                                            <p className="text-sm text-foreground py-1">
-                                                {client?.location}
-                                            </p>
+                            <div className="flex items-center justify-end mb-6">
+                                <div className="inline-flex rounded-lg border border-border bg-muted/30 p-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab("details")}
+                                        className={cn(
+                                            "px-4 py-2 text-sm rounded-md transition-colors",
+                                            activeTab === "details"
+                                                ? "bg-background shadow text-foreground"
+                                                : "text-muted-foreground hover:text-foreground"
                                         )}
-                                    </Field>
+                                    >
+                                        Details
+                                    </button>
+
+                                    {mode !== "create" && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveTab("secops")}
+                                            className={cn(
+                                                "px-4 py-2 text-sm rounded-md transition-colors",
+                                                activeTab === "secops"
+                                                    ? "bg-background shadow text-foreground"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            Assign SecOps
+                                        </button>
+                                    )}
                                 </div>
-                            </section>
-
-                            <div className="h-px bg-border" />
-
-                            {/* Contact Details */}
-                            <section className="space-y-4">
-                                <SectionHeader
-                                    title="Contact Details"
-                                    description="How to reach this client."
-                                />
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <Field
-                                        label="Email Address"
-                                        required
-                                        error={errors.email}
-                                        isEdit={showEdit}
-                                    >
-                                        {showEdit ? (
-                                            <Input
-                                                type="email"
-                                                placeholder="contact@acme.com"
-                                                value={form.email}
-                                                onChange={set("email")}
-                                                className={cn(
-                                                    errors.email &&
-                                                        "border-destructive",
-                                                )}
-                                            />
-                                        ) : (
-                                            <p className="text-sm text-foreground py-1">
-                                                {client?.email}
-                                            </p>
-                                        )}
-                                    </Field>
-                                    <Field
-                                        label="Contact Number"
-                                        required
-                                        error={errors.contact_number}
-                                        isEdit={showEdit}
-                                    >
-                                        {showEdit ? (
-                                            <Input
-                                                placeholder="e.g. 09123456789"
-                                                value={form.contact_number}
-                                                onChange={(e) => {
-                                                    set("contact_number")({
-                                                        ...e,
-                                                        target: {
-                                                            ...e.target,
-                                                            value: formatPhoneNumber(
-                                                                e.target.value,
-                                                            ),
-                                                        },
-                                                    });
-                                                }}
-                                                className={cn(
-                                                    errors.contact_number &&
-                                                        "border-destructive",
-                                                )}
-                                            />
-                                        ) : (
-                                            <p className="text-sm text-foreground py-1">
-                                                {formatPhoneNumber(
-                                                    client?.contact_number ||
-                                                        "",
-                                                )}
-                                            </p>
-                                        )}
-                                    </Field>
-                                </div>
-                            </section>
-
-                            {/* Actions */}
-                            {showEdit && (
+                            </div>
+                            {activeTab === "details" && (
                                 <>
-                                    <div className="h-px bg-border" />
-                                    <div className="flex items-center justify-end gap-3">
-                                        <Button
-                                            type="submit"
-                                            disabled={isSaving}
-                                            label={
-                                                isSaving
-                                                    ? "Saving…"
-                                                    : mode === "create"
-                                                      ? "Create Client"
-                                                      : "Save Changes"
-                                            }
+                                    <section className="space-y-4">
+                                        <SectionHeader
+                                            title="Basic Information"
+                                            description="Core details about this client account."
                                         />
-                                    </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <Field
+                                                label="Location"
+                                                required
+                                                error={errors.location}
+                                                isEdit={showEdit}
+                                            >
+                                                {showEdit ? (
+                                                    <Input
+                                                        placeholder="New York, USA"
+                                                        value={form.location}
+                                                        onChange={set("location")}
+                                                        className={cn(
+                                                            errors.location &&
+                                                            "border-destructive",
+                                                        )}
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm text-foreground py-1">
+                                                        {client?.location}
+                                                    </p>
+                                                )}
+                                            </Field>
+                                        </div>
+                                    </section>
+
+                                    <div className="h-px bg-border" />
+
+                                    {/* Contact Details */}
+                                    <section className="space-y-4">
+                                        <SectionHeader
+                                            title="Contact Details"
+                                            description="How to reach this client."
+                                        />
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <Field
+                                                label="Email Address"
+                                                required
+                                                error={errors.email}
+                                                isEdit={showEdit}
+                                            >
+                                                {showEdit ? (
+                                                    <Input
+                                                        type="email"
+                                                        placeholder="contact@acme.com"
+                                                        value={form.email}
+                                                        onChange={set("email")}
+                                                        className={cn(
+                                                            errors.email &&
+                                                            "border-destructive",
+                                                        )}
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm text-foreground py-1">
+                                                        {client?.email}
+                                                    </p>
+                                                )}
+                                            </Field>
+                                            <Field
+                                                label="Contact Number"
+                                                required
+                                                error={errors.contact_number}
+                                                isEdit={showEdit}
+                                            >
+                                                {showEdit ? (
+                                                    <Input
+                                                        placeholder="e.g. 09123456789"
+                                                        value={form.contact_number}
+                                                        onChange={(e) => {
+                                                            set("contact_number")({
+                                                                ...e,
+                                                                target: {
+                                                                    ...e.target,
+                                                                    value: formatPhoneNumber(
+                                                                        e.target.value,
+                                                                    ),
+                                                                },
+                                                            });
+                                                        }}
+                                                        className={cn(
+                                                            errors.contact_number &&
+                                                            "border-destructive",
+                                                        )}
+                                                    />
+                                                ) : (
+                                                    <p className="text-sm text-foreground py-1">
+                                                        {formatPhoneNumber(
+                                                            client?.contact_number ||
+                                                            "",
+                                                        )}
+                                                    </p>
+                                                )}
+                                            </Field>
+                                        </div>
+                                    </section>
+
+                                    {/* Actions */}
+                                    {showEdit && (
+                                        <>
+                                            <div className="h-px bg-border" />
+                                            <div className="flex items-center justify-end gap-3">
+                                                <Button
+                                                    type="submit"
+                                                    disabled={isSaving}
+                                                    label={
+                                                        isSaving
+                                                            ? "Saving…"
+                                                            : mode === "create"
+                                                                ? "Create Client"
+                                                                : "Save Changes"
+                                                    }
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+                                </>
+
+                            )}
+
+{activeTab === "secops" &&
+                            mode !== "create" &&
+                            client && (
+                                <>
+                                        <div className="flex items-center justify-between mb-6">
+                                            <div>
+                                                <h2 className="text-base font-semibold text-foreground">
+                                                    SecOps Assignments
+                                                </h2>
+                                                <p className="text-xs text-muted-foreground mt-0.5">
+                                                    Manage SecOps personnel assigned to
+                                                    this client.
+                                                </p>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                icon={<Plus size={14} />}
+                                                label="Add SecOps"
+                                                onClick={() => setShowSecopDialog(true)}
+                                                disabled={
+                                                    currentSecops.length >= secopLimit
+                                                }
+                                            />
+                                        </div>
+
+                                        {secopLoading ? (
+                                            <div className="space-y-2">
+                                                {[0, 1, 2].map((i) => (
+                                                    <div
+                                                        key={i}
+                                                        className="h-10 bg-muted rounded animate-pulse"
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : currentSecops.length > 0 ? (
+                                            <div className="space-y-2">
+                                                {currentSecops.map((secop) => (
+                                                    <div
+                                                        key={secop.id}
+                                                        className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"
+                                                    >
+                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                                                <span className="text-xs font-medium text-primary">
+                                                                    {secop.first_name?.[0]?.toUpperCase() ??
+                                                                        "?"}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-foreground truncate">
+                                                                    {secop.first_name}{" "}
+                                                                    {secop.last_name}
+                                                                </p>
+                                                                <p className="text-xs text-muted-foreground truncate">
+                                                                    {secop.email}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                removeSecop.mutate(
+                                                                    secop.id,
+                                                                    {
+                                                                        onSuccess:
+                                                                            () => {
+                                                                                toast.success(
+                                                                                    `${secop.first_name} removed from client.`,
+                                                                                );
+                                                                            },
+                                                                        onError: () => {
+                                                                            toast.error(
+                                                                                "Failed to remove SecOps.",
+                                                                            );
+                                                                        },
+                                                                    },
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                removeSecop.isPending
+                                                            }
+                                                            className="text-xs text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50"
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2 bg-muted/20 rounded-lg border border-border/40">
+                                                <p className="text-sm">
+                                                    No SecOps assigned yet.
+                                                </p>
+                                                <p className="text-xs">
+                                                    Add up to{" "}
+                                                    <span className="font-semibold">
+                                                        {secopLimit}
+                                                    </span>{" "}
+                                                    SecOps to this client.
+                                                </p>
+                                            </div>
+                                        )}
                                 </>
                             )}
                         </form>
 
-                        {/* ── SecOps Management ── */}
-                        {mode !== "create" && client && (
-                            <section className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8">
-                                <div className="flex items-center justify-between mb-6">
-                                    <div>
-                                        <h2 className="text-base font-semibold text-foreground">
-                                            SecOps Assignments
-                                        </h2>
-                                        <p className="text-xs text-muted-foreground mt-0.5">
-                                            Manage SecOps personnel assigned to
-                                            this client.
-                                        </p>
-                                    </div>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        icon={<Plus size={14} />}
-                                        label="Add SecOps"
-                                        onClick={() => setShowSecopDialog(true)}
-                                        disabled={
-                                            currentSecops.length >= secopLimit
-                                        }
-                                    />
-                                </div>
-
-                                {secopLoading ? (
-                                    <div className="space-y-2">
-                                        {[0, 1, 2].map((i) => (
-                                            <div
-                                                key={i}
-                                                className="h-10 bg-muted rounded animate-pulse"
-                                            />
-                                        ))}
-                                    </div>
-                                ) : currentSecops.length > 0 ? (
-                                    <div className="space-y-2">
-                                        {currentSecops.map((secop) => (
-                                            <div
-                                                key={secop.id}
-                                                className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"
-                                            >
-                                                <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                                        <span className="text-xs font-medium text-primary">
-                                                            {secop.first_name?.[0]?.toUpperCase() ??
-                                                                "?"}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-medium text-foreground truncate">
-                                                            {secop.first_name}{" "}
-                                                            {secop.last_name}
-                                                        </p>
-                                                        <p className="text-xs text-muted-foreground truncate">
-                                                            {secop.email}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        removeSecop.mutate(
-                                                            secop.id,
-                                                            {
-                                                                onSuccess:
-                                                                    () => {
-                                                                        toast.success(
-                                                                            `${secop.first_name} removed from client.`,
-                                                                        );
-                                                                    },
-                                                                onError: () => {
-                                                                    toast.error(
-                                                                        "Failed to remove SecOps.",
-                                                                    );
-                                                                },
-                                                            },
-                                                        )
-                                                    }
-                                                    disabled={
-                                                        removeSecop.isPending
-                                                    }
-                                                    className="text-xs text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50"
-                                                >
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2 bg-muted/20 rounded-lg border border-border/40">
-                                        <p className="text-sm">
-                                            No SecOps assigned yet.
-                                        </p>
-                                        <p className="text-xs">
-                                            Add up to{" "}
-                                            <span className="font-semibold">
-                                                {secopLimit}
-                                            </span>{" "}
-                                            SecOps to this client.
-                                        </p>
-                                    </div>
-                                )}
-                            </section>
-                        )}
                         {mode !== "create" && client && (
                             <section>
                                 <div className="flex items-center justify-between mb-4">
@@ -935,8 +974,8 @@ export default function ClientDetail() {
                                                         ? "All"
                                                         : serverFilter ===
                                                             "online"
-                                                          ? "Online"
-                                                          : "Offline"}
+                                                            ? "Online"
+                                                            : "Offline"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -963,9 +1002,9 @@ export default function ClientDetail() {
                                                         onClick={() =>
                                                             setServerFilter(
                                                                 opt.value as
-                                                                    | "all"
-                                                                    | "online"
-                                                                    | "offline",
+                                                                | "all"
+                                                                | "online"
+                                                                | "offline",
                                                             )
                                                         }
                                                         className={cn(
@@ -1142,7 +1181,7 @@ export default function ClientDetail() {
                                                 disabled={
                                                     addSecop.isPending ||
                                                     selectedSecopToAdd ===
-                                                        user.id
+                                                    user.id
                                                 }
                                                 className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 text-left border border-border/40 hover:border-border"
                                             >
@@ -1174,11 +1213,11 @@ export default function ClientDetail() {
                                                 (s) => s.id === user.id,
                                             ),
                                     ).length === 0 && (
-                                        <p className="text-sm text-muted-foreground text-center py-4">
-                                            All users are already assigned to
-                                            this client.
-                                        </p>
-                                    )}
+                                            <p className="text-sm text-muted-foreground text-center py-4">
+                                                All users are already assigned to
+                                                this client.
+                                            </p>
+                                        )}
                                 </div>
                             )}
                         </div>
