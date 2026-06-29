@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import Echo from 'laravel-echo'
 import Pusher from 'pusher-js'
+import { getAccessToken } from '@/api/tokenManager'
 import type { StatPoint } from '@/types/stats'
 
 declare global {
@@ -44,6 +45,12 @@ export function useServerSocket(
             wssPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
             forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
             enabledTransports: ['ws', 'wss'],
+            authEndpoint: '/api/broadcasting/auth',
+            auth: {
+                headers: {
+                    Authorization: `Bearer ${getAccessToken()}`,
+                },
+            },
         })
 
         echo.connector.pusher.connection.bind('connected', () => {

@@ -30,7 +30,7 @@ export default function ServerLayout() {
     return (
         <div className="flex-1 flex flex-row h-full gap-6 overflow-hidden">
             <div className="flex-1 min-w-0 overflow-auto">
-                <Outlet />
+                <Outlet key={activeId} />
             </div>
 
             <aside className="w-72 shrink-0 flex flex-col max-h-[80vh] border-l border-border/40 pl-6 overflow-hidden">
@@ -69,7 +69,7 @@ export default function ServerLayout() {
                             return (
                                 <button
                                     key={server.id}
-                                    onClick={() => navigate(`/servers/${server.id}`)}
+                                    onClick={() => navigate(`/servers/${server.id}`, { replace: true })}
                                     className={cn(
                                         "w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm",
                                         isActive

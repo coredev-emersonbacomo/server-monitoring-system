@@ -29,8 +29,8 @@ import {
     useUpdateUser,
     useDeleteUser,
 } from "@/hooks/useUsers";
-import { getProfilePictureUploadSignature } from "@/api/cloudinary";
-import { uploadToCloudinary } from "@/services/cloudinary";
+import { requestUploadIntent } from "@/api/uploads";
+import { directUpload } from "@/services/directUpload";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 
 // ─── Form skeleton ────────────────────────────────────────────────────────────
@@ -283,24 +283,23 @@ export default function UserDetail() {
         if (!validate()) return;
 
         try {
-            let avatarResult: { secure_url: string; public_id: string } | null =
-                null;
+            let storageKey: string | null = null;
+            let intentId: string | null = null;
 
             if (avatarFile) {
                 setUploadProgress(0);
-                const signature = await getProfilePictureUploadSignature();
-                avatarResult = await uploadToCloudinary(
+                const intent = await requestUploadIntent({ purpose: "profile_picture" });
+                const result = await directUpload(
                     avatarFile,
-                    signature,
+                    intent,
                     (p) => setUploadProgress(p),
                 );
+                storageKey = result.storage_key;
+                intentId = intent.intent_id;
             }
 
-            const cloudinaryFields = avatarResult
-                ? {
-                      cloudinary_url: avatarResult.secure_url,
-                      cloudinary_public_id: avatarResult.public_id,
-                  }
+            const uploadFields = storageKey && intentId
+                ? { upload_intent_id: intentId, profile_picture_storage_key: storageKey }
                 : {};
 
             if (mode === "create") {
@@ -313,7 +312,7 @@ export default function UserDetail() {
                     role_id: Number(form.role_id),
                     password: form.password,
                     password_confirmation: form.password_confirmation,
-                    ...cloudinaryFields,
+                    ...uploadFields,
                 };
                 await createUser.mutateAsync(createPayload);
                 toast.success("User created successfully.");
@@ -332,7 +331,7 @@ export default function UserDetail() {
                               password_confirmation: form.password_confirmation,
                           }
                         : {}),
-                    ...cloudinaryFields,
+                    ...uploadFields,
                 };
                 await updateUser.mutateAsync(updatePayload);
                 toast.success("User updated successfully.");

@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['first_name', 'last_name', 'email', 'password', 'username', 'role_id', 'contact_number', 'status', 'profile_picture_url', 'profile_picture_public_id'])]
+#[Fillable(['first_name', 'last_name', 'email', 'password', 'username', 'role_id', 'contact_number', 'status', 'profile_picture_url', 'profile_picture_public_id', 'profile_picture_storage_key'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {

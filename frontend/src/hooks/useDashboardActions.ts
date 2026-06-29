@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import jwtClient from "@/api/jwtClient";
+import api from "@/api/api";
 
 export interface ActionItem {
     id: number;
@@ -19,8 +19,9 @@ export const useDashboardActions = () => {
     return useQuery<ActionItem[]>({
         queryKey: ["dashboard", "actions"],
         queryFn: async () => {
-            const { data } = await jwtClient.get<ActionItem[]>("/dashboard/actions");
-            return data;
+            const { data, error } = await api.GET("/dashboard/actions");
+            if (error) throw error;
+            return data as ActionItem[];
         },
         staleTime: 30_000,
         refetchInterval: 60_000,
@@ -31,8 +32,9 @@ export const useCompletedActions = () => {
     return useQuery<ActionItem[]>({
         queryKey: ["dashboard", "actions", "completed"],
         queryFn: async () => {
-            const { data } = await jwtClient.get<ActionItem[]>("/dashboard/actions/completed");
-            return data;
+            const { data, error } = await api.GET("/dashboard/actions/completed");
+            if (error) throw error;
+            return data as ActionItem[];
         },
         staleTime: 30_000,
     });
@@ -42,7 +44,10 @@ export const useClaimAction = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (actionId: number) => {
-            const { data } = await jwtClient.post(`/dashboard/actions/${actionId}/claim`);
+            const { data, error } = await api.POST("/dashboard/actions/{actionId}/claim", {
+                params: { path: { actionId } },
+            });
+            if (error) throw error;
             return data;
         },
         onSuccess: () => {
@@ -55,7 +60,11 @@ export const useUpdateActionStatus = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ actionId, status }: { actionId: number; status: string }) => {
-            const { data } = await jwtClient.post(`/dashboard/actions/${actionId}/status`, { status });
+            const { data, error } = await api.POST("/dashboard/actions/{actionId}/status", {
+                params: { path: { actionId } },
+                body: { status } as never,
+            });
+            if (error) throw error;
             return data;
         },
         onSuccess: () => {

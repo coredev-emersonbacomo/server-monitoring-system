@@ -37,8 +37,8 @@ class UpdateUserData extends Data
 
         public string|Optional|null $password_confirmation,
 
-        public string|Optional|null $cloudinary_url,
+        public string|Optional|null $upload_intent_id,
 
-        public string|Optional|null $cloudinary_public_id,
+        public string|Optional|null $profile_picture_storage_key,
     ) {}
 }

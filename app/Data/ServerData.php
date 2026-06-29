@@ -36,6 +36,11 @@ class ServerData extends Data
 
         public ?string $client_name = null,
 
+        public ?string $last_seen = null,
+
+        public ?string $status = null,
+
+        /** @var StatPointData[] */
         public array $stats = [],
     ) {}
 }

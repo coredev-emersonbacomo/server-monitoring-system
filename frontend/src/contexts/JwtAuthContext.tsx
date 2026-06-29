@@ -6,65 +6,33 @@ import {
     useRef,
     useState,
 } from "react";
-import axios from "axios";
-import jwtClient, { setAccessToken } from "@/api/jwtClient";
+import { setAccessToken, refreshAccessToken } from "@/api/tokenManager";
+import api from "@/api/api";
 import { useNavigate } from "react-router-dom";
-import type { AuthUserData } from "@/types/models";
-
-interface LoginCredentials {
-    email: string;
-    password: string;
-    remember?: boolean;
-}
-
-interface SessionData {
-    session_uuid: string;
-    device_name: string | null;
-    device_type: string | null;
-    browser: string | null;
-    operating_system: string | null;
-    ip_address: string | null;
-    remember_me: boolean;
-    last_activity_at: string | null;
-    last_activity_at_timestamp: string | null;
-    created_at: string | null;
-    created_at_timestamp: string | null;
-    current_session: boolean;
-    status: string;
-    compromised: boolean;
-    compromised_at: string | null;
-    compromised_at_timestamp: string | null;
-    compromise_reason: string | null;
-    revoked_at: string | null;
-    revoked_at_timestamp: string | null;
-}
-
-interface SecurityActivityData {
-    id: number;
-    event_type: string;
-    ip_address: string | null;
-    created_at: string | null;
-    created_at_timestamp: string | null;
-    metadata: Record<string, unknown> | null;
-}
+import type {
+    AuthUserData,
+    LoginRequest,
+    AuthAuditLogResource,
+    SessionResource,
+} from "@/types/models";
 
 interface JwtAuthContextType {
     user: AuthUserData | null;
     isLoading: boolean;
     isAuthenticated: boolean;
-    login: (credentials: LoginCredentials) => Promise<void>;
+    login: (credentials: LoginRequest, returnTo?: string) => Promise<void>;
     logout: () => Promise<void>;
     logoutAll: () => Promise<void>;
     isLoggingIn: boolean;
     isLoggingOut: boolean;
     refreshUser: () => Promise<void>;
-    sessions: SessionData[];
+    sessions: SessionResource[];
     sessionsLoading: boolean;
     fetchSessions: () => Promise<void>;
     revokeSession: (sessionUuid: string) => Promise<void>;
     revokeAllOtherSessions: () => Promise<void>;
     permanentDeleteSession: (sessionUuid: string) => Promise<void>;
-    securityActivity: SecurityActivityData[];
+    securityActivity: AuthAuditLogResource[];
     securityActivityLoading: boolean;
     fetchSecurityActivity: () => Promise<void>;
 }
@@ -79,10 +47,10 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const [sessions, setSessions] = useState<SessionData[]>([]);
+    const [sessions, setSessions] = useState<SessionResource[]>([]);
     const [sessionsLoading, setSessionsLoading] = useState(false);
     const [securityActivity, setSecurityActivity] = useState<
-        SecurityActivityData[]
+        AuthAuditLogResource[]
     >([]);
     const [securityActivityLoading, setSecurityActivityLoading] =
         useState(false);
@@ -105,7 +73,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
 
     const refreshUser = useCallback(async () => {
         try {
-            const response = await jwtClient.get("/me");
+            const response = await api.GET("/me");
             if (mountedRef.current) {
                 const userData = response.data as AuthUserData;
                 setUser(userData);
@@ -130,14 +98,8 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
             setIsLoading(true);
 
             try {
-                const response = await axios.post(
-                    "/api/refresh",
-                    {},
-                    { withCredentials: true },
-                );
-                const { access_token } = response.data;
+                const access_token = await refreshAccessToken();
                 if (access_token) {
-                    setAccessToken(access_token);
                     await refreshUser();
                 }
             } catch {
@@ -161,22 +123,26 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
         };
     }, [refreshUser]);
 
-    const login = useCallback(async (credentials: LoginCredentials) => {
+    const login = useCallback(async (credentials: LoginRequest, returnTo?: string) => {
         setIsLoggingIn(true);
         try {
-            const response = await jwtClient.post("/login", {
-                email: credentials.email,
-                password: credentials.password,
-                remember: credentials.remember ?? false,
+            const response = await api.POST("/login", {
+                body: {
+                    email: credentials.email,
+                    password: credentials.password,
+                    remember: credentials.remember ?? false,
+                },
             });
 
-            const { access_token } = response.data;
+            const { access_token } = response.data as { access_token: string };
             setAccessToken(access_token);
 
-            const meResponse = await jwtClient.get("/me");
+            const meResponse = await api.GET("/me");
             if (mountedRef.current) {
                 setUser(meResponse.data as AuthUserData);
             }
+
+            navigate(returnTo || "/");
         } catch (error) {
             setAccessToken(null);
             throw error;
@@ -185,12 +151,12 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
                 setIsLoggingIn(false);
             }
         }
-    }, []);
+    }, [navigate]);
 
     const logout = useCallback(async () => {
         setIsLoggingOut(true);
         try {
-            await jwtClient.post("/logout");
+            await api.POST("/logout");
         } catch {
             // Proceed anyway
         } finally {
@@ -208,7 +174,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     const logoutAll = useCallback(async () => {
         setIsLoggingOut(true);
         try {
-            await jwtClient.post("/logout-all");
+            await api.POST("/logout-all");
         } catch {
             // Proceed anyway
         } finally {
@@ -226,9 +192,9 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     const fetchSessions = useCallback(async () => {
         setSessionsLoading(true);
         try {
-            const response = await jwtClient.get("/sessions");
+            const response = await api.GET("/sessions");
             if (mountedRef.current) {
-                setSessions(response.data.data ?? []);
+                setSessions(response.data?.data ?? []);
             }
         } catch {
             if (mountedRef.current) {
@@ -242,7 +208,9 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const revokeSession = useCallback(async (sessionUuid: string) => {
-        await jwtClient.delete(`/sessions/${sessionUuid}`);
+        await api.DELETE("/sessions/{sessionUuid}", {
+            params: { path: { sessionUuid } },
+        });
         setSessions((prev) =>
             prev.map((s) =>
                 s.session_uuid === sessionUuid
@@ -253,7 +221,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const revokeAllOtherSessions = useCallback(async () => {
-        await jwtClient.post("/sessions/logout-all-others");
+        await api.POST("/sessions/logout-all-others");
         setSessions((prev) =>
             prev.map((s) =>
                 s.current_session
@@ -264,7 +232,9 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const permanentDeleteSession = useCallback(async (sessionUuid: string) => {
-        await jwtClient.delete(`/sessions/${sessionUuid}/permanent`);
+        await api.DELETE("/sessions/{sessionUuid}/permanent", {
+            params: { path: { sessionUuid } },
+        });
         setSessions((prev) =>
             prev.filter((s) => s.session_uuid !== sessionUuid),
         );
@@ -273,9 +243,9 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     const fetchSecurityActivity = useCallback(async () => {
         setSecurityActivityLoading(true);
         try {
-            const response = await jwtClient.get("/security-activity");
+            const response = await api.GET("/security-activity");
             if (mountedRef.current) {
-                setSecurityActivity(response.data.data ?? []);
+                setSecurityActivity(response.data?.data ?? []);
             }
         } catch {
             if (mountedRef.current) {

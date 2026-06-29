@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Data\AuthUserData;
+use App\Data\LoginData;
 use App\Data\LoginResponseData;
 use App\Data\RefreshResponseData;
 use App\Enums\AuthEventType;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\LoginRequest;
 use App\Models\User;
 use App\Models\UserSession;
 use App\Services\AuthAuditService;
@@ -28,14 +28,14 @@ class JwtAuthController extends Controller
         private AuthAuditService $auditService,
     ) {}
 
-    public function login(LoginRequest $request): JsonResponse
+    public function login(LoginData $data, Request $request): JsonResponse
     {
         $this->ensureIsNotRateLimited($request);
 
-        $login = $request->input('email');
+        $login = $data->email;
         $user = User::where('email', $login)->orWhere('username', $login)->first();
 
-        if (!$user || !password_verify($request->input('password'), $user->password)) {
+        if (!$user || !password_verify($data->password, $user->password)) {
             RateLimiter::hit($this->throttleKey($request));
 
             $this->auditService->log(
@@ -52,7 +52,7 @@ class JwtAuthController extends Controller
 
         RateLimiter::clear($this->throttleKey($request));
 
-        $rememberMe = $request->boolean('remember', false);
+        $rememberMe = $data->remember ?? false;
 
         $result = $this->sessionManager->createSession(
             $user,
@@ -83,7 +83,7 @@ class JwtAuthController extends Controller
             session: $session,
         );
 
-        return response()->json($responseData->toArray())
+        return $responseData->toResponse($request)
             ->withCookie($this->buildRefreshTokenCookie($refreshToken, $rememberMe));
     }
 
@@ -126,7 +126,7 @@ class JwtAuthController extends Controller
             session_uuid: $session->session_uuid,
         );
 
-        return response()->json($responseData->toArray())
+        return $responseData->toResponse($request)
             ->withCookie($this->buildRefreshTokenCookie($newRefreshToken, $session->remember_me));
     }
 
@@ -204,7 +204,8 @@ class JwtAuthController extends Controller
 
     private function throttleKey(Request $request): string
     {
-        return strtolower($request->input('email', '')) . '|' . $request->ip();
+        $login = $request->input('email') ?? $request->input('username') ?? '';
+        return strtolower($login) . '|' . $request->ip();
     }
 
     private function buildRefreshTokenCookie(string $refreshToken, bool $rememberMe): \Symfony\Component\HttpFoundation\Cookie

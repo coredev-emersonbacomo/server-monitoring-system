@@ -26,8 +26,8 @@ class UpdateClientData extends Data
 
         public string|Optional $description,
 
-        public string|Optional|null $cloudinary_url,
+        public string|Optional|null $upload_intent_id,
 
-        public string|Optional|null $cloudinary_public_id,
+        public string|Optional|null $banner_image_storage_key,
     ) {}
 }

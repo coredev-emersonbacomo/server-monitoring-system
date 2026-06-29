@@ -27,8 +27,8 @@ class CreateClientData extends Data
 
         public ?UploadedFile $banner_image = null,
 
-        public ?string $cloudinary_url = null,
+        public ?string $upload_intent_id = null,
 
-        public ?string $cloudinary_public_id = null,
+        public ?string $banner_image_storage_key = null,
     ) {}
 }

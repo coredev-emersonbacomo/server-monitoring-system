@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import jwtClient from "@/api/jwtClient";
+import api from "@/api/api";
 import type { DashboardStatsData as DashboardStats } from "@/types/models";
 
 export const useDashboardStats = () => {
@@ -8,8 +8,9 @@ export const useDashboardStats = () => {
     const query = useQuery<DashboardStats>({
         queryKey: ["dashboard", "stats"],
         queryFn: async () => {
-            const { data } = await jwtClient.get<DashboardStats>("/dashboard/stats");
-            return data;
+            const { data, error } = await api.GET("/dashboard/stats");
+            if (error) throw error;
+            return data as DashboardStats;
         },
         staleTime: 30_000,
         refetchInterval: 60_000,

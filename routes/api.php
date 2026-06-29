@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
 // File Path: routes/api.php 
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Route;
 | feature-specific files under the routes/api/ directory for organisation.
 |
 */
+
+Broadcast::routes(['middleware' => ['auth:jwt']]);
 
 Route::group([], base_path('routes/api/auth.php'));
 Route::group([], base_path('routes/api/servers.php'));

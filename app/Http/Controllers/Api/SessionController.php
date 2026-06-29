@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Data\SecurityActivityData;
+use App\Data\SessionData;
 use App\Enums\AuthEventType;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\AuthAuditLogResource;
-use App\Http\Resources\SessionResource;
 use App\Models\AuthAuditLog;
 use App\Models\UserSession;
 use App\Services\AuthAuditService;
 use App\Services\SessionManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Spatie\LaravelData\DataCollection;
 
 class SessionController extends Controller
 {
@@ -24,9 +25,10 @@ class SessionController extends Controller
     {
         $user = $request->user();
         $sessions = $this->sessionManager->getAllSessions($user);
+        $currentSessionUuid = auth('jwt')->getSessionUuid();
 
         return [
-            'data' => SessionResource::collection($sessions),
+            'data' => $sessions->map(fn(UserSession $s) => SessionData::fromModel($s, $currentSessionUuid)),
         ];
     }
 
@@ -117,7 +119,7 @@ class SessionController extends Controller
             ->get();
 
         return [
-            'data' => AuthAuditLogResource::collection($logs),
+            'data' => $logs->map(fn(AuthAuditLog $log) => SecurityActivityData::fromModel($log)),
         ];
     }
 
