@@ -7,7 +7,6 @@ import {
     Mail,
     User,
     AtSign,
-    Shield,
     UserCircle,
 } from "lucide-react";
 
@@ -38,13 +37,11 @@ export const Profile: React.FC = () => {
     const fullName = `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim();
     const email = user.email ?? "";
     const username = user.username ?? email.split("@")[0];
-    const contact_number = user.contact_number
-        ? user.contact_number
+    const phone_number = user.phone_number
+        ? user.phone_number
               .replace(/\D/g, "")
               .replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")
         : "—";
-    const roleName = user.role ?? "—";
-
     return (
         <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
             {/* ── Page header ── */}
@@ -86,15 +83,10 @@ export const Profile: React.FC = () => {
                                 />
                             </div>
 
-                            {/* Name + role */}
                             <div className="mt-4 flex flex-col items-center">
                                 <h2 className="text-xl font-bold text-gray-900">
                                     {fullName}
                                 </h2>
-                                <span className="inline-flex items-center font-semibold gap-1 mt-1.5 px-2 py-0.5 text-xs border border-gray-200 rounded-full text-gray-500">
-                                    <Shield size={11} />
-                                    {roleName}
-                                </span>
                             </div>
                         </div>
 
@@ -117,8 +109,8 @@ export const Profile: React.FC = () => {
                             />
                             <InfoBlock
                                 icon={<User size={15} />}
-                                label="Contact Number"
-                                value={contact_number}
+                                label="Phone Number"
+                                value={phone_number}
                             />
                         </div>
                     </div>

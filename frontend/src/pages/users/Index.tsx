@@ -72,8 +72,7 @@ const Users = () => {
                 `${u.first_name} ${u.last_name}`.toLowerCase().includes(q) ||
                 u.email.toLowerCase().includes(q) ||
                 u.username.toLowerCase().includes(q);
-            const matchFilter =
-                filter === "all" || u.status === filter || u.role === filter;
+            const matchFilter = filter === "all" || u.record_status === filter;
             return matchSearch && matchFilter;
         });
     }, [search, filter, users]);
@@ -98,10 +97,12 @@ const Users = () => {
         }
     };
 
-    const activeCount = users.filter((u) => u.status === "active").length;
-    const inactiveCount = users.filter((u) => u.status === "inactive").length;
-    const adminCount = users.filter((u) => u.role === "Admin").length;
-    const secopsCount = users.filter((u) => u.role === "SecOps").length;
+    const activeCount = users.filter(
+        (u) => u.record_status === "active",
+    ).length;
+    const inactiveCount = users.filter(
+        (u) => u.record_status === "inactive",
+    ).length;
 
     const filterOptions = [
         { label: "All", value: "all" as FilterTab, count: users.length },
@@ -111,8 +112,6 @@ const Users = () => {
             value: "inactive" as FilterTab,
             count: inactiveCount,
         },
-        { label: "Admin", value: "Admin" as FilterTab, count: adminCount },
-        { label: "SecOps", value: "SecOps" as FilterTab, count: secopsCount },
     ];
 
     const currentFilterLabel =
@@ -143,7 +142,6 @@ const Users = () => {
                                 className="w-full pl-8 pr-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground transition-colors"
                             />
                         </div>
-
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
@@ -232,7 +230,6 @@ const Users = () => {
                                 id={u.id}
                                 name={`${u.first_name} ${u.last_name}`}
                                 email={u.email}
-                                role={u.role}
                                 imageUrl={u.profile_picture_url}
                                 onDelete={handleDeleteRequest}
                             />

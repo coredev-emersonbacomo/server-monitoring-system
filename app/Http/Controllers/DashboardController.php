@@ -8,7 +8,6 @@ use App\Models\ActionItem;
 use App\Models\Client;
 use App\Models\Server;
 use Illuminate\Support\Facades\DB;
-use Spatie\LaravelData\DataCollection;
 
 class DashboardController extends Controller
 {
@@ -96,21 +95,16 @@ class DashboardController extends Controller
         );
     }
 
-    public function actions(): DataCollection
+    /** @return ActionItemData[] */
+    public function actions(): array
     {
-        $user = request()->user();
-        $isAdmin = $user->role_id === 1;
-
-        $issues = $this->detectIssues($user, $isAdmin);
-        $this->syncActions($issues, $isAdmin, $user);
-
         $actions = ActionItem::with('assignedUser')
             ->where('status', '!=', 'completed')
             ->orderByRaw("CASE severity WHEN 'critical' THEN 0 WHEN 'warning' THEN 1 WHEN 'info' THEN 2 ELSE 3 END")
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return ActionItemData::collect($actions, DataCollection::class);
+        return ActionItemData::collect($actions)->toArray();
     }
 
     public function claim(int $actionId): ActionItemData
@@ -146,7 +140,8 @@ class DashboardController extends Controller
         return ActionItemData::fromModel($action);
     }
 
-    public function completed(): DataCollection
+    /** @return ActionItemData[] */
+    public function completed(): array
     {
         $actions = ActionItem::with('assignedUser')
             ->where('status', 'completed')
@@ -154,168 +149,9 @@ class DashboardController extends Controller
             ->limit(50)
             ->get();
 
-        return ActionItemData::collect($actions, DataCollection::class);
+        return ActionItemData::collect($actions)->toArray();
     }
 
-    /**
-     * Detect current issues based on user role.
-     */
-    private function detectIssues($user, bool $isAdmin): array
-    {
-        $onlineThreshold  = now()->subMinutes(5);
-        $warningThreshold = now()->subMinutes(15);
 
-        $serverStatus = DB::table('servers')
-            ->leftJoinSub(
-                DB::table('server_updates')
-                    ->select('server_id', DB::raw('MAX(created_at) as last_seen'))
-                    ->groupBy('server_id'),
-                'lu',
-                'servers.id', '=', 'lu.server_id'
-            )
-            ->join('clients', 'servers.client_id', '=', 'clients.id')
-            ->select(
-                'servers.id as server_id',
-                'servers.server_name',
-                'servers.client_id',
-                'clients.name as client_name',
-                'lu.last_seen',
-            )
-            ->selectRaw("
-                CASE
-                    WHEN lu.last_seen >= ? THEN 'online'
-                    WHEN lu.last_seen < ? AND lu.last_seen >= ? THEN 'warning'
-                    ELSE 'offline'
-                END as status
-            ", [$onlineThreshold, $onlineThreshold, $warningThreshold])
-            ->get();
-
-        $issues = [];
-
-        if ($isAdmin) {
-            $clientsWithoutSecOps = DB::table('clients')
-                ->leftJoin('sec_ops', 'clients.id', '=', 'sec_ops.client_id')
-                ->whereNull('sec_ops.client_id')
-                ->select('clients.id', 'clients.name')
-                ->get();
-
-            foreach ($clientsWithoutSecOps as $client) {
-                $issues[] = [
-                    'action_type' => 'no_secops',
-                    'severity' => 'warning',
-                    'message' => "{$client->name} has no SecOps assigned",
-                    'server_id' => null,
-                    'client_id' => $client->id,
-                    'client_name' => $client->name,
-                    'server_name' => null,
-                ];
-            }
-
-            foreach ($serverStatus as $server) {
-                if ($server->status === 'offline') {
-                    $issues[] = [
-                        'action_type' => 'server_offline',
-                        'severity' => 'critical',
-                        'message' => "{$server->server_name} is offline",
-                        'server_id' => $server->server_id,
-                        'client_id' => $server->client_id,
-                        'client_name' => $server->client_name,
-                        'server_name' => $server->server_name,
-                    ];
-                } elseif ($server->status === 'warning') {
-                    $issues[] = [
-                        'action_type' => 'server_warning',
-                        'severity' => 'warning',
-                        'message' => "{$server->server_name} has not reported in",
-                        'server_id' => $server->server_id,
-                        'client_id' => $server->client_id,
-                        'client_name' => $server->client_name,
-                        'server_name' => $server->server_name,
-                    ];
-                }
-            }
-        } else {
-            $assignedClientIds = DB::table('sec_ops')
-                ->where('user_id', $user->id)
-                ->pluck('client_id');
-
-            foreach ($serverStatus as $server) {
-                if (!$assignedClientIds->contains($server->client_id)) {
-                    continue;
-                }
-                if ($server->status === 'offline') {
-                    $issues[] = [
-                        'action_type' => 'server_offline',
-                        'severity' => 'critical',
-                        'message' => "{$server->server_name} is offline",
-                        'server_id' => $server->server_id,
-                        'client_id' => $server->client_id,
-                        'client_name' => $server->client_name,
-                        'server_name' => $server->server_name,
-                    ];
-                } elseif ($server->status === 'warning') {
-                    $issues[] = [
-                        'action_type' => 'server_warning',
-                        'severity' => 'warning',
-                        'message' => "{$server->server_name} has not reported in",
-                        'server_id' => $server->server_id,
-                        'client_id' => $server->client_id,
-                        'client_name' => $server->client_name,
-                        'server_name' => $server->server_name,
-                    ];
-                }
-            }
-        }
-
-        return $issues;
-    }
-
-    private function syncActions(array $currentIssues, bool $isAdmin, $user): void
-    {
-        $seenKeys = [];
-
-        foreach ($currentIssues as $issue) {
-            $key = $issue['action_type'] . '-' . ($issue['server_id'] ?? 'null') . '-' . ($issue['client_id'] ?? 'null');
-            $seenKeys[$key] = true;
-
-            ActionItem::updateOrCreate(
-                [
-                    'action_type' => $issue['action_type'],
-                    'server_id'   => $issue['server_id'],
-                    'client_id'   => $issue['client_id'],
-                ],
-                [
-                    'message'     => $issue['message'],
-                    'severity'    => $issue['severity'],
-                    'client_name' => $issue['client_name'],
-                    'server_name' => $issue['server_name'],
-                ]
-            );
-        }
-
-        $query = ActionItem::where('status', 'open');
-
-        if (!$isAdmin && $user) {
-            $assignedClientIds = DB::table('sec_ops')
-                ->where('user_id', $user->id)
-                ->pluck('client_id');
-            $query->where(function ($q) use ($assignedClientIds) {
-                $q->whereIn('client_id', $assignedClientIds)
-                  ->orWhereNull('client_id');
-            });
-        }
-
-        $query->chunk(100, function ($actions) use ($seenKeys) {
-            foreach ($actions as $action) {
-                $key = $action->action_type . '-' . ($action->server_id ?? 'null') . '-' . ($action->client_id ?? 'null');
-                if (!isset($seenKeys[$key])) {
-                    $action->update([
-                        'status'       => 'completed',
-                        'completed_at' => now(),
-                    ]);
-                }
-            }
-        });
-    }
 }
 

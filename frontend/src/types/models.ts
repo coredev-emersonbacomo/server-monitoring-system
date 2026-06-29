@@ -4,22 +4,22 @@
 import type { components, operations } from "@/api/schema";
 
 export type ActionItemData = components["schemas"]["ActionItemData"];
-export type AuthAuditLogResource = components["schemas"]["AuthAuditLogResource"];
 export type AuthUserData = components["schemas"]["AuthUserData"];
 export type ClientData = components["schemas"]["ClientData"];
 export type DashboardStatsData = components["schemas"]["DashboardStatsData"];
-export type LoginRequest = components["schemas"]["LoginRequest"];
+export type SecopsUserData = components["schemas"]["SecopsUserData"];
+export type SecurityActivityData = components["schemas"]["SecurityActivityData"];
+export type Server = components["schemas"]["Server"];
 export type ServerData = components["schemas"]["ServerData"];
-export type SessionResource = components["schemas"]["SessionResource"];
 export type StatPointData = components["schemas"]["StatPointData"];
 export type StoreUploadIntentRequest = components["schemas"]["StoreUploadIntentRequest"];
 export type UploadPurpose = components["schemas"]["UploadPurpose"];
 export type UserData = components["schemas"]["UserData"];
-export type UserRole = components["schemas"]["UserRole"];
 
 // --- Inlined Operation Payloads ---
-export type ClientStorePayload = NonNullable<operations["client.store"]["requestBody"]>["content"]["multipart/form-data"];
+export type ClientStorePayload = NonNullable<operations["client.store"]["requestBody"]>["content"]["application/json"];
 export type ClientUpdatePayload = NonNullable<operations["client.update"]["requestBody"]>["content"]["application/json"];
+export type ClientAddSecopPayload = NonNullable<operations["client.addSecop"]["requestBody"]>["content"]["application/json"];
 export type JwtAuthLoginPayload = NonNullable<operations["jwtAuth.login"]["requestBody"]>["content"]["application/json"];
 export type ServerStorePayload = NonNullable<operations["server.store"]["requestBody"]>["content"]["application/json"];
 export type ServerUpdatePayload = NonNullable<operations["server.update"]["requestBody"]>["content"]["application/json"];

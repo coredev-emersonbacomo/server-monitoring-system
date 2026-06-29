@@ -13,11 +13,15 @@ return new class extends Migration
     {
         Schema::create('servers', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('client_id')->constrained();
+            $table->uuid('uuid')->unique();
+            $table->foreignId('client_id')->constrained()->onDelete('cascade');
             $table->string('server_name');
             $table->string('device_name');
+
+            // Network details
             $table->string('internal_ip');
             $table->string('external_ip');
+            $table->integer('port')->default(22);
 
             $table->string('ssh_username')->nullable();
             $table->text('ssh_password')->nullable();
@@ -29,7 +33,7 @@ return new class extends Migration
             $table->integer('cpu_cores')->nullable();
             $table->integer('ram')->nullable();
             $table->string('operating_system')->nullable();
-            $table->string('status')->default('online');
+            $table->string('record_status')->default('active');
             $table->timestamps();
         });
     }

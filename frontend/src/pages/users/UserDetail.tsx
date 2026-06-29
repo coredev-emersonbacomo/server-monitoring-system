@@ -1,16 +1,8 @@
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-    Pencil,
-    Upload,
-    AlertTriangle,
-    Trash2,
-    RefreshCw,
-    User as UserIcon,
-} from "lucide-react";
+import { Pencil, Upload, AlertTriangle, Trash2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { UserRoles } from "@/types/user-role";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +24,9 @@ import {
 import { requestUploadIntent } from "@/api/uploads";
 import { directUpload } from "@/services/directUpload";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
+
+//helper function to format phone numbers
+import { formatPhoneNumber } from "@/utils/helpers";
 
 // ─── Form skeleton ────────────────────────────────────────────────────────────
 
@@ -154,8 +149,7 @@ export default function UserDetail() {
         last_name: "",
         email: "",
         username: "",
-        contact_number: "",
-        role_id: 2,
+        phone_number: "",
         password: "",
         password_confirmation: "",
     });
@@ -170,8 +164,7 @@ export default function UserDetail() {
                 last_name: "",
                 email: "",
                 username: "",
-                contact_number: "",
-                role_id: 2,
+                phone_number: "",
                 password: "",
                 password_confirmation: "",
             });
@@ -189,8 +182,7 @@ export default function UserDetail() {
                 last_name: user.last_name,
                 email: user.email,
                 username: user.username,
-                contact_number: user.contact_number,
-                role_id: UserRoles.Values[user.role],
+                phone_number: user.phone_number,
                 password: "",
                 password_confirmation: "",
             });
@@ -230,13 +222,13 @@ export default function UserDetail() {
             last_name: z.string().trim().min(1, "Required"),
             email: z.string().trim().min(1, "Required").email("Invalid email"),
             username: z.string().trim().min(1, "Required"),
-            contact_number: z
+            phone_number: z
                 .string()
                 .trim()
                 .min(1, "Required")
-                .refine(
-                    (val) => /^09\d{9}$/.test(val.replace(/\D/g, "")),
-                    "Invalid contact number",
+                .regex(
+                    /^09\d{9}$/,
+                    "Must be a valid PH number starting with 09 (e.g. 09123456789)",
                 ),
             password: z.string().superRefine((val, ctx) => {
                 if (isCreate && !val)
@@ -288,19 +280,23 @@ export default function UserDetail() {
 
             if (avatarFile) {
                 setUploadProgress(0);
-                const intent = await requestUploadIntent({ purpose: "profile_picture" });
-                const result = await directUpload(
-                    avatarFile,
-                    intent,
-                    (p) => setUploadProgress(p),
+                const intent = await requestUploadIntent({
+                    purpose: "profile_picture",
+                });
+                const result = await directUpload(avatarFile, intent, (p) =>
+                    setUploadProgress(p),
                 );
                 storageKey = result.storage_key;
                 intentId = intent.intent_id;
             }
 
-            const uploadFields = storageKey && intentId
-                ? { upload_intent_id: intentId, profile_picture_storage_key: storageKey }
-                : {};
+            const uploadFields =
+                storageKey && intentId
+                    ? {
+                          upload_intent_id: intentId,
+                          profile_picture_storage_key: storageKey,
+                      }
+                    : {};
 
             if (mode === "create") {
                 const createPayload = {
@@ -308,8 +304,7 @@ export default function UserDetail() {
                     last_name: form.last_name,
                     email: form.email,
                     username: form.username,
-                    contact_number: form.contact_number,
-                    role_id: Number(form.role_id),
+                    phone_number: form.phone_number,
                     password: form.password,
                     password_confirmation: form.password_confirmation,
                     ...uploadFields,
@@ -323,8 +318,7 @@ export default function UserDetail() {
                     last_name: form.last_name,
                     email: form.email,
                     username: form.username,
-                    contact_number: form.contact_number,
-                    role_id: Number(form.role_id),
+                    phone_number: form.phone_number,
                     ...(form.password
                         ? {
                               password: form.password,
@@ -342,19 +336,29 @@ export default function UserDetail() {
                     password_confirmation: "",
                 }));
             }
-        } catch (err: unknown) {
-            const data = err as Record<string, Record<string, string[]>>;
-            if (data?.errors) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (err: any) {
+            // 1. Log the real error to your console so you can inspect exactly what went wrong
+            console.error("Submission failed:", err);
+
+            // 2. Safely extract validation errors from Axios or native requests
+            const errorData = err?.response?.data || err;
+
+            if (errorData?.errors) {
                 const mapped: Record<string, string> = {};
-                for (const [k, v] of Object.entries(data.errors)) {
+                for (const [k, v] of Object.entries(errorData.errors)) {
                     mapped[k] = Array.isArray(v) ? v[0] : String(v);
                 }
                 setErrors(mapped);
             } else {
+                // 3. Provide a fallback message from the server if available, otherwise use your generic text
+                const serverMessage =
+                    err?.response?.data?.message || err?.message;
                 toast.error(
-                    mode === "create"
-                        ? "Failed to create user."
-                        : "Failed to update user.",
+                    serverMessage ||
+                        (mode === "create"
+                            ? "Failed to create user."
+                            : "Failed to update user."),
                 );
             }
         } finally {
@@ -393,8 +397,7 @@ export default function UserDetail() {
                 last_name: user.last_name,
                 email: user.email,
                 username: user.username,
-                contact_number: user.contact_number,
-                role_id: UserRoles.Values[user.role],
+                phone_number: user.phone_number,
                 password: "",
                 password_confirmation: "",
             });
@@ -438,8 +441,6 @@ export default function UserDetail() {
     const avatarSrc = avatarPreview || DEFAULT_AVATAR;
     const avatarInputId = "avatar-upload";
     const isSaving = createUser.isPending || updateUser.isPending;
-
-    const roleName = user?.role ?? "—";
 
     return (
         <>
@@ -594,18 +595,7 @@ export default function UserDetail() {
                                 <span
                                     className={cn(
                                         "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
-                                        user?.role === UserRoles.Admin
-                                            ? "bg-primary/10 text-foreground"
-                                            : "bg-muted text-muted-foreground",
-                                    )}
-                                >
-                                    <UserIcon size={11} />
-                                    {roleName}
-                                </span>
-                                <span
-                                    className={cn(
-                                        "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
-                                        user.status === "active"
+                                        user.record_status === "active"
                                             ? "bg-emerald-500/10 text-emerald-400"
                                             : "bg-red-500/10 text-red-400",
                                     )}
@@ -613,12 +603,12 @@ export default function UserDetail() {
                                     <span
                                         className={cn(
                                             "w-1.5 h-1.5 rounded-full",
-                                            user.status === "active"
+                                            user.record_status === "active"
                                                 ? "bg-emerald-400"
                                                 : "bg-red-400",
                                         )}
                                     />
-                                    {user.status === "active"
+                                    {user.record_status === "active"
                                         ? "Active"
                                         : "Inactive"}
                                 </span>
@@ -693,157 +683,37 @@ export default function UserDetail() {
                                         )}
                                     </Field>
                                     <Field
-                                        label="Contact Number"
+                                        label="Phone Number"
                                         required
-                                        error={errors.contact_number}
+                                        error={errors.phone_number}
                                         isEdit={showEdit}
                                     >
                                         {showEdit ? (
                                             <Input
-                                                placeholder="095-1234-5678"
-                                                value={form.contact_number}
+                                                placeholder="e.g. 09123456789"
+                                                value={form.phone_number}
                                                 onChange={(e) => {
                                                     const numeric =
-                                                        e.target.value.replace(
-                                                            /\D/g,
-                                                            "",
+                                                        formatPhoneNumber(
+                                                            e.target.value,
                                                         );
-                                                    // Enforce starts with 09
-                                                    if (
-                                                        numeric.length >= 2 &&
-                                                        !numeric.startsWith(
-                                                            "09",
-                                                        )
-                                                    )
-                                                        return;
-                                                    set("contact_number")({
-                                                        ...e,
-                                                        target: {
-                                                            ...e.target,
-                                                            value: numeric.slice(
-                                                                0,
-                                                                11,
-                                                            ),
-                                                        },
-                                                    });
-                                                }}
-                                                onBlur={(e) => {
-                                                    const numeric =
-                                                        e.target.value.replace(
-                                                            /\D/g,
-                                                            "",
-                                                        );
-                                                    // Only format if valid (starts with 09 and 11 digits)
-                                                    if (
-                                                        !numeric.startsWith(
-                                                            "09",
-                                                        ) ||
-                                                        numeric.length !== 11
-                                                    )
-                                                        return;
-                                                    const formatted = `${numeric.slice(0, 3)}-${numeric.slice(3, 7)}-${numeric.slice(7, 11)}`;
-                                                    set("contact_number")({
-                                                        ...e,
-                                                        target: {
-                                                            ...e.target,
-                                                            value: formatted,
-                                                        },
-                                                    });
-                                                }}
-                                                onKeyDown={(e) => {
-                                                    const allowedKeys = [
-                                                        "Backspace",
-                                                        "Delete",
-                                                        "Tab",
-                                                        "Escape",
-                                                        "Enter",
-                                                        "ArrowLeft",
-                                                        "ArrowRight",
-                                                        "ArrowUp",
-                                                        "ArrowDown",
-                                                        "Home",
-                                                        "End",
-                                                    ];
-                                                    if (
-                                                        (e.ctrlKey ||
-                                                            e.metaKey) &&
-                                                        [
-                                                            "a",
-                                                            "c",
-                                                            "v",
-                                                            "x",
-                                                        ].includes(
-                                                            e.key.toLowerCase(),
-                                                        )
-                                                    ) {
-                                                        return;
-                                                    }
-                                                    if (
-                                                        /^\d$/.test(e.key) ||
-                                                        allowedKeys.includes(
-                                                            e.key,
-                                                        )
-                                                    ) {
-                                                        return;
-                                                    }
-                                                    e.preventDefault();
+                                                    setForm((f) => ({
+                                                        ...f,
+                                                        phone_number: numeric,
+                                                    }));
                                                 }}
                                                 className={cn(
-                                                    errors.contact_number &&
+                                                    errors.phone_number &&
                                                         "border-destructive",
                                                 )}
                                             />
                                         ) : (
                                             <p className="text-sm text-foreground py-1">
-                                                {user?.contact_number
-                                                    ? user.contact_number
-                                                          .replace(/\D/g, "")
-                                                          .replace(
-                                                              /^(\d{3})(\d{4})(\d{4})$/,
-                                                              "$1-$2-$3",
-                                                          )
+                                                {user?.phone_number
+                                                    ? formatPhoneNumber(
+                                                          user.phone_number,
+                                                      )
                                                     : "—"}
-                                            </p>
-                                        )}
-                                    </Field>
-                                </div>
-                            </section>
-
-                            <div className="h-px bg-border" />
-
-                            {/* Role & Access */}
-                            <section className="space-y-4">
-                                <SectionHeader
-                                    title="Role & Access"
-                                    description="Determines what this user can see and do."
-                                />
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <Field
-                                        label="Role"
-                                        required
-                                        isEdit={showEdit}
-                                    >
-                                        {showEdit ? (
-                                            <select
-                                                value={form.role_id}
-                                                onChange={(e) =>
-                                                    setForm((f) => ({
-                                                        ...f,
-                                                        role_id: Number(
-                                                            e.target.value,
-                                                        ),
-                                                    }))
-                                                }
-                                                className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground"
-                                            >
-                                                <option value={1}>Admin</option>
-                                                <option value={2}>
-                                                    SecOps
-                                                </option>
-                                            </select>
-                                        ) : (
-                                            <p className="text-sm text-foreground py-1">
-                                                {roleName}
                                             </p>
                                         )}
                                     </Field>

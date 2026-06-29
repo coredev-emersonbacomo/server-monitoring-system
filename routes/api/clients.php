@@ -11,4 +11,9 @@ Route::middleware('auth:jwt')->group(function () {
     Route::delete('/clients/{id}', [ClientController::class, 'destroy'])->whereNumber('id');
     Route::get('/clients/{id}/servers', [ClientController::class, 'servers'])->whereNumber('id');
     Route::post('/clients/{id}/servers', [ClientController::class, 'initializeServer'])->whereNumber('id');
+    
+    // SecOps Management
+    Route::get('/clients/{id}/secops', [ClientController::class, 'secops'])->whereNumber('id');
+    Route::post('/clients/{id}/secops', [ClientController::class, 'addSecop'])->whereNumber('id');
+    Route::delete('/clients/{id}/secops/{userId}', [ClientController::class, 'removeSecop'])->whereNumber('id')->whereNumber('userId');
 });

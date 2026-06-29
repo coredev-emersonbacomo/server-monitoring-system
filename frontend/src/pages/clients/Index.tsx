@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import {
     Plus,
     Search,
@@ -6,8 +6,10 @@ import {
     RefreshCw,
     Filter,
     ChevronDown,
+    Loader2,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useClients, useDeleteClient } from "@/hooks/useClients";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,12 +26,18 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { components } from "@/api/schema";
 import IndexHeader from "@/components/IndexHeader";
-
-type ClientData = components["schemas"]["ClientData"];
+import type { ClientData } from "@/types/models";
 
 type FilterTab = "all" | "with-servers" | "no-servers";
+
+// How many cards to reveal per "page". Tune freely.
+const PAGE_SIZE = 8;
+
+// Approximate card height + gap in px — used by the virtualizer for estimation.
+// The virtualizer will measure real heights after mount, so this just avoids
+// a large layout jump on first render.
+const CARD_ESTIMATE_PX = 300;
 
 // ─── Skeleton grid ────────────────────────────────────────────────────────────
 
@@ -81,7 +89,12 @@ function ClientCard({
                             : "No servers"}
                     </span>
                     <button
-                        onClick={() => onDelete(client)}
+                        onClick={(e) => {
+                            // Prevent the Link from navigating when clicking Remove
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onDelete(client);
+                        }}
                         className="text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded text-[11px]"
                     >
                         Remove
@@ -109,7 +122,7 @@ function ClientCard({
                         </p>
                     )}
 
-                    <div className="flex items-center gap-1.5  text-muted-foreground text-sm mt-1">
+                    <div className="flex items-center gap-1.5 text-muted-foreground text-sm mt-1">
                         <Landmark size={16} className="text-muted-foreground" />
                         <span>
                             {client.contact_number
@@ -120,6 +133,146 @@ function ClientCard({
                 </div>
             </div>
         </Link>
+    );
+}
+
+// ─── Virtualised infinite-scroll grid ────────────────────────────────────────
+//
+// TanStack Virtual operates on *rows*, so we group the flat client list into
+// rows of `columnCount` items and virtualise those rows. This keeps the grid
+// layout fully CSS-driven (auto-fill) while the virtualiser only mounts the
+// rows currently in view.
+
+function useColumnCount(containerRef: React.RefObject<HTMLDivElement | null>) {
+    const [cols, setCols] = useState(3);
+
+    useEffect(() => {
+        if (!containerRef.current) return;
+        const ro = new ResizeObserver(([entry]) => {
+            const w = entry.contentRect.width;
+            // Mirrors the grid: minmax(240px, 1fr)
+            setCols(Math.max(1, Math.floor(w / 240)));
+        });
+        ro.observe(containerRef.current);
+        return () => ro.disconnect();
+    }, [containerRef]);
+
+    return cols;
+}
+
+function VirtualGrid({
+    clients,
+    visibleCount,
+    hasMore,
+    onDelete,
+    onLoadMore,
+}: {
+    clients: ClientData[];
+    visibleCount: number;
+    hasMore: boolean;
+    onDelete: (c: ClientData) => void;
+    onLoadMore: () => void;
+}) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const sentinelRef = useRef<HTMLDivElement>(null);
+    const columnCount = useColumnCount(containerRef);
+
+    // Only show the slice that has been "revealed" by scrolling
+    const visibleClients = clients.slice(0, visibleCount);
+
+    // Group into rows
+    const rows = useMemo(() => {
+        const result: ClientData[][] = [];
+        for (let i = 0; i < visibleClients.length; i += columnCount) {
+            result.push(visibleClients.slice(i, i + columnCount));
+        }
+        return result;
+    }, [visibleClients, columnCount]);
+
+    const virtualizer = useVirtualizer({
+        count: rows.length,
+        getScrollElement: () => containerRef.current,
+        estimateSize: () => CARD_ESTIMATE_PX + 16, // card height + gap
+        overscan: 3,
+    });
+
+    // ── Sentinel lives INSIDE the scroll container so IntersectionObserver
+    //    uses the correct root (the scrollable div, not the page).
+    useEffect(() => {
+        const sentinel = sentinelRef.current;
+        const scroller = containerRef.current;
+        if (!sentinel || !scroller) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting && hasMore) {
+                    onLoadMore();
+                }
+            },
+            {
+                root: scroller, // ← key: observe relative to the scroll container
+                threshold: 0.1,
+            },
+        );
+
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [hasMore, onLoadMore]);
+
+    const totalHeight = virtualizer.getTotalSize();
+
+    return (
+        <div
+            ref={containerRef}
+            className="overflow-auto"
+            style={{ height: "calc(100vh - 220px)" }}
+        >
+            {/* Virtualised rows */}
+            <div style={{ height: totalHeight, position: "relative" }}>
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                    const row = rows[virtualRow.index];
+                    return (
+                        <div
+                            key={virtualRow.key}
+                            data-index={virtualRow.index}
+                            ref={virtualizer.measureElement}
+                            style={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                width: "100%",
+                                transform: `translateY(${virtualRow.start}px)`,
+                            }}
+                        >
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pb-4">
+                                {row.map((client) => (
+                                    <ClientCard
+                                        key={client.id}
+                                        client={client}
+                                        onDelete={onDelete}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Sentinel sits after the virtual content, still inside the scroller */}
+            <div ref={sentinelRef} className="h-px" />
+
+            {hasMore && (
+                <div className="flex items-center justify-center py-4 text-muted-foreground">
+                    <Loader2 size={18} className="animate-spin" />
+                </div>
+            )}
+
+            {!hasMore && clients.length > PAGE_SIZE && (
+                <p className="text-center text-xs text-muted-foreground py-4 opacity-60">
+                    All {clients.length} clients loaded
+                </p>
+            )}
+        </div>
     );
 }
 
@@ -134,7 +287,8 @@ export default function Clients() {
     const [filter, setFilter] = useState<FilterTab>("all");
     const [deleting, setDeleting] = useState<ClientData | null>(null);
 
-    const visible = useMemo(() => {
+    // ── Filtering ──────────────────────────────────────────────────────────────
+    const filtered = useMemo(() => {
         const q = search.toLowerCase();
         return (clients ?? []).filter((c) => {
             const matchSearch =
@@ -151,6 +305,23 @@ export default function Clients() {
         });
     }, [search, filter, clients]);
 
+    // ── Infinite-scroll page tracking ─────────────────────────────────────────
+    // `visibleCount` tracks how many items from `filtered` are currently shown.
+    // When the sentinel enters the viewport we bump it by PAGE_SIZE.
+    const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+    // Reset to first page whenever the filtered result changes (search / filter)
+    useEffect(() => {
+        setVisibleCount(PAGE_SIZE);
+    }, [filtered]);
+
+    const hasMore = visibleCount < filtered.length;
+
+    const loadMore = useCallback(() => {
+        setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filtered.length));
+    }, [filtered.length]);
+
+    // ── Filter options ─────────────────────────────────────────────────────────
     const clientsWithServers =
         clients?.filter((c) => c.servers_count > 0).length ?? 0;
     const clientsWithoutServers =
@@ -208,11 +379,11 @@ export default function Clients() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    icon={<Filter size={14} />}
-                                    className="gap-1"
+                                    icon={<Filter size={15} />}
+                                    className="gap-1 h-9"
                                 >
                                     {currentFilterLabel}
-                                    <ChevronDown size={14} />
+                                    <ChevronDown size={15} />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent align="start" className="w-48 p-1">
@@ -262,7 +433,13 @@ export default function Clients() {
                 {/* ── Count label ── */}
                 {!isLoading && !isError && (
                     <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
-                        {visible.length} client{visible.length !== 1 ? "s" : ""}
+                        {filtered.length} client
+                        {filtered.length !== 1 ? "s" : ""}
+                        {visibleCount < filtered.length && (
+                            <span className="normal-case ml-1 opacity-60">
+                                — showing {visibleCount}
+                            </span>
+                        )}
                     </p>
                 )}
 
@@ -270,7 +447,7 @@ export default function Clients() {
                 {isLoading && <SkeletonGrid />}
 
                 {/* ── Empty state ── */}
-                {!isLoading && !isError && clients && visible.length === 0 && (
+                {!isLoading && !isError && clients && filtered.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
                         <Landmark size={40} className="opacity-20" />
                         <p className="text-sm font-medium">
@@ -294,16 +471,16 @@ export default function Clients() {
                     </div>
                 )}
 
-                {/* ── Card grid ── */}
-                {!isLoading && !isError && visible.length > 0 && (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
-                        {visible.map((c) => (
-                            <ClientCard
-                                key={c.id}
-                                client={c}
-                                onDelete={setDeleting}
-                            />
-                        ))}
+                {/* ── Virtualised grid + infinite scroll ── */}
+                {!isLoading && !isError && filtered.length > 0 && (
+                    <div className="flex flex-col gap-0 flex-1 min-h-0">
+                        <VirtualGrid
+                            clients={filtered}
+                            visibleCount={visibleCount}
+                            hasMore={hasMore}
+                            onDelete={setDeleting}
+                            onLoadMore={loadMore}
+                        />
                     </div>
                 )}
 

@@ -2,7 +2,9 @@
 
 namespace App\Data;
 
+use Spatie\LaravelData\Attributes\Validation\GreaterThanOrEqualTo;
 use Spatie\LaravelData\Attributes\Validation\IPv4;
+use Spatie\LaravelData\Attributes\Validation\LessThanOrEqualTo;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Required;
 use Spatie\LaravelData\Data;
@@ -13,12 +15,17 @@ class ServerData extends Data
         #[Required]
         public string $server_name,
 
+        // Could be considered as host
         #[Required, IPv4]
         public string $internal_ip,
 
-        public ?string $device_name = null,
-
+        #[Required, IPv4]
         public ?string $external_ip = null,
+
+        #[Required, GreaterThanOrEqualTo(0), LessThanOrEqualTo(65535)]
+        public ?int $port = null,
+
+        public ?string $device_name = null,
 
         public ?string $ssh_username = null,
 

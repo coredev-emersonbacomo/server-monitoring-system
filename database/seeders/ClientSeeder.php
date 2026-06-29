@@ -5,6 +5,11 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Infrastructure\Api\ApiGenerator;
+use App\Models\Client;
+use App\Models\Server;
+use App\Models\User;
+use Illuminate\Support\Str;
+
 
 class ClientSeeder extends Seeder
 {
@@ -13,24 +18,37 @@ class ClientSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::table("clients")->insert([
-            'name' => 'coredev',
-            'description' => 'Software Company',
-            'email' => 'coredev@gmail.com',
-            'contact_number' => '09517380165',
-            'location' => 'Cebu City',
-        ]);
+        $user = User::first();
+        if (!$user) {
+            $this->command->error('Please run AdminSeeder first, no users found.');
+            return;
+        }
+        $client = Client::updateOrCreate(
+            ['email' => 'coredev@gmail.com'],
+            [
+                'uuid' => (string) Str::uuid7(),
+                'name' => 'coredev',
+                'description' => 'Software Company',
+                'contact_number' => '09517380165',
+                'location' => 'Cebu City',
+            ]
+        );
 
-        DB::table("servers")->insert([
-            'client_id' => 1,
-            'cpu_cores' => 4,
-            'ram' => 16,
-            'server_name' => 'server-1',
-            'device_name' => 'Thinkpad',
-            'internal_ip' => '192.168.1.1',
-            'external_ip' => '127.0.0.1',
-            'operating_system' => 'Ubuntu 20.04',
-            'api_key' => ApiGenerator::GenerateApiKey()
-        ]);
+        $client->servers()->updateOrCreate(
+            [
+                'server_name' => 'server-1',
+            ],
+            [
+                'uuid' => (string) Str::uuid7(),
+                'device_name' => 'Thinkpad',
+                'cpu_cores' => 4,
+                'ram' => 16,
+                'internal_ip' => '192.168.1.1',
+                'external_ip' => '127.0.0.1',
+                'operating_system' => 'Ubuntu 20.04',
+                'api_key' => ApiGenerator::GenerateApiKey(),
+                'port' => 22,
+            ]
+        );
     }
 }

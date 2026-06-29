@@ -13,6 +13,7 @@ import {
     RefreshCw,
     Network,
     Plus,
+    Loader2,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -22,8 +23,14 @@ import {
     useUpdateClient,
     useDeleteClient,
     useClientServers,
+    useClientSecops,
+    useAddClientSecop,
+    useRemoveClientSecop,
 } from "@/hooks/useClients";
 import type { components } from "@/api/schema.d";
+
+import { useUsers } from "@/hooks/useUsers";
+import { useSettings } from "@/hooks/useSettings";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +53,9 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
+
+// Helper function to format phone numbers
+import { formatPhoneNumber } from "@/utils/helpers";
 
 // ─── Form skeleton ────────────────────────────────────────────────────────────
 
@@ -227,14 +237,28 @@ export default function ClientDetail() {
     const { data: client, isLoading, isError } = useClient(clientId);
     const { data: servers = [], isLoading: serversLoading } =
         useClientServers(clientId);
+    const { data: currentSecops = [], isLoading: secopLoading } =
+        useClientSecops(clientId);
+    const { data: allUsers = [], isLoading: usersLoading } = useUsers();
+    const { data: settings } = useSettings();
+    const secopLimit = Math.max(
+        1,
+        parseInt(settings?.secop_limit_per_client ?? "5", 10) || 5,
+    );
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createClient = useCreateClient();
     const updateClient = useUpdateClient(clientId);
     const deleteClient = useDeleteClient();
+    const addSecop = useAddClientSecop(clientId);
+    const removeSecop = useRemoveClientSecop(clientId);
 
     // ── Local state ────────────────────────────────────────────────────────────
     const [showDelete, setShowDelete] = useState(false);
+    const [showSecopDialog, setShowSecopDialog] = useState(false);
+    const [selectedSecopToAdd, setSelectedSecopToAdd] = useState<number | null>(
+        null,
+    );
     const defaultBanner = import.meta.env.VITE_DEFAULT_CLIENT_BANNER as string;
     const [bannerFile, setBannerFile] = useState<File | null>(null);
     const [bannerPreview, setBannerPreview] = useState<string | null>(
@@ -361,6 +385,10 @@ export default function ClientDetail() {
                 setUploadProgress(-1);
                 return;
             }
+        }
+
+        if (mode !== "create") {
+            fd.append("_method", "PUT");
         }
 
         try {
@@ -718,93 +746,18 @@ export default function ClientDetail() {
                                     >
                                         {showEdit ? (
                                             <Input
-                                                placeholder="095-1234-5678"
+                                                placeholder="e.g. 09123456789"
                                                 value={form.contact_number}
                                                 onChange={(e) => {
-                                                    const numeric =
-                                                        e.target.value.replace(
-                                                            /\D/g,
-                                                            "",
-                                                        );
-                                                    // Enforce starts with 09
-                                                    if (
-                                                        numeric.length >= 2 &&
-                                                        !numeric.startsWith(
-                                                            "09",
-                                                        )
-                                                    )
-                                                        return;
                                                     set("contact_number")({
                                                         ...e,
                                                         target: {
                                                             ...e.target,
-                                                            value: numeric.slice(
-                                                                0,
-                                                                11,
+                                                            value: formatPhoneNumber(
+                                                                e.target.value,
                                                             ),
                                                         },
                                                     });
-                                                }}
-                                                onBlur={(e) => {
-                                                    const numeric =
-                                                        e.target.value.replace(
-                                                            /\D/g,
-                                                            "",
-                                                        );
-                                                    // Only format if valid (starts with 09 and 11 digits)
-                                                    if (
-                                                        !numeric.startsWith(
-                                                            "09",
-                                                        ) ||
-                                                        numeric.length !== 11
-                                                    )
-                                                        return;
-                                                    const formatted = `${numeric.slice(0, 3)}-${numeric.slice(3, 7)}-${numeric.slice(7, 11)}`;
-                                                    set("contact_number")({
-                                                        ...e,
-                                                        target: {
-                                                            ...e.target,
-                                                            value: formatted,
-                                                        },
-                                                    });
-                                                }}
-                                                onKeyDown={(e) => {
-                                                    const allowedKeys = [
-                                                        "Backspace",
-                                                        "Delete",
-                                                        "Tab",
-                                                        "Escape",
-                                                        "Enter",
-                                                        "ArrowLeft",
-                                                        "ArrowRight",
-                                                        "ArrowUp",
-                                                        "ArrowDown",
-                                                        "Home",
-                                                        "End",
-                                                    ];
-                                                    if (
-                                                        (e.ctrlKey ||
-                                                            e.metaKey) &&
-                                                        [
-                                                            "a",
-                                                            "c",
-                                                            "v",
-                                                            "x",
-                                                        ].includes(
-                                                            e.key.toLowerCase(),
-                                                        )
-                                                    ) {
-                                                        return;
-                                                    }
-                                                    if (
-                                                        /^\d$/.test(e.key) ||
-                                                        allowedKeys.includes(
-                                                            e.key,
-                                                        )
-                                                    ) {
-                                                        return;
-                                                    }
-                                                    e.preventDefault();
                                                 }}
                                                 className={cn(
                                                     errors.contact_number &&
@@ -813,12 +766,10 @@ export default function ClientDetail() {
                                             />
                                         ) : (
                                             <p className="text-sm text-foreground py-1">
-                                                {client?.contact_number
-                                                    .replace(/\D/g, "")
-                                                    .replace(
-                                                        /^(\d{3})(\d{4})(\d{4})$/,
-                                                        "$1-$2-$3",
-                                                    )}
+                                                {formatPhoneNumber(
+                                                    client?.contact_number ||
+                                                        "",
+                                                )}
                                             </p>
                                         )}
                                     </Field>
@@ -846,7 +797,110 @@ export default function ClientDetail() {
                             )}
                         </form>
 
-                        {/* ── Server cards ── */}
+                        {/* ── SecOps Management ── */}
+                        {mode !== "create" && client && (
+                            <section className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div>
+                                        <h2 className="text-base font-semibold text-foreground">
+                                            SecOps Assignments
+                                        </h2>
+                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                            Manage SecOps personnel assigned to
+                                            this client.
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        icon={<Plus size={14} />}
+                                        label="Add SecOps"
+                                        onClick={() => setShowSecopDialog(true)}
+                                        disabled={
+                                            currentSecops.length >= secopLimit
+                                        }
+                                    />
+                                </div>
+
+                                {secopLoading ? (
+                                    <div className="space-y-2">
+                                        {[0, 1, 2].map((i) => (
+                                            <div
+                                                key={i}
+                                                className="h-10 bg-muted rounded animate-pulse"
+                                            />
+                                        ))}
+                                    </div>
+                                ) : currentSecops.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {currentSecops.map((secop) => (
+                                            <div
+                                                key={secop.id}
+                                                className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"
+                                            >
+                                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                                        <span className="text-xs font-medium text-primary">
+                                                            {secop.first_name?.[0]?.toUpperCase() ??
+                                                                "?"}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium text-foreground truncate">
+                                                            {secop.first_name}{" "}
+                                                            {secop.last_name}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground truncate">
+                                                            {secop.email}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        removeSecop.mutate(
+                                                            secop.id,
+                                                            {
+                                                                onSuccess:
+                                                                    () => {
+                                                                        toast.success(
+                                                                            `${secop.first_name} removed from client.`,
+                                                                        );
+                                                                    },
+                                                                onError: () => {
+                                                                    toast.error(
+                                                                        "Failed to remove SecOps.",
+                                                                    );
+                                                                },
+                                                            },
+                                                        )
+                                                    }
+                                                    disabled={
+                                                        removeSecop.isPending
+                                                    }
+                                                    className="text-xs text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2 bg-muted/20 rounded-lg border border-border/40">
+                                        <p className="text-sm">
+                                            No SecOps assigned yet.
+                                        </p>
+                                        <p className="text-xs">
+                                            Add up to{" "}
+                                            <span className="font-semibold">
+                                                {secopLimit}
+                                            </span>{" "}
+                                            SecOps to this client.
+                                        </p>
+                                    </div>
+                                )}
+                            </section>
+                        )}
                         {mode !== "create" && client && (
                             <section>
                                 <div className="flex items-center justify-between mb-4">
@@ -1029,6 +1083,124 @@ export default function ClientDetail() {
                                 disabled={deleteClient.isPending}
                                 onClick={handleDelete}
                             />
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
+                {/* ── SecOps Dialog ── */}
+                <Dialog
+                    open={showSecopDialog}
+                    onOpenChange={setShowSecopDialog}
+                >
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Add SecOps</DialogTitle>
+                        </DialogHeader>
+                        <div className="flex flex-col gap-4">
+                            <p className="text-xs text-muted-foreground">
+                                Select a SecOps account to assign to this
+                                client. You can add up to{" "}
+                                <span className="font-semibold">
+                                    {settings?.secop_limit_per_client ?? "5"}
+                                </span>{" "}
+                                SecOps per client.
+                            </p>
+
+                            {usersLoading ? (
+                                <div className="space-y-2">
+                                    {[0, 1, 2].map((i) => (
+                                        <div
+                                            key={i}
+                                            className="h-10 bg-muted rounded animate-pulse"
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="space-y-2 max-h-64 overflow-y-auto">
+                                    {allUsers
+                                        .filter(
+                                            (user) =>
+                                                !currentSecops.some(
+                                                    (s) => s.id === user.id,
+                                                ),
+                                        )
+                                        .map((user) => (
+                                            <button
+                                                key={user.id}
+                                                onClick={() => {
+                                                    setSelectedSecopToAdd(
+                                                        user.id,
+                                                    );
+                                                    addSecop.mutate(user.id, {
+                                                        onSuccess: () => {
+                                                            toast.success(
+                                                                `${user.first_name} added to client.`,
+                                                            );
+                                                            setShowSecopDialog(
+                                                                false,
+                                                            );
+                                                            setSelectedSecopToAdd(
+                                                                null,
+                                                            );
+                                                        },
+                                                        onError: () => {
+                                                            toast.error(
+                                                                "Failed to add SecOps. You may have reached the limit.",
+                                                            );
+                                                        },
+                                                    });
+                                                }}
+                                                disabled={
+                                                    addSecop.isPending ||
+                                                    selectedSecopToAdd ===
+                                                        user.id
+                                                }
+                                                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 text-left border border-border/40 hover:border-border"
+                                            >
+                                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                                    <span className="text-xs font-medium text-primary">
+                                                        {user.first_name?.[0]?.toUpperCase() ??
+                                                            "?"}
+                                                    </span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-foreground truncate">
+                                                        {user.first_name}{" "}
+                                                        {user.last_name}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground truncate">
+                                                        {user.email}
+                                                    </p>
+                                                </div>
+                                                {selectedSecopToAdd ===
+                                                    user.id &&
+                                                    addSecop.isPending && (
+                                                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                                                    )}
+                                            </button>
+                                        ))}
+                                    {allUsers.filter(
+                                        (user) =>
+                                            !currentSecops.some(
+                                                (s) => s.id === user.id,
+                                            ),
+                                    ).length === 0 && (
+                                        <p className="text-sm text-muted-foreground text-center py-4">
+                                            All users are already assigned to
+                                            this client.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex justify-end gap-3 pt-2">
+                            <DialogClose asChild>
+                                <Button
+                                    variant="outline"
+                                    label="Close"
+                                    onClick={() => setShowSecopDialog(false)}
+                                />
+                            </DialogClose>
                         </div>
                     </DialogContent>
                 </Dialog>

@@ -8,11 +8,12 @@ class InstallerService
 {
     public function __construct(
         private string $sshHost,
-        private int    $sshPort,
         private string $sshUser,
         private string $sshPassword,
         private string $serverId,
-        private string $apiToken,
+        private ?string $apiToken = null,
+        // Default port 22
+        private int    $sshPort = 22,
     ) {}
 
     public function install(): array
@@ -42,7 +43,8 @@ class InstallerService
 
         $log['install'] = $ssh->exec(
             sprintf(
-                'bash /tmp/install.sh %s %s',
+                'echo "%s" | sudo -S bash /tmp/install.sh %s %s',
+                escapeshellarg($this->sshPassword),
                 escapeshellarg($this->serverId),
                 escapeshellarg($this->apiToken)
             )
@@ -84,7 +86,11 @@ class InstallerService
 
         $ssh->exec('chmod +x /tmp/uninstall.sh');
 
-        $log['uninstall'] = $ssh->exec('bash /tmp/uninstall.sh');
+        $log['uninstall'] = $ssh->exec(
+            sprintf('echo "%s" | sudo -S bash /tmp/uninstall.sh',
+                $this->sshPassword
+            )
+        );
 
         if ($ssh->getExitStatus() !== 0) {
             $ssh->disconnect();

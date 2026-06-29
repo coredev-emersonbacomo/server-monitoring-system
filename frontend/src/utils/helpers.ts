@@ -1,3 +1,4 @@
+// File Path: frontend/src/utils/helpers.ts
 export function toLabelCase(
     key: string | null | undefined,
     preserveDash: boolean = false,
@@ -25,3 +26,6 @@ export function toLabelCase(
     return result.trim();
 }
 
+export function formatPhoneNumber(value: string): string {
+    return value.replace(/\D/g, "").slice(0, 11);
+}

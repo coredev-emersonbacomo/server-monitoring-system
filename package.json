@@ -11,7 +11,8 @@
     "resetdb": "php artisan migrate:fresh --seed",
     "pull": "git stash && git pull && git stash apply",
     "metricsmock": "php artisan server:update-metrics --daemon",
-    "loadtestfactory": "php artisan tinker --execute=\"\\App\\Models\\User::factory(25)->create(); \\App\\Models\\Client::factory(10)->create(); \\App\\Models\\Server::factory(100)->create();\""  },
+    "loadtestfactory": "php artisan tinker --execute=\"\\App\\Models\\User::factory(25)->create(); \\App\\Models\\Client::factory(10)->create(); \\App\\Models\\Server::factory(100)->create();\""
+  },
   "workspaces": [
     "frontend"
   ],
@@ -21,6 +22,7 @@
     "vite": "^8.0.0"
   },
   "dependencies": {
+    "@tanstack/react-virtual": "^3.14.4",
     "lucide-react": "^1.18.0"
   }
 }

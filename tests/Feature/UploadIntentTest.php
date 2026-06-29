@@ -17,12 +17,9 @@ beforeEach(function () {
     config(['uploads.providers.cloudinary.api_key' => 'test-key']);
     config(['uploads.providers.cloudinary.api_secret' => 'test-secret']);
 
-    \Illuminate\Support\Facades\DB::table('roles')->insert(['role_name' => 'Admin']);
-
     $this->user = User::factory()->create([
         'email' => 'test@example.com',
         'password' => bcrypt('password123'),
-        'role_id' => 1,
     ]);
 
     $loginResponse = $this->postJson('/api/login', [
@@ -120,7 +117,7 @@ test('user can view their own upload intent', function () {
 });
 
 test('user cannot view another users upload intent', function () {
-    $otherUser = User::factory()->create(['role_id' => 1]);
+    $otherUser = User::factory()->create();
     $intent = UploadIntent::create([
         'user_id' => $otherUser->id,
         'purpose' => UploadPurpose::PROFILE_PICTURE,
@@ -182,7 +179,7 @@ test('upload intent service validates ownership', function () {
     $service = app(UploadIntentService::class);
     $intent = $service->create($this->user, UploadPurpose::PROFILE_PICTURE);
 
-    $otherUser = User::factory()->create(['role_id' => 1]);
+    $otherUser = User::factory()->create();
 
     expect(fn() => $service->validateAttachment($intent, $otherUser))
         ->toThrow(\InvalidArgumentException::class, 'does not belong to this user');
