@@ -337,19 +337,25 @@ export default function UserDetail() {
                     password_confirmation: "",
                 }));
             }
-        } catch (err: unknown) {
-            const data = err as Record<string, Record<string, string[]>>;
-            if (data?.errors) {
+        } catch (err: any) {
+            // 1. Log the real error to your console so you can inspect exactly what went wrong
+            console.error("Submission failed:", err);
+    
+            // 2. Safely extract validation errors from Axios or native requests
+            const errorData = err?.response?.data || err;
+            
+            if (errorData?.errors) {
                 const mapped: Record<string, string> = {};
-                for (const [k, v] of Object.entries(data.errors)) {
+                for (const [k, v] of Object.entries(errorData.errors)) {
                     mapped[k] = Array.isArray(v) ? v[0] : String(v);
                 }
                 setErrors(mapped);
             } else {
+                // 3. Provide a fallback message from the server if available, otherwise use your generic text
+                const serverMessage = err?.response?.data?.message || err?.message;
                 toast.error(
-                    mode === "create"
-                        ? "Failed to create user."
-                        : "Failed to update user.",
+                    serverMessage || 
+                    (mode === "create" ? "Failed to create user." : "Failed to update user.")
                 );
             }
         } finally {
