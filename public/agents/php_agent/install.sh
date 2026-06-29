@@ -5,7 +5,7 @@ set -euo pipefail
 readonly APP_DIR="/opt/monitor-agent"
 readonly SERVICE_NAME="monitor-agent"
 # Change upon production
-readonly AGENT_URL="https://127.0.0.1:8000/agents/php_agent/agent.php"
+readonly AGENT_URL="http://127.0.0.1:8000/agents/php_agent/agent.txt"
 readonly AGENT_FILE="$APP_DIR/agent.php"
 readonly CONFIG_FILE="$APP_DIR/config.json"
 readonly SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
