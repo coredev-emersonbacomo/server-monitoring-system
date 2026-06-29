@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 use App\Models\User;
 
 class AdminSeeder extends Seeder
@@ -12,6 +13,7 @@ class AdminSeeder extends Seeder
         User::updateOrCreate(
             ['username' => 'admin'],
             [
+                'uuid' => (string) Str::uuid7(),
                 'first_name' => 'Admin',
                 'last_name'=> 'Surname',
                 'email' => 'admin@example.com',

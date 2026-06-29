@@ -37,7 +37,7 @@ class ClientSeeder extends Seeder
         $client->servers()->updateOrCreate(
             ['server_name' => 'server-1'],
             [
-               // 'user_id' => $user->id,
+                'user_id' => $user->id,
                 'device_name' => 'Thinkpad',
                 'cpu_cores' => 4,
                 'ram' => 16,

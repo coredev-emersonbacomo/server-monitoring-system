@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import client from "@/api/api";
 import jwtClient from "@/api/jwtClient";
 import type { components } from "@/api/schema.d";
 
@@ -9,9 +8,13 @@ export const useClients = () => {
     return useQuery({
         queryKey: ["clients"],
         queryFn: async (): Promise<ClientData[]> => {
-            const { data, error } = await client.GET("/clients");
-            if (error) throw error;
-            return data as ClientData[];
+            try {
+                const response = await jwtClient.get<ClientData[]>("/clients");
+                return response.data || [];
+            } catch (error) {
+                console.error("Failed to fetch clients:", error);
+                throw error;
+            }
         },
     });
 };
@@ -20,11 +23,13 @@ export const useClient = (id: number) => {
     return useQuery({
         queryKey: ["clients", id],
         queryFn: async (): Promise<ClientData> => {
-            const { data, error } = await client.GET("/clients/{id}", {
-                params: { path: { id } },
-            });
-            if (error) throw error;
-            return data as ClientData;
+            try {
+                const response = await jwtClient.get<ClientData>(`/clients/${id}`);
+                return response.data;
+            } catch (error) {
+                console.error("Failed to fetch client:", error);
+                throw error;
+            }
         },
         enabled: !!id,
     });
@@ -35,11 +40,13 @@ export const useCreateClient = () => {
 
     return useMutation({
         mutationFn: async (formData: FormData) => {
-            const { data, error } = await client.POST("/clients", {
-                body: formData as never,
-            });
-            if (error) throw error;
-            return data;
+            try {
+                const response = await jwtClient.post("/clients", formData);
+                return response.data;
+            } catch (error) {
+                console.error("Failed to create client:", error);
+                throw error;
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["clients"] });
@@ -52,12 +59,13 @@ export const useUpdateClient = (id: number) => {
 
     return useMutation({
         mutationFn: async (formData: FormData) => {
-            const { data, error } = await client.PUT("/clients/{id}", {
-                params: { path: { id } },
-                body: formData as never,
-            });
-            if (error) throw error;
-            return data;
+            try {
+                const response = await jwtClient.post(`/clients/${id}`, formData);
+                return response.data;
+            } catch (error) {
+                console.error("Failed to update client:", error);
+                throw error;
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["clients"] });
@@ -84,8 +92,13 @@ export const useClientServers = (clientId: number) => {
     return useQuery({
         queryKey: ["clients", clientId, "servers"],
         queryFn: async (): Promise<ClientServer[]> => {
-            const { data } = await jwtClient.get<ClientServer[]>(`/clients/${clientId}/servers`);
-            return data;
+            try {
+                const response = await jwtClient.get<ClientServer[]>(`/clients/${clientId}/servers`);
+                return response.data || [];
+            } catch (error) {
+                console.error("Failed to fetch servers:", error);
+                throw error;
+            }
         },
         enabled: !!clientId,
     });
@@ -96,13 +109,70 @@ export const useDeleteClient = () => {
 
     return useMutation({
         mutationFn: async (id: number) => {
-            const { error } = await client.DELETE("/clients/{id}", {
-                params: { path: { id } },
-            });
-            if (error) throw error;
+            try {
+                await jwtClient.delete(`/clients/${id}`);
+            } catch (error) {
+                console.error("Failed to delete client:", error);
+                throw error;
+            }
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["clients"] });
+        },
+    });
+};
+
+export const useClientSecops = (clientId: number) => {
+    return useQuery({
+        queryKey: ["clients", clientId, "secops"],
+        queryFn: async (): Promise<any[]> => {
+            try {
+                const response = await jwtClient.get(`/clients/${clientId}/secops`);
+                return response.data || [];
+            } catch (error) {
+                console.error("Failed to fetch secops:", error);
+                throw error;
+            }
+        },
+        enabled: !!clientId,
+    });
+};
+
+export const useAddClientSecop = (clientId: number) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (userId: number) => {
+            try {
+                const response = await jwtClient.post(`/clients/${clientId}/secops`, { user_id: userId });
+                return response.data;
+            } catch (error) {
+                console.error("Failed to add secop:", error);
+                throw error;
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["clients", clientId, "secops"] });
+            queryClient.invalidateQueries({ queryKey: ["clients", clientId] });
+        },
+    });
+};
+
+export const useRemoveClientSecop = (clientId: number) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (userId: number) => {
+            try {
+                await jwtClient.delete(`/clients/${clientId}/secops/${userId}`);
+            } catch (error) {
+                console.error("Failed to remove secop:", error);
+                throw error;
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["clients", clientId, "secops"] });
+            queryClient.invalidateQueries({ queryKey: ["clients", clientId] });
         },
     });
 };
