@@ -32,7 +32,7 @@ class UserController extends Controller
             'first_name' => $data->first_name,
             'last_name'  => $data->last_name,
             'email'      => $data->email,
-            'contact_number' => $data->phone_number,
+            'phone_number' => $data->phone_number,
             'username'   => $data->username,
             'password'   => Hash::make($data->password),
         ];
