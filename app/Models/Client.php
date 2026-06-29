@@ -33,7 +33,7 @@ public function uniqueIds(): array
     }
     public function servers(): hasMany
     {
-        return $this->hasMany(Server::class, 'client_id', 'uuid');
+        return $this->hasMany(Server::class, 'client_id', 'id');
     }
     public function secopclients(): BelongsToMany
 {

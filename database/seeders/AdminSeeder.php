@@ -13,7 +13,7 @@ class AdminSeeder extends Seeder
         User::updateOrCreate(
             ['username' => 'admin'],
             [
-                
+                'uuid' => (string) Str::uuid7(),
                 'first_name' => 'Admin',
                 'last_name'=> 'Surname',
                 'email' => 'admin@example.com',
