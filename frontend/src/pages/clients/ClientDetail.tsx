@@ -368,13 +368,17 @@ export default function ClientDetail() {
                     signature,
                     (p) => setUploadProgress(p),
                 );
-                fd.append("cloudinary_url", result.secure_url);
-                fd.append("cloudinary_public_id", result.public_id);
+                fd.append("banner_image_url", result.secure_url);
+                fd.append("banner_image_public_id", result.public_id);
             } catch {
                 toast.error("Failed to upload banner image.");
                 setUploadProgress(-1);
                 return;
             }
+        }
+
+        if (mode !== "create") {
+            fd.append("_method", "PUT"); 
         }
 
         try {
