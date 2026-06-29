@@ -353,6 +353,8 @@ export default function CreateServer() {
             body: {
                 server_name: form.serverName.trim(),
                 internal_ip: form.ip.trim(),
+                external_ip: form.ip.trim(),
+                port: Number(form.port),
                 ssh_username: form.username.trim(),
                 ssh_password: form.password,
             },
