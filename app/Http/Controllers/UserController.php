@@ -41,7 +41,7 @@ class UserController extends Controller
             $intent = $this->uploadIntentService->attach(
                 $data->upload_intent_id,
                 request()->user(),
-                $user = null,
+                null,
                 'user',
             );
 
