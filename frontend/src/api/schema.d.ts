@@ -25,7 +25,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": Record<string, never>[];
+                        "application/json": components["schemas"]["ServerData"][];
                     };
                 };
                 401: components["responses"]["AuthenticationException"];
@@ -177,7 +177,7 @@ export interface paths {
         };
         get: operations["client.servers"];
         put?: never;
-        post: operations["client.initializeServer"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -392,6 +392,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/clients/{client_id}/servers/uninstall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["server.uninstallServer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sessions": {
         parameters: {
             query?: never;
@@ -488,7 +504,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/uploads/profile-picture/signature": {
+    "/upload-intents": {
         parameters: {
             query?: never;
             header?: never;
@@ -497,23 +513,23 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["uploads.profile-picture.signature"];
+        post: operations["upload-intents.store"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/uploads/client-banner/signature": {
+    "/upload-intents/{uploadIntent}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["upload-intents.show"];
         put?: never;
-        post: operations["uploads.client-banner.signature"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -605,6 +621,7 @@ export interface components {
             banner_image_path?: string | null;
             banner_image_url: string;
             banner_image_public_id?: string | null;
+            banner_image_storage_key?: string | null;
             servers_count: number;
             created_at: string;
             updated_at: string;
@@ -637,28 +654,9 @@ export interface components {
         };
         /** LoginRequest */
         LoginRequest: {
-            /** Format: email */
             email: string;
             password: string;
             remember?: boolean;
-        };
-        /** Server */
-        Server: {
-            id: number;
-            client_id: number;
-            server_name: string;
-            device_name: string;
-            internal_ip: string;
-            external_ip: string;
-            ssh_username: string | null;
-            api_key: string;
-            cpu_cores: number | null;
-            ram: number | null;
-            operating_system: string | null;
-            /** Format: date-time */
-            created_at: string | null;
-            /** Format: date-time */
-            updated_at: string | null;
         };
         /** ServerData */
         ServerData: {
@@ -675,7 +673,9 @@ export interface components {
             id?: number | null;
             client_id?: number | null;
             client_name?: string | null;
-            stats?: string[];
+            last_seen?: string | null;
+            status?: string | null;
+            stats?: components["schemas"]["StatPointData"][];
         };
         /** SessionResource */
         SessionResource: {
@@ -699,19 +699,24 @@ export interface components {
             revoked_at: string;
             revoked_at_timestamp: string;
         };
-        /** UploadSignatureData */
-        UploadSignatureData: {
-            cloud_name: string;
-            api_key: string;
+        /** StatPointData */
+        StatPointData: {
             timestamp: number;
-            folder: string;
-            signature: string;
+            cpu: number;
+            memory: number;
+            netIn: number;
+            netOut: number;
+            disk: number;
         };
-        /** UploadSignatureRequest */
-        UploadSignatureRequest: {
-            /** @enum {string} */
-            folder?: "profile_pictures" | "client_banner_images";
+        /** StoreUploadIntentRequest */
+        StoreUploadIntentRequest: {
+            purpose: components["schemas"]["UploadPurpose"];
         };
+        /**
+         * UploadPurpose
+         * @enum {string}
+         */
+        UploadPurpose: "profile_picture" | "client_banner" | "attachment" | "document";
         /** UserData */
         UserData: {
             id: number;
@@ -722,6 +727,7 @@ export interface components {
             contact_number: string;
             last_login?: string | null;
             profile_picture_url: string;
+            profile_picture_storage_key: string;
             status: string;
             role: "Admin" | "User" | "SecOps";
             /** Format: date-time */
@@ -776,6 +782,18 @@ export interface components {
                 };
             };
         };
+        /** @description Authorization error */
+        AuthorizationException: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /** @description Error overview. */
+                    message: string;
+                };
+            };
+        };
     };
     parameters: never;
     requestBodies: never;
@@ -820,14 +838,14 @@ export interface operations {
                     contact_number: string;
                     description?: string | null;
                     banner_image?: Record<string, never> | null;
-                    cloudinary_url?: string | null;
-                    cloudinary_public_id?: string | null;
+                    upload_intent_id?: string | null;
+                    banner_image_storage_key?: string | null;
                 };
             };
         };
         responses: {
             /** @description `ClientData` */
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -878,8 +896,8 @@ export interface operations {
                     email: string;
                     contact_number: string;
                     description?: string;
-                    cloudinary_url?: string | null;
-                    cloudinary_public_id?: string | null;
+                    upload_intent_id?: string | null;
+                    banner_image_storage_key?: string | null;
                 };
             };
         };
@@ -933,28 +951,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": string;
+                    "application/json": components["schemas"]["ServerData"][];
                 };
-            };
-            401: components["responses"]["AuthenticationException"];
-        };
-    };
-    "client.initializeServer": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             401: components["responses"]["AuthenticationException"];
         };
@@ -1207,20 +1205,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        id: number;
-                        client_id: number;
-                        server_name: string;
-                        device_name: string;
-                        internal_ip: string;
-                        external_ip: string;
-                        ssh_username: string | null;
-                        cpu_cores: number | null;
-                        ram: number | null;
-                        operating_system: string | null;
-                        created_at: string | "";
-                        updated_at: string | "";
-                    }[];
+                    "application/json": components["schemas"]["ServerData"][];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -1239,42 +1224,40 @@ export interface operations {
             content: {
                 "application/json": {
                     server_name: string;
+                    device_name?: string | null;
                     /** Format: ipv4 */
                     internal_ip: string;
-                    device_name?: string | null;
                     external_ip?: string | null;
                     ssh_username?: string | null;
                     ssh_password?: string | null;
                     cpu_cores?: number | null;
                     ram?: number | null;
                     operating_system?: string | null;
-                    id?: number | null;
-                    client_id?: number | null;
-                    client_name?: string | null;
-                    stats?: string[];
                 };
             };
         };
         responses: {
-            201: {
+            /** @description `ServerData` */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        success: boolean;
-                        data: components["schemas"]["Server"];
-                    };
+                    "application/json": components["schemas"]["ServerData"];
                 };
             };
+            /** @description An error */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        /** @constant */
-                        error: "Client not found.";
+                        /**
+                         * @description Error overview.
+                         * @example Client not found.
+                         */
+                        message: string;
                     };
                 };
             };
@@ -1293,15 +1276,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description `ServerData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        success: boolean;
-                        data: components["schemas"]["Server"];
-                    };
+                    "application/json": components["schemas"]["ServerData"];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -1317,36 +1298,26 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": {
-                    server_name: string;
-                    /** Format: ipv4 */
-                    internal_ip: string;
+                    server_name?: string | null;
                     device_name?: string | null;
+                    internal_ip?: string | null;
                     external_ip?: string | null;
                     ssh_username?: string | null;
                     ssh_password?: string | null;
-                    cpu_cores?: number | null;
-                    ram?: number | null;
-                    operating_system?: string | null;
-                    id?: number | null;
-                    client_id?: number | null;
-                    client_name?: string | null;
-                    stats?: string[];
                 };
             };
         };
         responses: {
+            /** @description `ServerData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        success: boolean;
-                        data: components["schemas"]["Server"];
-                    };
+                    "application/json": components["schemas"]["ServerData"];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -1364,15 +1335,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description `ServerData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        success: boolean;
-                        data: components["schemas"]["Server"];
-                    };
+                    "application/json": components["schemas"]["ServerData"];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -1390,20 +1359,12 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    server_name: string;
-                    /** Format: ipv4 */
-                    internal_ip: string;
-                    device_name?: string | null;
-                    external_ip?: string | null;
-                    ssh_username?: string | null;
-                    ssh_password?: string | null;
-                    cpu_cores?: number | null;
-                    ram?: number | null;
-                    operating_system?: string | null;
-                    id?: number | null;
-                    client_id?: number | null;
-                    client_name?: string | null;
-                    stats?: string[];
+                    sshHost: string;
+                    sshPort: number;
+                    sshUser: string;
+                    sshPassword: string;
+                    serverId: string;
+                    apiToken: string;
                 };
             };
         };
@@ -1419,6 +1380,58 @@ export interface operations {
                         log: {
                             wget: string;
                             install: string;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "error";
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
+    "server.uninstallServer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                client_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    sshHost: string;
+                    sshPort: number;
+                    sshUser: string;
+                    sshPassword: string;
+                    serverId: string;
+                    apiToken: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "success";
+                        log: {
+                            wget: string;
+                            uninstall: string;
                         };
                     };
                 };
@@ -1603,56 +1616,87 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "uploads.profile-picture.signature": {
+    "upload-intents.store": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": components["schemas"]["UploadSignatureRequest"];
+                "application/json": components["schemas"]["StoreUploadIntentRequest"];
             };
         };
         responses: {
-            /** @description `UploadSignatureData` */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UploadSignatureData"];
+                    "application/json": {
+                        intent_id: string;
+                        storage_key: string;
+                        provider: string;
+                        upload_config: unknown[] | null;
+                        purpose_config: {
+                            max_file_size: unknown;
+                            allowed_mime_types: unknown;
+                        };
+                        expires_at: string;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
             422: components["responses"]["ValidationException"];
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Too many upload requests. Please try again later.";
+                        retry_after: number;
+                    };
+                };
+            };
         };
     };
-    "uploads.client-banner.signature": {
+    "upload-intents.show": {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description The upload intent ID */
+                uploadIntent: string;
+            };
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["UploadSignatureRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description `UploadSignatureData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UploadSignatureData"];
+                    "application/json": {
+                        id: string;
+                        purpose: string;
+                        storage_key: string;
+                        provider: string;
+                        status: string;
+                        attached_to_type: string | null;
+                        attached_to_id: number | null;
+                        attached_at: string;
+                        expires_at: string;
+                        created_at: string;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
     "users.index": {
@@ -1700,8 +1744,8 @@ export interface operations {
                     /** @description Must be confirmed by a matching `_confirmation` field. */
                     password: string;
                     password_confirmation: string;
-                    cloudinary_url?: string | null;
-                    cloudinary_public_id?: string | null;
+                    upload_intent_id?: string | null;
+                    profile_picture_storage_key?: string | null;
                 };
             };
         };
@@ -1765,8 +1809,8 @@ export interface operations {
                     /** @description Must be confirmed by a matching `_confirmation` field. */
                     password?: string | null;
                     password_confirmation?: string | null;
-                    cloudinary_url?: string | null;
-                    cloudinary_public_id?: string | null;
+                    upload_intent_id?: string | null;
+                    profile_picture_storage_key?: string | null;
                 };
             };
         };

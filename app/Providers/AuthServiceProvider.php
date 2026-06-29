@@ -6,11 +6,17 @@ use App\Auth\JwtGuard;
 use App\Auth\JwtUserProvider;
 use App\Models\User;
 use App\Services\JwtService;
+use App\Models\UploadIntent;
+use App\Policies\UploadIntentPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Auth;
 
 class AuthServiceProvider extends ServiceProvider
 {
+    protected $policies = [
+        UploadIntent::class => UploadIntentPolicy::class,
+    ];
+
     public function boot(): void
     {
         Auth::provider('jwt', function ($app, array $config) {

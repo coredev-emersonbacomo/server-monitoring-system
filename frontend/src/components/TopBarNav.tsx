@@ -11,7 +11,27 @@ import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { toLabelCase } from "@/utils/helpers";
 
 const TopBarNav: React.FC = () => {
-    const { trail } = useBreadcrumb();
+    const { trail, isLoading } = useBreadcrumb();
+
+    if (isLoading) {
+        return (
+            <div className="flex justify-between items-center relative h-16 py-2">
+                <div className="flex items-center gap-3 animate-pulse">
+                    {trail.map((_, i) => (
+                        <React.Fragment key={i}>
+                            <div
+                                className="h-5 rounded bg-muted-foreground/10"
+                                style={{ width: `${i === 0 ? 24 : 36}ch` }}
+                            />
+                            {i < trail.length - 1 && (
+                                <div className="size-4 rounded bg-muted-foreground/10" />
+                            )}
+                        </React.Fragment>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     if (trail.length === 0) {
         return null;

@@ -1,13 +1,26 @@
 import { useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Server, Search, Wifi, WifiOff, AlertTriangle, ArrowLeft, Building2 } from "lucide-react";
-import { useServers, type ServerListItem } from "@/hooks/useServers";
-import { Button } from "@/components/ui/button";
+import {
+    Server,
+    Search,
+    Wifi,
+    WifiOff,
+    AlertTriangle,
+    Building2,
+} from "lucide-react";
+import { useServers } from "@/hooks/useServers";
 import { cn } from "@/lib/utils";
 
-const STATUS_META: Record<string, { icon: typeof Server; color: string; bg: string }> = {
+const STATUS_META: Record<
+    string,
+    { icon: typeof Server; color: string; bg: string }
+> = {
     online: { icon: Wifi, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-    warning: { icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10" },
+    warning: {
+        icon: AlertTriangle,
+        color: "text-amber-400",
+        bg: "bg-amber-500/10",
+    },
     offline: { icon: WifiOff, color: "text-red-400", bg: "bg-red-500/10" },
 };
 
@@ -51,7 +64,9 @@ export default function ServersIndex() {
                             </div>
                             <div>
                                 <h1 className="text-lg font-semibold tracking-tight">
-                                    {clientId && clientName ? `${clientName} Servers` : "Servers"}
+                                    {clientId && clientName
+                                        ? `${clientName} Servers`
+                                        : "Servers"}
                                 </h1>
                                 {clientId && (
                                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -76,7 +91,11 @@ export default function ServersIndex() {
             <main className="py-6 w-full flex-1 min-h-0 overflow-auto">
                 <div className="flex items-center gap-2 mb-6 flex-wrap">
                     <button
-                        onClick={() => setSearchParams(clientId ? { client_id: String(clientId) } : {})}
+                        onClick={() =>
+                            setSearchParams(
+                                clientId ? { client_id: String(clientId) } : {},
+                            )
+                        }
                         className={cn(
                             "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
                             !statusFilter
@@ -87,7 +106,14 @@ export default function ServersIndex() {
                         All ({servers?.length ?? 0})
                     </button>
                     <button
-                        onClick={() => setSearchParams({ status: "online", ...(clientId ? { client_id: String(clientId) } : {}) })}
+                        onClick={() =>
+                            setSearchParams({
+                                status: "online",
+                                ...(clientId
+                                    ? { client_id: String(clientId) }
+                                    : {}),
+                            })
+                        }
                         className={cn(
                             "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5",
                             statusFilter === "online"
@@ -99,7 +125,14 @@ export default function ServersIndex() {
                         Online ({counts.online})
                     </button>
                     <button
-                        onClick={() => setSearchParams({ status: "warning", ...(clientId ? { client_id: String(clientId) } : {}) })}
+                        onClick={() =>
+                            setSearchParams({
+                                status: "warning",
+                                ...(clientId
+                                    ? { client_id: String(clientId) }
+                                    : {}),
+                            })
+                        }
                         className={cn(
                             "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5",
                             statusFilter === "warning"
@@ -111,7 +144,14 @@ export default function ServersIndex() {
                         Warning ({counts.warning})
                     </button>
                     <button
-                        onClick={() => setSearchParams({ status: "offline", ...(clientId ? { client_id: String(clientId) } : {}) })}
+                        onClick={() =>
+                            setSearchParams({
+                                status: "offline",
+                                ...(clientId
+                                    ? { client_id: String(clientId) }
+                                    : {}),
+                            })
+                        }
                         className={cn(
                             "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5",
                             statusFilter === "offline"
@@ -127,7 +167,10 @@ export default function ServersIndex() {
                 {isLoading ? (
                     <div className="space-y-2">
                         {Array.from({ length: 6 }).map((_, i) => (
-                            <div key={i} className="h-16 bg-card border border-border rounded-lg animate-pulse" />
+                            <div
+                                key={i}
+                                className="h-16 bg-card border border-border rounded-lg animate-pulse"
+                            />
                         ))}
                     </div>
                 ) : !filtered.length ? (
@@ -147,11 +190,22 @@ export default function ServersIndex() {
                             return (
                                 <div
                                     key={server.id}
-                                    onClick={() => navigate(`/servers/${server.id}?client=all`)}
+                                    onClick={() =>
+                                        navigate(
+                                            `/servers/${server.id}?client=all`,
+                                        )
+                                    }
                                     className="flex items-center gap-4 p-4 rounded-lg border border-border/60 bg-card hover:bg-muted/20 transition-colors cursor-pointer"
                                 >
-                                    <div className={cn("p-2 rounded-lg", meta.bg)}>
-                                        <Icon className={cn("size-4", meta.color)} />
+                                    <div
+                                        className={cn(
+                                            "p-2 rounded-lg",
+                                            meta.bg,
+                                        )}
+                                    >
+                                        <Icon
+                                            className={cn("size-4", meta.color)}
+                                        />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-foreground truncate">
@@ -159,15 +213,19 @@ export default function ServersIndex() {
                                         </p>
                                         <p className="text-xs text-muted-foreground truncate">
                                             {server.client_name}
-                                            {server.internal_ip && ` · ${server.internal_ip}`}
+                                            {server.internal_ip &&
+                                                ` · ${server.internal_ip}`}
                                         </p>
                                     </div>
                                     <span
                                         className={cn(
                                             "text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded",
-                                            server.status === "online" && "text-emerald-400 bg-emerald-500/10",
-                                            server.status === "warning" && "text-amber-400 bg-amber-500/10",
-                                            server.status === "offline" && "text-red-400 bg-red-500/10",
+                                            server.status === "online" &&
+                                                "text-emerald-400 bg-emerald-500/10",
+                                            server.status === "warning" &&
+                                                "text-amber-400 bg-amber-500/10",
+                                            server.status === "offline" &&
+                                                "text-red-400 bg-red-500/10",
                                         )}
                                     >
                                         {server.status}

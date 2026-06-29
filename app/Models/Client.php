@@ -20,6 +20,7 @@ class Client extends Model
         'contact_number',
         'banner_image_url',
         'banner_image_public_id',
+        'banner_image_storage_key',
         'status',
     ];
 

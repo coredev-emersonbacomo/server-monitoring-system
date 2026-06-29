@@ -2,44 +2,30 @@
 
 namespace App\Http\Controllers;
 
+use App\Data\CreateServerData;
 use App\Data\ServerData;
 use App\Data\ServerSshData;
+use App\Data\UpdateServerData;
 use App\Models\Client;
 use App\Models\Server;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Crypt;
 use Infrastructure\Api\ApiGenerator;
-// Install Service
 use Infrastructure\Service\InstallerService;
 
 class ServerController extends Controller
 {
-    public function index(int $client_id): JsonResponse
+    public function index(int $client_id)
     {
-        $servers = Server::where('client_id', $client_id)->get()->map(fn($s) => [
-            'id' => $s->id,
-            'client_id' => $s->client_id,
-            'server_name' => $s->server_name,
-            'device_name' => $s->device_name,
-            'internal_ip' => $s->internal_ip,
-            'external_ip' => $s->external_ip,
-            'ssh_username' => $s->ssh_username,
-            'cpu_cores' => $s->cpu_cores,
-            'ram' => $s->ram,
-            'operating_system' => $s->operating_system,
-            'created_at' => $s->created_at?->toIso8601String() ?? '',
-            'updated_at' => $s->updated_at?->toIso8601String() ?? '',
-        ]);
+        $servers = Server::where('client_id', $client_id)->get();
 
-        return response()->json($servers);
+        return ServerData::collect($servers);
     }
 
-    public function store(ServerData $data, int $client_id): JsonResponse
+    public function store(CreateServerData $data, int $client_id): ServerData
     {
-        $clientExist = Client::where('id', $client_id)->exists();
-
-        if (!$clientExist) {
-            return response()->json(['error' => 'Client not found.'], 400);
+        if (!Client::where('id', $client_id)->exists()) {
+            abort(400, 'Client not found.');
         }
 
         $server = Server::create([
@@ -53,57 +39,36 @@ class ServerController extends Controller
             'api_key' => ApiGenerator::GenerateApiKey(),
         ]);
 
-        return response()->json([
-            'success' => true,
-            'data' => $server,
-        ], 201);
+        return ServerData::from($server->toArray());
     }
 
-    public function show(int $client_id, int $id): JsonResponse
+    public function show(int $client_id, int $id): ServerData
     {
         $server = Server::where('client_id', $client_id)
             ->where('id', $id)
             ->firstOrFail();
 
-        return response()->json([
-            'success' => true,
-            'data' => $server,
-        ]);
+        return ServerData::from($server->toArray());
     }
 
-    public function update(ServerData $data, int $client_id, int $id): JsonResponse
+    public function update(UpdateServerData $data, int $client_id, int $id): ServerData
     {
         $server = Server::where('client_id', $client_id)
             ->where('id', $id)
             ->firstOrFail();
 
-        $updateData = [
-            'server_name' => $data->server_name,
-            'internal_ip' => $data->internal_ip,
-        ];
+        $updateData = $data->toArray();
 
-        if ($data->device_name !== null) {
-            $updateData['device_name'] = $data->device_name;
-        }
-        if ($data->external_ip !== null) {
-            $updateData['external_ip'] = $data->external_ip;
-        }
-        if ($data->ssh_username !== null) {
-            $updateData['ssh_username'] = $data->ssh_username;
-        }
-        if ($data->ssh_password !== null) {
-            $updateData['ssh_password'] = Crypt::encryptString($data->ssh_password);
+        if (isset($updateData['ssh_password'])) {
+            $updateData['ssh_password'] = Crypt::encryptString($updateData['ssh_password']);
         }
 
         $server->update($updateData);
 
-        return response()->json([
-            'success' => true,
-            'data' => $server,
-        ]);
+        return ServerData::from($server->toArray());
     }
 
-    public function destroy(int $client_id, int $id): JsonResponse
+    public function destroy(int $client_id, int $id): ServerData
     {
         $server = Server::where('client_id', $client_id)
             ->where('id', $id)
@@ -111,10 +76,7 @@ class ServerController extends Controller
 
         $server->delete();
 
-        return response()->json([
-            'success' => true,
-            'data' => $server,
-        ]);
+        return ServerData::from($server->toArray());
     }
 
     public function installServer(ServerSshData $data): JsonResponse
@@ -129,7 +91,6 @@ class ServerController extends Controller
                 apiToken: $data->apiToken,
             );
 
-            // Install
             $log = $installer->install();
 
             return response()->json([
@@ -156,7 +117,6 @@ class ServerController extends Controller
                 apiToken:    $data->apiToken
             );
 
-            // Uninstall
             $log = $installer->uninstall();
 
             return response()->json([

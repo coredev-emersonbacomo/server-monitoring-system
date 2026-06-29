@@ -5,7 +5,9 @@ import {
     AlertTriangle,
 } from "lucide-react";
 import { ServerStatChart } from "./ServerStatChart";
-import type { ServerDetailData } from "@/hooks/useServer";
+import type { components } from "@/api/schema.d";
+
+type ServerDetailData = components["schemas"]["ServerData"];
 
 const STATUS_CONFIG = {
     online: {

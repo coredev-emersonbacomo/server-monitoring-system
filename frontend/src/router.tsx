@@ -1,111 +1,103 @@
-import { createBrowserRouter, Outlet } from "react-router-dom";
-import { JwtAuthProvider } from "./contexts/JwtAuthContext";
-import Dashboard from "./pages/Dashboard";
-import Login from "./pages/Login";
+import { createBrowserRouter } from "react-router-dom";
+import Dashboard from "./pages/dashboard";
+import Login from "./pages/login";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
 import { GuestLayout } from "./layouts/GuestLayout";
-import Clients from "./pages/clients/Index";
-import UsersIndex from "./pages/users/Index";
-import UserDetail from "./pages/UserDetail";
-import ClientDetail from "./pages/clients/ClientDetail";
-import Settings from "./pages/Settings";
-import Sessions from "./pages/Sessions";
-import Logs from "./pages/Logs";
+import Clients from "./pages/clients/index";
+import UsersIndex from "./pages/users/index";
+import UserDetail from "./pages/userDetail";
+import ClientDetail from "./pages/clients/clientDetail";
+import Logs from "./pages/logs";
 import ServerLayout from "./layouts/ServerLayout";
-import ServerDetail from "./pages/servers/ServerDetail";
-import { Profile } from "./pages/Profile";
-import CreateServer from "./pages/servers/Create";
-import ServersIndex from "./pages/servers/Index";
-
-function RootLayout() {
-  return (
-    <JwtAuthProvider>
-      <Outlet />
-    </JwtAuthProvider>
-  );
-}
+import ServerDetail from "./pages/servers/serverDetail";
+import CreateServer from "./pages/servers/create";
+import ServersIndex from "./pages/servers/index";
+import RootLayout from "./layouts/RootLayout";
+import Settings from "./pages/settings";
+import Sessions from "./pages/settings/sessions";
+import Profile from "./pages/settings/profile";
 
 const router = createBrowserRouter([
-  {
-    element: <RootLayout />,
-    children: [
-      {
-        element: <GuestLayout />,
+    {
+        element: <RootLayout />,
         children: [
-          {
-            path: "/login",
-            element: <Login />,
-          },
+            {
+                element: <GuestLayout />,
+                children: [
+                    {
+                        path: "/login",
+                        element: <Login />,
+                    },
+                ],
+            },
+            {
+                element: <ProtectedRoute />,
+                children: [
+                    {
+                        path: "/",
+                        element: <Dashboard />,
+                    },
+                    {
+                        path: "/servers",
+                        element: <ServersIndex />,
+                    },
+                    {
+                        path: "/servers/create",
+                        element: <CreateServer />,
+                    },
+                    {
+                        element: <ServerLayout />,
+                        children: [
+                            {
+                                path: "/servers/:id",
+                                element: <ServerDetail />,
+                            },
+                        ],
+                    },
+                    {
+                        path: "/clients",
+                        element: <Clients />,
+                    },
+                    {
+                        path: "/clients/create",
+                        element: <ClientDetail />,
+                    },
+                    {
+                        path: "/clients/:id",
+                        element: <ClientDetail />,
+                    },
+                    {
+                        path: "/users",
+                        element: <UsersIndex />,
+                    },
+                    {
+                        path: "/users/create",
+                        element: <UserDetail />,
+                    },
+                    {
+                        path: "/users/:id",
+                        element: <UserDetail />,
+                    },
+                    {
+                        path: "/logs",
+                        element: <Logs />,
+                    },
+                    {
+                        path: "/settings",
+                        element: <Settings />,
+                    },
+                    {
+                        path: "/settings/sessions",
+                        element: <Sessions />,
+                    },
+                    {
+                        path: "/profile",
+                        element: <Profile />,
+                    },
+                ],
+            },
         ],
-      },
-      {
-        element: <ProtectedRoute />,
-        children: [
-          {
-            path: "/",
-            element: <Dashboard />,
-          },
-          {
-            path: "/servers",
-            element: <ServersIndex />,
-          },
-          {
-            path: "/servers/create",
-            element: <CreateServer />,
-          },
-          {
-            element: <ServerLayout />,
-            children: [
-              {
-                path: "/servers/:id",
-                element: <ServerDetail />,
-              },
-            ],
-          },
-          {
-            path: "/clients",
-            element: <Clients />,
-          },
-          {
-            path: "/clients/create",
-            element: <ClientDetail />,
-          },
-          {
-            path: "/clients/:id",
-            element: <ClientDetail />,
-          },
-          {
-            path: "/users",
-            element: <UsersIndex />,
-          },
-          {
-            path: "/users/create",
-            element: <UserDetail />,
-          },
-          {
-            path: "/users/:id",
-            element: <UserDetail />,
-          },
-          {
-            path: "/logs",
-            element: <Logs />,
-          },
-          {
-            path: "/settings",
-            element: <Settings />,
-          },
-          {
-            path: "/settings/sessions",
-            element: <Sessions />,
-          },
-          {
-            path: "/profile",
-            element: <Profile />,
-          },
-        ],
-      },
-    ],
-  },
+    },
 ]);
 
 export default router;

@@ -22,8 +22,8 @@ import {
     useUpdateClient,
     useDeleteClient,
     useClientServers,
-    type ClientServer,
 } from "@/hooks/useClients";
+import type { components } from "@/api/schema.d";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,12 +36,16 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { getClientBannerUploadSignature } from "@/api/cloudinary";
-import { uploadToCloudinary } from "@/services/cloudinary";
+import { requestUploadIntent } from "@/api/uploads";
+import { directUpload } from "@/services/directUpload";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 
 import { Search, Filter, ChevronDown } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 
 // ─── Form skeleton ────────────────────────────────────────────────────────────
 
@@ -128,9 +132,13 @@ function SectionHeader({
 
 // ─── Server card ──────────────────────────────────────────────────────────────
 
-function ServerCard({ server, clientId }: { server: ClientServer; clientId: number }) {
-
-
+function ServerCard({
+    server,
+    clientId,
+}: {
+    server: components["schemas"]["ServerData"];
+    clientId: number;
+}) {
     return (
         <Link
             to={`/servers/${server.id}?client=${clientId}`}
@@ -237,7 +245,9 @@ export default function ClientDetail() {
 
     // Add state inside the component
     const [serverSearch, setServerSearch] = useState("");
-    const [serverFilter, setServerFilter] = useState<"all" | "online" | "offline">("all");
+    const [serverFilter, setServerFilter] = useState<
+        "all" | "online" | "offline"
+    >("all");
 
     const [form, setForm] = useState({
         name: "",
@@ -250,7 +260,6 @@ export default function ClientDetail() {
     // Reset mode when navigating between clients / to create
     useEffect(() => {
         const next = id ? "view" : "create";
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMode(next);
         if (next === "create") {
             setForm({
@@ -269,7 +278,6 @@ export default function ClientDetail() {
     // Populate form when client data arrives
     useEffect(() => {
         if (client) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setForm({
                 name: client.name,
                 description: client.description ?? "",
@@ -298,19 +306,15 @@ export default function ClientDetail() {
 
     const set =
         (key: keyof typeof form) =>
-            (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-                setForm((f) => ({ ...f, [key]: e.target.value }));
+        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+            setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const schema = z.object({
         name: z.string().trim().min(2, "Minimum 2 characters"),
         description: z.string().optional(),
         location: z.string().trim().min(2, "Minimum 2 characters"),
-        email: z
-            .string()
-            .trim()
-            .min(1, "Required")
-            .email("Invalid email address"),
+        email: z.email("Invalid email address").trim().min(1, "Required"),
         contact_number: z.string().trim().min(5, "Minimum 5 characters"),
     });
 
@@ -344,14 +348,14 @@ export default function ClientDetail() {
         if (bannerFile) {
             setUploadProgress(0);
             try {
-                const signature = await getClientBannerUploadSignature();
-                const result = await uploadToCloudinary(
-                    bannerFile,
-                    signature,
-                    (p) => setUploadProgress(p),
+                const intent = await requestUploadIntent({
+                    purpose: "client_banner",
+                });
+                const result = await directUpload(bannerFile, intent, (p) =>
+                    setUploadProgress(p),
                 );
-                fd.append("cloudinary_url", result.secure_url);
-                fd.append("cloudinary_public_id", result.public_id);
+                fd.append("upload_intent_id", intent.intent_id);
+                fd.append("banner_image_storage_key", result.storage_key);
             } catch {
                 toast.error("Failed to upload banner image.");
                 setUploadProgress(-1);
@@ -462,7 +466,9 @@ export default function ClientDetail() {
     const isSaving = createClient.isPending || updateClient.isPending;
     const bannerInputId = "banner-upload";
     const filteredServers = servers.filter((s) => {
-        const matchSearch = s.server_name.toLowerCase().includes(serverSearch.toLowerCase());
+        const matchSearch = s.server_name
+            .toLowerCase()
+            .includes(serverSearch.toLowerCase());
         return matchSearch;
     });
 
@@ -482,14 +488,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                        backgroundImage: `url(${bannerPreview})`,
-                                        backgroundSize: "cover",
-                                        backgroundPosition: "center",
-                                    }
+                                          backgroundImage: `url(${bannerPreview})`,
+                                          backgroundSize: "cover",
+                                          backgroundPosition: "center",
+                                      }
                                     : {
-                                        background:
-                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                    }
+                                          background:
+                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                      }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -521,7 +527,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                        defaultBanner,
+                                                            defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -617,7 +623,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none",
                                             errors.description &&
-                                            "border-destructive",
+                                                "border-destructive",
                                         )}
                                     />
                                 </div>
@@ -660,7 +666,7 @@ export default function ClientDetail() {
                                                 onChange={set("location")}
                                                 className={cn(
                                                     errors.location &&
-                                                    "border-destructive",
+                                                        "border-destructive",
                                                 )}
                                             />
                                         ) : (
@@ -695,7 +701,7 @@ export default function ClientDetail() {
                                                 onChange={set("email")}
                                                 className={cn(
                                                     errors.email &&
-                                                    "border-destructive",
+                                                        "border-destructive",
                                                 )}
                                             />
                                         ) : (
@@ -715,37 +721,104 @@ export default function ClientDetail() {
                                                 placeholder="095-1234-5678"
                                                 value={form.contact_number}
                                                 onChange={(e) => {
-                                                    const numeric = e.target.value.replace(/\D/g, "");
+                                                    const numeric =
+                                                        e.target.value.replace(
+                                                            /\D/g,
+                                                            "",
+                                                        );
                                                     // Enforce starts with 09
-                                                    if (numeric.length >= 2 && !numeric.startsWith("09")) return;
-                                                    set("contact_number")({ ...e, target: { ...e.target, value: numeric.slice(0, 11) } });
+                                                    if (
+                                                        numeric.length >= 2 &&
+                                                        !numeric.startsWith(
+                                                            "09",
+                                                        )
+                                                    )
+                                                        return;
+                                                    set("contact_number")({
+                                                        ...e,
+                                                        target: {
+                                                            ...e.target,
+                                                            value: numeric.slice(
+                                                                0,
+                                                                11,
+                                                            ),
+                                                        },
+                                                    });
                                                 }}
                                                 onBlur={(e) => {
-                                                    const numeric = e.target.value.replace(/\D/g, "");
+                                                    const numeric =
+                                                        e.target.value.replace(
+                                                            /\D/g,
+                                                            "",
+                                                        );
                                                     // Only format if valid (starts with 09 and 11 digits)
-                                                    if (!numeric.startsWith("09") || numeric.length !== 11) return;
+                                                    if (
+                                                        !numeric.startsWith(
+                                                            "09",
+                                                        ) ||
+                                                        numeric.length !== 11
+                                                    )
+                                                        return;
                                                     const formatted = `${numeric.slice(0, 3)}-${numeric.slice(3, 7)}-${numeric.slice(7, 11)}`;
-                                                    set("contact_number")({ ...e, target: { ...e.target, value: formatted } });
+                                                    set("contact_number")({
+                                                        ...e,
+                                                        target: {
+                                                            ...e.target,
+                                                            value: formatted,
+                                                        },
+                                                    });
                                                 }}
                                                 onKeyDown={(e) => {
                                                     const allowedKeys = [
-                                                        "Backspace", "Delete", "Tab", "Escape", "Enter",
-                                                        "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
-                                                        "Home", "End",
+                                                        "Backspace",
+                                                        "Delete",
+                                                        "Tab",
+                                                        "Escape",
+                                                        "Enter",
+                                                        "ArrowLeft",
+                                                        "ArrowRight",
+                                                        "ArrowUp",
+                                                        "ArrowDown",
+                                                        "Home",
+                                                        "End",
                                                     ];
-                                                    if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x"].includes(e.key.toLowerCase())) {
+                                                    if (
+                                                        (e.ctrlKey ||
+                                                            e.metaKey) &&
+                                                        [
+                                                            "a",
+                                                            "c",
+                                                            "v",
+                                                            "x",
+                                                        ].includes(
+                                                            e.key.toLowerCase(),
+                                                        )
+                                                    ) {
                                                         return;
                                                     }
-                                                    if (/^\d$/.test(e.key) || allowedKeys.includes(e.key)) {
+                                                    if (
+                                                        /^\d$/.test(e.key) ||
+                                                        allowedKeys.includes(
+                                                            e.key,
+                                                        )
+                                                    ) {
                                                         return;
                                                     }
                                                     e.preventDefault();
                                                 }}
-                                                className={cn(errors.contact_number && "border-destructive")}
+                                                className={cn(
+                                                    errors.contact_number &&
+                                                        "border-destructive",
+                                                )}
                                             />
                                         ) : (
                                             <p className="text-sm text-foreground py-1">
-                                                {client?.contact_number.replace(/\D/g, "").replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")}
+                                                {client?.contact_number
+                                                    .replace(/\D/g, "")
+                                                    .replace(
+                                                        /^(\d{3})(\d{4})(\d{4})$/,
+                                                        "$1-$2-$3",
+                                                    )}
                                             </p>
                                         )}
                                     </Field>
@@ -764,8 +837,8 @@ export default function ClientDetail() {
                                                 isSaving
                                                     ? "Saving…"
                                                     : mode === "create"
-                                                        ? "Create Client"
-                                                        : "Save Changes"
+                                                      ? "Create Client"
+                                                      : "Save Changes"
                                             }
                                         />
                                     </div>
@@ -798,7 +871,11 @@ export default function ClientDetail() {
                                                 type="text"
                                                 placeholder="Search servers..."
                                                 value={serverSearch}
-                                                onChange={(e) => setServerSearch(e.target.value)}
+                                                onChange={(e) =>
+                                                    setServerSearch(
+                                                        e.target.value,
+                                                    )
+                                                }
                                                 className="w-48 pl-8 pr-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground transition-colors"
                                             />
                                         </div>
@@ -811,22 +888,47 @@ export default function ClientDetail() {
                                                     icon={<Filter size={14} />}
                                                     className="gap-1"
                                                 >
-                                                    {serverFilter === "all" ? "All" : serverFilter === "online" ? "Online" : "Offline"}
+                                                    {serverFilter === "all"
+                                                        ? "All"
+                                                        : serverFilter ===
+                                                            "online"
+                                                          ? "Online"
+                                                          : "Offline"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
-                                            <PopoverContent align="end" className="w-36 p-1">
+                                            <PopoverContent
+                                                align="end"
+                                                className="w-36 p-1"
+                                            >
                                                 {[
-                                                    { label: "All", value: "all" },
-                                                    { label: "Online", value: "online" },
-                                                    { label: "Offline", value: "offline" },
+                                                    {
+                                                        label: "All",
+                                                        value: "all",
+                                                    },
+                                                    {
+                                                        label: "Online",
+                                                        value: "online",
+                                                    },
+                                                    {
+                                                        label: "Offline",
+                                                        value: "offline",
+                                                    },
                                                 ].map((opt) => (
                                                     <button
                                                         key={opt.value}
-                                                        onClick={() => setServerFilter(opt.value as "all" | "online" | "offline")}
+                                                        onClick={() =>
+                                                            setServerFilter(
+                                                                opt.value as
+                                                                    | "all"
+                                                                    | "online"
+                                                                    | "offline",
+                                                            )
+                                                        }
                                                         className={cn(
                                                             "flex items-center w-full px-2 py-1.5 rounded-md text-sm transition-colors",
-                                                            serverFilter === opt.value
+                                                            serverFilter ===
+                                                                opt.value
                                                                 ? "bg-accent text-accent-foreground"
                                                                 : "hover:bg-muted text-foreground",
                                                         )}
@@ -837,14 +939,18 @@ export default function ClientDetail() {
                                             </PopoverContent>
                                         </Popover>
 
-                                        <Link to={`/servers?client_id=${client.id}`}>
+                                        <Link
+                                            to={`/servers?client_id=${client.id}`}
+                                        >
                                             <Button
                                                 variant="outline"
                                                 size="sm"
                                                 label="View All"
                                             />
                                         </Link>
-                                        <Link to={`/servers/create?client_id=${client.id}`}>
+                                        <Link
+                                            to={`/servers/create?client_id=${client.id}`}
+                                        >
                                             <Button
                                                 variant="outline"
                                                 size="sm"
@@ -869,12 +975,19 @@ export default function ClientDetail() {
                                 ) : filteredServers.length > 0 ? (
                                     <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
                                         {filteredServers.map((s) => (
-                                            <ServerCard key={s.id} server={s} clientId={client.id} />
+                                            <ServerCard
+                                                key={s.id}
+                                                server={s}
+                                                clientId={client.id}
+                                            />
                                         ))}
                                     </div>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2 bg-card border border-border/60 rounded-xl">
-                                        <Server size={28} className="opacity-20" />
+                                        <Server
+                                            size={28}
+                                            className="opacity-20"
+                                        />
                                         <p className="text-sm">
                                             No servers assigned to this client.
                                         </p>
@@ -909,7 +1022,9 @@ export default function ClientDetail() {
                             <Button
                                 variant="danger"
                                 label={
-                                    deleteClient.isPending ? "Deleting…" : "Delete"
+                                    deleteClient.isPending
+                                        ? "Deleting…"
+                                        : "Delete"
                                 }
                                 disabled={deleteClient.isPending}
                                 onClick={handleDelete}

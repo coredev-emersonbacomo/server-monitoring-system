@@ -7,12 +7,12 @@ use App\Data\DashboardStatsData;
 use App\Models\ActionItem;
 use App\Models\Client;
 use App\Models\Server;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Spatie\LaravelData\DataCollection;
 
 class DashboardController extends Controller
 {
-    public function stats(): JsonResponse
+    public function stats(): DashboardStatsData
     {
         // Total clients
         $totalClients = Client::count();
@@ -84,7 +84,7 @@ class DashboardController extends Controller
             ])
             ->toArray();
 
-        $data = new DashboardStatsData(
+        return new DashboardStatsData(
             total_clients:    $totalClients,
             total_servers:    $totalServers,
             online_count:     (int) ($statusCounts->online_count  ?? 0),
@@ -94,11 +94,9 @@ class DashboardController extends Controller
             top_usage_memory: $buildRanking('memory_usage'),
             top_usage_disk:   $buildRanking('storage'),
         );
-
-        return response()->json($data);
     }
 
-    public function actions(): JsonResponse
+    public function actions(): DataCollection
     {
         $user = request()->user();
         $isAdmin = $user->role_id === 1;
@@ -112,10 +110,10 @@ class DashboardController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json(ActionItemData::collect($actions));
+        return ActionItemData::collect($actions, DataCollection::class);
     }
 
-    public function claim(int $actionId): JsonResponse
+    public function claim(int $actionId): ActionItemData
     {
         $user = request()->user();
         $action = ActionItem::findOrFail($actionId);
@@ -127,10 +125,10 @@ class DashboardController extends Controller
         }
 
         $action->load('assignedUser');
-        return response()->json(ActionItemData::fromModel($action));
+        return ActionItemData::fromModel($action);
     }
 
-    public function updateStatus(int $actionId): JsonResponse
+    public function updateStatus(int $actionId): ActionItemData
     {
         $data = request()->validate([
             'status' => 'required|in:open,in_progress,completed',
@@ -145,10 +143,10 @@ class DashboardController extends Controller
         $action->update($updates);
 
         $action->load('assignedUser');
-        return response()->json(ActionItemData::fromModel($action));
+        return ActionItemData::fromModel($action);
     }
 
-    public function completed(): JsonResponse
+    public function completed(): DataCollection
     {
         $actions = ActionItem::with('assignedUser')
             ->where('status', 'completed')
@@ -156,7 +154,7 @@ class DashboardController extends Controller
             ->limit(50)
             ->get();
 
-        return response()->json(ActionItemData::collect($actions));
+        return ActionItemData::collect($actions, DataCollection::class);
     }
 
     /**

@@ -4,92 +4,76 @@ namespace App\Http\Controllers;
 
 use App\Data\ClientData;
 use App\Data\CreateClientData;
+use App\Data\ServerData;
 use App\Data\UpdateClientData;
+use App\Jobs\DeleteStorageAsset;
 use App\Models\Client;
-use App\Services\ImageReplacementService;
+use App\Services\MediaUrlService;
+use App\Services\UploadIntentService;
 use Illuminate\Http\JsonResponse;
+use Spatie\LaravelData\DataCollection;
 
 class ClientController extends Controller
 {
     public function __construct(
-        private readonly ImageReplacementService $imageReplacement,
+        private readonly UploadIntentService $uploadIntentService,
+        private readonly MediaUrlService $mediaUrlService,
     ) {}
 
-    public function index(): JsonResponse
+    public function index(): DataCollection
     {
         $clients = Client::withCount('servers')->get();
 
-        return response()->json(
-            $clients->map(fn(Client $client) => ClientData::from([
-                'id' => $client->id,
-                'name' => $client->name,
-                'description' => $client->description ?? '',
-                'location' => $client->location ?? '',
-                'email' => $client->email,
-                'contact_number' => (string) ($client->contact_number ?? ''),
-                'banner_image_url' => $client->banner_image_url,
-                'banner_image_public_id' => $client->banner_image_public_id,
-                'servers_count' => $client->servers_count,
-                'created_at' => $client->created_at?->toIso8601String() ?? '',
-                'updated_at' => $client->updated_at?->toIso8601String() ?? '',
-            ])),
+        return ClientData::collect(
+            $clients->map(fn(Client $client) => ClientData::fromModel($client)->toArray())->toArray(),
+            DataCollection::class,
         );
     }
 
-    public function store(CreateClientData $clientdata): JsonResponse
+    public function store(CreateClientData $clientdata): ClientData
     {
-        $client = Client::create([
+        $payload = [
             'name' => $clientdata->name,
             'description' => $clientdata->description ?? '',
             'location' => $clientdata->location,
             'email' => $clientdata->email,
             'contact_number' => $clientdata->contact_number,
-            'banner_image_url' => $clientdata->cloudinary_url ?? '',
-            'banner_image_public_id' => $clientdata->cloudinary_public_id ?? null,
-        ]);
+        ];
+
+        if ($clientdata->upload_intent_id !== null && $clientdata->banner_image_storage_key !== null) {
+            $intent = $this->uploadIntentService->attach(
+                $clientdata->upload_intent_id,
+                request()->user(),
+                $client = new Client(),
+                'client',
+            );
+
+            $payload['banner_image_storage_key'] = $clientdata->banner_image_storage_key;
+            $payload['banner_image_url'] = $this->mediaUrlService->clientBanner($clientdata->banner_image_storage_key);
+        }
+
+        $client = Client::create($payload);
+
+        if (isset($intent)) {
+            $intent->update([
+                'attached_to_type' => 'client',
+                'attached_to_id' => $client->id,
+            ]);
+        }
 
         $client->loadCount('servers');
 
-        return response()->json(
-            ClientData::from([
-                'id' => $client->id,
-                'name' => $client->name,
-                'description' => $client->description,
-                'location' => $client->location,
-                'email' => $client->email,
-                'contact_number' => (string) $client->contact_number,
-                'banner_image_url' => $client->banner_image_url,
-                'banner_image_public_id' => $client->banner_image_public_id,
-                'servers_count' => $client->servers_count,
-                'created_at' => $client->created_at?->toIso8601String() ?? '',
-                'updated_at' => $client->updated_at?->toIso8601String() ?? '',
-            ]),
-            201,
-        );
+        return ClientData::fromModel($client);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(int $id): ClientData
     {
         $client = Client::withCount('servers')->findOrFail($id);
 
-        return response()->json(
-            ClientData::from([
-                'id' => $client->id,
-                'name' => $client->name,
-                'description' => $client->description ?? '',
-                'location' => $client->location ?? '',
-                'email' => $client->email,
-                'contact_number' => (string) ($client->contact_number ?? ''),
-                'banner_image_url' => $client->banner_image_url,
-                'banner_image_public_id' => $client->banner_image_public_id,
-                'servers_count' => $client->servers_count,
-                'created_at' => $client->created_at?->toIso8601String() ?? '',
-                'updated_at' => $client->updated_at?->toIso8601String() ?? '',
-            ]),
-        );
+        return ClientData::fromModel($client);
     }
 
-    public function update(UpdateClientData $data, int $id): JsonResponse
+    public function update(UpdateClientData $data, int $id): ClientData
     {
         $client = Client::findOrFail($id);
 
@@ -101,66 +85,47 @@ class ClientController extends Controller
             'contact_number' => $data->contact_number,
         ];
 
-        if (!($data->cloudinary_url instanceof \Spatie\LaravelData\Optional) && $data->cloudinary_url !== null) {
-            $this->imageReplacement->handleReplacement(
-                newUrl: $data->cloudinary_url,
-                newPublicId: $data->cloudinary_public_id,
-                existingUrl: $client->banner_image_url,
-                existingPublicId: $client->banner_image_public_id,
+        if (!($data->upload_intent_id instanceof \Spatie\LaravelData\Optional) && $data->upload_intent_id !== null) {
+            $oldStorageKey = $client->banner_image_storage_key;
+            $oldFolder = config('uploads.purposes.client_banner.folder');
+
+            $intent = $this->uploadIntentService->attach(
+                $data->upload_intent_id,
+                request()->user(),
+                $client,
+                'client',
             );
 
-            $updatePayload['banner_image_url'] = $data->cloudinary_url;
-            $updatePayload['banner_image_public_id'] = $data->cloudinary_public_id ?? null;
+            $updatePayload['banner_image_storage_key'] = $data->banner_image_storage_key;
+            $updatePayload['banner_image_url'] = $this->mediaUrlService->clientBanner($data->banner_image_storage_key);
+
+            if ($oldStorageKey) {
+                DeleteStorageAsset::dispatch($oldStorageKey, $oldFolder);
+            }
         }
 
         $client->update($updatePayload);
         $client->loadCount('servers');
 
-        return response()->json(
-            ClientData::from([
-                'id' => $client->id,
-                'name' => $client->name,
-                'description' => $client->description,
-                'location' => $client->location,
-                'email' => $client->email,
-                'contact_number' => (string) $client->contact_number,
-                'banner_image_url' => $client->banner_image_url,
-                'banner_image_public_id' => $client->banner_image_public_id,
-                'servers_count' => $client->servers_count,
-                'created_at' => $client->created_at?->toIso8601String() ?? '',
-                'updated_at' => $client->updated_at?->toIso8601String() ?? '',
-            ]),
-        );
+        return ClientData::fromModel($client);
     }
 
-    public function servers(int $id): JsonResponse
+    public function servers(int $id): DataCollection
     {
         $client = Client::findOrFail($id);
-        $servers = $client->servers()->get()->map(fn ($s) => [
-            'id' => $s->id,
-            'client_id' => $s->client_id,
-            'server_name' => $s->server_name,
-            'device_name' => $s->device_name,
-            'internal_ip' => $s->internal_ip,
-            'external_ip' => $s->external_ip,
-            'cpu_cores' => $s->cpu_cores,
-            'ram' => $s->ram,
-            'operating_system' => $s->operating_system,
-            'created_at' => $s->created_at?->toIso8601String() ?? '',
-            'updated_at' => $s->updated_at?->toIso8601String() ?? '',
-        ]);
+        $servers = $client->servers()->get();
 
-        return response()->json($servers);
+        return ServerData::collect($servers);
     }
 
     public function destroy(int $id): JsonResponse
     {
         $client = Client::findOrFail($id);
 
-        $this->imageReplacement->handleDeletion(
-            url: $client->banner_image_url,
-            publicId: $client->banner_image_public_id,
-        );
+        if ($client->banner_image_storage_key) {
+            $folder = config('uploads.purposes.client_banner.folder');
+            DeleteStorageAsset::dispatch($client->banner_image_storage_key, $folder);
+        }
 
         $client->delete();
 

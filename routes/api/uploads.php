@@ -1,11 +1,12 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\UploadSignatureController;
+use App\Http\Controllers\Api\UploadIntentController;
 
 Route::middleware('auth:jwt')->group(function () {
-    Route::post('/uploads/profile-picture/signature', [UploadSignatureController::class, 'profilePicture'])
-        ->name('uploads.profile-picture.signature');
-    Route::post('/uploads/client-banner/signature', [UploadSignatureController::class, 'clientBanner'])
-        ->name('uploads.client-banner.signature');
+    Route::post('/upload-intents', [UploadIntentController::class, 'store'])
+        ->name('upload-intents.store')
+        ->middleware('throttle:30,1');
+    Route::get('/upload-intents/{uploadIntent}', [UploadIntentController::class, 'show'])
+        ->name('upload-intents.show');
 });

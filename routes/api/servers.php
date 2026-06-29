@@ -2,6 +2,7 @@
 
 use App\Data\ServerData;
 use App\Data\ServerUpdatesData;
+use App\Data\StatPointData;
 use App\Events\ServerStatsUpdated;
 use App\Http\Controllers\ServerController;
 use App\Models\Server;
@@ -48,7 +49,9 @@ Route::middleware('auth:jwt')->group(function () {
             $query->where('servers.client_id', $clientId);
         }
 
-        return response()->json($query->get());
+        return response()->json(
+            ServerData::collect($query->get()),
+        );
     });
 
     // Prefix client ex. {clients/1/servers/1}
@@ -108,7 +111,7 @@ Route::get('/servers/{id}', function (int $id) {
     $stats = [];
     $prev = null;
     foreach ($updates as $row) {
-        $stats[] = computeStatPoint($row, $prev);
+        $stats[] = StatPointData::from(computeStatPoint($row, $prev));
         $prev = $row;
     }
 

@@ -4,7 +4,7 @@ import { ArrowLeft, Loader2, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
-import jwtClient from "@/api/jwtClient";
+import api from "@/api/api";
 
 interface LogLine {
     text: string;
@@ -190,35 +190,35 @@ export default function CreateServer() {
         const serverName = `server-${ip.trim().replace(/\./g, "-")}`;
 
         try {
-            const response = await jwtClient.post(
-                `/clients/${clientId}/servers`,
-                {
+            const { data, error } = await api.POST("/clients/{client_id}/servers", {
+                params: { path: { client_id: clientId } },
+                body: {
                     server_name: serverName,
                     internal_ip: ip.trim(),
                     ssh_username: username.trim(),
                     ssh_password: password,
-                },
-            );
+                } as never,
+            });
 
-            const server = response.data as { id: number };
+            if (error) throw error;
+            const server = data as { id: number };
             setCreatedId(server.id);
         } catch (err: unknown) {
-            const axiosErr = err as {
-                response?: { data?: Record<string, unknown> };
-            } | undefined;
-            const errData = axiosErr?.response?.data;
-            if (errData?.errors) {
+            const apiErr = err as {
+                errors?: Record<string, string[]>;
+                message?: string;
+            };
+            const errData = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
+            const errorBody = apiErr?.errors || (errData as Record<string, unknown>)?.errors as Record<string, string[]> | undefined;
+            const errorMessage = apiErr?.message || (errData as Record<string, unknown>)?.message as string | undefined;
+            if (errorBody) {
                 const mapped: Record<string, string> = {};
-                for (const [k, v] of Object.entries(
-                    errData.errors as Record<string, string[]>,
-                )) {
+                for (const [k, v] of Object.entries(errorBody)) {
                     mapped[k] = Array.isArray(v) ? v[0] : String(v);
                 }
                 setErrors(mapped);
             } else {
-                toast.error(
-                    (errData?.message as string) ?? "Failed to create server.",
-                );
+                toast.error(errorMessage ?? "Failed to create server.");
             }
             setPhase("error");
         }
