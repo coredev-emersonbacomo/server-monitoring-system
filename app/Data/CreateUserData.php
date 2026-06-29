@@ -21,7 +21,7 @@ class CreateUserData extends Data
         #[Required,Email, Max(255), Unique('users', 'email')]
         public string $email,
 
-        #[Required,Min(11),Max(255), Unique('users', 'phone_number')]
+        #[Required,Min(11),Max(255), Unique('users', 'contact_number')]
         public string $phone_number,
 
         #[Required, Max(255), Unique('users', 'username')]

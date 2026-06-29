@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserCircle, Monitor, ChevronRight, Loader2 } from "lucide-react";
+import { UserCircle, Monitor, ChevronRight, Loader2, Settings as SettingsIcon } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 
@@ -48,6 +48,12 @@ function Settings() {
             icon: Monitor,
             href: "/settings/sessions",
         },
+        {
+            title: "System Settings",
+            description: "Manage the system settings and preferences.",
+            icon: SettingsIcon,
+            href: "/settings/system",
+        }
     ];
 
     return (
