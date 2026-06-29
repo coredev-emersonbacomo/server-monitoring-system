@@ -8,6 +8,9 @@ use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Min;
 use Spatie\LaravelData\Attributes\Validation\Nullable;
 use Spatie\LaravelData\Attributes\Validation\Sometimes;
+use Spatie\LaravelData\Attributes\Validation\Unique;
+use Spatie\LaravelData\Attributes\Validation\Required;
+
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Optional;
 
@@ -23,14 +26,11 @@ class UpdateUserData extends Data
         #[Sometimes, Email, Max(255)]
         public string|Optional $email,
 
-        #[Required, Min(11), Max(255), Unique('users', 'contact_number')]
-        public string $contact_number,
+        #[Required, Min(11),Unique('users', 'contact_number')]
+        public string $phone_number,
 
         #[Sometimes, Max(255)]
         public string|Optional $username,
-
-        #[Sometimes]
-        public int|Optional $role_id,
 
         #[Sometimes, Nullable, Min(8), Confirmed]
         public string|Optional|null $password,

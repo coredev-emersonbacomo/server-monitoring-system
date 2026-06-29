@@ -9,7 +9,6 @@ interface UpdateProfileInput {
     lastName: string;
     email: string;
     username: string;
-    roleId: number;
     status: string;
     password?: string;
     passwordConfirmation?: string;
@@ -43,7 +42,6 @@ export function useUpdateProfile() {
                 last_name: input.lastName,
                 email: input.email,
                 username: input.username,
-                role_id: input.roleId,
                 status: input.status,
             };
 

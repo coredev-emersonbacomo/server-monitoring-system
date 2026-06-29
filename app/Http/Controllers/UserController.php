@@ -21,7 +21,7 @@ class UserController extends Controller
 
     public function index()
     {
-        $users = User::with('role')->get();
+        $users = User::all();
 
         return $users->map(fn(User $u) => UserData::fromModel($u));
     }
@@ -32,9 +32,8 @@ class UserController extends Controller
             'first_name' => $data->first_name,
             'last_name'  => $data->last_name,
             'email'      => $data->email,
-            'contact_number' => $data->contact_number,
+            'contact_number' => $data->phone_number,
             'username'   => $data->username,
-            'role_id'    => $data->role_id,
             'password'   => Hash::make($data->password),
         ];
 
@@ -59,12 +58,12 @@ class UserController extends Controller
             ]);
         }
 
-        return UserData::fromModel($user->load('role'))->toResponse(request())->setStatusCode(201);
+        return UserData::fromModel($user)->toResponse(request())->setStatusCode(201);
     }
 
     public function show(User $user): UserData
     {
-        return UserData::fromModel($user->load('role'));
+        return UserData::fromModel($user);
     }
 
     public function update(UpdateUserData $data, User $user)
@@ -80,14 +79,11 @@ class UserController extends Controller
         if (!($data->email instanceof \Spatie\LaravelData\Optional)) {
             $payload['email'] = $data->email;
         }
-        if(!($data->contact_number instanceof \Spatie\LaravelData\Optional)) {
-            $payload['contact_number'] = $data->contact_number;
+        if(!($data->phone_number instanceof \Spatie\LaravelData\Optional)) {
+            $payload['contact_number'] = $data->phone_number;
         }
         if (!($data->username instanceof \Spatie\LaravelData\Optional)) {
             $payload['username'] = $data->username;
-        }
-        if (!($data->role_id instanceof \Spatie\LaravelData\Optional)) {
-            $payload['role_id'] = $data->role_id;
         }
         if (!($data->password instanceof \Spatie\LaravelData\Optional) && $data->password !== null) {
             $payload['password'] = Hash::make($data->password);
@@ -114,7 +110,7 @@ class UserController extends Controller
 
         $user->update($payload);
 
-        return UserData::fromModel($user->load('role'));
+        return UserData::fromModel($user);
     }
 
     public function destroy(User $user): JsonResponse
@@ -125,7 +121,6 @@ class UserController extends Controller
         }
 
         $user->delete();
-
         return response()->json(null, 204);
     }
 }

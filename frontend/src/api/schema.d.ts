@@ -136,6 +136,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/broadcasting/auth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Authenticate the request for channel access */
+        get: operations["broadcast.authenticate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/clients": {
         parameters: {
             query?: never;
@@ -177,8 +194,40 @@ export interface paths {
         };
         get: operations["client.servers"];
         put?: never;
-        post?: never;
+        post: operations["client.initializeServer"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clients/{id}/secops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["client.secops"];
+        put?: never;
+        post: operations["client.addSecop"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clients/{id}/secops/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["client.removeSecop"];
         options?: never;
         head?: never;
         patch?: never;
@@ -504,6 +553,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Return all settings as a key-value map */
+        get: operations["setting.index"];
+        /**
+         * Bulk-update settings for authenticated users.
+         *     Accepts: { "secop_limit_per_client": "3", ... }
+         */
+        put: operations["setting.update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/upload-intents": {
         parameters: {
             query?: never;
@@ -586,18 +656,6 @@ export interface components {
             assigned_to_name?: string | null;
             status: string;
         };
-        /** AuthAuditLogResource */
-        AuthAuditLogResource: {
-            id: number;
-            user_id: number | null;
-            session_uuid: string | null;
-            event_type: string;
-            ip_address: string | null;
-            user_agent: string | null;
-            metadata: unknown[] | null;
-            created_at: string;
-            created_at_timestamp: string;
-        };
         /** AuthUserData */
         AuthUserData: {
             id: number;
@@ -605,10 +663,9 @@ export interface components {
             last_name: string;
             email: string;
             username: string;
-            contact_number: string;
+            phone_number: string;
             last_login?: string | null;
             profile_picture_url: string;
-            role: "Admin" | "User" | "SecOps";
         };
         /** ClientData */
         ClientData: {
@@ -618,10 +675,7 @@ export interface components {
             location: string;
             email: string;
             contact_number: string;
-            banner_image_path?: string | null;
             banner_image_url: string;
-            banner_image_public_id?: string | null;
-            banner_image_storage_key?: string | null;
             servers_count: number;
             created_at: string;
             updated_at: string;
@@ -652,19 +706,55 @@ export interface components {
                 value: number;
             }[];
         };
-        /** LoginRequest */
-        LoginRequest: {
+        /** SecopsUserData */
+        SecopsUserData: {
+            id: number;
+            first_name: string;
+            last_name: string;
             email: string;
-            password: string;
-            remember?: boolean;
+            username: string;
+            contact_number?: string | null;
+            profile_picture_url?: string | null;
+        };
+        /** SecurityActivityData */
+        SecurityActivityData: {
+            id: number;
+            event_type: string;
+            ip_address?: string | null;
+            created_at?: string | null;
+            created_at_timestamp?: string | null;
+            metadata?: string | null;
+        };
+        /** Server */
+        Server: {
+            id: number;
+            uuid: string;
+            client_id: number;
+            server_name: string;
+            device_name: string;
+            internal_ip: string;
+            external_ip: string;
+            port: number;
+            ssh_username: string | null;
+            api_key: string;
+            cpu_cores: number | null;
+            ram: number | null;
+            operating_system: string | null;
+            record_status: string;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
         };
         /** ServerData */
         ServerData: {
             server_name: string;
             /** Format: ipv4 */
             internal_ip: string;
+            /** Format: ipv4 */
+            external_ip: string | null;
+            port: number | null;
             device_name?: string | null;
-            external_ip?: string | null;
             ssh_username?: string | null;
             ssh_password?: string | null;
             cpu_cores?: number | null;
@@ -676,28 +766,6 @@ export interface components {
             last_seen?: string | null;
             status?: string | null;
             stats?: components["schemas"]["StatPointData"][];
-        };
-        /** SessionResource */
-        SessionResource: {
-            session_uuid: string;
-            device_name: string;
-            device_type: string;
-            browser: string;
-            operating_system: string;
-            ip_address: string;
-            remember_me: string;
-            last_activity_at: string;
-            last_activity_at_timestamp: string;
-            created_at: string;
-            created_at_timestamp: string;
-            current_session: boolean;
-            status: string;
-            compromised: string;
-            compromised_at: string;
-            compromised_at_timestamp: string;
-            compromise_reason: string;
-            revoked_at: string;
-            revoked_at_timestamp: string;
         };
         /** StatPointData */
         StatPointData: {
@@ -724,40 +792,18 @@ export interface components {
             last_name: string;
             email: string;
             username: string;
-            contact_number: string;
+            phone_number: string;
             last_login?: string | null;
             profile_picture_url: string;
             profile_picture_storage_key: string;
-            status: string;
-            role: "Admin" | "User" | "SecOps";
+            record_status?: string | null;
             /** Format: date-time */
             created_at?: string | null;
             /** Format: date-time */
             updated_at?: string | null;
         };
-        /**
-         * UserRole
-         * @enum {string}
-         */
-        UserRole: "Admin" | "User" | "SecOps";
     };
     responses: {
-        /** @description Validation error */
-        ValidationException: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": {
-                    /** @description Errors overview. */
-                    message: string;
-                    /** @description A detailed description of each field that failed validation. */
-                    errors: {
-                        [key: string]: string[];
-                    };
-                };
-            };
-        };
         /** @description Unauthenticated */
         AuthenticationException: {
             headers: {
@@ -782,6 +828,22 @@ export interface components {
                 };
             };
         };
+        /** @description Validation error */
+        ValidationException: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /** @description Errors overview. */
+                    message: string;
+                    /** @description A detailed description of each field that failed validation. */
+                    errors: {
+                        [key: string]: string[];
+                    };
+                };
+            };
+        };
         /** @description Authorization error */
         AuthorizationException: {
             headers: {
@@ -802,6 +864,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "broadcast.authenticate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
     "client.index": {
         parameters: {
             query?: never;
@@ -831,7 +913,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": {
+                "application/json": {
                     name: string;
                     location: string;
                     email: string;
@@ -957,6 +1039,114 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
+    "client.initializeServer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Initialize server for this client */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "client.secops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecopsUserData"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "client.addSecop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Must exist in `users`. */
+                    user_id: number;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "SecOps added successfully";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        error: "User already assigned to this client";
+                    };
+                };
+            };
+        };
+    };
+    "client.removeSecop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                userId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
     "dashboard.stats": {
         parameters: {
             query?: never;
@@ -1073,7 +1263,11 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["LoginRequest"];
+                "application/json": {
+                    email: string;
+                    password: string;
+                    remember?: boolean | null;
+                };
             };
         };
         responses: {
@@ -1082,12 +1276,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": Record<string, never>;
                 };
             };
-            422: components["responses"]["ValidationException"];
         };
     };
     "jwtAuth.refresh": {
@@ -1104,20 +1295,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    } | string;
-                };
-            };
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "No refresh token provided.";
-                    };
+                    "application/json": Record<string, never>;
                 };
             };
         };
@@ -1237,13 +1415,20 @@ export interface operations {
             };
         };
         responses: {
-            /** @description `ServerData` */
-            200: {
+            /** @description Return the logs for installation */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ServerData"];
+                    "application/json": {
+                        success: boolean;
+                        log: {
+                            wget: string;
+                            install: string;
+                        };
+                        data: components["schemas"]["Server"];
+                    };
                 };
             };
             /** @description An error */
@@ -1262,6 +1447,18 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "error";
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "server.show": {
@@ -1466,7 +1663,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: components["schemas"]["SessionResource"][];
+                        data: string;
                     };
                 };
             };
@@ -1587,7 +1784,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: components["schemas"]["AuthAuditLogResource"][];
+                        data: components["schemas"]["SecurityActivityData"][];
                     };
                 };
             };
@@ -1614,6 +1811,57 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "setting.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown[];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "setting.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown[];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Forbidden.";
+                    };
+                };
+            };
         };
     };
     "upload-intents.store": {
@@ -1737,10 +1985,9 @@ export interface operations {
                      */
                     email: string;
                     /** @description Must be unique in `users`. */
-                    contact_number: string;
+                    phone_number: string;
                     /** @description Must be unique in `users`. */
                     username: string;
-                    role_id: number;
                     /** @description Must be confirmed by a matching `_confirmation` field. */
                     password: string;
                     password_confirmation: string;
@@ -1767,7 +2014,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The user ID */
-                user: number;
+                user: string;
             };
             cookie?: never;
         };
@@ -1792,7 +2039,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The user ID */
-                user: number;
+                user: string;
             };
             cookie?: never;
         };
@@ -1803,9 +2050,9 @@ export interface operations {
                     last_name?: string;
                     /** Format: email */
                     email?: string;
-                    contact_number: string;
+                    /** @description Must be unique in `users`. */
+                    phone_number: string;
                     username?: string;
-                    role_id?: number;
                     /** @description Must be confirmed by a matching `_confirmation` field. */
                     password?: string | null;
                     password_confirmation?: string | null;
@@ -1834,7 +2081,7 @@ export interface operations {
             header?: never;
             path: {
                 /** @description The user ID */
-                user: number;
+                user: string;
             };
             cookie?: never;
         };

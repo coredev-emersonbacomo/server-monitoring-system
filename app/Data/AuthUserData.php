@@ -2,7 +2,6 @@
 
 namespace App\Data;
 
-use App\Enums\UserRole;
 use App\Models\User;
 use Spatie\LaravelData\Data;
 
@@ -14,10 +13,9 @@ class AuthUserData extends Data
         public string $last_name,
         public string $email,
         public string $username,
-        public string $contact_number,
+        public string $phone_number,
         public ?string $last_login,
         public string $profile_picture_url,
-        public UserRole $role,
     ) {}
 
     public static function fromModel(User $user): self
@@ -28,10 +26,9 @@ class AuthUserData extends Data
             last_name: $user->last_name,
             email: $user->email,
             username: $user->username,
-            contact_number: $user->contact_number,
+            phone_number: $user->phone_number,
             last_login: $user->last_login,
             profile_picture_url: $user->profile_picture_url,
-            role: UserRole::from($user->role->role_name),
         );
     }
 }

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Data\AddSecopData;
 use App\Data\ClientData;
 use App\Data\CreateClientData;
+use App\Data\SecopsUserData;
 use App\Data\ServerData;
 use App\Data\UpdateClientData;
 use App\Jobs\DeleteStorageAsset;
@@ -11,7 +13,6 @@ use App\Models\Client;
 use App\Services\MediaUrlService;
 use App\Services\UploadIntentService;
 use Illuminate\Http\JsonResponse;
-use Spatie\LaravelData\DataCollection;
 
 class ClientController extends Controller
 {
@@ -20,14 +21,12 @@ class ClientController extends Controller
         private readonly MediaUrlService $mediaUrlService,
     ) {}
 
-    public function index(): DataCollection
+    /** @return ClientData[] */
+    public function index(): array
     {
         $clients = Client::withCount('servers')->get();
 
-        return ClientData::collect(
-            $clients->map(fn(Client $client) => ClientData::fromModel($client)->toArray())->toArray(),
-            DataCollection::class,
-        );
+        return $clients->map(fn(Client $client) => ClientData::fromModel($client))->toArray();
     }
 
     public function store(CreateClientData $clientdata): ClientData
@@ -110,12 +109,13 @@ class ClientController extends Controller
         return ClientData::fromModel($client);
     }
 
-    public function servers(int $id): DataCollection
+    /** @return ServerData[] */
+    public function servers(int $id): array
     {
         $client = Client::findOrFail($id);
         $servers = $client->servers()->get();
 
-        return ServerData::collect($servers);
+        return ServerData::collect($servers)->toArray();
     }
 
     public function destroy(int $id): JsonResponse
@@ -130,5 +130,41 @@ class ClientController extends Controller
         $client->delete();
 
         return response()->json(null, 204);
+    }
+
+    /** @return SecopsUserData[] */
+    public function secops(int $id): array
+    {
+        $client = Client::findOrFail($id);
+
+        return SecopsUserData::collect($client->secopclients()->get())->toArray();
+    }
+
+    public function addSecop(AddSecopData $data, int $id): JsonResponse
+    {
+        $client = Client::findOrFail($id);
+
+        if ($client->secopclients()->where('user_id', $data->user_id)->exists()) {
+            return response()->json(['error' => 'User already assigned to this client'], 409);
+        }
+
+        $client->secopclients()->attach($data->user_id);
+
+        return response()->json(['message' => 'SecOps added successfully'], 201);
+    }
+
+    public function removeSecop(int $id, int $userId): JsonResponse
+    {
+        $client = Client::findOrFail($id);
+        $client->secopclients()->detach($userId);
+
+        return response()->json(null, 204);
+    }
+
+    public function initializeServer(int $id): JsonResponse
+    {
+        $client = Client::findOrFail($id);
+        // Initialize server for this client
+        return response()->json(null, 200);
     }
 }

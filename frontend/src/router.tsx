@@ -5,7 +5,6 @@ import { ProtectedRoute } from "./layouts/ProtectedRoute";
 import { GuestLayout } from "./layouts/GuestLayout";
 import Clients from "./pages/clients/index";
 import UsersIndex from "./pages/users/index";
-import UserDetail from "./pages/userDetail";
 import ClientDetail from "./pages/clients/clientDetail";
 import Logs from "./pages/logs";
 import ServerLayout from "./layouts/ServerLayout";
@@ -16,6 +15,8 @@ import RootLayout from "./layouts/RootLayout";
 import Settings from "./pages/settings";
 import Sessions from "./pages/settings/sessions";
 import Profile from "./pages/settings/profile";
+import UserDetail from "./pages/users/userDetail";
+import SystemSettings from "./pages/settings/system";
 
 const router = createBrowserRouter([
     {
@@ -89,6 +90,10 @@ const router = createBrowserRouter([
                     {
                         path: "/settings/sessions",
                         element: <Sessions />,
+                    },
+                    {
+                        path: "/settings/system",
+                        element: <SystemSettings />,
                     },
                     {
                         path: "/profile",

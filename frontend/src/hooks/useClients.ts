@@ -94,3 +94,53 @@ export const useDeleteClient = () => {
         },
     });
 };
+
+export const useClientSecops = (clientId: number) => {
+    return useQuery({
+        queryKey: ["clients", clientId, "secops"],
+        queryFn: async () => {
+            const { data, error } = await api.GET("/clients/{id}/secops", {
+                params: { path: { id: clientId } },
+            });
+            if (error) throw error;
+            return data ?? [];
+        },
+        enabled: !!clientId,
+    });
+};
+
+export const useAddClientSecop = (clientId: number) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (userId: number) => {
+            const { data, error } = await api.POST("/clients/{id}/secops", {
+                params: { path: { id: clientId } },
+                body: { user_id: userId },
+            });
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["clients", clientId, "secops"] });
+            queryClient.invalidateQueries({ queryKey: ["clients", clientId] });
+        },
+    });
+};
+
+export const useRemoveClientSecop = (clientId: number) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (userId: number) => {
+            const { error } = await api.DELETE("/clients/{id}/secops/{userId}", {
+                params: { path: { id: clientId, userId } },
+            });
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["clients", clientId, "secops"] });
+            queryClient.invalidateQueries({ queryKey: ["clients", clientId] });
+        },
+    });
+};

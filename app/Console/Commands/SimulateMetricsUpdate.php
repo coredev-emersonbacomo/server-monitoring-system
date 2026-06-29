@@ -44,14 +44,14 @@ class SimulateMetricsUpdate extends Command
 
             if ($randomStatus === 'offline') {
                 $server->update([
-                    'status' => 'offline',
+                    'record_status' => 'offline',
                 ]);
 
                 continue;
             }
 
             $server->update([
-                'status' => 'online',
+                'record_status' => 'online',
                 'cpu_cores' => $server->cpu_cores ?? $cpuOptions[array_rand($cpuOptions)],
                 'ram' => $server->ram ?? $ramOptions[array_rand($ramOptions)],
                 'operating_system' => $server->operating_system ?? $operatingSystems[array_rand($operatingSystems)],

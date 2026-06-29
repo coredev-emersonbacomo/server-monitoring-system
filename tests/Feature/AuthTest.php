@@ -11,13 +11,9 @@ beforeEach(function () {
     config(['jwt.secret' => 'test-secret-key-32-chars-long-for-testing!']);
     $this->jwtService = new JwtService;
 
-    // Seed a role first
-    \Illuminate\Support\Facades\DB::table('roles')->insert(['role_name' => 'Admin']);
-
     $this->user = User::factory()->create([
         'email' => 'test@example.com',
         'password' => bcrypt('password123'),
-        'role_id' => 1,
     ]);
 });
 

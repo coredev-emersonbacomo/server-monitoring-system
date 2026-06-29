@@ -13,7 +13,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import TopBarNav from "@/components/TopBarNav";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { Toaster } from "sonner";
-import { UserRoles } from "@/types/user-role";
 
 export function ProtectedRoute() {
     const { user, isLoading } = useJwtAuth();
@@ -28,9 +27,7 @@ export function ProtectedRoute() {
                 <Landmark {...props} strokeWidth="1.75" />
             ),
         },
-        ...(user?.role === UserRoles.Admin
-            ? [{ name: "Users", href: "/users", icon: Users }]
-            : []),
+        { name: "Users", href: "/users", icon: Users },
         { name: "Logs", href: "/logs", icon: ClipboardClock },
         { name: "Settings", href: "/settings", icon: Settings },
     ];

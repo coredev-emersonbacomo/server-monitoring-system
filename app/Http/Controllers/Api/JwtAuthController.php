@@ -79,7 +79,7 @@ class JwtAuthController extends Controller
         $responseData = LoginResponseData::fromAuth(
             accessToken: $accessToken,
             expiresIn: config('jwt.access_ttl', 15) * 60,
-            user: AuthUserData::fromModel($user->load('role')),
+            user: AuthUserData::fromModel($user),
             session: $session,
         );
 
@@ -182,7 +182,7 @@ class JwtAuthController extends Controller
             ]);
         }
 
-        return AuthUserData::fromModel($user->load('role'));
+        return AuthUserData::fromModel($user);
     }
 
     private function ensureIsNotRateLimited(Request $request): void

@@ -43,7 +43,7 @@ class UploadIntentService
     public function attach(
         string $intentId,
         User $user,
-        Model $entity,
+        ?Model $entity,
         string $entityType,
     ): UploadIntent {
         $intent = UploadIntent::findOrFail($intentId);
@@ -53,7 +53,7 @@ class UploadIntentService
         $intent->update([
             'status' => UploadIntentStatus::ATTACHED,
             'attached_to_type' => $entityType,
-            'attached_to_id' => $entity->getKey(),
+            'attached_to_id' => $entity?->getKey(),
             'attached_at' => now(),
         ]);
 
