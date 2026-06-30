@@ -274,25 +274,34 @@ class ServerController extends Controller
         ];
     }
 
-    public function uninstallServer(ServerSshData $data): array
+    public function uninstallServer(Request $request): array
     {
-        $server = Server::where('uuid', $data->serverId)
-            ->first(['id', 'ssh_password', 'ssh_username']);
+        // 1. Validate that the UUID is provided in the POST request
+        $validated = $request->validate([
+            'uuid' => ['required', 'uuid'],
+        ]);
 
-        if (is_null($server)) {
-            throw (new \Illuminate\Database\Eloquent\ModelNotFoundException)
-                ->setModel(Server::class, [$data->serverId]);
-        }
+        // 2. Fetch all required connection parameters directly from the DB
+        // Assuming columns are named 'id', 'external_ip', 'port', 'ssh_username', 'ssh_password', 'api_key'
+        $server = Server::where('uuid', $validated['uuid'])
+            ->firstOrFail([
+                'id',
+                'external_ip',
+                'port',
+                'ssh_username',
+                'ssh_password',
+                'api_key'
+            ]);
 
         try {
-            $log = DB::transaction(function() use ($server, $data) {
+            $log = DB::transaction(function () use ($server) {
                 $installer = new InstallerService(
-                    sshHost: $data->sshHost,
-                    sshPort: $data->sshPort,
+                    sshHost: $server->sshHost,
+                    sshPort: $server->sshPort,
                     sshUser: Crypt::decryptString($server->ssh_username),
                     sshPassword: Crypt::decryptString($server->ssh_password),
                     serverId: (string) $server->id,
-                    apiToken: $data->apiToken,
+                    apiToken: $server->apiToken,
                 );
 
                 $log = $installer->uninstall();
