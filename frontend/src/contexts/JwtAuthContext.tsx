@@ -97,17 +97,19 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
         const init = async () => {
             setIsLoading(true);
 
-            try {
-                const access_token = await refreshAccessToken();
-                if (access_token) {
-                    await refreshUser();
+            if (window.location.pathname !== "/login") {
+                try {
+                    const access_token = await refreshAccessToken();
+                    if (access_token) {
+                        await refreshUser();
+                    }
+                } catch {
+                    // user stays null (initial state)
                 }
-            } catch {
-                // user stays null (initial state)
-            } finally {
-                if (mountedRef.current) {
-                    setIsLoading(false);
-                }
+            }
+
+            if (mountedRef.current) {
+                setIsLoading(false);
             }
         };
 

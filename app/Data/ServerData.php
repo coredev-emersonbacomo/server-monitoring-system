@@ -15,9 +15,9 @@ class ServerData extends Data
 
         public string $external_ip,
 
-        public ?int $ssh_port = null,
-
         public string $device_name,
+
+        public ?int $ssh_port = null,
 
         public ?string $ssh_username = null,
 

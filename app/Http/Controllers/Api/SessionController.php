@@ -28,7 +28,7 @@ class SessionController extends Controller
         $currentSessionUuid = auth('jwt')->getSessionUuid();
 
         return [
-            'data' => $sessions->map(fn(UserSession $s) => SessionData::fromModel($s, $currentSessionUuid)),
+            'data' => array_map(fn(UserSession $s) => SessionData::fromModel($s, $currentSessionUuid), $sessions),
         ];
     }
 

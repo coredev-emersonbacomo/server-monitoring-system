@@ -347,8 +347,8 @@ export default function CreateServer() {
         setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: "pending" })));
         setCurrentStep(-1);
 
-        const { data, error } = await api.POST("/clients/{client}/servers", {
-            params: { path: { client: clientUuid } },
+        const { data, error } = await api.POST("/clients/{clientUuid}/servers", {
+            params: { path: { clientUuid: clientUuid } },
             body: {
                 server_name: form.serverName.trim(),
                 external_ip: form.ip.trim(),
@@ -366,7 +366,7 @@ export default function CreateServer() {
             apiResolved.current = true;
             apiSuccess.current = false;
         } else {
-            setCreatedUuid(data?.data?.uuid ?? null);
+            setCreatedUuid(data?.uuid ?? null);
             apiResolved.current = true;
             apiSuccess.current = true;
         }
