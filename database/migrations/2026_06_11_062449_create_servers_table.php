@@ -23,8 +23,9 @@ return new class extends Migration
             $table->string('external_ip');
             $table->integer('ssh_port')->default(22);
 
-            $table->string('ssh_username')->nullable();
-            $table->text('ssh_password')->nullable();
+            // SSH details
+            $table->string('ssh_username');
+            $table->text('ssh_password');
 
             // API Key
             $table->string('api_key');
