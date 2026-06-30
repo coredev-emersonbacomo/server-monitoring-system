@@ -32,8 +32,8 @@ class CreateUserData extends Data
 
         public string $password_confirmation,
 
-        public ?string $cloudinary_url = null,
+        public ?string $upload_intent_id = null,
 
-        public ?string $cloudinary_public_id = null,
+        public ?string $profile_picture_storage_key = null,
     ) {}
 }

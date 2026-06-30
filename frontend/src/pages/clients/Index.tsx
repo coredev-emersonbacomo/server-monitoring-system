@@ -26,9 +26,9 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { components } from "@/api/schema";
+import IndexHeader from "@/components/IndexHeader";
+import type { ClientData } from "@/types/models";
 
-type ClientData = components["schemas"]["ClientData"];
 type FilterTab = "all" | "with-servers" | "no-servers";
 
 // How many cards to reveal per "page". Tune freely.
@@ -73,7 +73,7 @@ function ClientCard({
             to={`/clients/${client.id}`}
             className="block rounded-lg transition-transform duration-200 hover:-translate-y-1"
         >
-            <div className="relative w-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans gap-3 transition-shadow hover:shadow-md h-72 justify-center">
+            <div className="relative size-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans gap-3 transition-shadow hover:shadow-md">
                 <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
                     <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                         <span
@@ -143,7 +143,7 @@ function ClientCard({
 // layout fully CSS-driven (auto-fill) while the virtualiser only mounts the
 // rows currently in view.
 
-function useColumnCount(containerRef: React.RefObject<HTMLDivElement>) {
+function useColumnCount(containerRef: React.RefObject<HTMLDivElement | null>) {
     const [cols, setCols] = useState(3);
 
     useEffect(() => {
@@ -210,7 +210,7 @@ function VirtualGrid({
                 }
             },
             {
-                root: scroller,   // ← key: observe relative to the scroll container
+                root: scroller, // ← key: observe relative to the scroll container
                 threshold: 0.1,
             },
         );
@@ -322,13 +322,27 @@ export default function Clients() {
     }, [filtered.length]);
 
     // ── Filter options ─────────────────────────────────────────────────────────
-    const clientsWithServers = clients?.filter((c) => c.servers_count > 0).length ?? 0;
-    const clientsWithoutServers = clients?.filter((c) => c.servers_count === 0).length ?? 0;
+    const clientsWithServers =
+        clients?.filter((c) => c.servers_count > 0).length ?? 0;
+    const clientsWithoutServers =
+        clients?.filter((c) => c.servers_count === 0).length ?? 0;
 
     const filterOptions = [
-        { label: "All", value: "all" as FilterTab, count: clients?.length ?? 0 },
-        { label: "With Servers", value: "with-servers" as FilterTab, count: clientsWithServers },
-        { label: "No Servers", value: "no-servers" as FilterTab, count: clientsWithoutServers },
+        {
+            label: "All",
+            value: "all" as FilterTab,
+            count: clients?.length ?? 0,
+        },
+        {
+            label: "With Servers",
+            value: "with-servers" as FilterTab,
+            count: clientsWithServers,
+        },
+        {
+            label: "No Servers",
+            value: "no-servers" as FilterTab,
+            count: clientsWithoutServers,
+        },
     ];
 
     const currentFilterLabel =
@@ -336,28 +350,13 @@ export default function Clients() {
 
     return (
         <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
-            {/* ── Header ── */}
-            <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
-                <div>
-                    <div className="flex items-start justify-between gap-4 py-3">
-                        <div className="flex items-start gap-3">
-                            <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
-                                <Landmark className="w-5 h-5 text-primary" />
-                            </div>
-                            <div>
-                                <h1 className="text-lg font-semibold tracking-tight">
-                                    Client Management
-                                </h1>
-                                <p className="text-sm text-muted-foreground mt-0.5">
-                                    Manage client accounts and their associated servers.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
+            <IndexHeader
+                icon={Landmark}
+                title="Client Management"
+                description="Manage client accounts and their associated servers."
+            />
 
-            <main className="py-6 w-full flex-1 min-h-0 overflow-hidden flex flex-col gap-5">
+            <main className="py-6 w-full flex-1 min-h-0 flex flex-col gap-5">
                 {/* ── Toolbar ── */}
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -434,7 +433,8 @@ export default function Clients() {
                 {/* ── Count label ── */}
                 {!isLoading && !isError && (
                     <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
-                        {filtered.length} client{filtered.length !== 1 ? "s" : ""}
+                        {filtered.length} client
+                        {filtered.length !== 1 ? "s" : ""}
                         {visibleCount < filtered.length && (
                             <span className="normal-case ml-1 opacity-60">
                                 — showing {visibleCount}
@@ -512,16 +512,26 @@ export default function Clients() {
                             </DialogClose>
                             <Button
                                 variant="danger"
-                                label={deleteClient.isPending ? "Deleting…" : "Delete"}
+                                label={
+                                    deleteClient.isPending
+                                        ? "Deleting…"
+                                        : "Delete"
+                                }
                                 disabled={deleteClient.isPending}
                                 onClick={async () => {
                                     if (!deleting) return;
                                     try {
-                                        await deleteClient.mutateAsync(deleting.id);
-                                        toast.success(`${deleting.name} has been deleted.`);
+                                        await deleteClient.mutateAsync(
+                                            deleting.id,
+                                        );
+                                        toast.success(
+                                            `${deleting.name} has been deleted.`,
+                                        );
                                         setDeleting(null);
                                     } catch {
-                                        toast.error("Failed to delete client. Please try again.");
+                                        toast.error(
+                                            "Failed to delete client. Please try again.",
+                                        );
                                     }
                                 }}
                             />

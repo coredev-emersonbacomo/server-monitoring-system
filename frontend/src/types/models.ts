@@ -4,27 +4,27 @@
 import type { components, operations } from "@/api/schema";
 
 export type ActionItemData = components["schemas"]["ActionItemData"];
-export type AuthAuditLogResource = components["schemas"]["AuthAuditLogResource"];
 export type AuthUserData = components["schemas"]["AuthUserData"];
 export type ClientData = components["schemas"]["ClientData"];
 export type DashboardStatsData = components["schemas"]["DashboardStatsData"];
-export type LoginRequest = components["schemas"]["LoginRequest"];
+export type SecopsUserData = components["schemas"]["SecopsUserData"];
+export type SecurityActivityData = components["schemas"]["SecurityActivityData"];
 export type Server = components["schemas"]["Server"];
 export type ServerData = components["schemas"]["ServerData"];
-export type SessionResource = components["schemas"]["SessionResource"];
-export type UploadSignatureData = components["schemas"]["UploadSignatureData"];
-export type UploadSignatureRequest = components["schemas"]["UploadSignatureRequest"];
+export type StatPointData = components["schemas"]["StatPointData"];
+export type StoreUploadIntentRequest = components["schemas"]["StoreUploadIntentRequest"];
+export type UploadPurpose = components["schemas"]["UploadPurpose"];
 export type UserData = components["schemas"]["UserData"];
-export type UserRole = components["schemas"]["UserRole"];
 
 // --- Inlined Operation Payloads ---
-export type ClientStorePayload = NonNullable<operations["client.store"]["requestBody"]>["content"]["multipart/form-data"];
+export type ClientStorePayload = NonNullable<operations["client.store"]["requestBody"]>["content"]["application/json"];
 export type ClientUpdatePayload = NonNullable<operations["client.update"]["requestBody"]>["content"]["application/json"];
+export type ClientAddSecopPayload = NonNullable<operations["client.addSecop"]["requestBody"]>["content"]["application/json"];
 export type JwtAuthLoginPayload = NonNullable<operations["jwtAuth.login"]["requestBody"]>["content"]["application/json"];
 export type ServerStorePayload = NonNullable<operations["server.store"]["requestBody"]>["content"]["application/json"];
 export type ServerUpdatePayload = NonNullable<operations["server.update"]["requestBody"]>["content"]["application/json"];
 export type ServerInstallServerPayload = NonNullable<operations["server.installServer"]["requestBody"]>["content"]["application/json"];
-export type UploadsProfilePictureSignaturePayload = NonNullable<operations["uploads.profile-picture.signature"]["requestBody"]>["content"]["application/json"];
-export type UploadsClientBannerSignaturePayload = NonNullable<operations["uploads.client-banner.signature"]["requestBody"]>["content"]["application/json"];
+export type ServerUninstallServerPayload = NonNullable<operations["server.uninstallServer"]["requestBody"]>["content"]["application/json"];
+export type UploadIntentsStorePayload = NonNullable<operations["upload-intents.store"]["requestBody"]>["content"]["application/json"];
 export type UsersStorePayload = NonNullable<operations["users.store"]["requestBody"]>["content"]["application/json"];
 export type UsersUpdatePayload = NonNullable<operations["users.update"]["requestBody"]>["content"]["application/json"];

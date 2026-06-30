@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Data\UpdateUserData;
 use App\Data\CreateUserData;
 use App\Models\User;
-use App\Services\ImageReplacementService;
+use App\Jobs\DeleteStorageAsset;
+use App\Services\MediaUrlService;
+use App\Services\UploadIntentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use App\Data\UserData;
@@ -13,35 +15,55 @@ use App\Data\UserData;
 class UserController extends Controller
 {
     public function __construct(
-        private readonly ImageReplacementService $imageReplacement,
+        private readonly UploadIntentService $uploadIntentService,
+        private readonly MediaUrlService $mediaUrlService,
     ) {}
 
     public function index()
     {
-        $users = User::with('role')->get();
+        $users = User::all();
 
         return $users->map(fn(User $u) => UserData::fromModel($u));
     }
 
     public function store(CreateUserData $data)
     {
-        $user = User::create([
+        $payload = [
             'first_name' => $data->first_name,
             'last_name'  => $data->last_name,
             'email'      => $data->email,
-            'contact_number' => $data->phone_number,
+            'phone_number' => $data->phone_number,
             'username'   => $data->username,
             'password'   => Hash::make($data->password),
-            'profile_picture_url' => $data->cloudinary_url ?? '',
-            'profile_picture_public_id' => $data->cloudinary_public_id ?? null,
-        ]);
+        ];
 
-        return UserData::fromModel($user->load('role'))->toResponse(request())->setStatusCode(201);
+        if ($data->upload_intent_id !== null && $data->profile_picture_storage_key !== null) {
+            $intent = $this->uploadIntentService->attach(
+                $data->upload_intent_id,
+                request()->user(),
+                null,
+                'user',
+            );
+
+            $payload['profile_picture_storage_key'] = $data->profile_picture_storage_key;
+            $payload['profile_picture_url'] = $this->mediaUrlService->profilePicture($data->profile_picture_storage_key);
+        }
+
+        $user = User::create($payload);
+
+        if (isset($intent)) {
+            $intent->update([
+                'attached_to_type' => 'user',
+                'attached_to_id' => $user->id,
+            ]);
+        }
+
+        return UserData::fromModel($user)->toResponse(request())->setStatusCode(201);
     }
 
     public function show(User $user): UserData
     {
-        return UserData::fromModel($user->load('role'));
+        return UserData::fromModel($user);
     }
 
     public function update(UpdateUserData $data, User $user)
@@ -67,29 +89,37 @@ class UserController extends Controller
             $payload['password'] = Hash::make($data->password);
         }
 
-        if (!($data->cloudinary_url instanceof \Spatie\LaravelData\Optional) && $data->cloudinary_url !== null) {
-            $this->imageReplacement->handleReplacement(
-                newUrl: $data->cloudinary_url,
-                newPublicId: $data->cloudinary_public_id,
-                existingUrl: $user->profile_picture_url,
-                existingPublicId: $user->profile_picture_public_id,
+        if (!($data->upload_intent_id instanceof \Spatie\LaravelData\Optional) && $data->upload_intent_id !== null) {
+            $oldStorageKey = $user->profile_picture_storage_key;
+            $oldFolder = config('uploads.purposes.profile_picture.folder');
+
+            $intent = $this->uploadIntentService->attach(
+                $data->upload_intent_id,
+                request()->user(),
+                $user,
+                'user',
             );
 
-            $payload['profile_picture_url'] = $data->cloudinary_url;
-            $payload['profile_picture_public_id'] = $data->cloudinary_public_id ?? null;
+            $payload['profile_picture_storage_key'] = $data->profile_picture_storage_key;
+            $payload['profile_picture_url'] = $this->mediaUrlService->profilePicture($data->profile_picture_storage_key);
+
+            if ($oldStorageKey) {
+                DeleteStorageAsset::dispatch($oldStorageKey, $oldFolder);
+            }
         }
 
         $user->update($payload);
 
-        return UserData::fromModel($user->load('role'));
+        return UserData::fromModel($user);
     }
 
     public function destroy(User $user): JsonResponse
     {
-        $this->imageReplacement->handleDeletion(
-            url: $user->profile_picture_url,
-            publicId: $user->profile_picture_public_id,
-        );
+        if ($user->profile_picture_storage_key) {
+            $folder = config('uploads.purposes.profile_picture.folder');
+            DeleteStorageAsset::dispatch($user->profile_picture_storage_key, $folder);
+        }
+
         $user->delete();
         return response()->json(null, 204);
     }

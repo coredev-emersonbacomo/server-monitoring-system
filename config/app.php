@@ -147,6 +147,4 @@ return [
 
     'default_profile_picture' => env('DEFAULT_PROFILE_PICTURE', ''),
 
-    'admin_usernames' => explode(',', env('ADMIN_USERNAMES', 'admin')),
-
 ];

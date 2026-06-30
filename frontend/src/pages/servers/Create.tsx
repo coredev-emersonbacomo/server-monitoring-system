@@ -10,7 +10,6 @@ import {
     EyeOff,
     Loader2,
     Network,
-    ServerCog,
     ShieldCheck,
     XCircle,
 } from "lucide-react";
@@ -18,9 +17,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { cn } from "@/lib/utils";
-import jwtClient from "@/api/jwtClient";
+import { useBreadcrumb } from "@/hooks/useBreadcrumb";
+import api from "@/api/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,9 +105,7 @@ function Field({
             {hint && !error && (
                 <p className="text-[11px] text-muted-foreground">{hint}</p>
             )}
-            {error && (
-                <p className="text-[11px] text-destructive">{error}</p>
-            )}
+            {error && <p className="text-[11px] text-destructive">{error}</p>}
         </div>
     );
 }
@@ -126,9 +123,7 @@ function StepRow({ step, index }: { step: InstallStep; index: number }) {
                 {isDone && (
                     <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                 )}
-                {isFailed && (
-                    <XCircle className="w-5 h-5 text-destructive" />
-                )}
+                {isFailed && <XCircle className="w-5 h-5 text-destructive" />}
                 {isRunning && (
                     <Loader2 className="w-5 h-5 text-primary animate-spin" />
                 )}
@@ -181,7 +176,9 @@ export default function CreateServer() {
     const clientId = clientIdParam ? Number(clientIdParam) : null;
     const { setTrail } = useBreadcrumb();
 
-    const [phase, setPhase] = useState<"form" | "installing" | "success" | "failed">("form");
+    const [phase, setPhase] = useState<
+        "form" | "installing" | "success" | "failed"
+    >("form");
     const [showPassword, setShowPassword] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [createdId, setCreatedId] = useState<number | null>(null);
@@ -203,7 +200,10 @@ export default function CreateServer() {
     useEffect(() => {
         setTrail([
             { label: "Clients", href: "/clients" },
-            { label: "Add server", href: `/servers/create?client_id=${clientId}` },
+            {
+                label: "Add server",
+                href: `/servers/create?client_id=${clientId}`,
+            },
         ]);
     }, [setTrail, clientId]);
 
@@ -315,22 +315,32 @@ export default function CreateServer() {
 
         if (!form.username.trim()) errs.username = "Username is required";
         if (!form.password) errs.password = "Password is required";
-        else if (form.password.length < 6) errs.password = "Minimum 6 characters";
+        else if (form.password.length < 6)
+            errs.password = "Minimum 6 characters";
 
         setErrors(errs);
         return Object.keys(errs).length === 0;
     };
 
-    const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
-        setForm((f) => ({ ...f, [key]: e.target.value }));
-        if (errors[key]) setErrors((prev) => { const n = { ...prev }; delete n[key]; return n; });
-    };
+    const set =
+        (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) => {
+            setForm((f) => ({ ...f, [key]: e.target.value }));
+            if (errors[key])
+                setErrors((prev) => {
+                    const n = { ...prev };
+                    delete n[key];
+                    return n;
+                });
+        };
 
     // ── Submit ────────────────────────────────────────────────────────────────
 
     const handleSubmit = async () => {
         if (!validate()) return;
-        if (!clientId) { toast.error("No client selected."); return; }
+        if (!clientId) {
+            toast.error("No client selected.");
+            return;
+        }
 
         apiResolved.current = false;
         apiSuccess.current = false;
@@ -338,28 +348,29 @@ export default function CreateServer() {
         setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: "pending" })));
         setCurrentStep(-1);
 
-        try {
-            const response = await jwtClient.post(`/clients/${clientId}/servers`, {
+        const { data, error } = await api.POST("/clients/{client_id}/servers", {
+            params: { path: { client_id: clientId } },
+            body: {
                 server_name: form.serverName.trim(),
                 internal_ip: form.ip.trim(),
+                external_ip: form.ip.trim(),
                 port: Number(form.port),
-                sshusername: form.username.trim(),
+                ssh_username: form.username.trim(),
                 ssh_password: form.password,
-            });
+            },
+        });
 
-            const server = response.data?.data ?? response.data;
-            setCreatedId(server?.id ?? null);
-            apiResolved.current = true;
-            apiSuccess.current = true;
-        } catch (err: unknown) {
-            const axiosErr = err as { response?: { data?: Record<string, unknown> } } | undefined;
-            const errData = axiosErr?.response?.data;
+        if (error) {
             const msg =
-                (errData?.message as string) ??
+                (error as { message?: string }).message ??
                 "Connection failed. Check your credentials and try again.";
             setErrorMessage(msg);
             apiResolved.current = true;
             apiSuccess.current = false;
+        } else {
+            setCreatedId(data?.data?.id ?? null);
+            apiResolved.current = true;
+            apiSuccess.current = true;
         }
     };
 
@@ -389,7 +400,6 @@ export default function CreateServer() {
             {/* ── Body ── */}
             <div className="flex-1 overflow-auto">
                 <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 flex flex-col gap-8">
-
                     {/* ════════════════════════════════════════════════════ FORM PHASE */}
                     {phase === "form" && (
                         <>
@@ -399,20 +409,23 @@ export default function CreateServer() {
                                     Connect a server
                                 </h1>
                                 <p className="text-sm text-muted-foreground mt-1">
-                                    The system will SSH in, install the monitoring agent, and start
-                                    collecting metrics automatically.
+                                    The system will SSH in, install the
+                                    monitoring agent, and start collecting
+                                    metrics automatically.
                                 </p>
                             </div>
 
                             {/* Form card */}
                             <div className="bg-card border border-border/60 rounded-xl shadow-sm divide-y divide-border/60">
-
                                 {/* Section — Server identity */}
                                 <div className="p-6 flex flex-col gap-4">
                                     <div>
-                                        <p className="text-sm font-medium">Server identity</p>
+                                        <p className="text-sm font-medium">
+                                            Server identity
+                                        </p>
                                         <p className="text-xs text-muted-foreground mt-0.5">
-                                            A name to identify this server in the dashboard.
+                                            A name to identify this server in
+                                            the dashboard.
                                         </p>
                                     </div>
                                     <Field
@@ -425,7 +438,10 @@ export default function CreateServer() {
                                             placeholder="prod-web-01"
                                             value={form.serverName}
                                             onChange={set("serverName")}
-                                            className={cn(errors.serverName && "border-destructive")}
+                                            className={cn(
+                                                errors.serverName &&
+                                                    "border-destructive",
+                                            )}
                                         />
                                     </Field>
                                 </div>
@@ -434,9 +450,12 @@ export default function CreateServer() {
                                 <div className="p-6 flex flex-col gap-4">
                                     <div className="flex items-start justify-between">
                                         <div>
-                                            <p className="text-sm font-medium">Connection details</p>
+                                            <p className="text-sm font-medium">
+                                                Connection details
+                                            </p>
                                             <p className="text-xs text-muted-foreground mt-0.5">
-                                                SSH credentials used once during agent installation.
+                                                SSH credentials used once during
+                                                agent installation.
                                             </p>
                                         </div>
                                         <span className="flex items-center gap-1 text-[11px] text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-0.5 shrink-0">
@@ -463,56 +482,86 @@ export default function CreateServer() {
                                                     onChange={set("ip")}
                                                     className={cn(
                                                         "pl-8 font-mono text-sm",
-                                                        errors.ip && "border-destructive",
+                                                        errors.ip &&
+                                                            "border-destructive",
                                                     )}
                                                 />
                                             </div>
                                         </Field>
 
-                                        <Field label="Port" required error={errors.port}>
+                                        <Field
+                                            label="Port"
+                                            required
+                                            error={errors.port}
+                                        >
                                             <Input
                                                 placeholder="22"
                                                 value={form.port}
                                                 onChange={set("port")}
                                                 className={cn(
                                                     "font-mono text-sm",
-                                                    errors.port && "border-destructive",
+                                                    errors.port &&
+                                                        "border-destructive",
                                                 )}
                                             />
                                         </Field>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
-                                        <Field label="SSH username" required error={errors.username}>
+                                        <Field
+                                            label="SSH username"
+                                            required
+                                            error={errors.username}
+                                        >
                                             <Input
                                                 placeholder="ubuntu"
                                                 value={form.username}
                                                 onChange={set("username")}
                                                 autoComplete="off"
-                                                className={cn(errors.username && "border-destructive")}
+                                                className={cn(
+                                                    errors.username &&
+                                                        "border-destructive",
+                                                )}
                                             />
                                         </Field>
 
-                                        <Field label="SSH password" required error={errors.password}>
+                                        <Field
+                                            label="SSH password"
+                                            required
+                                            error={errors.password}
+                                        >
                                             <div className="relative">
                                                 <Input
-                                                    type={showPassword ? "text" : "password"}
+                                                    type={
+                                                        showPassword
+                                                            ? "text"
+                                                            : "password"
+                                                    }
                                                     placeholder="••••••••"
                                                     value={form.password}
                                                     onChange={set("password")}
                                                     autoComplete="new-password"
                                                     className={cn(
                                                         "pr-9",
-                                                        errors.password && "border-destructive",
+                                                        errors.password &&
+                                                            "border-destructive",
                                                     )}
                                                 />
                                                 <button
                                                     type="button"
                                                     tabIndex={-1}
-                                                    onClick={() => setShowPassword((v) => !v)}
+                                                    onClick={() =>
+                                                        setShowPassword(
+                                                            (v) => !v,
+                                                        )
+                                                    }
                                                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                                                 >
-                                                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                    {showPassword ? (
+                                                        <EyeOff size={14} />
+                                                    ) : (
+                                                        <Eye size={14} />
+                                                    )}
                                                 </button>
                                             </div>
                                         </Field>
@@ -529,7 +578,6 @@ export default function CreateServer() {
                                     </button>
                                     <Button
                                         icon={<ArrowRight size={14} />}
-                                        iconPosition="right"
                                         label="Connect and install"
                                         onClick={handleSubmit}
                                     />
@@ -546,13 +594,17 @@ export default function CreateServer() {
                                     Installing agent
                                 </h1>
                                 <p className="text-sm text-muted-foreground mt-1">
-                                    This takes about 30 seconds. Don't close this window.
+                                    This takes about 30 seconds. Don't close
+                                    this window.
                                 </p>
                             </div>
 
                             {/* Target server badge */}
                             <div className="flex items-center gap-2 text-sm">
-                                <Network size={13} className="text-muted-foreground" />
+                                <Network
+                                    size={13}
+                                    className="text-muted-foreground"
+                                />
                                 <span className="font-mono text-muted-foreground">
                                     {form.username}@{form.ip}:{form.port}
                                 </span>
@@ -562,7 +614,9 @@ export default function CreateServer() {
                             <div className="flex flex-col gap-2">
                                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                                     <span>Progress</span>
-                                    <span className="font-mono tabular-nums">{progressPct}%</span>
+                                    <span className="font-mono tabular-nums">
+                                        {progressPct}%
+                                    </span>
                                 </div>
                                 <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                                     <div
@@ -575,7 +629,11 @@ export default function CreateServer() {
                             {/* Steps list */}
                             <div className="bg-card border border-border/60 rounded-xl p-6 flex flex-col gap-5">
                                 {steps.map((step, i) => (
-                                    <StepRow key={step.id} step={step} index={i} />
+                                    <StepRow
+                                        key={step.id}
+                                        step={step}
+                                        index={i}
+                                    />
                                 ))}
                             </div>
                         </>
@@ -592,21 +650,38 @@ export default function CreateServer() {
                                     Server online
                                 </h1>
                                 <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-                                    <strong className="text-foreground">{form.serverName}</strong> is
-                                    connected and sending metrics.
+                                    <strong className="text-foreground">
+                                        {form.serverName}
+                                    </strong>{" "}
+                                    is connected and sending metrics.
                                 </p>
                             </div>
 
                             {/* Summary */}
                             <div className="w-full bg-card border border-border/60 rounded-xl divide-y divide-border/50 text-sm">
                                 {[
-                                    { label: "Server name", value: form.serverName },
-                                    { label: "IP address", value: `${form.ip}:${form.port}` },
+                                    {
+                                        label: "Server name",
+                                        value: form.serverName,
+                                    },
+                                    {
+                                        label: "IP address",
+                                        value: `${form.ip}:${form.port}`,
+                                    },
                                     { label: "SSH user", value: form.username },
-                                    { label: "Status", value: "Monitoring active", accent: true },
+                                    {
+                                        label: "Status",
+                                        value: "Monitoring active",
+                                        accent: true,
+                                    },
                                 ].map(({ label, value, accent }) => (
-                                    <div key={label} className="flex items-center justify-between px-5 py-3">
-                                        <span className="text-muted-foreground">{label}</span>
+                                    <div
+                                        key={label}
+                                        className="flex items-center justify-between px-5 py-3"
+                                    >
+                                        <span className="text-muted-foreground">
+                                            {label}
+                                        </span>
                                         <span
                                             className={cn(
                                                 "font-medium",
@@ -623,14 +698,19 @@ export default function CreateServer() {
                                 <Button
                                     variant="outline"
                                     label="Back to client"
-                                    onClick={() => navigate(`/clients/${clientId}`)}
+                                    onClick={() =>
+                                        navigate(`/clients/${clientId}`)
+                                    }
                                 />
                                 {createdId && (
                                     <Button
                                         label="View server"
                                         icon={<ArrowRight size={14} />}
-                                        iconPosition="right"
-                                        onClick={() => navigate(`/servers/${createdId}?client=${clientId}`)}
+                                        onClick={() =>
+                                            navigate(
+                                                `/servers/${createdId}?client=${clientId}`,
+                                            )
+                                        }
                                     />
                                 )}
                             </div>
@@ -648,14 +728,19 @@ export default function CreateServer() {
                                     Installation failed
                                 </h1>
                                 <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-                                    {errorMessage || "The agent couldn't be installed. Check your credentials and network access."}
+                                    {errorMessage ||
+                                        "The agent couldn't be installed. Check your credentials and network access."}
                                 </p>
                             </div>
 
                             {/* Failed steps summary */}
                             <div className="w-full bg-card border border-border/60 rounded-xl p-5 flex flex-col gap-4 text-left">
                                 {steps.map((step, i) => (
-                                    <StepRow key={step.id} step={step} index={i} />
+                                    <StepRow
+                                        key={step.id}
+                                        step={step}
+                                        index={i}
+                                    />
                                 ))}
                             </div>
 
@@ -663,7 +748,9 @@ export default function CreateServer() {
                                 <Button
                                     variant="outline"
                                     label="Back to client"
-                                    onClick={() => navigate(`/clients/${clientId}`)}
+                                    onClick={() =>
+                                        navigate(`/clients/${clientId}`)
+                                    }
                                 />
                                 <Button
                                     label="Try again"
@@ -671,13 +758,17 @@ export default function CreateServer() {
                                         setPhase("form");
                                         setErrors({});
                                         setErrorMessage("");
-                                        setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: "pending" })));
+                                        setSteps(
+                                            INITIAL_STEPS.map((s) => ({
+                                                ...s,
+                                                status: "pending",
+                                            })),
+                                        );
                                     }}
                                 />
                             </div>
                         </div>
                     )}
-
                 </div>
             </div>
         </div>

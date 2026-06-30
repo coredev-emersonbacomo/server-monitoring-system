@@ -7,7 +7,6 @@ import {
     Mail,
     User,
     AtSign,
-    Shield,
     UserCircle,
 } from "lucide-react";
 
@@ -43,8 +42,7 @@ export const Profile: React.FC = () => {
               .replace(/\D/g, "")
               .replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")
         : "—";
-    const roleName = user.role ?? "—";
-
+    const avatarSrc = user.profile_picture_url || import.meta.env.VITE_DEFAULT_PROFILE_PICTURE || null;
     return (
         <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
             {/* ── Page header ── */}
@@ -79,22 +77,15 @@ export const Profile: React.FC = () => {
                         <div className="flex flex-col items-center -mt-12 mb-6">
                             {/* Avatar */}
                             <div className="w-24 h-24 rounded-full bg-white border-4 border-white shadow-sm overflow-hidden flex-shrink-0">
-                                <img
-                                    src={user.profile_picture_url || import.meta.env.VITE_DEFAULT_PROFILE_PICTURE || ''}
-                                    alt="Avatar"
-                                    className="w-full h-full object-cover"
-                                />
+                                {avatarSrc ? (
+                                    <img src={avatarSrc} alt="Avatar" className="w-full h-full object-cover" />
+                                ) : null}
                             </div>
 
-                            {/* Name + role */}
                             <div className="mt-4 flex flex-col items-center">
                                 <h2 className="text-xl font-bold text-gray-900">
                                     {fullName}
                                 </h2>
-                                <span className="inline-flex items-center font-semibold gap-1 mt-1.5 px-2 py-0.5 text-xs border border-gray-200 rounded-full text-gray-500">
-                                    <Shield size={11} />
-                                    {roleName}
-                                </span>
                             </div>
                         </div>
 

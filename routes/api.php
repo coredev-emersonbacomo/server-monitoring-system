@@ -1,7 +1,7 @@
 <?php
 
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AdminController;
 
 // File Path: routes/api.php 
 /*
@@ -13,6 +13,8 @@ use App\Http\Controllers\AdminController;
 | feature-specific files under the routes/api/ directory for organisation.
 |
 */
+
+Broadcast::routes(['middleware' => ['auth:jwt']]);
 
 Route::group([], base_path('routes/api/auth.php'));
 Route::group([], base_path('routes/api/servers.php'));

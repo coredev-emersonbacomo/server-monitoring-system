@@ -2,7 +2,6 @@
 
 namespace App\Data;
 
-use App\Enums\UserRole;
 use App\Models\User;
 use Spatie\LaravelData\Data;
 use Illuminate\Support\Carbon;
@@ -17,7 +16,8 @@ class UserData extends Data
         public string $username,
         public string $phone_number,
         public ?string $last_login,
-        public ?string $profile_picture_url,
+        public string $profile_picture_url,
+        public string $profile_picture_storage_key,
         public ?string $record_status,
         public ?Carbon $created_at,
         public ?Carbon $updated_at,
@@ -34,6 +34,7 @@ class UserData extends Data
             phone_number: $user->phone_number,
             last_login: $user->last_login,
             profile_picture_url: $user->profile_picture_url,
+            profile_picture_storage_key: $user->profile_picture_storage_key ?? '',
             record_status: $user->record_status,           
             created_at: $user->created_at,
             updated_at: $user->updated_at,

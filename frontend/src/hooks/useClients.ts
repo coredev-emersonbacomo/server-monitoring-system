@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import jwtClient from "@/api/jwtClient";
+import api from "@/api/api";
 import type { components } from "@/api/schema.d";
 
 type ClientData = components["schemas"]["ClientData"];
@@ -8,13 +8,9 @@ export const useClients = () => {
     return useQuery({
         queryKey: ["clients"],
         queryFn: async (): Promise<ClientData[]> => {
-            try {
-                const response = await jwtClient.get<ClientData[]>("/clients");
-                return response.data || [];
-            } catch (error) {
-                console.error("Failed to fetch clients:", error);
-                throw error;
-            }
+            const { data, error } = await api.GET("/clients");
+            if (error) throw error;
+            return data as ClientData[];
         },
     });
 };
@@ -23,13 +19,11 @@ export const useClient = (id: number) => {
     return useQuery({
         queryKey: ["clients", id],
         queryFn: async (): Promise<ClientData> => {
-            try {
-                const response = await jwtClient.get<ClientData>(`/clients/${id}`);
-                return response.data;
-            } catch (error) {
-                console.error("Failed to fetch client:", error);
-                throw error;
-            }
+            const { data, error } = await api.GET("/clients/{id}", {
+                params: { path: { id } },
+            });
+            if (error) throw error;
+            return data as ClientData;
         },
         enabled: !!id,
     });
@@ -40,13 +34,11 @@ export const useCreateClient = () => {
 
     return useMutation({
         mutationFn: async (formData: FormData) => {
-            try {
-                const response = await jwtClient.post("/clients", formData);
-                return response.data;
-            } catch (error) {
-                console.error("Failed to create client:", error);
-                throw error;
-            }
+            const { data, error } = await api.POST("/clients", {
+                body: formData as never,
+            });
+            if (error) throw error;
+            return data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["clients"] });
@@ -59,13 +51,12 @@ export const useUpdateClient = (id: number) => {
 
     return useMutation({
         mutationFn: async (formData: FormData) => {
-            try {
-                const response = await jwtClient.post(`/clients/${id}`, formData);
-                return response.data;
-            } catch (error) {
-                console.error("Failed to update client:", error);
-                throw error;
-            }
+            const { data, error } = await api.PUT("/clients/{id}", {
+                params: { path: { id } },
+                body: formData as never,
+            });
+            if (error) throw error;
+            return data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["clients"] });
@@ -74,31 +65,15 @@ export const useUpdateClient = (id: number) => {
     });
 };
 
-export interface ClientServer {
-    id: number;
-    client_id: number;
-    server_name: string;
-    device_name: string;
-    internal_ip: string;
-    external_ip: string;
-    cpu_cores: number | null;
-    ram: number | null;
-    operating_system: string | null;
-    created_at: string;
-    updated_at: string;
-}
-
 export const useClientServers = (clientId: number) => {
     return useQuery({
         queryKey: ["clients", clientId, "servers"],
-        queryFn: async (): Promise<ClientServer[]> => {
-            try {
-                const response = await jwtClient.get<ClientServer[]>(`/clients/${clientId}/servers`);
-                return response.data || [];
-            } catch (error) {
-                console.error("Failed to fetch servers:", error);
-                throw error;
-            }
+        queryFn: async () => {
+            const { data, error } = await api.GET("/clients/{id}/servers", {
+                params: { path: { id: clientId } },
+            });
+            if (error) throw error;
+            return data;
         },
         enabled: !!clientId,
     });
@@ -109,12 +84,10 @@ export const useDeleteClient = () => {
 
     return useMutation({
         mutationFn: async (id: number) => {
-            try {
-                await jwtClient.delete(`/clients/${id}`);
-            } catch (error) {
-                console.error("Failed to delete client:", error);
-                throw error;
-            }
+            const { error } = await api.DELETE("/clients/{id}", {
+                params: { path: { id } },
+            });
+            if (error) throw error;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["clients"] });
@@ -125,14 +98,12 @@ export const useDeleteClient = () => {
 export const useClientSecops = (clientId: number) => {
     return useQuery({
         queryKey: ["clients", clientId, "secops"],
-        queryFn: async (): Promise<any[]> => {
-            try {
-                const response = await jwtClient.get(`/clients/${clientId}/secops`);
-                return response.data || [];
-            } catch (error) {
-                console.error("Failed to fetch secops:", error);
-                throw error;
-            }
+        queryFn: async () => {
+            const { data, error } = await api.GET("/clients/{id}/secops", {
+                params: { path: { id: clientId } },
+            });
+            if (error) throw error;
+            return data ?? [];
         },
         enabled: !!clientId,
     });
@@ -143,13 +114,12 @@ export const useAddClientSecop = (clientId: number) => {
 
     return useMutation({
         mutationFn: async (userId: number) => {
-            try {
-                const response = await jwtClient.post(`/clients/${clientId}/secops`, { user_id: userId });
-                return response.data;
-            } catch (error) {
-                console.error("Failed to add secop:", error);
-                throw error;
-            }
+            const { data, error } = await api.POST("/clients/{id}/secops", {
+                params: { path: { id: clientId } },
+                body: { user_id: userId },
+            });
+            if (error) throw error;
+            return data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["clients", clientId, "secops"] });
@@ -163,12 +133,10 @@ export const useRemoveClientSecop = (clientId: number) => {
 
     return useMutation({
         mutationFn: async (userId: number) => {
-            try {
-                await jwtClient.delete(`/clients/${clientId}/secops/${userId}`);
-            } catch (error) {
-                console.error("Failed to remove secop:", error);
-                throw error;
-            }
+            const { error } = await api.DELETE("/clients/{id}/secops/{userId}", {
+                params: { path: { id: clientId, userId } },
+            });
+            if (error) throw error;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["clients", clientId, "secops"] });

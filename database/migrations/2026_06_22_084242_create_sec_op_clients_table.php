@@ -16,7 +16,6 @@ return new class extends Migration
             $table->foreignId('client_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('record_status')->default('active');
-
         });
     }
 
