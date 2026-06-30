@@ -8,6 +8,8 @@ export interface ActionItem {
     severity: "critical" | "warning" | "info";
     server_id: number | null;
     client_id: number | null;
+    server_uuid: string | null;
+    client_uuid: string | null;
     client_name: string | null;
     server_name: string | null;
     assigned_to: number | null;

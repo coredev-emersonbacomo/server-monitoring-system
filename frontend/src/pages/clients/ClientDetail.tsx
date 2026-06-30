@@ -143,14 +143,12 @@ function SectionHeader({
 
 function ServerCard({
     server,
-    clientUuid,
 }: {
     server: components["schemas"]["ServerData"];
-    clientUuid: string;
 }) {
     return (
         <Link
-            to={`/servers/${server.uuid}?client=${clientUuid}`}
+            to={`/servers/${server.uuid}`}
             className="bg-card border border-border/60 rounded-xl shadow-sm p-5 flex flex-col gap-3 transition-shadow hover:shadow-md group"
         >
             <div className="flex items-start justify-between">
@@ -329,8 +327,8 @@ export default function ClientDetail() {
 
     const set =
         (key: keyof typeof form) =>
-            (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-                setForm((f) => ({ ...f, [key]: e.target.value }));
+        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+            setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const schema = z.object({
@@ -506,14 +504,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                        backgroundImage: `url(${bannerPreview})`,
-                                        backgroundSize: "cover",
-                                        backgroundPosition: "center",
-                                    }
+                                          backgroundImage: `url(${bannerPreview})`,
+                                          backgroundSize: "cover",
+                                          backgroundPosition: "center",
+                                      }
                                     : {
-                                        background:
-                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                    }
+                                          background:
+                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                      }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -545,7 +543,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                        defaultBanner,
+                                                            defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -641,7 +639,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none",
                                             errors.description &&
-                                            "border-destructive",
+                                                "border-destructive",
                                         )}
                                     />
                                 </div>
@@ -674,7 +672,7 @@ export default function ClientDetail() {
                                             "px-4 py-2 text-sm rounded-md transition-colors",
                                             activeTab === "details"
                                                 ? "bg-background shadow text-foreground"
-                                                : "text-muted-foreground hover:text-foreground"
+                                                : "text-muted-foreground hover:text-foreground",
                                         )}
                                     >
                                         Details
@@ -683,12 +681,14 @@ export default function ClientDetail() {
                                     {mode !== "create" && (
                                         <button
                                             type="button"
-                                            onClick={() => setActiveTab("secops")}
+                                            onClick={() =>
+                                                setActiveTab("secops")
+                                            }
                                             className={cn(
                                                 "px-4 py-2 text-sm rounded-md transition-colors",
                                                 activeTab === "secops"
                                                     ? "bg-background shadow text-foreground"
-                                                    : "text-muted-foreground hover:text-foreground"
+                                                    : "text-muted-foreground hover:text-foreground",
                                             )}
                                         >
                                             Assign SecOps
@@ -714,10 +714,12 @@ export default function ClientDetail() {
                                                     <Input
                                                         placeholder="New York, USA"
                                                         value={form.location}
-                                                        onChange={set("location")}
+                                                        onChange={set(
+                                                            "location",
+                                                        )}
                                                         className={cn(
                                                             errors.location &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                 ) : (
@@ -752,7 +754,7 @@ export default function ClientDetail() {
                                                         onChange={set("email")}
                                                         className={cn(
                                                             errors.email &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                 ) : (
@@ -770,28 +772,33 @@ export default function ClientDetail() {
                                                 {showEdit ? (
                                                     <Input
                                                         placeholder="e.g. 09123456789"
-                                                        value={form.contact_number}
+                                                        value={
+                                                            form.contact_number
+                                                        }
                                                         onChange={(e) => {
-                                                            set("contact_number")({
+                                                            set(
+                                                                "contact_number",
+                                                            )({
                                                                 ...e,
                                                                 target: {
                                                                     ...e.target,
                                                                     value: formatPhoneNumber(
-                                                                        e.target.value,
+                                                                        e.target
+                                                                            .value,
                                                                     ),
                                                                 },
                                                             });
                                                         }}
                                                         className={cn(
                                                             errors.contact_number &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                 ) : (
                                                     <p className="text-sm text-foreground py-1">
                                                         {formatPhoneNumber(
                                                             client?.contact_number ||
-                                                            "",
+                                                                "",
                                                         )}
                                                     </p>
                                                 )}
@@ -811,29 +818,28 @@ export default function ClientDetail() {
                                                         isSaving
                                                             ? "Saving…"
                                                             : mode === "create"
-                                                                ? "Create Client"
-                                                                : "Save Changes"
+                                                              ? "Create Client"
+                                                              : "Save Changes"
                                                     }
                                                 />
                                             </div>
                                         </>
                                     )}
                                 </>
-
                             )}
 
-{activeTab === "secops" &&
-                            mode !== "create" &&
-                            client && (
-                                <>
+                            {activeTab === "secops" &&
+                                mode !== "create" &&
+                                client && (
+                                    <>
                                         <div className="flex items-center justify-between mb-6">
                                             <div>
                                                 <h2 className="text-base font-semibold text-foreground">
                                                     SecOps Assignments
                                                 </h2>
                                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                                    Manage SecOps personnel assigned to
-                                                    this client.
+                                                    Manage SecOps personnel
+                                                    assigned to this client.
                                                 </p>
                                             </div>
                                             <Button
@@ -841,9 +847,12 @@ export default function ClientDetail() {
                                                 size="sm"
                                                 icon={<Plus size={14} />}
                                                 label="Add SecOps"
-                                                onClick={() => setShowSecopDialog(true)}
+                                                onClick={() =>
+                                                    setShowSecopDialog(true)
+                                                }
                                                 disabled={
-                                                    currentSecops.length >= secopLimit
+                                                    currentSecops.length >=
+                                                    secopLimit
                                                 }
                                             />
                                         </div>
@@ -873,11 +882,17 @@ export default function ClientDetail() {
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-sm font-medium text-foreground truncate">
-                                                                    {secop.first_name}{" "}
-                                                                    {secop.last_name}
+                                                                    {
+                                                                        secop.first_name
+                                                                    }{" "}
+                                                                    {
+                                                                        secop.last_name
+                                                                    }
                                                                 </p>
                                                                 <p className="text-xs text-muted-foreground truncate">
-                                                                    {secop.email}
+                                                                    {
+                                                                        secop.email
+                                                                    }
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -893,11 +908,12 @@ export default function ClientDetail() {
                                                                                     `${secop.first_name} removed from client.`,
                                                                                 );
                                                                             },
-                                                                        onError: () => {
-                                                                            toast.error(
-                                                                                "Failed to remove SecOps.",
-                                                                            );
-                                                                        },
+                                                                        onError:
+                                                                            () => {
+                                                                                toast.error(
+                                                                                    "Failed to remove SecOps.",
+                                                                                );
+                                                                            },
                                                                     },
                                                                 )
                                                             }
@@ -925,8 +941,8 @@ export default function ClientDetail() {
                                                 </p>
                                             </div>
                                         )}
-                                </>
-                            )}
+                                    </>
+                                )}
                         </form>
 
                         {mode !== "create" && client && (
@@ -974,8 +990,8 @@ export default function ClientDetail() {
                                                         ? "All"
                                                         : serverFilter ===
                                                             "online"
-                                                            ? "Online"
-                                                            : "Offline"}
+                                                          ? "Online"
+                                                          : "Offline"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -1002,9 +1018,9 @@ export default function ClientDetail() {
                                                         onClick={() =>
                                                             setServerFilter(
                                                                 opt.value as
-                                                                | "all"
-                                                                | "online"
-                                                                | "offline",
+                                                                    | "all"
+                                                                    | "online"
+                                                                    | "offline",
                                                             )
                                                         }
                                                         className={cn(
@@ -1060,7 +1076,6 @@ export default function ClientDetail() {
                                             <ServerCard
                                                 key={s.uuid}
                                                 server={s}
-                                                clientUuid={client.uuid!}
                                             />
                                         ))}
                                     </div>
@@ -1181,7 +1196,7 @@ export default function ClientDetail() {
                                                 disabled={
                                                     addSecop.isPending ||
                                                     selectedSecopToAdd ===
-                                                    user.id
+                                                        user.id
                                                 }
                                                 className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 text-left border border-border/40 hover:border-border"
                                             >
@@ -1213,11 +1228,11 @@ export default function ClientDetail() {
                                                 (s) => s.id === user.id,
                                             ),
                                     ).length === 0 && (
-                                            <p className="text-sm text-muted-foreground text-center py-4">
-                                                All users are already assigned to
-                                                this client.
-                                            </p>
-                                        )}
+                                        <p className="text-sm text-muted-foreground text-center py-4">
+                                            All users are already assigned to
+                                            this client.
+                                        </p>
+                                    )}
                                 </div>
                             )}
                         </div>

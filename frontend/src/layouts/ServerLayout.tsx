@@ -24,6 +24,7 @@ export default function ServerLayout() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const clientParam = searchParams.get("client");
+    const showAllServers = clientParam === "all";
     const clientUuid =
         clientParam && clientParam !== "all" ? clientParam : undefined;
     const { data: servers, isLoading } = useServers(clientUuid);
@@ -31,8 +32,10 @@ export default function ServerLayout() {
 
     const filtered = servers?.filter(
         (s) =>
-            s.client_uuid ===
-                servers?.find((x) => x.uuid === serverUuid)?.client_uuid &&
+            (showAllServers ||
+                s.client_uuid ===
+                    servers?.find((x) => x.uuid === serverUuid)
+                        ?.client_uuid) &&
             s.server_name.toLowerCase().includes(search.toLowerCase()),
     );
 

@@ -1,4 +1,4 @@
-// pages/users/Index.tsx
+// pages/users/index.tsx
 import { useState, useMemo } from "react";
 import {
     Plus,
