@@ -70,7 +70,7 @@ function ClientCard({
 }) {
     return (
         <Link
-            to={`/clients/${client.id}`}
+            to={`/clients/${client.uuid}`}
             className="block rounded-lg transition-transform duration-200 hover:-translate-y-1"
         >
             <div className="relative size-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans gap-3 transition-shadow hover:shadow-md">
@@ -247,7 +247,7 @@ function VirtualGrid({
                             <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pb-4">
                                 {row.map((client) => (
                                     <ClientCard
-                                        key={client.id}
+                                        key={client.uuid}
                                         client={client}
                                         onDelete={onDelete}
                                     />
@@ -522,7 +522,7 @@ export default function Clients() {
                                     if (!deleting) return;
                                     try {
                                         await deleteClient.mutateAsync(
-                                            deleting.id,
+                                            deleting.uuid,
                                         );
                                         toast.success(
                                             `${deleting.name} has been deleted.`,

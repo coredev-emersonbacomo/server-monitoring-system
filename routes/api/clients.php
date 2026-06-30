@@ -6,14 +6,14 @@ use App\Http\Controllers\ClientController;
 Route::middleware('auth:jwt')->group(function () {
     Route::get('/clients', [ClientController::class, 'index']);
     Route::post('/clients', [ClientController::class, 'store']);
-    Route::get('/clients/{id}', [ClientController::class, 'show'])->whereNumber('id');
-    Route::put('/clients/{id}', [ClientController::class, 'update'])->whereNumber('id');
-    Route::delete('/clients/{id}', [ClientController::class, 'destroy'])->whereNumber('id');
-    Route::get('/clients/{id}/servers', [ClientController::class, 'servers'])->whereNumber('id');
-    Route::post('/clients/{id}/servers', [ClientController::class, 'initializeServer'])->whereNumber('id');
-    
+    Route::get('/clients/{uuid}', [ClientController::class, 'show']);
+    Route::put('/clients/{uuid}', [ClientController::class, 'update']);
+    Route::delete('/clients/{uuid}', [ClientController::class, 'destroy']);
+    Route::get('/clients/{client}/servers', [ClientController::class, 'servers']);
+    Route::post('/clients/{client}/servers', [ClientController::class, 'initializeServer']);
+
     // SecOps Management
-    Route::get('/clients/{id}/secops', [ClientController::class, 'secops'])->whereNumber('id');
-    Route::post('/clients/{id}/secops', [ClientController::class, 'addSecop'])->whereNumber('id');
-    Route::delete('/clients/{id}/secops/{userId}', [ClientController::class, 'removeSecop'])->whereNumber('id')->whereNumber('userId');
+    Route::get('/clients/{client}/secops', [ClientController::class, 'secops']);
+    Route::post('/clients/{client}/secops', [ClientController::class, 'addSecop']);
+    Route::delete('/clients/{client}/secops/{userId}', [ClientController::class, 'removeSecop'])->whereNumber('userId');
 });

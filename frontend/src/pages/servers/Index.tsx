@@ -28,10 +28,9 @@ export default function ServersIndex() {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const statusFilter = searchParams.get("status");
-    const clientIdParam = searchParams.get("client_id");
-    const clientId = clientIdParam ? Number(clientIdParam) : undefined;
+    const clientUuid = searchParams.get("client_uuid") || undefined;
 
-    const { data: servers, isLoading } = useServers(clientId);
+    const { data: servers, isLoading } = useServers(clientUuid);
 
     const clientName = useMemo(() => {
         if (!servers || servers.length === 0) return null;
@@ -189,10 +188,10 @@ export default function ServersIndex() {
                             const Icon = meta.icon;
                             return (
                                 <div
-                                    key={server.id}
+                                    key={server.uuid}
                                     onClick={() =>
                                         navigate(
-                                            `/servers/${server.id}?client=all`,
+                                            `/servers/${server.uuid}?client=all`,
                                         )
                                     }
                                     className="flex items-center gap-4 p-4 rounded-lg border border-border/60 bg-card hover:bg-muted/20 transition-colors cursor-pointer"
@@ -213,8 +212,8 @@ export default function ServersIndex() {
                                         </p>
                                         <p className="text-xs text-muted-foreground truncate">
                                             {server.client_name}
-                                            {server.internal_ip &&
-                                                ` · ${server.internal_ip}`}
+                                            {server.external_ip &&
+                                                ` · ${server.external_ip}`}
                                         </p>
                                     </div>
                                     <span

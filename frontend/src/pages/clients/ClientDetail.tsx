@@ -143,14 +143,14 @@ function SectionHeader({
 
 function ServerCard({
     server,
-    clientId,
+    clientUuid,
 }: {
     server: components["schemas"]["ServerData"];
-    clientId: number;
+    clientUuid: string;
 }) {
     return (
         <Link
-            to={`/servers/${server.id}?client=${clientId}`}
+            to={`/servers/${server.uuid}?client=${clientUuid}`}
             className="bg-card border border-border/60 rounded-xl shadow-sm p-5 flex flex-col gap-3 transition-shadow hover:shadow-md group"
         >
             <div className="flex items-start justify-between">
@@ -175,7 +175,7 @@ function ServerCard({
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1 font-mono">
                     <Network size={11} />
-                    {server.internal_ip}
+                    {server.external_ip}
                 </span>
                 {server.operating_system && (
                     <span className="flex items-center gap-1">
@@ -223,22 +223,22 @@ function ServerCardSkeleton() {
 
 export default function ClientDetail() {
     const navigate = useNavigate();
-    const { id } = useParams<{ id: string }>();
+    const { uuid } = useParams<{ uuid: string }>();
     const { setTrail } = useBreadcrumb();
-    const clientId = Number(id);
 
     const [activeTab, setActiveTab] = useState<"details" | "secops">("details");
     const [mode, setMode] = useState<"view" | "create" | "edit">(
-        id ? "view" : "create",
+        uuid ? "view" : "create",
     );
     const showEdit = mode !== "view";
 
     // ── Data fetching ──────────────────────────────────────────────────────────
-    const { data: client, isLoading, isError } = useClient(clientId);
-    const { data: servers = [], isLoading: serversLoading } =
-        useClientServers(clientId);
+    const { data: client, isLoading, isError } = useClient(uuid!);
+    const { data: servers = [], isLoading: serversLoading } = useClientServers(
+        uuid!,
+    );
     const { data: currentSecops = [], isLoading: secopLoading } =
-        useClientSecops(clientId);
+        useClientSecops(uuid!);
     const { data: allUsers = [], isLoading: usersLoading } = useUsers();
     const { data: settings } = useSettings();
     const secopLimit = Math.max(
@@ -248,10 +248,10 @@ export default function ClientDetail() {
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createClient = useCreateClient();
-    const updateClient = useUpdateClient(clientId);
+    const updateClient = useUpdateClient(uuid!);
     const deleteClient = useDeleteClient();
-    const addSecop = useAddClientSecop(clientId);
-    const removeSecop = useRemoveClientSecop(clientId);
+    const addSecop = useAddClientSecop(uuid!);
+    const removeSecop = useRemoveClientSecop(uuid!);
 
     // ── Local state ────────────────────────────────────────────────────────────
     const [showDelete, setShowDelete] = useState(false);
@@ -262,7 +262,7 @@ export default function ClientDetail() {
     const defaultBanner = import.meta.env.VITE_DEFAULT_CLIENT_BANNER as string;
     const [bannerFile, setBannerFile] = useState<File | null>(null);
     const [bannerPreview, setBannerPreview] = useState<string | null>(
-        id ? null : defaultBanner,
+        uuid ? null : defaultBanner,
     );
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -282,7 +282,7 @@ export default function ClientDetail() {
 
     // Reset mode when navigating between clients / to create
     useEffect(() => {
-        const next = id ? "view" : "create";
+        const next = uuid ? "view" : "create";
         setMode(next);
         if (next === "create") {
             setForm({
@@ -296,7 +296,7 @@ export default function ClientDetail() {
             setBannerFile(null);
             setErrors({});
         }
-    }, [defaultBanner, id]);
+    }, [defaultBanner, uuid]);
 
     // Populate form when client data arrives
     useEffect(() => {
@@ -322,7 +322,7 @@ export default function ClientDetail() {
         } else if (client) {
             setTrail([
                 { label: "Clients", href: "/clients" },
-                { label: client.name, href: `/clients/${client.id}` },
+                { label: client.name, href: `/clients/${client.uuid}` },
             ]);
         }
     }, [setTrail, mode, client]);
@@ -417,7 +417,7 @@ export default function ClientDetail() {
 
     const handleDelete = async () => {
         try {
-            await deleteClient.mutateAsync(clientId);
+            await deleteClient.mutateAsync(uuid!);
             toast.success("Client deleted.");
             navigate("/clients");
         } catch {
@@ -1022,7 +1022,7 @@ export default function ClientDetail() {
                                         </Popover>
 
                                         <Link
-                                            to={`/servers?client_id=${client.id}`}
+                                            to={`/servers?client_uuid=${client.uuid}`}
                                         >
                                             <Button
                                                 variant="outline"
@@ -1031,7 +1031,7 @@ export default function ClientDetail() {
                                             />
                                         </Link>
                                         <Link
-                                            to={`/servers/create?client_id=${client.id}`}
+                                            to={`/servers/create?client_uuid=${client.uuid}`}
                                         >
                                             <Button
                                                 variant="outline"
@@ -1058,9 +1058,9 @@ export default function ClientDetail() {
                                     <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
                                         {filteredServers.map((s) => (
                                             <ServerCard
-                                                key={s.id}
+                                                key={s.uuid}
                                                 server={s}
-                                                clientId={client.id}
+                                                clientUuid={client.uuid!}
                                             />
                                         ))}
                                     </div>

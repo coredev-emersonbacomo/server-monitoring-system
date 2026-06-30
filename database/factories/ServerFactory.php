@@ -21,9 +21,8 @@ class ServerFactory extends Factory
             'device_name' => fake()->word() . '-blade-' . fake()->randomDigitNotNull(),
             'operating_system' => fake()->randomElement(['Ubuntu 22.04 LTS', 'Windows Server 2022', 'Debian 12']),
             // Network details
-            'internal_ip' => fake()->localIpv4(),
             'external_ip' => fake()->ipv4(),
-            'port' => fake()->numberBetween(0, 9999),
+            'ssh_port' => fake()->numberBetween(0, 9999),
 
             'api_key' => ApiGenerator::GenerateApiKey()
         ];

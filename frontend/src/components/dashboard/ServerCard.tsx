@@ -85,7 +85,7 @@ export const ServerCard = memo(function ServerCard({
                         {server.server_name}
                     </span>
                     <span className="text-muted-foreground text-xs font-mono">
-                        {server.internal_ip}
+                        {server.external_ip}
                     </span>
                 </div>
 

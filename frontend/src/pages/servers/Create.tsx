@@ -26,7 +26,7 @@ import api from "@/api/api";
 interface FormState {
     serverName: string;
     ip: string;
-    port: string;
+    sshPort: string;
     username: string;
     password: string;
 }
@@ -172,8 +172,7 @@ function StepRow({ step, index }: { step: InstallStep; index: number }) {
 export default function CreateServer() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const clientIdParam = searchParams.get("client_id");
-    const clientId = clientIdParam ? Number(clientIdParam) : null;
+    const clientUuid = searchParams.get("client_uuid") || null;
     const { setTrail } = useBreadcrumb();
 
     const [phase, setPhase] = useState<
@@ -181,13 +180,13 @@ export default function CreateServer() {
     >("form");
     const [showPassword, setShowPassword] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [createdId, setCreatedId] = useState<number | null>(null);
+    const [createdUuid, setCreatedUuid] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string>("");
 
     const [form, setForm] = useState<FormState>({
         serverName: "",
         ip: "",
-        port: "22",
+        sshPort: "22",
         username: "",
         password: "",
     });
@@ -202,10 +201,10 @@ export default function CreateServer() {
             { label: "Clients", href: "/clients" },
             {
                 label: "Add server",
-                href: `/servers/create?client_id=${clientId}`,
+                href: `/servers/create?client_uuid=${clientUuid}`,
             },
         ]);
-    }, [setTrail, clientId]);
+    }, [setTrail, clientUuid]);
 
     // ── Simulate step-by-step progress while the real request is in-flight ───
     // When createdId arrives (success) we fast-complete remaining steps.
@@ -306,11 +305,11 @@ export default function CreateServer() {
             }
         }
 
-        const port = Number(form.port);
-        if (!form.port.trim()) {
-            errs.port = "Port is required";
+        const port = Number(form.sshPort);
+        if (!form.sshPort.trim()) {
+            errs.sshPort = "Port is required";
         } else if (isNaN(port) || port < 1 || port > 65535) {
-            errs.port = "Must be between 1 and 65535";
+            errs.sshPort = "Must be between 1 and 65535";
         }
 
         if (!form.username.trim()) errs.username = "Username is required";
@@ -337,7 +336,7 @@ export default function CreateServer() {
 
     const handleSubmit = async () => {
         if (!validate()) return;
-        if (!clientId) {
+        if (!clientUuid) {
             toast.error("No client selected.");
             return;
         }
@@ -348,13 +347,12 @@ export default function CreateServer() {
         setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: "pending" })));
         setCurrentStep(-1);
 
-        const { data, error } = await api.POST("/clients/{client_id}/servers", {
-            params: { path: { client_id: clientId } },
+        const { data, error } = await api.POST("/clients/{client}/servers", {
+            params: { path: { client: clientUuid } },
             body: {
                 server_name: form.serverName.trim(),
-                internal_ip: form.ip.trim(),
                 external_ip: form.ip.trim(),
-                port: Number(form.port),
+                ssh_port: Number(form.sshPort),
                 ssh_username: form.username.trim(),
                 ssh_password: form.password,
             },
@@ -368,7 +366,7 @@ export default function CreateServer() {
             apiResolved.current = true;
             apiSuccess.current = false;
         } else {
-            setCreatedId(data?.data?.id ?? null);
+            setCreatedUuid(data?.data?.uuid ?? null);
             apiResolved.current = true;
             apiSuccess.current = true;
         }
@@ -379,7 +377,7 @@ export default function CreateServer() {
     const progressPct = Math.round((doneCount / steps.length) * 100);
 
     // ── No client guard ───────────────────────────────────────────────────────
-    if (!clientId) {
+    if (!clientUuid) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-4 p-8">
                 <AlertTriangle size={32} className="opacity-40" />
@@ -492,15 +490,15 @@ export default function CreateServer() {
                                         <Field
                                             label="Port"
                                             required
-                                            error={errors.port}
+                                            error={errors.sshPort}
                                         >
                                             <Input
                                                 placeholder="22"
-                                                value={form.port}
-                                                onChange={set("port")}
+                                                value={form.sshPort}
+                                                onChange={set("sshPort")}
                                                 className={cn(
                                                     "font-mono text-sm",
-                                                    errors.port &&
+                                                    errors.sshPort &&
                                                         "border-destructive",
                                                 )}
                                             />
@@ -606,7 +604,7 @@ export default function CreateServer() {
                                     className="text-muted-foreground"
                                 />
                                 <span className="font-mono text-muted-foreground">
-                                    {form.username}@{form.ip}:{form.port}
+                                    {form.username}@{form.ip}:{form.sshPort}
                                 </span>
                             </div>
 
@@ -666,7 +664,7 @@ export default function CreateServer() {
                                     },
                                     {
                                         label: "IP address",
-                                        value: `${form.ip}:${form.port}`,
+                                        value: `${form.ip}:${form.sshPort}`,
                                     },
                                     { label: "SSH user", value: form.username },
                                     {
@@ -699,16 +697,16 @@ export default function CreateServer() {
                                     variant="outline"
                                     label="Back to client"
                                     onClick={() =>
-                                        navigate(`/clients/${clientId}`)
+                                        navigate(`/clients/${clientUuid}`)
                                     }
                                 />
-                                {createdId && (
+                                {createdUuid && (
                                     <Button
                                         label="View server"
                                         icon={<ArrowRight size={14} />}
                                         onClick={() =>
                                             navigate(
-                                                `/servers/${createdId}?client=${clientId}`,
+                                                `/servers/${createdUuid}?client=${clientUuid}`,
                                             )
                                         }
                                     />
@@ -749,7 +747,7 @@ export default function CreateServer() {
                                     variant="outline"
                                     label="Back to client"
                                     onClick={() =>
-                                        navigate(`/clients/${clientId}`)
+                                        navigate(`/clients/${clientUuid}`)
                                     }
                                 />
                                 <Button

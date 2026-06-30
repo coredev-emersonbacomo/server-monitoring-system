@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "@/api/api";
 
-export const useServers = (clientId?: number) => {
+export const useServers = (clientUuid?: string) => {
     return useQuery({
-        queryKey: ["servers", clientId],
+        queryKey: ["servers", clientUuid],
         queryFn: async () => {
-            const params = clientId ? { client_id: clientId } : undefined;
             const { data, error } = await api.GET("/servers", {
-                params: { query: { client_id: clientId } },
+                params: { query: { client_uuid: clientUuid } },
             });
             if (error) throw error;
             return data;

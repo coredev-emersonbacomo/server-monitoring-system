@@ -8,7 +8,7 @@ use Spatie\LaravelData\Data;
 class ClientData extends Data
 {
     public function __construct(
-        public int $id,
+        public string $uuid,
         public string $name,
         public string $description,
         public string $location,
@@ -23,7 +23,7 @@ class ClientData extends Data
     public static function fromModel(Client $client): self
     {
         return new self(
-            id: $client->id,
+            uuid: $client->uuid,
             name: $client->name,
             description: $client->description ?? '',
             location: $client->location ?? '',
