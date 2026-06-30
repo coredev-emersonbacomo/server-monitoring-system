@@ -847,6 +847,7 @@ export default function ClientDetail() {
                                                 </p>
                                             </div>
                                             <Button
+                                                type="button"
                                                 variant="outline"
                                                 size="sm"
                                                 icon={<Plus size={14} />}
