@@ -1,27 +1,29 @@
 import type {
-    UploadSignatureResponse,
-    CloudinaryUploadResponse,
-} from "@/types/cloudinary";
+    UploadIntentResponse,
+    UploadResult,
+} from "@/types/upload";
 
-export async function uploadToCloudinary(
+export async function directUpload(
     file: File,
-    signature: UploadSignatureResponse,
+    intent: UploadIntentResponse,
     onProgress?: (percent: number) => void,
     signal?: AbortSignal,
-): Promise<CloudinaryUploadResponse> {
+): Promise<UploadResult> {
+    const config = intent.upload_config as {
+        upload_url: string;
+        upload_params: Record<string, string | number>;
+    };
+
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("api_key", signature.api_key);
-    formData.append("timestamp", String(signature.timestamp));
-    formData.append("folder", signature.folder);
-    formData.append("signature", signature.signature);
-
-    const url = `https://api.cloudinary.com/v1_1/${signature.cloud_name}/auto/upload`;
+    for (const [key, value] of Object.entries(config.upload_params)) {
+        formData.append(key, String(value));
+    }
 
     const xhr = new XMLHttpRequest();
 
     return new Promise((resolve, reject) => {
-        xhr.open("POST", url);
+        xhr.open("POST", config.upload_url);
 
         if (signal) {
             signal.addEventListener("abort", () => xhr.abort());
@@ -37,10 +39,14 @@ export async function uploadToCloudinary(
         xhr.addEventListener("load", () => {
             if (xhr.status >= 200 && xhr.status < 300) {
                 try {
-                    const data: CloudinaryUploadResponse = JSON.parse(xhr.responseText);
-                    resolve(data);
+                    const data = JSON.parse(xhr.responseText);
+                    resolve({
+                        storage_key: intent.storage_key,
+                        provider_asset_id: data.public_id ?? data.id ?? data.key ?? "",
+                        provider_response: data,
+                    });
                 } catch {
-                    reject(new Error("Failed to parse Cloudinary response"));
+                    reject(new Error("Failed to parse upload response"));
                 }
             } else {
                 try {
@@ -53,7 +59,7 @@ export async function uploadToCloudinary(
         });
 
         xhr.addEventListener("error", () => {
-            reject(new Error("Network error during Cloudinary upload"));
+            reject(new Error("Network error during upload"));
         });
 
         xhr.addEventListener("abort", () => {

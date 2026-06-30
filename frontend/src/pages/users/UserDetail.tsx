@@ -1,16 +1,8 @@
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-    Pencil,
-    Upload,
-    AlertTriangle,
-    Trash2,
-    RefreshCw,
-    User as UserIcon,
-} from "lucide-react";
+import { Pencil, Upload, AlertTriangle, Trash2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { UserRoles } from "@/types/user-role";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,9 +21,8 @@ import {
     useUpdateUser,
     useDeleteUser,
 } from "@/hooks/useUsers";
-import { getProfilePictureUploadSignature } from "@/api/cloudinary";
-import { uploadToCloudinary } from "@/services/cloudinary";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { uploadFile } from "@/lib/uploadToast";
 
 //helper function to format phone numbers
 import { formatPhoneNumber } from "@/utils/helpers";
@@ -210,8 +201,6 @@ export default function UserDetail() {
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [uploadProgress, setUploadProgress] = useState(-1);
-
     const [form, setForm] = useState({
         first_name: "",
         last_name: "",
@@ -278,8 +267,8 @@ export default function UserDetail() {
 
     const set =
         (key: keyof typeof form) =>
-            (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-                setForm((f) => ({ ...f, [key]: e.target.value }));
+        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+            setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const isCreate = mode === "create";
@@ -290,10 +279,18 @@ export default function UserDetail() {
             last_name: z.string().trim().min(1, "Required"),
             email: z.string().trim().min(1, "Required").email("Invalid email"),
             username: z.string().trim().min(1, "Required"),
+<<<<<<< HEAD
             phone_number: z.string()
+=======
+            phone_number: z
+                .string()
+>>>>>>> 5a4b0a3d186cff85859267ee2d0825476d0b952f
                 .trim()
                 .min(1, "Required")
-                .regex(/^09\d{9}$/, "Must be a valid PH number starting with 09 (e.g. 09123456789)"),
+                .regex(
+                    /^09\d{9}$/,
+                    "Must be a valid PH number starting with 09 (e.g. 09123456789)",
+                ),
             password: z.string().superRefine((val, ctx) => {
                 if (isCreate && !val)
                     ctx.addIssue({
@@ -339,25 +336,19 @@ export default function UserDetail() {
         if (!validate()) return;
 
         try {
-            let avatarResult: { secure_url: string; public_id: string } | null =
-                null;
+            let uploadFields: Record<string, string> = {};
 
             if (avatarFile) {
-                setUploadProgress(0);
-                const signature = await getProfilePictureUploadSignature();
-                avatarResult = await uploadToCloudinary(
+                const { storage_key, intent_id } = await uploadFile(
                     avatarFile,
-                    signature,
-                    (p) => setUploadProgress(p),
+                    "profile_picture",
+                    "Uploading avatar…",
                 );
+                uploadFields = {
+                    upload_intent_id: intent_id,
+                    profile_picture_storage_key: storage_key,
+                };
             }
-
-            const cloudinaryFields = avatarResult
-                ? {
-                    cloudinary_url: avatarResult.secure_url,
-                    cloudinary_public_id: avatarResult.public_id,
-                }
-                : {};
 
             if (mode === "create") {
                 const createPayload = {
@@ -368,7 +359,7 @@ export default function UserDetail() {
                     phone_number: form.phone_number,
                     password: form.password,
                     password_confirmation: form.password_confirmation,
-                    ...cloudinaryFields,
+                    ...uploadFields,
                 };
                 await createUser.mutateAsync(createPayload);
                 toast.success("User created successfully.");
@@ -382,11 +373,11 @@ export default function UserDetail() {
                     phone_number: form.phone_number,
                     ...(form.password
                         ? {
-                            password: form.password,
-                            password_confirmation: form.password_confirmation,
-                        }
+                              password: form.password,
+                              password_confirmation: form.password_confirmation,
+                          }
                         : {}),
-                    ...cloudinaryFields,
+                    ...uploadFields,
                 };
                 await updateUser.mutateAsync(updatePayload);
                 toast.success("User updated successfully.");
@@ -397,8 +388,9 @@ export default function UserDetail() {
                     password_confirmation: "",
                 }));
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
-            // 1. Log the real error to your console so you can inspect exactly what went wrong
+            // uploadFile handles toast cleanup on error
             console.error("Submission failed:", err);
 
             // 2. Safely extract validation errors from Axios or native requests
@@ -412,14 +404,19 @@ export default function UserDetail() {
                 setErrors(mapped);
             } else {
                 // 3. Provide a fallback message from the server if available, otherwise use your generic text
-                const serverMessage = err?.response?.data?.message || err?.message;
+                const serverMessage =
+                    err?.response?.data?.message || err?.message;
                 toast.error(
                     serverMessage ||
+<<<<<<< HEAD
                     (mode === "create" ? "Failed to create user." : "Failed to update user.")
+=======
+                        (mode === "create"
+                            ? "Failed to create user."
+                            : "Failed to update user."),
+>>>>>>> 5a4b0a3d186cff85859267ee2d0825476d0b952f
                 );
             }
-        } finally {
-            setUploadProgress(-1);
         }
     };
 
@@ -494,20 +491,14 @@ export default function UserDetail() {
     }
 
     // ── Derived state ──────────────────────────────────────────────────────────
-    const DEFAULT_AVATAR = import.meta.env.VITE_DEFAULT_PROFILE_PICTURE || "";
+    const DEFAULT_AVATAR = import.meta.env.VITE_DEFAULT_PROFILE_PICTURE || null;
     const avatarSrc = avatarPreview || DEFAULT_AVATAR;
     const avatarInputId = "avatar-upload";
     const isSaving = createUser.isPending || updateUser.isPending;
 
-    const roleName = user?.role ?? "—";
-
     return (
         <>
-            <LoadingOverlay
-                visible={isSaving && uploadProgress >= 0}
-                progress={uploadProgress}
-                message="Uploading avatar..."
-            />
+            <LoadingOverlay visible={isSaving} />
             <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
                 {/* ── Banner / Hero ── */}
                 <div className="relative">
@@ -654,18 +645,7 @@ export default function UserDetail() {
                                 <span
                                     className={cn(
                                         "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
-                                        user?.role === UserRoles.Admin
-                                            ? "bg-primary/10 text-foreground"
-                                            : "bg-muted text-muted-foreground",
-                                    )}
-                                >
-                                    <UserIcon size={11} />
-                                    {roleName}
-                                </span>
-                                <span
-                                    className={cn(
-                                        "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
-                                        user.status === "active"
+                                        user.record_status === "active"
                                             ? "bg-emerald-500/10 text-emerald-400"
                                             : "bg-red-500/10 text-red-400",
                                     )}
@@ -673,12 +653,12 @@ export default function UserDetail() {
                                     <span
                                         className={cn(
                                             "w-1.5 h-1.5 rounded-full",
-                                            user.status === "active"
+                                            user.record_status === "active"
                                                 ? "bg-emerald-400"
                                                 : "bg-red-400",
                                         )}
                                     />
-                                    {user.status === "active"
+                                    {user.record_status === "active"
                                         ? "Active"
                                         : "Inactive"}
                                 </span>
@@ -716,7 +696,7 @@ export default function UserDetail() {
                                                 onChange={set("email")}
                                                 className={cn(
                                                     errors.email &&
-                                                    "border-destructive",
+                                                        "border-destructive",
                                                 )}
                                             />
                                         ) : (
@@ -743,7 +723,7 @@ export default function UserDetail() {
                                                 onChange={set("username")}
                                                 className={cn(
                                                     errors.username &&
-                                                    "border-destructive",
+                                                        "border-destructive",
                                                 )}
                                             />
                                         ) : (
@@ -759,6 +739,7 @@ export default function UserDetail() {
                                         isEdit={showEdit}
                                     >
                                         {showEdit ? (
+<<<<<<< HEAD
                                             <div className="flex flex-col gap-1">
                                                 <Input
                                                     placeholder="e.g. 09123456789"
@@ -788,6 +769,33 @@ export default function UserDetail() {
                                         ) : (
                                             <p className="text-sm text-foreground py-1">
                                                 {user?.phone_number ? formatPhoneNumber(user.phone_number) : "—"}
+=======
+                                            <Input
+                                                placeholder="e.g. 09123456789"
+                                                value={form.phone_number}
+                                                onChange={(e) => {
+                                                    const numeric =
+                                                        formatPhoneNumber(
+                                                            e.target.value,
+                                                        );
+                                                    setForm((f) => ({
+                                                        ...f,
+                                                        phone_number: numeric,
+                                                    }));
+                                                }}
+                                                className={cn(
+                                                    errors.phone_number &&
+                                                        "border-destructive",
+                                                )}
+                                            />
+                                        ) : (
+                                            <p className="text-sm text-foreground py-1">
+                                                {user?.phone_number
+                                                    ? formatPhoneNumber(
+                                                          user.phone_number,
+                                                      )
+                                                    : "—"}
+>>>>>>> 5a4b0a3d186cff85859267ee2d0825476d0b952f
                                             </p>
                                         )}
                                     </Field>
@@ -813,6 +821,7 @@ export default function UserDetail() {
                                                 required={isCreate}
                                                 error={errors.password}
                                             >
+<<<<<<< HEAD
                                                 <div className="flex flex-col gap-1.5">
                                                     <Input
                                                         type="password"
@@ -868,6 +877,20 @@ export default function UserDetail() {
                                                     {/* Strength meter */}
                                                     {form.password && (
                                                         <PasswordStrength password={form.password} />
+=======
+                                                <Input
+                                                    type="password"
+                                                    placeholder={
+                                                        isCreate
+                                                            ? "Min. 8 characters"
+                                                            : "New password"
+                                                    }
+                                                    value={form.password}
+                                                    onChange={set("password")}
+                                                    className={cn(
+                                                        errors.password &&
+                                                            "border-destructive",
+>>>>>>> 5a4b0a3d186cff85859267ee2d0825476d0b952f
                                                     )}
                                                 </div>
                                             </Field>
@@ -899,11 +922,16 @@ export default function UserDetail() {
                                                         });
                                                     }}
                                                     className={cn(
+<<<<<<< HEAD
                                                         errors.password_confirmation && "border-destructive",
                                                         !errors.password_confirmation &&
                                                         form.password_confirmation &&
                                                         form.password_confirmation === form.password &&
                                                         "border-emerald-500",
+=======
+                                                        errors.password_confirmation &&
+                                                            "border-destructive",
+>>>>>>> 5a4b0a3d186cff85859267ee2d0825476d0b952f
                                                     )}
                                                 />
                                             </Field>
@@ -924,8 +952,8 @@ export default function UserDetail() {
                                                 isSaving
                                                     ? "Saving…"
                                                     : isCreate
-                                                        ? "Create User"
-                                                        : "Save Changes"
+                                                      ? "Create User"
+                                                      : "Save Changes"
                                             }
                                         />
                                     </div>

@@ -28,8 +28,10 @@ export default function Login() {
         setErrors({});
 
         try {
-            await login({ email, password, remember });
-            navigate(searchParams.get("returnTo") || "/");
+            await login(
+                { email, password, remember },
+                searchParams.get("returnTo") ?? undefined,
+            );
         } catch (err: unknown) {
             if (err && typeof err === "object" && "response" in err) {
                 const axiosErr = err as {

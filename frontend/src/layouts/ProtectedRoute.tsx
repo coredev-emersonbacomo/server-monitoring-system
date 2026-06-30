@@ -13,7 +13,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import TopBarNav from "@/components/TopBarNav";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { Toaster } from "sonner";
-import { UserRoles } from "@/types/user-role";
 
 export function ProtectedRoute() {
     const { user, isLoading } = useJwtAuth();

@@ -26,8 +26,9 @@ import {
     useClientSecops,
     useAddClientSecop,
     useRemoveClientSecop,
-    type ClientServer,
 } from "@/hooks/useClients";
+import type { components } from "@/api/schema.d";
+
 import { useUsers } from "@/hooks/useUsers";
 import { useSettings } from "@/hooks/useSettings";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
@@ -42,13 +43,15 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { getClientBannerUploadSignature } from "@/api/cloudinary";
-import { uploadToCloudinary } from "@/services/cloudinary";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
+import { uploadFile } from "@/lib/uploadToast";
 
 import { Search, Filter, ChevronDown } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 
 // Helper function to format phone numbers
 import { formatPhoneNumber } from "@/utils/helpers";
@@ -138,9 +141,13 @@ function SectionHeader({
 
 // ─── Server card ──────────────────────────────────────────────────────────────
 
-function ServerCard({ server, clientId }: { server: ClientServer; clientId: number }) {
-
-
+function ServerCard({
+    server,
+    clientId,
+}: {
+    server: components["schemas"]["ServerData"];
+    clientId: number;
+}) {
     return (
         <Link
             to={`/servers/${server.id}?client=${clientId}`}
@@ -229,10 +236,14 @@ export default function ClientDetail() {
     const { data: client, isLoading, isError } = useClient(clientId);
     const { data: servers = [], isLoading: serversLoading } =
         useClientServers(clientId);
-    const { data: currentSecops = [], isLoading: secopLoading } = useClientSecops(clientId);
+    const { data: currentSecops = [], isLoading: secopLoading } =
+        useClientSecops(clientId);
     const { data: allUsers = [], isLoading: usersLoading } = useUsers();
     const { data: settings } = useSettings();
-    const secopLimit = Math.max(1, parseInt(settings?.secop_limit_per_client ?? "5", 10) || 5);
+    const secopLimit = Math.max(
+        1,
+        parseInt(settings?.secop_limit_per_client ?? "5", 10) || 5,
+    );
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createClient = useCreateClient();
@@ -244,18 +255,21 @@ export default function ClientDetail() {
     // ── Local state ────────────────────────────────────────────────────────────
     const [showDelete, setShowDelete] = useState(false);
     const [showSecopDialog, setShowSecopDialog] = useState(false);
-    const [selectedSecopToAdd, setSelectedSecopToAdd] = useState<number | null>(null);
+    const [selectedSecopToAdd, setSelectedSecopToAdd] = useState<number | null>(
+        null,
+    );
     const defaultBanner = import.meta.env.VITE_DEFAULT_CLIENT_BANNER as string;
     const [bannerFile, setBannerFile] = useState<File | null>(null);
     const [bannerPreview, setBannerPreview] = useState<string | null>(
         id ? null : defaultBanner,
     );
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [uploadProgress, setUploadProgress] = useState(-1);
 
     // Add state inside the component
     const [serverSearch, setServerSearch] = useState("");
-    const [serverFilter, setServerFilter] = useState<"all" | "online" | "offline">("all");
+    const [serverFilter, setServerFilter] = useState<
+        "all" | "online" | "offline"
+    >("all");
 
     const [form, setForm] = useState({
         name: "",
@@ -268,7 +282,6 @@ export default function ClientDetail() {
     // Reset mode when navigating between clients / to create
     useEffect(() => {
         const next = id ? "view" : "create";
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMode(next);
         if (next === "create") {
             setForm({
@@ -287,7 +300,6 @@ export default function ClientDetail() {
     // Populate form when client data arrives
     useEffect(() => {
         if (client) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setForm({
                 name: client.name,
                 description: client.description ?? "",
@@ -316,19 +328,15 @@ export default function ClientDetail() {
 
     const set =
         (key: keyof typeof form) =>
-            (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-                setForm((f) => ({ ...f, [key]: e.target.value }));
+        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+            setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const schema = z.object({
         name: z.string().trim().min(2, "Minimum 2 characters"),
         description: z.string().optional(),
         location: z.string().trim().min(2, "Minimum 2 characters"),
-        email: z
-            .string()
-            .trim()
-            .min(1, "Required")
-            .email("Invalid email address"),
+        email: z.email("Invalid email address").trim().min(1, "Required"),
         contact_number: z.string().trim().min(5, "Minimum 5 characters"),
     });
 
@@ -360,19 +368,16 @@ export default function ClientDetail() {
         fd.append("contact_number", form.contact_number);
 
         if (bannerFile) {
-            setUploadProgress(0);
             try {
-                const signature = await getClientBannerUploadSignature();
-                const result = await uploadToCloudinary(
+                const { storage_key, intent_id } = await uploadFile(
                     bannerFile,
-                    signature,
-                    (p) => setUploadProgress(p),
+                    "client_banner",
+                    "Uploading banner…",
                 );
-                fd.append("banner_image_url", result.secure_url);
-                fd.append("banner_image_public_id", result.public_id);
+                fd.append("upload_intent_id", intent_id);
+                fd.append("banner_image_storage_key", storage_key);
             } catch {
                 toast.error("Failed to upload banner image.");
-                setUploadProgress(-1);
                 return;
             }
         }
@@ -406,8 +411,6 @@ export default function ClientDetail() {
                         : "Failed to update client.",
                 );
             }
-        } finally {
-            setUploadProgress(-1);
         }
     };
 
@@ -484,17 +487,15 @@ export default function ClientDetail() {
     const isSaving = createClient.isPending || updateClient.isPending;
     const bannerInputId = "banner-upload";
     const filteredServers = servers.filter((s) => {
-        const matchSearch = s.server_name.toLowerCase().includes(serverSearch.toLowerCase());
+        const matchSearch = s.server_name
+            .toLowerCase()
+            .includes(serverSearch.toLowerCase());
         return matchSearch;
     });
 
     return (
         <>
-            <LoadingOverlay
-                visible={isSaving && uploadProgress >= 0}
-                progress={uploadProgress}
-                message="Uploading banner..."
-            />
+            <LoadingOverlay visible={isSaving} />
             <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
                 {/* ── Banner / Hero ── */}
                 <div className="relative">
@@ -504,14 +505,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                        backgroundImage: `url(${bannerPreview})`,
-                                        backgroundSize: "cover",
-                                        backgroundPosition: "center",
-                                    }
+                                          backgroundImage: `url(${bannerPreview})`,
+                                          backgroundSize: "cover",
+                                          backgroundPosition: "center",
+                                      }
                                     : {
-                                        background:
-                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                    }
+                                          background:
+                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                      }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -543,7 +544,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                        defaultBanner,
+                                                            defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -639,7 +640,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none",
                                             errors.description &&
-                                            "border-destructive",
+                                                "border-destructive",
                                         )}
                                     />
                                 </div>
@@ -682,7 +683,7 @@ export default function ClientDetail() {
                                                 onChange={set("location")}
                                                 className={cn(
                                                     errors.location &&
-                                                    "border-destructive",
+                                                        "border-destructive",
                                                 )}
                                             />
                                         ) : (
@@ -717,7 +718,7 @@ export default function ClientDetail() {
                                                 onChange={set("email")}
                                                 className={cn(
                                                     errors.email &&
-                                                    "border-destructive",
+                                                        "border-destructive",
                                                 )}
                                             />
                                         ) : (
@@ -733,44 +734,31 @@ export default function ClientDetail() {
                                         isEdit={showEdit}
                                     >
                                         {showEdit ? (
-                                            <div className="flex flex-col gap-1">
-                                                <Input
-                                                    placeholder="e.g. 09123456789 or (02) 8123 4567"
-                                                    value={form.contact_number}
-                                                    onChange={(e) => {
-                                                        const raw = e.target.value;
-                                                        const formatted = formatPhoneNumber(raw);
-                                                        set("contact_number")({
-                                                            ...e,
-                                                            target: { ...e.target, value: formatted },
-                                                        });
-
-                                                        // Live validation — count digits only, ignore formatting chars
-                                                        const digits = formatted.replace(/\D/g, "");
-
-                                                        setErrors((prev) => {
-                                                            const next = { ...prev };
-
-                                                            if (!digits) {
-                                                                next.contact_number = "Contact number is required";
-                                                            } else if (digits.length < 7) {
-                                                                next.contact_number = `At least ${7 - digits.length} more digit${7 - digits.length !== 1 ? "s" : ""} needed`;
-                                                            } else {
-                                                                delete next.contact_number;
-                                                            }
-
-                                                            return next;
-                                                        });
-                                                    }}
-                                                    className={cn(errors.contact_number && "border-destructive")}
-                                                />
-                                                <p className="text-[11px] text-muted-foreground">
-                                                    Mobile or landline, with or without area code
-                                                </p>
-                                            </div>
+                                            <Input
+                                                placeholder="e.g. 09123456789"
+                                                value={form.contact_number}
+                                                onChange={(e) => {
+                                                    set("contact_number")({
+                                                        ...e,
+                                                        target: {
+                                                            ...e.target,
+                                                            value: formatPhoneNumber(
+                                                                e.target.value,
+                                                            ),
+                                                        },
+                                                    });
+                                                }}
+                                                className={cn(
+                                                    errors.contact_number &&
+                                                        "border-destructive",
+                                                )}
+                                            />
                                         ) : (
                                             <p className="text-sm text-foreground py-1">
-                                                {formatPhoneNumber(client?.contact_number || "")}
+                                                {formatPhoneNumber(
+                                                    client?.contact_number ||
+                                                        "",
+                                                )}
                                             </p>
                                         )}
                                     </Field>
@@ -789,8 +777,8 @@ export default function ClientDetail() {
                                                 isSaving
                                                     ? "Saving…"
                                                     : mode === "create"
-                                                        ? "Create Client"
-                                                        : "Save Changes"
+                                                      ? "Create Client"
+                                                      : "Save Changes"
                                             }
                                         />
                                     </div>
@@ -807,7 +795,8 @@ export default function ClientDetail() {
                                             SecOps Assignments
                                         </h2>
                                         <p className="text-xs text-muted-foreground mt-0.5">
-                                            Manage SecOps personnel assigned to this client.
+                                            Manage SecOps personnel assigned to
+                                            this client.
                                         </p>
                                     </div>
                                     <Button
@@ -816,7 +805,9 @@ export default function ClientDetail() {
                                         icon={<Plus size={14} />}
                                         label="Add SecOps"
                                         onClick={() => setShowSecopDialog(true)}
-                                        disabled={currentSecops.length >= secopLimit}
+                                        disabled={
+                                            currentSecops.length >= secopLimit
+                                        }
                                     />
                                 </div>
 
@@ -831,7 +822,7 @@ export default function ClientDetail() {
                                     </div>
                                 ) : currentSecops.length > 0 ? (
                                     <div className="space-y-2">
-                                        {currentSecops.map((secop: any) => (
+                                        {currentSecops.map((secop) => (
                                             <div
                                                 key={secop.id}
                                                 className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"
@@ -845,7 +836,8 @@ export default function ClientDetail() {
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <p className="text-sm font-medium text-foreground truncate">
-                                                            {secop.first_name} {secop.last_name}
+                                                            {secop.first_name}{" "}
+                                                            {secop.last_name}
                                                         </p>
                                                         <p className="text-xs text-muted-foreground truncate">
                                                             {secop.email}
@@ -855,18 +847,26 @@ export default function ClientDetail() {
                                                 <button
                                                     type="button"
                                                     onClick={() =>
-                                                        removeSecop.mutate(secop.id, {
-                                                            onSuccess: () => {
-                                                                toast.success(
-                                                                    `${secop.first_name} removed from client.`,
-                                                                );
+                                                        removeSecop.mutate(
+                                                            secop.id,
+                                                            {
+                                                                onSuccess:
+                                                                    () => {
+                                                                        toast.success(
+                                                                            `${secop.first_name} removed from client.`,
+                                                                        );
+                                                                    },
+                                                                onError: () => {
+                                                                    toast.error(
+                                                                        "Failed to remove SecOps.",
+                                                                    );
+                                                                },
                                                             },
-                                                            onError: () => {
-                                                                toast.error("Failed to remove SecOps.");
-                                                            },
-                                                        })
+                                                        )
                                                     }
-                                                    disabled={removeSecop.isPending}
+                                                    disabled={
+                                                        removeSecop.isPending
+                                                    }
                                                     className="text-xs text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50"
                                                 >
                                                     Remove
@@ -876,10 +876,14 @@ export default function ClientDetail() {
                                     </div>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2 bg-muted/20 rounded-lg border border-border/40">
-                                        <p className="text-sm">No SecOps assigned yet.</p>
+                                        <p className="text-sm">
+                                            No SecOps assigned yet.
+                                        </p>
                                         <p className="text-xs">
                                             Add up to{" "}
-                                            <span className="font-semibold">{secopLimit}</span>{" "}
+                                            <span className="font-semibold">
+                                                {secopLimit}
+                                            </span>{" "}
                                             SecOps to this client.
                                         </p>
                                     </div>
@@ -910,7 +914,11 @@ export default function ClientDetail() {
                                                 type="text"
                                                 placeholder="Search servers..."
                                                 value={serverSearch}
-                                                onChange={(e) => setServerSearch(e.target.value)}
+                                                onChange={(e) =>
+                                                    setServerSearch(
+                                                        e.target.value,
+                                                    )
+                                                }
                                                 className="w-48 pl-8 pr-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground transition-colors"
                                             />
                                         </div>
@@ -923,22 +931,47 @@ export default function ClientDetail() {
                                                     icon={<Filter size={14} />}
                                                     className="gap-1"
                                                 >
-                                                    {serverFilter === "all" ? "All" : serverFilter === "online" ? "Online" : "Offline"}
+                                                    {serverFilter === "all"
+                                                        ? "All"
+                                                        : serverFilter ===
+                                                            "online"
+                                                          ? "Online"
+                                                          : "Offline"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
-                                            <PopoverContent align="end" className="w-36 p-1">
+                                            <PopoverContent
+                                                align="end"
+                                                className="w-36 p-1"
+                                            >
                                                 {[
-                                                    { label: "All", value: "all" },
-                                                    { label: "Online", value: "online" },
-                                                    { label: "Offline", value: "offline" },
+                                                    {
+                                                        label: "All",
+                                                        value: "all",
+                                                    },
+                                                    {
+                                                        label: "Online",
+                                                        value: "online",
+                                                    },
+                                                    {
+                                                        label: "Offline",
+                                                        value: "offline",
+                                                    },
                                                 ].map((opt) => (
                                                     <button
                                                         key={opt.value}
-                                                        onClick={() => setServerFilter(opt.value as "all" | "online" | "offline")}
+                                                        onClick={() =>
+                                                            setServerFilter(
+                                                                opt.value as
+                                                                    | "all"
+                                                                    | "online"
+                                                                    | "offline",
+                                                            )
+                                                        }
                                                         className={cn(
                                                             "flex items-center w-full px-2 py-1.5 rounded-md text-sm transition-colors",
-                                                            serverFilter === opt.value
+                                                            serverFilter ===
+                                                                opt.value
                                                                 ? "bg-accent text-accent-foreground"
                                                                 : "hover:bg-muted text-foreground",
                                                         )}
@@ -949,14 +982,18 @@ export default function ClientDetail() {
                                             </PopoverContent>
                                         </Popover>
 
-                                        <Link to={`/servers?client_id=${client.id}`}>
+                                        <Link
+                                            to={`/servers?client_id=${client.id}`}
+                                        >
                                             <Button
                                                 variant="outline"
                                                 size="sm"
                                                 label="View All"
                                             />
                                         </Link>
-                                        <Link to={`/servers/create?client_id=${client.id}`}>
+                                        <Link
+                                            to={`/servers/create?client_id=${client.id}`}
+                                        >
                                             <Button
                                                 variant="outline"
                                                 size="sm"
@@ -981,12 +1018,19 @@ export default function ClientDetail() {
                                 ) : filteredServers.length > 0 ? (
                                     <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
                                         {filteredServers.map((s) => (
-                                            <ServerCard key={s.id} server={s} clientId={client.id} />
+                                            <ServerCard
+                                                key={s.id}
+                                                server={s}
+                                                clientId={client.id}
+                                            />
                                         ))}
                                     </div>
                                 ) : (
                                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2 bg-card border border-border/60 rounded-xl">
-                                        <Server size={28} className="opacity-20" />
+                                        <Server
+                                            size={28}
+                                            className="opacity-20"
+                                        />
                                         <p className="text-sm">
                                             No servers assigned to this client.
                                         </p>
@@ -1021,7 +1065,9 @@ export default function ClientDetail() {
                             <Button
                                 variant="danger"
                                 label={
-                                    deleteClient.isPending ? "Deleting…" : "Delete"
+                                    deleteClient.isPending
+                                        ? "Deleting…"
+                                        : "Delete"
                                 }
                                 disabled={deleteClient.isPending}
                                 onClick={handleDelete}
@@ -1031,14 +1077,18 @@ export default function ClientDetail() {
                 </Dialog>
 
                 {/* ── SecOps Dialog ── */}
-                <Dialog open={showSecopDialog} onOpenChange={setShowSecopDialog}>
+                <Dialog
+                    open={showSecopDialog}
+                    onOpenChange={setShowSecopDialog}
+                >
                     <DialogContent className="sm:max-w-md">
                         <DialogHeader>
                             <DialogTitle>Add SecOps</DialogTitle>
                         </DialogHeader>
                         <div className="flex flex-col gap-4">
                             <p className="text-xs text-muted-foreground">
-                                Select a SecOps account to assign to this client. You can add up to{" "}
+                                Select a SecOps account to assign to this
+                                client. You can add up to{" "}
                                 <span className="font-semibold">
                                     {settings?.secop_limit_per_client ?? "5"}
                                 </span>{" "}
@@ -1048,28 +1098,39 @@ export default function ClientDetail() {
                             {usersLoading ? (
                                 <div className="space-y-2">
                                     {[0, 1, 2].map((i) => (
-                                        <div key={i} className="h-10 bg-muted rounded animate-pulse" />
+                                        <div
+                                            key={i}
+                                            className="h-10 bg-muted rounded animate-pulse"
+                                        />
                                     ))}
                                 </div>
                             ) : (
                                 <div className="space-y-2 max-h-64 overflow-y-auto">
                                     {allUsers
                                         .filter(
-                                            (user: any) =>
-                                                !currentSecops.some((s: any) => s.id === user.id),
+                                            (user) =>
+                                                !currentSecops.some(
+                                                    (s) => s.id === user.id,
+                                                ),
                                         )
-                                        .map((user: any) => (
+                                        .map((user) => (
                                             <button
                                                 key={user.id}
                                                 onClick={() => {
-                                                    setSelectedSecopToAdd(user.id);
+                                                    setSelectedSecopToAdd(
+                                                        user.id,
+                                                    );
                                                     addSecop.mutate(user.id, {
                                                         onSuccess: () => {
                                                             toast.success(
                                                                 `${user.first_name} added to client.`,
                                                             );
-                                                            setShowSecopDialog(false);
-                                                            setSelectedSecopToAdd(null);
+                                                            setShowSecopDialog(
+                                                                false,
+                                                            );
+                                                            setSelectedSecopToAdd(
+                                                                null,
+                                                            );
                                                         },
                                                         onError: () => {
                                                             toast.error(
@@ -1080,7 +1141,8 @@ export default function ClientDetail() {
                                                 }}
                                                 disabled={
                                                     addSecop.isPending ||
-                                                    selectedSecopToAdd === user.id
+                                                    selectedSecopToAdd ===
+                                                        user.id
                                                 }
                                                 className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 text-left border border-border/40 hover:border-border"
                                             >
@@ -1092,26 +1154,31 @@ export default function ClientDetail() {
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-foreground truncate">
-                                                        {user.first_name} {user.last_name}
+                                                        {user.first_name}{" "}
+                                                        {user.last_name}
                                                     </p>
                                                     <p className="text-xs text-muted-foreground truncate">
                                                         {user.email}
                                                     </p>
                                                 </div>
-                                                {selectedSecopToAdd === user.id &&
+                                                {selectedSecopToAdd ===
+                                                    user.id &&
                                                     addSecop.isPending && (
                                                         <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                                                     )}
                                             </button>
                                         ))}
                                     {allUsers.filter(
-                                        (user: any) =>
-                                            !currentSecops.some((s: any) => s.id === user.id),
+                                        (user) =>
+                                            !currentSecops.some(
+                                                (s) => s.id === user.id,
+                                            ),
                                     ).length === 0 && (
-                                            <p className="text-sm text-muted-foreground text-center py-4">
-                                                All users are already assigned to this client.
-                                            </p>
-                                        )}
+                                        <p className="text-sm text-muted-foreground text-center py-4">
+                                            All users are already assigned to
+                                            this client.
+                                        </p>
+                                    )}
                                 </div>
                             )}
                         </div>

@@ -1,13 +1,15 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Loader2, AlertTriangle, ChevronRight } from "lucide-react";
+import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import { useServer } from "@/hooks/useServer";
 import { useServerSocket, type WsStatus } from "@/hooks/useServerSocket";
 import { ServerCard } from "@/components/dashboard/ServerCard";
 import { ChartZoomProvider } from "@/contexts/ChartZoomContext";
 import { Button } from "@/components/ui/button";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
-import type { StatPoint } from "@/types/stats";
+import type { components } from "@/api/schema.d";
+
+type StatPointData = components["schemas"]["StatPointData"];
 
 export default function ServerDetail() {
     const { id } = useParams<{ id: string }>();
@@ -18,9 +20,9 @@ export default function ServerDetail() {
 
     const { data: initial, isLoading, isError } = useServer(serverId);
     const [, setWsStatus] = useState<WsStatus>("connecting");
-    const [liveStats, setLiveStats] = useState<StatPoint[]>([]);
+    const [liveStats, setLiveStats] = useState<StatPointData[]>([]);
 
-    const handleStats = useCallback((point: StatPoint) => {
+    const handleStats = useCallback((point: StatPointData) => {
         setLiveStats((prev) => {
             const window = 144;
             const next = [...prev, point];
@@ -40,27 +42,46 @@ export default function ServerDetail() {
 
     const { setTrail } = useBreadcrumb();
     useEffect(() => {
-        if (initial) {
+        if (!initial) {
             if (clientFromUrl === "all") {
-                setTrail([
+                setTrail([{ label: "", href: "" }, { label: "", href: "" }], true);
+            } else {
+                setTrail(
+                    [{ label: "", href: "" }, { label: "", href: "" }, { label: "", href: "" }],
+                    true,
+                );
+            }
+            return;
+        }
+
+        if (clientFromUrl === "all") {
+            setTrail(
+                [
                     { label: "Servers", href: "/servers" },
                     { label: initial.server_name, href: `/servers/${initial.id}` },
-                ]);
-            } else if (clientFromUrl) {
-                setTrail([
+                ],
+                false,
+            );
+        } else if (clientFromUrl) {
+            setTrail(
+                [
                     { label: "Clients", href: "/clients" },
                     { label: initial.client_name, href: `/clients/${clientFromUrl}` },
                     { label: initial.server_name, href: `/servers/${initial.id}` },
-                ]);
-            } else {
-                setTrail([
+                ],
+                false,
+            );
+        } else {
+            setTrail(
+                [
                     { label: "Clients", href: "/clients" },
                     { label: initial.client_name, href: `/clients/${initial.client_id}` },
                     { label: initial.server_name, href: `/servers/${initial.id}` },
-                ]);
-            }
+                ],
+                false,
+            );
         }
-    }, [initial, setTrail, clientFromUrl]);
+    }, [initial, setTrail, clientFromUrl, serverId]);
 
     // ── Loading ──────────────────────────────────────────────────────────────
     if (isLoading) {
@@ -96,29 +117,10 @@ export default function ServerDetail() {
     return (
         <ChartZoomProvider>
             <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
-                <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
-                    <div className="flex items-center justify-between py-2">
-                        <button
-                            onClick={() => {
-                                if (clientFromUrl === "all") {
-                                    navigate("/servers");
-                                } else if (clientFromUrl) {
-                                    navigate(`/servers?client_id=${clientFromUrl}`);
-                                } else {
-                                    navigate(`/clients/${initial.client_id}`);
-                                }
-                            }}
-                            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            {clientFromUrl === "all"
-                                ? "Back to Servers"
-                                : initial.client_name}
-                        </button>
-                        <time className="text-sm text-muted-foreground">
-                            {time.toLocaleTimeString()}
-                        </time>
-                    </div>
+                <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md pb-3 px-5 flex justify-end items-center">
+                    <time className="text-sm text-muted-foreground">
+                        {time.toLocaleTimeString()}
+                    </time>
                 </header>
 
                 <main className="py-3 w-full flex-1 min-h-0 overflow-auto">

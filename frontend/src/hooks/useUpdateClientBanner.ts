@@ -1,8 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { getClientBannerUploadSignature, updateClientApi } from "@/api/cloudinary";
-import { uploadToCloudinary } from "@/services/cloudinary";
-import type { UploadedImageMetadata } from "@/types/cloudinary";
+import { useDirectUpload } from "@/hooks/useDirectUpload";
+import { updateClientApi } from "@/api/uploads";
 
 interface UpdateClientInput {
     clientId: number;
@@ -18,27 +17,22 @@ interface UpdateClientInput {
 
 export function useUpdateClient() {
     const queryClient = useQueryClient();
+    const directUpload = useDirectUpload();
 
     return useMutation({
         mutationFn: async (input: UpdateClientInput) => {
-            let cloudinaryMetadata: UploadedImageMetadata | null = null;
+            let storageKey: string | null = null;
+            let intentId: string | null = null;
 
             if (input.bannerFile) {
-                const signature = await getClientBannerUploadSignature();
-                const result = await uploadToCloudinary(
-                    input.bannerFile,
-                    signature,
-                    input.onUploadProgress,
-                    input.signal,
-                );
-                cloudinaryMetadata = {
-                    public_id: result.public_id,
-                    secure_url: result.secure_url,
-                    width: result.width,
-                    height: result.height,
-                    format: result.format,
-                    bytes: result.bytes,
-                };
+                const result = await directUpload.mutateAsync({
+                    purpose: "client_banner",
+                    file: input.bannerFile,
+                    onUploadProgress: input.onUploadProgress,
+                    signal: input.signal,
+                });
+                storageKey = result.storage_key;
+                intentId = result.intent_id;
             }
 
             const payload: Record<string, unknown> = {
@@ -49,9 +43,9 @@ export function useUpdateClient() {
                 contact_number: input.contactNumber,
             };
 
-            if (cloudinaryMetadata) {
-                payload.cloudinary_url = cloudinaryMetadata.secure_url;
-                payload.cloudinary_public_id = cloudinaryMetadata.public_id;
+            if (storageKey && intentId) {
+                payload.upload_intent_id = intentId;
+                payload.banner_image_storage_key = storageKey;
             }
 
             return updateClientApi(input.clientId, payload);

@@ -1,8 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { getProfilePictureUploadSignature, updateProfileApi } from "@/api/cloudinary";
-import { uploadToCloudinary } from "@/services/cloudinary";
-import type { UploadedImageMetadata } from "@/types/cloudinary";
+import { useDirectUpload } from "@/hooks/useDirectUpload";
+import { updateProfileApi } from "@/api/uploads";
 
 interface UpdateProfileInput {
     userId: number;
@@ -10,7 +9,6 @@ interface UpdateProfileInput {
     lastName: string;
     email: string;
     username: string;
-    roleId: number;
     status: string;
     password?: string;
     passwordConfirmation?: string;
@@ -21,27 +19,22 @@ interface UpdateProfileInput {
 
 export function useUpdateProfile() {
     const queryClient = useQueryClient();
+    const directUpload = useDirectUpload();
 
     return useMutation({
         mutationFn: async (input: UpdateProfileInput) => {
-            let cloudinaryMetadata: UploadedImageMetadata | null = null;
+            let storageKey: string | null = null;
+            let intentId: string | null = null;
 
             if (input.avatarFile) {
-                const signature = await getProfilePictureUploadSignature();
-                const result = await uploadToCloudinary(
-                    input.avatarFile,
-                    signature,
-                    input.onUploadProgress,
-                    input.signal,
-                );
-                cloudinaryMetadata = {
-                    public_id: result.public_id,
-                    secure_url: result.secure_url,
-                    width: result.width,
-                    height: result.height,
-                    format: result.format,
-                    bytes: result.bytes,
-                };
+                const result = await directUpload.mutateAsync({
+                    purpose: "profile_picture",
+                    file: input.avatarFile,
+                    onUploadProgress: input.onUploadProgress,
+                    signal: input.signal,
+                });
+                storageKey = result.storage_key;
+                intentId = result.intent_id;
             }
 
             const payload: Record<string, unknown> = {
@@ -49,7 +42,6 @@ export function useUpdateProfile() {
                 last_name: input.lastName,
                 email: input.email,
                 username: input.username,
-                role_id: input.roleId,
                 status: input.status,
             };
 
@@ -58,9 +50,9 @@ export function useUpdateProfile() {
                 payload.password_confirmation = input.passwordConfirmation;
             }
 
-            if (cloudinaryMetadata) {
-                payload.cloudinary_url = cloudinaryMetadata.secure_url;
-                payload.cloudinary_public_id = cloudinaryMetadata.public_id;
+            if (storageKey && intentId) {
+                payload.upload_intent_id = intentId;
+                payload.profile_picture_storage_key = storageKey;
             }
 
             return updateProfileApi(input.userId, payload);

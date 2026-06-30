@@ -1,14 +1,15 @@
-import React, { createContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
-interface Crumb {
+export interface Crumb {
     label: string;
     href: string;
 }
 
 interface BreadcrumbContextType {
     trail: Crumb[];
-    setTrail: React.Dispatch<React.SetStateAction<Crumb[]>>;
+    isLoading: boolean;
+    setTrail: (trail: Crumb[], isLoading?: boolean) => void;
 }
 
 const BreadcrumbContext = createContext<BreadcrumbContextType | undefined>(
@@ -19,15 +20,21 @@ export const BreadcrumbProvider: React.FC<{ children: React.ReactNode }> = ({
     children,
 }) => {
     const location = useLocation();
-    const [trail, setTrail] = useState<Crumb[]>([]);
+    const [trail, setTrailState] = useState<Crumb[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const setTrail = useCallback((newTrail: Crumb[], loading?: boolean) => {
+        setTrailState(newTrail);
+        setIsLoading(loading ?? false);
+    }, []);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setTrail([]);
+        setTrailState([]);
+        setIsLoading(false);
     }, [location.pathname]);
 
     return (
-        <BreadcrumbContext.Provider value={{ trail, setTrail }}>
+        <BreadcrumbContext.Provider value={{ trail, isLoading, setTrail }}>
             {children}
         </BreadcrumbContext.Provider>
     );

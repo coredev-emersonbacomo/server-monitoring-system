@@ -1,6 +1,13 @@
 // pages/users/Index.tsx
 import { useState, useMemo } from "react";
-import { Plus, Search, Users2, RefreshCw, Filter, ChevronDown } from "lucide-react";
+import {
+    Plus,
+    Search,
+    Users2,
+    RefreshCw,
+    Filter,
+    ChevronDown,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import ProfileCard from "@/components/ProfileCard";
@@ -19,6 +26,7 @@ import {
 } from "@/components/ui/popover";
 import { useUsers, useDeleteUser } from "@/hooks/useUsers";
 import { cn } from "@/lib/utils";
+import IndexHeader from "@/components/IndexHeader";
 
 type FilterTab = "all" | "active" | "inactive" | "Admin" | "SecOps";
 
@@ -49,7 +57,10 @@ const Users = () => {
     const { data: users = [], isLoading, isError, refetch } = useUsers();
     const deleteUser = useDeleteUser();
 
-    const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<{
+        id: number;
+        name: string;
+    } | null>(null);
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<FilterTab>("all");
 
@@ -61,17 +72,18 @@ const Users = () => {
                 `${u.first_name} ${u.last_name}`.toLowerCase().includes(q) ||
                 u.email.toLowerCase().includes(q) ||
                 u.username.toLowerCase().includes(q);
-            const matchFilter =
-                filter === "all" ||
-                u.status === filter ||
-                u.role === filter;
+            const matchFilter = filter === "all" || u.record_status === filter;
             return matchSearch && matchFilter;
         });
     }, [search, filter, users]);
 
     const handleDeleteRequest = (id: number) => {
         const user = users.find((u) => u.id === id);
-        if (user) setDeleteTarget({ id, name: `${user.first_name} ${user.last_name}` });
+        if (user)
+            setDeleteTarget({
+                id,
+                name: `${user.first_name} ${user.last_name}`,
+            });
     };
 
     const confirmDelete = async () => {
@@ -85,46 +97,35 @@ const Users = () => {
         }
     };
 
-    const activeCount = users.filter((u) => u.status === "active").length;
-    const inactiveCount = users.filter((u) => u.status === "inactive").length;
-    const adminCount = users.filter((u) => u.role === "Admin").length;
-    const secopsCount = users.filter((u) => u.role === "SecOps").length;
+    const activeCount = users.filter(
+        (u) => u.record_status === "active",
+    ).length;
+    const inactiveCount = users.filter(
+        (u) => u.record_status === "inactive",
+    ).length;
 
     const filterOptions = [
         { label: "All", value: "all" as FilterTab, count: users.length },
         { label: "Active", value: "active" as FilterTab, count: activeCount },
-        { label: "Inactive", value: "inactive" as FilterTab, count: inactiveCount },
-        { label: "Admin", value: "Admin" as FilterTab, count: adminCount },
-        { label: "SecOps", value: "SecOps" as FilterTab, count: secopsCount },
+        {
+            label: "Inactive",
+            value: "inactive" as FilterTab,
+            count: inactiveCount,
+        },
     ];
 
-    const currentFilterLabel = filterOptions.find((o) => o.value === filter)?.label ?? "All";
+    const currentFilterLabel =
+        filterOptions.find((o) => o.value === filter)?.label ?? "All";
 
     return (
         <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
-            {/* ── Header ── */}
-            <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
-                <div>
-                    <div className="flex items-start justify-between gap-4 py-3">
-                        <div className="flex items-start gap-3">
-                            <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
-                                <Users2 className="w-5 h-5 text-primary" />
-                            </div>
-                            <div>
-                                <h1 className="text-lg font-semibold tracking-tight">
-                                    User Management
-                                </h1>
-                                <p className="text-sm text-muted-foreground mt-0.5">
-                                    Manage accounts and assign roles.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
+            <IndexHeader
+                icon={Users2}
+                title="User Management"
+                description="Manage accounts and assign roles."
+            />
 
-            <main className="py-6 w-full flex-1 min-h-0 overflow-auto flex flex-col gap-5">
-
+            <main className="py-6 w-full flex-1 min-h-0 flex flex-col gap-5">
                 {/* ── Toolbar ── */}
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -141,17 +142,16 @@ const Users = () => {
                                 className="w-full pl-8 pr-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground transition-colors"
                             />
                         </div>
-
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    icon={<Filter size={15} />}
-                                    className="gap-1 h-9"
+                                    icon={<Filter size={14} />}
+                                    className="gap-1"
                                 >
                                     {currentFilterLabel}
-                                    <ChevronDown size={15} />
+                                    <ChevronDown size={14} />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent align="start" className="w-48 p-1">
@@ -167,7 +167,9 @@ const Users = () => {
                                         )}
                                     >
                                         <span>{option.label}</span>
-                                        <span className="text-xs text-muted-foreground">{option.count}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {option.count}
+                                        </span>
                                     </button>
                                 ))}
                             </PopoverContent>
@@ -210,8 +212,12 @@ const Users = () => {
                 {!isLoading && !isError && visible.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
                         <Users2 size={40} className="opacity-20" />
-                        <p className="text-sm font-medium">No users match your search.</p>
-                        <p className="text-xs opacity-60">Try adjusting your filters or search term.</p>
+                        <p className="text-sm font-medium">
+                            No users match your search.
+                        </p>
+                        <p className="text-xs opacity-60">
+                            Try adjusting your filters or search term.
+                        </p>
                     </div>
                 )}
 
@@ -224,7 +230,6 @@ const Users = () => {
                                 id={u.id}
                                 name={`${u.first_name} ${u.last_name}`}
                                 email={u.email}
-                                role={u.role}
                                 imageUrl={u.profile_picture_url}
                                 onDelete={handleDeleteRequest}
                             />
@@ -235,7 +240,9 @@ const Users = () => {
                 {/* ── Delete dialog ── */}
                 <Dialog
                     open={!!deleteTarget}
-                    onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+                    onOpenChange={(open) => {
+                        if (!open) setDeleteTarget(null);
+                    }}
                 >
                     <DialogContent className="sm:max-w-sm">
                         <DialogHeader>
@@ -243,16 +250,26 @@ const Users = () => {
                         </DialogHeader>
                         <p className="text-sm text-muted-foreground">
                             Are you sure you want to permanently delete{" "}
-                            <span className="font-medium text-foreground">{deleteTarget?.name}</span>?
-                            This action cannot be undone.
+                            <span className="font-medium text-foreground">
+                                {deleteTarget?.name}
+                            </span>
+                            ? This action cannot be undone.
                         </p>
                         <div className="flex justify-end gap-2 pt-2">
                             <DialogClose asChild>
-                                <Button variant="outline" label="Cancel" onClick={() => setDeleteTarget(null)} />
+                                <Button
+                                    variant="outline"
+                                    label="Cancel"
+                                    onClick={() => setDeleteTarget(null)}
+                                />
                             </DialogClose>
                             <Button
                                 variant="danger"
-                                label={deleteUser.isPending ? "Removing…" : "Remove"}
+                                label={
+                                    deleteUser.isPending
+                                        ? "Removing…"
+                                        : "Remove"
+                                }
                                 disabled={deleteUser.isPending}
                                 onClick={confirmDelete}
                             />

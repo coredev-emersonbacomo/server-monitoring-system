@@ -10,21 +10,14 @@ uses(RefreshDatabase::class)->group('settings', 'secops');
 beforeEach(function () {
     config(['jwt.secret' => 'test-secret-key-32-chars-long-for-testing!']);
 
-    \Illuminate\Support\Facades\DB::table('roles')->insert([
-        ['role_name' => 'Admin'],
-        ['role_name' => 'SecOps'],
-    ]);
-
     $this->admin = User::factory()->create([
         'email' => 'admin@example.com',
         'password' => bcrypt('password123'),
-        'role_id' => 1,
     ]);
 
     $this->secop = User::factory()->create([
         'email' => 'secop@example.com',
         'password' => bcrypt('password123'),
-        'role_id' => 2,
     ]);
 
     $this->client = Client::factory()->create();
@@ -81,7 +74,7 @@ test('non-admin cannot update settings', function () {
 });
 
 test('admin can assign secops to a client within limit', function () {
-    $secopTwo = User::factory()->create(['role_id' => 2]);
+    $secopTwo = User::factory()->create();
     $token = loginAs($this->admin);
 
     $response = $this->withHeaders([
@@ -94,7 +87,7 @@ test('admin can assign secops to a client within limit', function () {
         ->assertJsonPath('secops.0.id', $this->secop->id)
         ->assertJsonPath('secops.1.id', $secopTwo->id);
 
-    $this->assertDatabaseHas('sec_ops', [
+    $this->assertDatabaseHas('sec_op_clients', [
         'client_id' => $this->client->id,
         'user_id' => $this->secop->id,
         'status' => 'active',
@@ -102,8 +95,8 @@ test('admin can assign secops to a client within limit', function () {
 });
 
 test('assign secops rejects assignments above configured limit', function () {
-    $secopTwo = User::factory()->create(['role_id' => 2]);
-    $secopThree = User::factory()->create(['role_id' => 2]);
+    $secopTwo = User::factory()->create();
+    $secopThree = User::factory()->create();
     $token = loginAs($this->admin);
 
     $response = $this->withHeaders([
@@ -114,32 +107,6 @@ test('assign secops rejects assignments above configured limit', function () {
 
     $response->assertStatus(422)
         ->assertJsonValidationErrors(['secop_ids']);
-});
-
-test('assign secops rejects non-secops users', function () {
-    $adminUser = User::factory()->create(['role_id' => 1]);
-    $token = loginAs($this->admin);
-
-    $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
-    ])->postJson("/api/clients/{$this->client->id}/secops", [
-        'secop_ids' => [$adminUser->id],
-    ]);
-
-    $response->assertStatus(422)
-        ->assertJsonValidationErrors(['secop_ids']);
-});
-
-test('non-admin cannot assign secops', function () {
-    $token = loginAs($this->secop);
-
-    $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
-    ])->postJson("/api/clients/{$this->client->id}/secops", [
-        'secop_ids' => [$this->secop->id],
-    ]);
-
-    $response->assertStatus(403);
 });
 
 test('client show includes assigned secops', function () {

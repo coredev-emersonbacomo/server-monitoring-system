@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import client from "@/api/api";
+import api from "@/api/api";
 import type {
     UsersStorePayload as CreateUserPayload,
     UsersUpdatePayload as UpdateUserPayload,
@@ -12,7 +12,7 @@ export const useUsers = () =>
     useQuery<UserData[]>({
         queryKey: ["users"],
         queryFn: async () => {
-            const { data, error } = await client.GET("/users");
+            const { data, error } = await api.GET("/users");
             if (error) throw error;
             return data as UserData[];
         },
@@ -22,7 +22,7 @@ export const useUser = (id: number | string) =>
     useQuery<UserData>({
         queryKey: ["users", Number(id)],
         queryFn: async () => {
-            const { data, error } = await client.GET("/users/{user}", {
+            const { data, error } = await api.GET("/users/{user}", {
                 params: { path: { user: Number(id) } },
             });
             if (error) throw error;
@@ -37,7 +37,7 @@ export const useCreateUser = () => {
     const queryClient = useQueryClient();
     return useMutation<UserData, unknown, CreateUserPayload>({
         mutationFn: async (payload) => {
-            const { data, error } = await client.POST("/users", {
+            const { data, error } = await api.POST("/users", {
                 body: payload as never,
             });
             if (error) throw error;
@@ -53,7 +53,7 @@ export const useUpdateUser = (id: number | string) => {
     const queryClient = useQueryClient();
     return useMutation<UserData, unknown, UpdateUserPayload>({
         mutationFn: async (payload) => {
-            const { data, error } = await client.PUT("/users/{user}", {
+            const { data, error } = await api.PUT("/users/{user}", {
                 params: { path: { user: Number(id) } },
                 body: payload as never,
             });
@@ -71,7 +71,7 @@ export const useDeleteUser = () => {
     const queryClient = useQueryClient();
     return useMutation<void, unknown, number>({
         mutationFn: async (id) => {
-            const { error } = await client.DELETE("/users/{user}", {
+            const { error } = await api.DELETE("/users/{user}", {
                 params: { path: { user: id } },
             });
             if (error) throw error;
