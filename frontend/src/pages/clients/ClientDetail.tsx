@@ -378,7 +378,7 @@ export default function ClientDetail() {
         }
 
         if (mode !== "create") {
-            fd.append("_method", "PUT"); 
+            fd.append("_method", "PUT");
         }
 
         try {
@@ -733,14 +733,41 @@ export default function ClientDetail() {
                                         isEdit={showEdit}
                                     >
                                         {showEdit ? (
-                                            <Input
-                                                placeholder="e.g. 09123456789"
-                                                value={form.contact_number}
-                                                onChange={(e) => {
-                                                    set("contact_number")({ ...e, target: { ...e.target, value: formatPhoneNumber(e.target.value) } });
-                                                }}
-                                                className={cn(errors.contact_number && "border-destructive")}
-                                            />
+                                            <div className="flex flex-col gap-1">
+                                                <Input
+                                                    placeholder="e.g. 09123456789 or (02) 8123 4567"
+                                                    value={form.contact_number}
+                                                    onChange={(e) => {
+                                                        const raw = e.target.value;
+                                                        const formatted = formatPhoneNumber(raw);
+                                                        set("contact_number")({
+                                                            ...e,
+                                                            target: { ...e.target, value: formatted },
+                                                        });
+
+                                                        // Live validation — count digits only, ignore formatting chars
+                                                        const digits = formatted.replace(/\D/g, "");
+
+                                                        setErrors((prev) => {
+                                                            const next = { ...prev };
+
+                                                            if (!digits) {
+                                                                next.contact_number = "Contact number is required";
+                                                            } else if (digits.length < 7) {
+                                                                next.contact_number = `At least ${7 - digits.length} more digit${7 - digits.length !== 1 ? "s" : ""} needed`;
+                                                            } else {
+                                                                delete next.contact_number;
+                                                            }
+
+                                                            return next;
+                                                        });
+                                                    }}
+                                                    className={cn(errors.contact_number && "border-destructive")}
+                                                />
+                                                <p className="text-[11px] text-muted-foreground">
+                                                    Mobile or landline, with or without area code
+                                                </p>
+                                            </div>
                                         ) : (
                                             <p className="text-sm text-foreground py-1">
                                                 {formatPhoneNumber(client?.contact_number || "")}
@@ -1081,10 +1108,10 @@ export default function ClientDetail() {
                                         (user: any) =>
                                             !currentSecops.some((s: any) => s.id === user.id),
                                     ).length === 0 && (
-                                        <p className="text-sm text-muted-foreground text-center py-4">
-                                            All users are already assigned to this client.
-                                        </p>
-                                    )}
+                                            <p className="text-sm text-muted-foreground text-center py-4">
+                                                All users are already assigned to this client.
+                                            </p>
+                                        )}
                                 </div>
                             )}
                         </div>
