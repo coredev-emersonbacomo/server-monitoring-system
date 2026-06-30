@@ -20,7 +20,8 @@ class ClientController extends Controller
     public function __construct(
         private readonly UploadIntentService $uploadIntentService,
         private readonly MediaUrlService $mediaUrlService,
-    ) {}
+    ) {
+    }
 
     /** @return ClientData[] */
     public function index(): array
@@ -53,6 +54,7 @@ class ClientController extends Controller
         }
 
         $client = Client::create($payload);
+
 
         if (isset($intent)) {
             $intent->update([
@@ -153,7 +155,7 @@ class ClientController extends Controller
             'uuid' => Str::uuid()->toString(),
             'record_status' => 'active',
         ]);
-        
+
         return response()->json(['message' => 'SecOps added successfully'], 201);
     }
 
