@@ -1,0 +1,2814 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Server Monitoring API",
+        "version": "0.0.1",
+        "description": "Server Monitoring System API"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000/api"
+        }
+    ],
+    "paths": {
+        "/broadcasting/auth": {
+            "get": {
+                "operationId": "broadcast.authenticate",
+                "summary": "Authenticate the request for channel access",
+                "tags": [
+                    "Broadcast"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/clients/{clientUuid}/servers": {
+            "get": {
+                "operationId": "client.servers",
+                "tags": [
+                    "Client"
+                ],
+                "parameters": [
+                    {
+                        "name": "clientUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ServerData"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "server.store",
+                "tags": [
+                    "Server"
+                ],
+                "parameters": [
+                    {
+                        "name": "clientUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "server_name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "external_ip": {
+                                        "type": "string",
+                                        "format": "ipv4"
+                                    },
+                                    "ssh_port": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 65535
+                                    },
+                                    "ssh_username": {
+                                        "type": "string"
+                                    },
+                                    "ssh_password": {
+                                        "type": "string"
+                                    },
+                                    "device_name": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "cpu_cores": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "ram": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "operating_system": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "server_name",
+                                    "external_ip",
+                                    "ssh_port",
+                                    "ssh_username",
+                                    "ssh_password"
+                                ],
+                                "description": ""
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ServerData`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServerData"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/clients": {
+            "get": {
+                "operationId": "client.index",
+                "tags": [
+                    "Client"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ClientData"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "client.store",
+                "tags": [
+                    "Client"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "minLength": 2,
+                                        "maxLength": 255
+                                    },
+                                    "location": {
+                                        "type": "string",
+                                        "minLength": 5
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "minLength": 5,
+                                        "maxLength": 255
+                                    },
+                                    "contact_number": {
+                                        "type": "string",
+                                        "minLength": 5
+                                    },
+                                    "description": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "banner_image": {
+                                        "type": [
+                                            "object",
+                                            "null"
+                                        ]
+                                    },
+                                    "upload_intent_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "banner_image_storage_key": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "location",
+                                    "email",
+                                    "contact_number"
+                                ],
+                                "description": ""
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ClientData`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ClientData"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/clients/{clientUuid}": {
+            "get": {
+                "operationId": "client.show",
+                "tags": [
+                    "Client"
+                ],
+                "parameters": [
+                    {
+                        "name": "clientUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ClientData`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ClientData"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "client.update",
+                "tags": [
+                    "Client"
+                ],
+                "parameters": [
+                    {
+                        "name": "clientUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "minLength": 2,
+                                        "maxLength": 255
+                                    },
+                                    "location": {
+                                        "type": "string",
+                                        "minLength": 5
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "minLength": 5,
+                                        "maxLength": 255
+                                    },
+                                    "contact_number": {
+                                        "type": "string",
+                                        "minLength": 5
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "upload_intent_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "banner_image_storage_key": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "location",
+                                    "email",
+                                    "contact_number"
+                                ],
+                                "description": ""
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ClientData`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ClientData"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "client.destroy",
+                "tags": [
+                    "Client"
+                ],
+                "parameters": [
+                    {
+                        "name": "clientUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/clients/{clientUuid}/secops": {
+            "get": {
+                "operationId": "client.secops",
+                "tags": [
+                    "Client"
+                ],
+                "parameters": [
+                    {
+                        "name": "clientUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/SecopsUserData"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "client.addSecop",
+                "tags": [
+                    "Client"
+                ],
+                "parameters": [
+                    {
+                        "name": "clientUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "user_id": {
+                                        "type": "integer",
+                                        "description": "Must exist in `users`."
+                                    }
+                                },
+                                "required": [
+                                    "user_id"
+                                ],
+                                "description": ""
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "SecOps added successfully"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "const": "User already assigned to this client"
+                                        }
+                                    },
+                                    "required": [
+                                        "error"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/clients/{clientUuid}/secops/{userId}": {
+            "delete": {
+                "operationId": "client.removeSecop",
+                "tags": [
+                    "Client"
+                ],
+                "parameters": [
+                    {
+                        "name": "clientUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/dashboard/stats": {
+            "get": {
+                "operationId": "dashboard.stats",
+                "tags": [
+                    "Dashboard"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`DashboardStatsData`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DashboardStatsData"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/dashboard/actions": {
+            "get": {
+                "operationId": "dashboard.actions",
+                "tags": [
+                    "Dashboard"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ActionItemData"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/dashboard/actions/completed": {
+            "get": {
+                "operationId": "dashboard.completed",
+                "tags": [
+                    "Dashboard"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ActionItemData"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/dashboard/actions/{actionId}/claim": {
+            "post": {
+                "operationId": "dashboard.claim",
+                "tags": [
+                    "Dashboard"
+                ],
+                "parameters": [
+                    {
+                        "name": "actionId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ActionItemData`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ActionItemData"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/dashboard/actions/{actionId}/status": {
+            "post": {
+                "operationId": "dashboard.updateStatus",
+                "tags": [
+                    "Dashboard"
+                ],
+                "parameters": [
+                    {
+                        "name": "actionId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ActionItemData`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ActionItemData"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/login": {
+            "post": {
+                "operationId": "jwtAuth.login",
+                "tags": [
+                    "JwtAuth"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "string"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    },
+                                    "remember": {
+                                        "type": [
+                                            "boolean",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "description": ""
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/refresh": {
+            "post": {
+                "operationId": "jwtAuth.refresh",
+                "tags": [
+                    "JwtAuth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/logout": {
+            "post": {
+                "operationId": "jwtAuth.logout",
+                "tags": [
+                    "JwtAuth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Logged out successfully."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/logout-all": {
+            "post": {
+                "operationId": "jwtAuth.logoutAll",
+                "tags": [
+                    "JwtAuth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "All sessions logged out."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/me": {
+            "get": {
+                "operationId": "jwtAuth.me",
+                "tags": [
+                    "JwtAuth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`AuthUserData`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthUserData"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/servers": {
+            "get": {
+                "operationId": "server.listAll",
+                "tags": [
+                    "Server"
+                ],
+                "parameters": [
+                    {
+                        "name": "client_uuid",
+                        "in": "query",
+                        "description": "Filter servers by client UUID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ServerData"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/clients/{clientUuid}/servers/{serverUuid}": {
+            "get": {
+                "operationId": "server.show",
+                "tags": [
+                    "Server"
+                ],
+                "parameters": [
+                    {
+                        "name": "clientUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "serverUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ServerData`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServerData"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "server.update",
+                "tags": [
+                    "Server"
+                ],
+                "parameters": [
+                    {
+                        "name": "clientUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "serverUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "server_name": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "device_name": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "external_ip": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "ssh_port": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "ssh_username": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "ssh_password": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "description": ""
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ServerData`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServerData"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "server.destroy",
+                "tags": [
+                    "Server"
+                ],
+                "parameters": [
+                    {
+                        "name": "clientUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "serverUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ServerData`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServerData"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/clients/{clientUuid}/servers/uninstall": {
+            "post": {
+                "operationId": "server.uninstallServer",
+                "tags": [
+                    "Server"
+                ],
+                "parameters": [
+                    {
+                        "name": "clientUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "sshHost": {
+                                        "type": "string"
+                                    },
+                                    "sshPort": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 65535
+                                    },
+                                    "sshUser": {
+                                        "type": "string",
+                                        "pattern": "^[a-zA-Z0-9_-]+$",
+                                        "maxLength": 32
+                                    },
+                                    "sshPassword": {
+                                        "type": "string",
+                                        "minLength": 8
+                                    },
+                                    "serverId": {
+                                        "type": "string",
+                                        "pattern": "^[a-zA-Z0-9_-]+$",
+                                        "maxLength": 64
+                                    },
+                                    "apiToken": {
+                                        "type": "string",
+                                        "minLength": 16
+                                    }
+                                },
+                                "required": [
+                                    "sshHost",
+                                    "sshPort",
+                                    "sshUser",
+                                    "sshPassword",
+                                    "serverId",
+                                    "apiToken"
+                                ],
+                                "description": ""
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "const": "success"
+                                        },
+                                        "log": {
+                                            "type": "object",
+                                            "properties": {
+                                                "wget": {
+                                                    "type": "string"
+                                                },
+                                                "install": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "wget",
+                                                "install"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "log"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/servers/{serverUuid}": {
+            "get": {
+                "operationId": "server.showWithStats",
+                "tags": [
+                    "Server"
+                ],
+                "parameters": [
+                    {
+                        "name": "serverUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ServerData`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ServerData"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/server/stats": {
+            "post": {
+                "operationId": "server.ingestStats",
+                "tags": [
+                    "Server"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "server_id": {
+                                        "type": "integer"
+                                    },
+                                    "token": {
+                                        "type": "string"
+                                    },
+                                    "timestamp": {
+                                        "type": "integer"
+                                    },
+                                    "cpu.load1": {
+                                        "type": "number"
+                                    },
+                                    "memory.percent": {
+                                        "type": "number"
+                                    },
+                                    "disk.percent": {
+                                        "type": "number"
+                                    },
+                                    "uptime": {
+                                        "type": "integer"
+                                    },
+                                    "network_rbytes": {
+                                        "type": "integer"
+                                    },
+                                    "network_tbytes": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "server_id",
+                                    "token",
+                                    "timestamp",
+                                    "cpu.load1",
+                                    "memory.percent",
+                                    "disk.percent",
+                                    "uptime",
+                                    "network_rbytes",
+                                    "network_tbytes"
+                                ],
+                                "description": ""
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Metrics recorded."
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "example": "Unauthorized or invalid server ID."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sessions": {
+            "get": {
+                "operationId": "session.index",
+                "tags": [
+                    "Session"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/sessions/{sessionUuid}": {
+            "delete": {
+                "operationId": "session.revoke",
+                "tags": [
+                    "Session"
+                ],
+                "parameters": [
+                    {
+                        "name": "sessionUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Session revoked successfully."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Cannot revoke current session. Use logout instead."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/sessions/logout-all-others": {
+            "post": {
+                "operationId": "session.revokeAllOthers",
+                "tags": [
+                    "Session"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "All other sessions logged out."
+                                        },
+                                        "revoked_count": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "revoked_count"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/sessions/{sessionUuid}/permanent": {
+            "delete": {
+                "operationId": "session.permanentDelete",
+                "tags": [
+                    "Session"
+                ],
+                "parameters": [
+                    {
+                        "name": "sessionUuid",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Session deleted permanently."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Session must be revoked before permanent deletion."
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Cannot delete current session."
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/security-activity": {
+            "get": {
+                "operationId": "session.securityActivity",
+                "tags": [
+                    "Session"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/SecurityActivityData"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/sessions/active-count": {
+            "get": {
+                "operationId": "session.activeSessionsCount",
+                "tags": [
+                    "Session"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "active_count": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "active_count"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/settings": {
+            "get": {
+                "operationId": "setting.index",
+                "summary": "Return all settings as a key-value map",
+                "tags": [
+                    "Setting"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {}
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "setting.update",
+                "summary": "Bulk-update settings for authenticated users.\nAccepts: { \"secop_limit_per_client\": \"3\", ... }",
+                "tags": [
+                    "Setting"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {}
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Forbidden."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/upload-intents": {
+            "post": {
+                "operationId": "upload-intents.store",
+                "tags": [
+                    "UploadIntent"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreUploadIntentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "intent_id": {
+                                            "type": "string"
+                                        },
+                                        "storage_key": {
+                                            "type": "string"
+                                        },
+                                        "provider": {
+                                            "type": "string"
+                                        },
+                                        "upload_config": {
+                                            "type": [
+                                                "array",
+                                                "null"
+                                            ],
+                                            "items": {}
+                                        },
+                                        "purpose_config": {
+                                            "type": "object",
+                                            "properties": {
+                                                "max_file_size": {},
+                                                "allowed_mime_types": {}
+                                            },
+                                            "required": [
+                                                "max_file_size",
+                                                "allowed_mime_types"
+                                            ]
+                                        },
+                                        "expires_at": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "intent_id",
+                                        "storage_key",
+                                        "provider",
+                                        "upload_config",
+                                        "purpose_config",
+                                        "expires_at"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Too many upload requests. Please try again later."
+                                        },
+                                        "retry_after": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "retry_after"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/upload-intents/{uploadIntent}": {
+            "get": {
+                "operationId": "upload-intents.show",
+                "tags": [
+                    "UploadIntent"
+                ],
+                "parameters": [
+                    {
+                        "name": "uploadIntent",
+                        "in": "path",
+                        "required": true,
+                        "description": "The upload intent ID",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "purpose": {
+                                            "type": "string"
+                                        },
+                                        "storage_key": {
+                                            "type": "string"
+                                        },
+                                        "provider": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "string"
+                                        },
+                                        "attached_to_type": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "attached_to_id": {
+                                            "type": [
+                                                "integer",
+                                                "null"
+                                            ]
+                                        },
+                                        "attached_at": {
+                                            "type": "string"
+                                        },
+                                        "expires_at": {
+                                            "type": "string"
+                                        },
+                                        "created_at": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "purpose",
+                                        "storage_key",
+                                        "provider",
+                                        "status",
+                                        "attached_to_type",
+                                        "attached_to_id",
+                                        "attached_at",
+                                        "expires_at",
+                                        "created_at"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AuthorizationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "operationId": "users.index",
+                "tags": [
+                    "User"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/UserData"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "users.store",
+                "tags": [
+                    "User"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "first_name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "last_name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "description": "Must be unique in `users`.",
+                                        "maxLength": 255
+                                    },
+                                    "phone_number": {
+                                        "type": "string",
+                                        "description": "Must be unique in `users`.",
+                                        "minLength": 11,
+                                        "maxLength": 255
+                                    },
+                                    "username": {
+                                        "type": "string",
+                                        "description": "Must be unique in `users`.",
+                                        "maxLength": 255
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "description": "Must be confirmed by a matching `_confirmation` field.",
+                                        "minLength": 8
+                                    },
+                                    "password_confirmation": {
+                                        "type": "string"
+                                    },
+                                    "upload_intent_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "profile_picture_storage_key": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "first_name",
+                                    "last_name",
+                                    "email",
+                                    "phone_number",
+                                    "username",
+                                    "password",
+                                    "password_confirmation"
+                                ],
+                                "description": ""
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/users/{user}": {
+            "get": {
+                "operationId": "users.show",
+                "tags": [
+                    "User"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "description": "The user ID",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`UserData`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserData"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "users.update",
+                "tags": [
+                    "User"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "description": "The user ID",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "first_name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "last_name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "maxLength": 255
+                                    },
+                                    "phone_number": {
+                                        "type": "string",
+                                        "description": "Must be unique in `users`.",
+                                        "minLength": 11
+                                    },
+                                    "username": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "password": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "description": "Must be confirmed by a matching `_confirmation` field.",
+                                        "minLength": 8
+                                    },
+                                    "password_confirmation": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "upload_intent_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "profile_picture_storage_key": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "phone_number"
+                                ],
+                                "description": ""
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`UserData`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserData"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "users.destroy",
+                "tags": [
+                    "User"
+                ],
+                "parameters": [
+                    {
+                        "name": "user",
+                        "in": "path",
+                        "required": true,
+                        "description": "The user ID",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ActionItemData": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "action_type": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "severity": {
+                        "type": "string"
+                    },
+                    "server_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "client_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "client_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "server_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "assigned_to": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "assigned_to_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "status": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "action_type",
+                    "message",
+                    "severity",
+                    "status"
+                ],
+                "title": "ActionItemData"
+            },
+            "AuthUserData": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "first_name": {
+                        "type": "string"
+                    },
+                    "last_name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "phone_number": {
+                        "type": "string"
+                    },
+                    "last_login": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "profile_picture_url": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "username",
+                    "phone_number",
+                    "profile_picture_url"
+                ],
+                "title": "AuthUserData"
+            },
+            "ClientData": {
+                "type": "object",
+                "properties": {
+                    "uuid": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "location": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "contact_number": {
+                        "type": "string"
+                    },
+                    "banner_image_url": {
+                        "type": "string"
+                    },
+                    "servers_count": {
+                        "type": "integer"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "uuid",
+                    "name",
+                    "description",
+                    "location",
+                    "email",
+                    "contact_number",
+                    "banner_image_url",
+                    "servers_count",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "ClientData"
+            },
+            "DashboardStatsData": {
+                "type": "object",
+                "properties": {
+                    "total_clients": {
+                        "type": "integer"
+                    },
+                    "total_servers": {
+                        "type": "integer"
+                    },
+                    "online_count": {
+                        "type": "integer"
+                    },
+                    "warning_count": {
+                        "type": "integer"
+                    },
+                    "offline_count": {
+                        "type": "integer"
+                    },
+                    "top_usage_cpu": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "server_id": {
+                                    "type": "integer"
+                                },
+                                "server_name": {
+                                    "type": "string"
+                                },
+                                "client_name": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "number"
+                                }
+                            },
+                            "required": [
+                                "server_id",
+                                "server_name",
+                                "client_name",
+                                "value"
+                            ]
+                        }
+                    },
+                    "top_usage_memory": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "server_id": {
+                                    "type": "integer"
+                                },
+                                "server_name": {
+                                    "type": "string"
+                                },
+                                "client_name": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "number"
+                                }
+                            },
+                            "required": [
+                                "server_id",
+                                "server_name",
+                                "client_name",
+                                "value"
+                            ]
+                        }
+                    },
+                    "top_usage_disk": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "server_id": {
+                                    "type": "integer"
+                                },
+                                "server_name": {
+                                    "type": "string"
+                                },
+                                "client_name": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "number"
+                                }
+                            },
+                            "required": [
+                                "server_id",
+                                "server_name",
+                                "client_name",
+                                "value"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "total_clients",
+                    "total_servers",
+                    "online_count",
+                    "warning_count",
+                    "offline_count",
+                    "top_usage_cpu",
+                    "top_usage_memory",
+                    "top_usage_disk"
+                ],
+                "title": "DashboardStatsData"
+            },
+            "SecopsUserData": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "first_name": {
+                        "type": "string"
+                    },
+                    "last_name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "contact_number": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "profile_picture_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "username"
+                ],
+                "title": "SecopsUserData"
+            },
+            "SecurityActivityData": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "event_type": {
+                        "type": "string"
+                    },
+                    "ip_address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at_timestamp": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "metadata": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "event_type"
+                ],
+                "title": "SecurityActivityData"
+            },
+            "ServerData": {
+                "type": "object",
+                "properties": {
+                    "server_name": {
+                        "type": "string"
+                    },
+                    "uuid": {
+                        "type": "string"
+                    },
+                    "external_ip": {
+                        "type": "string"
+                    },
+                    "ssh_port": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "device_name": {
+                        "type": "string"
+                    },
+                    "ssh_username": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "cpu_cores": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "ram": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "operating_system": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "client_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "client_uuid": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "client_name": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "last_seen": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "stats": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/StatPointData"
+                        }
+                    }
+                },
+                "required": [
+                    "server_name",
+                    "uuid",
+                    "external_ip",
+                    "device_name"
+                ],
+                "title": "ServerData"
+            },
+            "StatPointData": {
+                "type": "object",
+                "properties": {
+                    "timestamp": {
+                        "type": "integer"
+                    },
+                    "cpu": {
+                        "type": "number"
+                    },
+                    "memory": {
+                        "type": "number"
+                    },
+                    "netIn": {
+                        "type": "number"
+                    },
+                    "netOut": {
+                        "type": "number"
+                    },
+                    "disk": {
+                        "type": "number"
+                    }
+                },
+                "required": [
+                    "timestamp",
+                    "cpu",
+                    "memory",
+                    "netIn",
+                    "netOut",
+                    "disk"
+                ],
+                "title": "StatPointData"
+            },
+            "StoreUploadIntentRequest": {
+                "type": "object",
+                "properties": {
+                    "purpose": {
+                        "$ref": "#/components/schemas/UploadPurpose"
+                    }
+                },
+                "required": [
+                    "purpose"
+                ],
+                "title": "StoreUploadIntentRequest"
+            },
+            "UploadPurpose": {
+                "type": "string",
+                "enum": [
+                    "profile_picture",
+                    "client_banner",
+                    "attachment",
+                    "document"
+                ],
+                "title": "UploadPurpose"
+            },
+            "UserData": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "first_name": {
+                        "type": "string"
+                    },
+                    "last_name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": "string"
+                    },
+                    "phone_number": {
+                        "type": "string"
+                    },
+                    "last_login": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "profile_picture_url": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "profile_picture_storage_key": {
+                        "type": "string"
+                    },
+                    "record_status": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "id",
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "username",
+                    "phone_number",
+                    "profile_picture_storage_key"
+                ],
+                "title": "UserData"
+            }
+        },
+        "responses": {
+            "AuthenticationException": {
+                "description": "Unauthenticated",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
+                            ]
+                        }
+                    }
+                }
+            },
+            "ModelNotFoundException": {
+                "description": "Not found",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
+                            ]
+                        }
+                    }
+                }
+            },
+            "ValidationException": {
+                "description": "Validation error",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Errors overview."
+                                },
+                                "errors": {
+                                    "type": "object",
+                                    "description": "A detailed description of each field that failed validation.",
+                                    "additionalProperties": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "required": [
+                                "message",
+                                "errors"
+                            ]
+                        }
+                    }
+                }
+            },
+            "AuthorizationException": {
+                "description": "Authorization error",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

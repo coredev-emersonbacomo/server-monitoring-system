@@ -12,12 +12,12 @@ import type { components } from "@/api/schema.d";
 type StatPointData = components["schemas"]["StatPointData"];
 
 export default function ServerDetail() {
-    const { uuid } = useParams<{ uuid: string }>();
+    const { serverUuid } = useParams<{ serverUuid: string }>();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const clientFromUrl = searchParams.get("client");
 
-    const { data: initial, isLoading, isError } = useServer(uuid!);
+    const { data: initial, isLoading, isError } = useServer(serverUuid!);
     const [, setWsStatus] = useState<WsStatus>("connecting");
     const [liveStats, setLiveStats] = useState<StatPointData[]>([]);
 
@@ -31,7 +31,7 @@ export default function ServerDetail() {
         });
     }, []);
 
-    useServerSocket(Number(uuid), handleStats, setWsStatus);
+    useServerSocket(Number(serverUuid), handleStats, setWsStatus);
 
     const [time, setTime] = useState(new Date());
     useEffect(() => {
@@ -80,7 +80,7 @@ export default function ServerDetail() {
                 false,
             );
         }
-    }, [initial, setTrail, clientFromUrl, uuid]);
+    }, [initial, setTrail, clientFromUrl, serverUuid]);
 
     // ── Loading ──────────────────────────────────────────────────────────────
     if (isLoading) {

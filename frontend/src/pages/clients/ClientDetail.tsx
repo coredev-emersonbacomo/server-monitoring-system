@@ -223,22 +223,22 @@ function ServerCardSkeleton() {
 
 export default function ClientDetail() {
     const navigate = useNavigate();
-    const { uuid } = useParams<{ uuid: string }>();
+    const { clientUuid } = useParams<{ clientUuid: string }>();
     const { setTrail } = useBreadcrumb();
 
     const [activeTab, setActiveTab] = useState<"details" | "secops">("details");
     const [mode, setMode] = useState<"view" | "create" | "edit">(
-        uuid ? "view" : "create",
+        clientUuid ? "view" : "create",
     );
     const showEdit = mode !== "view";
 
     // ── Data fetching ──────────────────────────────────────────────────────────
-    const { data: client, isLoading, isError } = useClient(uuid!);
+    const { data: client, isLoading, isError } = useClient(clientUuid!);
     const { data: servers = [], isLoading: serversLoading } = useClientServers(
-        uuid!,
+        clientUuid!,
     );
     const { data: currentSecops = [], isLoading: secopLoading } =
-        useClientSecops(uuid!);
+        useClientSecops(clientUuid!);
     const { data: allUsers = [], isLoading: usersLoading } = useUsers();
     const { data: settings } = useSettings();
     const secopLimit = Math.max(
@@ -248,10 +248,10 @@ export default function ClientDetail() {
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createClient = useCreateClient();
-    const updateClient = useUpdateClient(uuid!);
+    const updateClient = useUpdateClient(clientUuid!);
     const deleteClient = useDeleteClient();
-    const addSecop = useAddClientSecop(uuid!);
-    const removeSecop = useRemoveClientSecop(uuid!);
+    const addSecop = useAddClientSecop(clientUuid!);
+    const removeSecop = useRemoveClientSecop(clientUuid!);
 
     // ── Local state ────────────────────────────────────────────────────────────
     const [showDelete, setShowDelete] = useState(false);
@@ -262,7 +262,7 @@ export default function ClientDetail() {
     const defaultBanner = import.meta.env.VITE_DEFAULT_CLIENT_BANNER as string;
     const [bannerFile, setBannerFile] = useState<File | null>(null);
     const [bannerPreview, setBannerPreview] = useState<string | null>(
-        uuid ? null : defaultBanner,
+        clientUuid ? null : defaultBanner,
     );
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -282,7 +282,7 @@ export default function ClientDetail() {
 
     // Reset mode when navigating between clients / to create
     useEffect(() => {
-        const next = uuid ? "view" : "create";
+        const next = clientUuid ? "view" : "create";
         setMode(next);
         if (next === "create") {
             setForm({
@@ -296,7 +296,7 @@ export default function ClientDetail() {
             setBannerFile(null);
             setErrors({});
         }
-    }, [defaultBanner, uuid]);
+    }, [defaultBanner, clientUuid]);
 
     // Populate form when client data arrives
     useEffect(() => {
@@ -417,7 +417,7 @@ export default function ClientDetail() {
 
     const handleDelete = async () => {
         try {
-            await deleteClient.mutateAsync(uuid!);
+            await deleteClient.mutateAsync(clientUuid!);
             toast.success("Client deleted.");
             navigate("/clients");
         } catch {
