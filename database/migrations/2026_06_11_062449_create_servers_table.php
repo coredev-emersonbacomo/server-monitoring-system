@@ -16,6 +16,7 @@ return new class extends Migration
             $table->uuid('uuid')->unique();
             $table->foreignId('client_id')->constrained()->onDelete('cascade');
             $table->string('server_name');
+
             $table->string('device_name');
 
             // Network details
@@ -29,6 +30,7 @@ return new class extends Migration
             $table->string('api_key');
 
             // TODO: add autoscript for getting specs
+            $table->string('cpu_model')->nullable();
             $table->integer('cpu_cores')->nullable();
             $table->integer('ram')->nullable();
             $table->string('operating_system')->nullable();
