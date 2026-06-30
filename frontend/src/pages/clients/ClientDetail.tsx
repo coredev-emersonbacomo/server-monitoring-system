@@ -233,6 +233,8 @@ export default function ClientDetail() {
     );
     const showEdit = mode !== "view";
 
+
+
     // ── Data fetching ──────────────────────────────────────────────────────────
     const { data: client, isLoading, isError } = useClient(clientId);
     const { data: servers = [], isLoading: serversLoading } =
@@ -279,6 +281,8 @@ export default function ClientDetail() {
         email: "",
         contact_number: "",
     });
+
+
 
     // Reset mode when navigating between clients / to create
     useEffect(() => {
@@ -658,44 +662,50 @@ export default function ClientDetail() {
 
                 {/* ── Content ── */}
                 <div className="flex-1 -mt-12 relative z-20 px-6 sm:px-8 lg:px-10 pb-8">
-                    <div className="max-w-3xl mx-auto flex flex-col gap-6">
-                        {/* ── Form card ── */}
-                        <form
-                            onSubmit={handleSubmit}
-                            className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8"
-                        >
-                            {/* Basic Information */}
-                            <div className="flex items-center justify-end mb-6">
-                                <div className="inline-flex rounded-lg border border-border bg-muted/30 p-1">
+                    <div className="max-w-3xl mx-auto relative flex flex-col gap-6">
+
+                        {/* Floating Tabs */}
+                        <div className="absolute -top-[44px] right-0 z-30">
+                            <div className="inline-flex rounded-t-xl border border-border border-b-0 bg-card p-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab("details")}
+                                    className={cn(
+                                        "px-4 py-2 text-sm rounded-md transition-colors",
+                                        activeTab === "details"
+                                            ? "bg-background shadow text-foreground"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    Details
+                                </button>
+
+                                {mode !== "create" && (
                                     <button
                                         type="button"
-                                        onClick={() => setActiveTab("details")}
+                                        onClick={() => setActiveTab("secops")}
                                         className={cn(
                                             "px-4 py-2 text-sm rounded-md transition-colors",
-                                            activeTab === "details"
+                                            activeTab === "secops"
                                                 ? "bg-background shadow text-foreground"
                                                 : "text-muted-foreground hover:text-foreground"
                                         )}
                                     >
-                                        Details
+                                        Assign SecOps
                                     </button>
-
-                                    {mode !== "create" && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setActiveTab("secops")}
-                                            className={cn(
-                                                "px-4 py-2 text-sm rounded-md transition-colors",
-                                                activeTab === "secops"
-                                                    ? "bg-background shadow text-foreground"
-                                                    : "text-muted-foreground hover:text-foreground"
-                                            )}
-                                        >
-                                            Assign SecOps
-                                        </button>
-                                    )}
-                                </div>
+                                )}
                             </div>
+                        </div>
+
+
+                        {/* Floating tabs */}
+                        <form
+                            onSubmit={handleSubmit}
+                            className="bg-card border border-border/60 rounded-tl-xl rounded-bl-xl rounded-br-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8"
+                        >
+
+                            {/* Basic Information */}
+
                             {activeTab === "details" && (
                                 <>
                                     <section className="space-y-4">
@@ -822,10 +832,10 @@ export default function ClientDetail() {
 
                             )}
 
-{activeTab === "secops" &&
-                            mode !== "create" &&
-                            client && (
-                                <>
+                            {activeTab === "secops" &&
+                                mode !== "create" &&
+                                client && (
+                                    <>
                                         <div className="flex items-center justify-between mb-6">
                                             <div>
                                                 <h2 className="text-base font-semibold text-foreground">
@@ -864,12 +874,17 @@ export default function ClientDetail() {
                                                         key={secop.id}
                                                         className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"
                                                     >
+
                                                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                                                <span className="text-xs font-medium text-primary">
-                                                                    {secop.first_name?.[0]?.toUpperCase() ??
-                                                                        "?"}
-                                                                </span>
+                                                            <div className="w-8 h-8 rounded-full overflow-hidden bg-muted shrink-0">
+                                                                <img
+                                                                    src={secop.profile_picture_url}
+                                                                    alt={`${secop.first_name} ${secop.last_name}`}
+                                                                    className="h-full w-full object-cover"
+                                                                    onError={(e) => {
+                                                                        (e.target as HTMLImageElement).style.display = "none";
+                                                                    }}
+                                                                />
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-sm font-medium text-foreground truncate">
@@ -889,8 +904,8 @@ export default function ClientDetail() {
                                                                     {
                                                                         onSuccess:
                                                                             () => {
-                                                                                toast.success(
-                                                                                    `${secop.first_name} removed from client.`,
+                                                                                toast.error(
+                                                                                    `${secop.first_name} removed from ${client?.name}.`,
                                                                                 );
                                                                             },
                                                                         onError: () => {
@@ -925,8 +940,8 @@ export default function ClientDetail() {
                                                 </p>
                                             </div>
                                         )}
-                                </>
-                            )}
+                                    </>
+                                )}
                         </form>
 
                         {mode !== "create" && client && (
@@ -1162,7 +1177,7 @@ export default function ClientDetail() {
                                                     addSecop.mutate(user.id, {
                                                         onSuccess: () => {
                                                             toast.success(
-                                                                `${user.first_name} added to client.`,
+                                                                `${user.first_name} added to ${client?.name}.`,
                                                             );
                                                             setShowSecopDialog(
                                                                 false,
@@ -1186,10 +1201,16 @@ export default function ClientDetail() {
                                                 className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 text-left border border-border/40 hover:border-border"
                                             >
                                                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                                    <span className="text-xs font-medium text-primary">
-                                                        {user.first_name?.[0]?.toUpperCase() ??
-                                                            "?"}
-                                                    </span>
+                                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-muted shrink-0">
+                                                        <img
+                                                            src={user.profile_picture_url}
+                                                            alt={`${user.first_name} ${user.last_name}`}
+                                                            className="h-full w-full object-cover"
+                                                            onError={(e) => {
+                                                                (e.target as HTMLImageElement).style.display = "none";
+                                                            }}
+                                                        />
+                                                    </div>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-foreground truncate">
