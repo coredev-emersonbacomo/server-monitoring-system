@@ -2,26 +2,33 @@
 
 namespace App\Data;
 
+use Spatie\LaravelData\Attributes\Validation\Between;
 use Spatie\LaravelData\Attributes\Validation\IPv4;
+use Spatie\LaravelData\Attributes\Validation\Max;
+use Spatie\LaravelData\Attributes\Validation\Numeric;
 use Spatie\LaravelData\Attributes\Validation\Required;
+use Spatie\LaravelData\Attributes\Validation\StringType;
 use Spatie\LaravelData\Data;
 
 class CreateServerData extends Data
 {
     public function __construct(
-        #[Required]
+        #[Required, StringType, Max(255)]
         public string $server_name,
 
-        public ?string $device_name = null,
-
         #[Required, IPv4]
-        public string $internal_ip,
+        public string $external_ip,
 
-        public ?string $external_ip = null,
+        #[Required, Numeric, Between(1, 65535)]
+        public int $ssh_port,
 
-        public ?string $ssh_username = null,
+        #[Required, StringType]
+        public string $ssh_username,
 
-        public ?string $ssh_password = null,
+        #[Required, StringType]
+        public string $ssh_password,
+
+        public ?string $device_name = null,
 
         public ?int $cpu_cores = null,
 

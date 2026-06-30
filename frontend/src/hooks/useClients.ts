@@ -15,17 +15,17 @@ export const useClients = () => {
     });
 };
 
-export const useClient = (id: number) => {
+export const useClient = (clientUuid: string) => {
     return useQuery({
-        queryKey: ["clients", id],
+        queryKey: ["clients", clientUuid],
         queryFn: async (): Promise<ClientData> => {
-            const { data, error } = await api.GET("/clients/{id}", {
-                params: { path: { id } },
+            const { data, error } = await api.GET("/clients/{uuid}", {
+                params: { path: { uuid: clientUuid } },
             });
             if (error) throw error;
             return data as ClientData;
         },
-        enabled: !!id,
+        enabled: !!clientUuid,
     });
 };
 
@@ -46,13 +46,13 @@ export const useCreateClient = () => {
     });
 };
 
-export const useUpdateClient = (id: number) => {
+export const useUpdateClient = (clientUuid: string) => {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async (formData: FormData) => {
-            const { data, error } = await api.PUT("/clients/{id}", {
-                params: { path: { id } },
+            const { data, error } = await api.PUT("/clients/{uuid}", {
+                params: { path: { uuid: clientUuid } },
                 body: formData as never,
             });
             if (error) throw error;
@@ -60,22 +60,22 @@ export const useUpdateClient = (id: number) => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["clients"] });
-            queryClient.invalidateQueries({ queryKey: ["clients", id] });
+            queryClient.invalidateQueries({ queryKey: ["clients", clientUuid] });
         },
     });
 };
 
-export const useClientServers = (clientId: number) => {
+export const useClientServers = (clientUuid: string) => {
     return useQuery({
-        queryKey: ["clients", clientId, "servers"],
-        queryFn: async () => {
-            const { data, error } = await api.GET("/clients/{id}/servers", {
-                params: { path: { id: clientId } },
+        queryKey: ["clients", clientUuid, "servers"],
+        queryFn: async (): Promise<components["schemas"]["ServerData"][]> => {
+            const { data, error } = await api.GET("/clients/{client}/servers", {
+                params: { path: { client: clientUuid } },
             });
             if (error) throw error;
-            return data;
+            return data as components["schemas"]["ServerData"][];
         },
-        enabled: !!clientId,
+        enabled: !!clientUuid,
     });
 };
 
@@ -83,9 +83,9 @@ export const useDeleteClient = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (id: number) => {
-            const { error } = await api.DELETE("/clients/{id}", {
-                params: { path: { id } },
+        mutationFn: async (clientUuid: string) => {
+            const { error } = await api.DELETE("/clients/{uuid}", {
+                params: { path: { uuid: clientUuid } },
             });
             if (error) throw error;
         },
@@ -95,52 +95,52 @@ export const useDeleteClient = () => {
     });
 };
 
-export const useClientSecops = (clientId: number) => {
+export const useClientSecops = (clientUuid: string) => {
     return useQuery({
-        queryKey: ["clients", clientId, "secops"],
-        queryFn: async () => {
-            const { data, error } = await api.GET("/clients/{id}/secops", {
-                params: { path: { id: clientId } },
+        queryKey: ["clients", clientUuid, "secops"],
+        queryFn: async (): Promise<components["schemas"]["SecopsUserData"][]> => {
+            const { data, error } = await api.GET("/clients/{client}/secops", {
+                params: { path: { client: clientUuid } },
             });
             if (error) throw error;
-            return data ?? [];
+            return (data ?? []) as components["schemas"]["SecopsUserData"][];
         },
-        enabled: !!clientId,
+        enabled: !!clientUuid,
     });
 };
 
-export const useAddClientSecop = (clientId: number) => {
+export const useAddClientSecop = (clientUuid: string) => {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async (userId: number) => {
-            const { data, error } = await api.POST("/clients/{id}/secops", {
-                params: { path: { id: clientId } },
+            const { data, error } = await api.POST("/clients/{client}/secops", {
+                params: { path: { client: clientUuid } },
                 body: { user_id: userId },
             });
             if (error) throw error;
             return data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["clients", clientId, "secops"] });
-            queryClient.invalidateQueries({ queryKey: ["clients", clientId] });
+            queryClient.invalidateQueries({ queryKey: ["clients", clientUuid, "secops"] });
+            queryClient.invalidateQueries({ queryKey: ["clients", clientUuid] });
         },
     });
 };
 
-export const useRemoveClientSecop = (clientId: number) => {
+export const useRemoveClientSecop = (clientUuid: string) => {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async (userId: number) => {
-            const { error } = await api.DELETE("/clients/{id}/secops/{userId}", {
-                params: { path: { id: clientId, userId } },
+            const { error } = await api.DELETE("/clients/{client}/secops/{userId}", {
+                params: { path: { client: clientUuid, userId } },
             });
             if (error) throw error;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["clients", clientId, "secops"] });
-            queryClient.invalidateQueries({ queryKey: ["clients", clientId] });
+            queryClient.invalidateQueries({ queryKey: ["clients", clientUuid, "secops"] });
+            queryClient.invalidateQueries({ queryKey: ["clients", clientUuid] });
         },
     });
 };

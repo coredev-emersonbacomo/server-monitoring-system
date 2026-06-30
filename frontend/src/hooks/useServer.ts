@@ -1,16 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "@/api/api";
 
-export const useServer = (id: number) => {
+import type { components } from "@/api/schema.d";
+
+export const useServer = (serverUuid: string) => {
     return useQuery({
-        queryKey: ["server", id],
-        queryFn: async () => {
-            const { data, error } = await api.GET("/servers/{id}", {
-                params: { path: { id } },
+        queryKey: ["server", serverUuid],
+        queryFn: async (): Promise<components["schemas"]["ServerData"]> => {
+            const { data, error } = await api.GET("/servers/{uuid}", {
+                params: { path: { uuid: serverUuid } },
             });
             if (error) throw error;
-            return data;
+            return data as components["schemas"]["ServerData"];
         },
-        enabled: !!id,
+        enabled: !!serverUuid,
     });
 };

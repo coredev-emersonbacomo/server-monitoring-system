@@ -12,13 +12,12 @@ import type { components } from "@/api/schema.d";
 type StatPointData = components["schemas"]["StatPointData"];
 
 export default function ServerDetail() {
-    const { id } = useParams<{ id: string }>();
+    const { uuid } = useParams<{ uuid: string }>();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const serverId = Number(id);
     const clientFromUrl = searchParams.get("client");
 
-    const { data: initial, isLoading, isError } = useServer(serverId);
+    const { data: initial, isLoading, isError } = useServer(uuid!);
     const [, setWsStatus] = useState<WsStatus>("connecting");
     const [liveStats, setLiveStats] = useState<StatPointData[]>([]);
 
@@ -32,7 +31,7 @@ export default function ServerDetail() {
         });
     }, []);
 
-    useServerSocket(serverId, handleStats, setWsStatus);
+    useServerSocket(Number(uuid), handleStats, setWsStatus);
 
     const [time, setTime] = useState(new Date());
     useEffect(() => {
@@ -58,7 +57,7 @@ export default function ServerDetail() {
             setTrail(
                 [
                     { label: "Servers", href: "/servers" },
-                    { label: initial.server_name, href: `/servers/${initial.id}` },
+                    { label: initial.server_name, href: `/servers/${initial.uuid}` },
                 ],
                 false,
             );
@@ -67,7 +66,7 @@ export default function ServerDetail() {
                 [
                     { label: "Clients", href: "/clients" },
                     { label: initial.client_name, href: `/clients/${clientFromUrl}` },
-                    { label: initial.server_name, href: `/servers/${initial.id}` },
+                    { label: initial.server_name, href: `/servers/${initial.uuid}` },
                 ],
                 false,
             );
@@ -76,12 +75,12 @@ export default function ServerDetail() {
                 [
                     { label: "Clients", href: "/clients" },
                     { label: initial.client_name, href: `/clients/${initial.client_id}` },
-                    { label: initial.server_name, href: `/servers/${initial.id}` },
+                    { label: initial.server_name, href: `/servers/${initial.uuid}` },
                 ],
                 false,
             );
         }
-    }, [initial, setTrail, clientFromUrl, serverId]);
+    }, [initial, setTrail, clientFromUrl, uuid]);
 
     // ── Loading ──────────────────────────────────────────────────────────────
     if (isLoading) {

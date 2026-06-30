@@ -23,6 +23,7 @@ class Server extends Model
 
     protected $hidden = [
         'ssh_password',
+        'ssh_username',
     ];
 
     public function client(): BelongsTo

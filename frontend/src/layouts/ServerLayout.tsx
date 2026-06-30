@@ -11,26 +11,23 @@ const STATUS_META = {
 } as const;
 
 export default function ServerLayout() {
-    const { id } = useParams<{ id: string }>();
+    const { uuid } = useParams<{ uuid: string }>();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const activeId = id ? Number(id) : null;
     const clientParam = searchParams.get("client");
-    const clientId = clientParam && clientParam !== "all" ? Number(clientParam) : undefined;
-    const { data: servers, isLoading } = useServers(clientId);
+    const clientUuid = clientParam && clientParam !== "all" ? clientParam : undefined;
+    const { data: servers, isLoading } = useServers(clientUuid);
     const [search, setSearch] = useState("");
 
-    const activeServer = servers?.find((s) => s.id === activeId);
-
     const filtered = servers?.filter((s) =>
-        s.client_id === activeServer?.client_id &&
+        s.client_uuid === servers?.find((x) => x.uuid === uuid)?.client_uuid &&
         s.server_name.toLowerCase().includes(search.toLowerCase())
     );
 
     return (
         <div className="flex-1 flex flex-row h-full gap-6 overflow-hidden">
             <div className="flex-1 min-w-0 overflow-auto">
-                <Outlet key={activeId} />
+                <Outlet key={server_uuid} />
             </div>
 
             <aside className="w-72 shrink-0 flex flex-col max-h-[80vh] border-l border-border/40 pl-6 overflow-hidden">
@@ -63,13 +60,13 @@ export default function ServerLayout() {
                         <p className="text-xs text-muted-foreground">No servers found.</p>
                     ) : (
                         filtered?.map((server) => {
-                            const isActive = server.id === activeId;
+                            const isActive = server.uuid === server_uuid;
                             const meta = STATUS_META[server.status];
                             const Icon = meta.icon;
                             return (
                                 <button
-                                    key={server.id}
-                                    onClick={() => navigate(`/servers/${server.id}`, { replace: true })}
+                                    key={server.uuid}
+                                    onClick={() => navigate(`/servers/${server.uuid}`, { replace: true })}
                                     className={cn(
                                         "w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm",
                                         isActive

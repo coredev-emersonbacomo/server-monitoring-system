@@ -50,7 +50,7 @@ const router = createBrowserRouter([
                         element: <ServerLayout />,
                         children: [
                             {
-                                path: "/servers/:id",
+                                path: "/servers/:uuid",
                                 element: <ServerDetail />,
                             },
                         ],
@@ -64,7 +64,7 @@ const router = createBrowserRouter([
                         element: <ClientDetail />,
                     },
                     {
-                        path: "/clients/:id",
+                        path: "/clients/:uuid",
                         element: <ClientDetail />,
                     },
                     {

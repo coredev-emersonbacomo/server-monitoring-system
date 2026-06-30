@@ -19,9 +19,8 @@ return new class extends Migration
             $table->string('device_name');
 
             // Network details
-            $table->string('internal_ip');
             $table->string('external_ip');
-            $table->integer('port')->default(22);
+            $table->integer('ssh_port')->default(22);
 
             $table->string('ssh_username')->nullable();
             $table->text('ssh_password')->nullable();

@@ -66,16 +66,16 @@ class ClientController extends Controller
         return ClientData::fromModel($client);
     }
 
-    public function show(int $id): ClientData
+    public function show(string $uuid): ClientData
     {
-        $client = Client::withCount('servers')->findOrFail($id);
+        $client = Client::withCount('servers')->where('uuid', $uuid)->firstOrFail();
 
         return ClientData::fromModel($client);
     }
 
-    public function update(UpdateClientData $data, int $id): ClientData
+    public function update(UpdateClientData $data, string $uuid): ClientData
     {
-        $client = Client::findOrFail($id);
+        $client = Client::where('uuid', $uuid)->firstOrFail();
 
         $updatePayload = [
             'name' => $data->name,
@@ -111,17 +111,17 @@ class ClientController extends Controller
     }
 
     /** @return ServerData[] */
-    public function servers(int $id): array
+    public function servers(string $uuid): array
     {
-        $client = Client::findOrFail($id);
+        $client = Client::where('uuid', $uuid)->firstOrFail();
         $servers = $client->servers()->get();
 
         return ServerData::collect($servers)->toArray();
     }
 
-    public function destroy(int $id): JsonResponse
+    public function destroy(string $uuid): JsonResponse
     {
-        $client = Client::findOrFail($id);
+        $client = Client::where('uuid', $uuid)->firstOrFail();
 
         if ($client->banner_image_storage_key) {
             $folder = config('uploads.purposes.client_banner.folder');
@@ -134,16 +134,16 @@ class ClientController extends Controller
     }
 
     /** @return SecopsUserData[] */
-    public function secops(int $id): array
+    public function secops(string $uuid): array
     {
-        $client = Client::findOrFail($id);
+        $client = Client::where('uuid', $uuid)->firstOrFail();
 
         return SecopsUserData::collect($client->secopclients()->get())->toArray();
     }
 
-    public function addSecop(AddSecopData $data, int $id): JsonResponse
+    public function addSecop(AddSecopData $data, string $uuid): JsonResponse
     {
-        $client = Client::findOrFail($id);
+        $client = Client::where('uuid', $uuid)->firstOrFail();
 
         if ($client->secopclients()->where('user_id', $data->user_id)->exists()) {
             return response()->json(['error' => 'User already assigned to this client'], 409);
@@ -157,18 +157,11 @@ class ClientController extends Controller
         return response()->json(['message' => 'SecOps added successfully'], 201);
     }
 
-    public function removeSecop(int $id, int $userId): JsonResponse
+    public function removeSecop(string $uuid, int $userId): JsonResponse
     {
-        $client = Client::findOrFail($id);
+        $client = Client::where('uuid', $uuid)->firstOrFail();
         $client->secopclients()->detach($userId);
 
         return response()->json(null, 204);
-    }
-
-    public function initializeServer(int $id): JsonResponse
-    {
-        $client = Client::findOrFail($id);
-        // Initialize server for this client
-        return response()->json(null, 200);
     }
 }
