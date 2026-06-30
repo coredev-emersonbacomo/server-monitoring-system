@@ -115,6 +115,66 @@ function SectionHeader({
     );
 }
 
+function PasswordStrength({ password }: { password: string }) {
+    const checks = [
+        { label: "8+ characters", passed: password.length >= 8 },
+        { label: "Uppercase letter", passed: /[A-Z]/.test(password) },
+        { label: "Number", passed: /[0-9]/.test(password) },
+        { label: "Symbol", passed: /[^A-Za-z0-9]/.test(password) },
+    ];
+    const passedCount = checks.filter((c) => c.passed).length;
+
+    const strengthLabel =
+        passedCount <= 1 ? "Weak" : passedCount === 2 ? "Fair" : passedCount === 3 ? "Good" : "Strong";
+    const strengthColor =
+        passedCount <= 1 ? "bg-destructive" : passedCount === 2 ? "bg-amber-500" : passedCount === 3 ? "bg-blue-500" : "bg-emerald-500";
+
+    return (
+        <div className="flex flex-col gap-1.5">
+            {/* Bar */}
+            <div className="flex items-center gap-1.5">
+                <div className="flex-1 grid grid-cols-4 gap-1">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <div
+                            key={i}
+                            className={cn(
+                                "h-1 rounded-full transition-colors",
+                                i < passedCount ? strengthColor : "bg-muted",
+                            )}
+                        />
+                    ))}
+                </div>
+                <span
+                    className={cn(
+                        "text-[11px] font-medium shrink-0",
+                        passedCount <= 1 && "text-destructive",
+                        passedCount === 2 && "text-amber-500",
+                        passedCount === 3 && "text-blue-500",
+                        passedCount === 4 && "text-emerald-500",
+                    )}
+                >
+                    {strengthLabel}
+                </span>
+            </div>
+
+            {/* Checklist */}
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+                {checks.map((c) => (
+                    <span
+                        key={c.label}
+                        className={cn(
+                            "text-[11px] flex items-center gap-1",
+                            c.passed ? "text-emerald-500" : "text-muted-foreground",
+                        )}
+                    >
+                        {c.passed ? "✓" : "○"} {c.label}
+                    </span>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function UserDetail() {
@@ -219,8 +279,7 @@ export default function UserDetail() {
             last_name: z.string().trim().min(1, "Required"),
             email: z.string().trim().min(1, "Required").email("Invalid email"),
             username: z.string().trim().min(1, "Required"),
-            phone_number: z
-                .string()
+            phone_number: z.string()
                 .trim()
                 .min(1, "Required")
                 .regex(
@@ -344,9 +403,7 @@ export default function UserDetail() {
                     err?.response?.data?.message || err?.message;
                 toast.error(
                     serverMessage ||
-                        (mode === "create"
-                            ? "Failed to create user."
-                            : "Failed to update user."),
+                    (mode === "create" ? "Failed to create user." : "Failed to update user.")
                 );
             }
         }
@@ -671,31 +728,35 @@ export default function UserDetail() {
                                         isEdit={showEdit}
                                     >
                                         {showEdit ? (
-                                            <Input
-                                                placeholder="e.g. 09123456789"
-                                                value={form.phone_number}
-                                                onChange={(e) => {
-                                                    const numeric =
-                                                        formatPhoneNumber(
-                                                            e.target.value,
-                                                        );
-                                                    setForm((f) => ({
-                                                        ...f,
-                                                        phone_number: numeric,
-                                                    }));
-                                                }}
-                                                className={cn(
-                                                    errors.phone_number &&
-                                                        "border-destructive",
-                                                )}
-                                            />
+                                            <div className="flex flex-col gap-1">
+                                                <Input
+                                                    placeholder="e.g. 09123456789"
+                                                    value={form.phone_number}
+                                                    onChange={(e) => {
+                                                        // Strip non-digits, hard cap at 11
+                                                        const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
+                                                        setForm((f) => ({ ...f, phone_number: digits }));
+
+                                                        // Live validation
+                                                        if (digits.length === 0) {
+                                                            setErrors((prev) => ({ ...prev, phone_number: "Phone number is required" }));
+                                                        } else if (!digits.startsWith("09")) {
+                                                            setErrors((prev) => ({ ...prev, phone_number: "Must start with 09" }));
+                                                        } else if (digits.length < 11) {
+                                                            setErrors((prev) => ({ ...prev, phone_number: `${11 - digits.length} more digit${11 - digits.length !== 1 ? "s" : ""} needed` }));
+                                                        } else {
+                                                            // Valid — clear error
+                                                            setErrors((prev) => { const n = { ...prev }; delete n.phone_number; return n; });
+                                                        }
+                                                    }}
+                                                    maxLength={11}
+                                                    className={cn(errors.phone_number && "border-destructive")}
+                                                />
+
+                                            </div>
                                         ) : (
                                             <p className="text-sm text-foreground py-1">
-                                                {user?.phone_number
-                                                    ? formatPhoneNumber(
-                                                          user.phone_number,
-                                                      )
-                                                    : "—"}
+                                                {user?.phone_number ? formatPhoneNumber(user.phone_number) : "—"}
                                             </p>
                                         )}
                                     </Field>
@@ -708,11 +769,7 @@ export default function UserDetail() {
                                     <div className="h-px bg-border" />
                                     <section className="space-y-4">
                                         <SectionHeader
-                                            title={
-                                                isCreate
-                                                    ? "Password"
-                                                    : "Change Password"
-                                            }
+                                            title={isCreate ? "Password" : "Change Password"}
                                             description={
                                                 isCreate
                                                     ? "Set an initial password for this account."
@@ -721,48 +778,101 @@ export default function UserDetail() {
                                         />
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <Field
-                                                label={
-                                                    isCreate
-                                                        ? "Password"
-                                                        : "New password"
-                                                }
+                                                label={isCreate ? "Password" : "New password"}
                                                 required={isCreate}
                                                 error={errors.password}
                                             >
-                                                <Input
-                                                    type="password"
-                                                    placeholder={
-                                                        isCreate
-                                                            ? "Min. 8 characters"
-                                                            : "New password"
-                                                    }
-                                                    value={form.password}
-                                                    onChange={set("password")}
-                                                    className={cn(
-                                                        errors.password &&
-                                                            "border-destructive",
+                                                <div className="flex flex-col gap-1.5">
+                                                    <Input
+                                                        type="password"
+                                                        placeholder={isCreate ? "Min. 8 characters" : "New password"}
+                                                        value={form.password}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value;
+                                                            setForm((f) => ({ ...f, password: value }));
+
+                                                            // Live validation
+                                                            setErrors((prev) => {
+                                                                const next = { ...prev };
+
+                                                                if (!value) {
+                                                                    if (isCreate) next.password = "Password is required";
+                                                                    else delete next.password;
+                                                                } else {
+                                                                    const checks = {
+                                                                        length: value.length >= 8,
+                                                                        upper: /[A-Z]/.test(value),
+                                                                        number: /[0-9]/.test(value),
+                                                                        symbol: /[^A-Za-z0-9]/.test(value),
+                                                                    };
+                                                                    const failed = !checks.length
+                                                                        ? "Must be at least 8 characters"
+                                                                        : !checks.upper
+                                                                            ? "Must include an uppercase letter"
+                                                                            : !checks.number
+                                                                                ? "Must include a number"
+                                                                                : !checks.symbol
+                                                                                    ? "Must include a symbol (!@#$...)"
+                                                                                    : null;
+
+                                                                    if (failed) next.password = failed;
+                                                                    else delete next.password;
+                                                                }
+
+                                                                // Re-check confirm field whenever password changes
+                                                                if (form.password_confirmation) {
+                                                                    if (form.password_confirmation !== value) {
+                                                                        next.password_confirmation = "Passwords do not match";
+                                                                    } else {
+                                                                        delete next.password_confirmation;
+                                                                    }
+                                                                }
+
+                                                                return next;
+                                                            });
+                                                        }}
+                                                        className={cn(errors.password && "border-destructive")}
+                                                    />
+
+                                                    {/* Strength meter */}
+                                                    {form.password && (
+                                                        <PasswordStrength password={form.password} />
                                                     )}
-                                                />
+                                                </div>
                                             </Field>
+
                                             <Field
                                                 label="Confirm password"
                                                 required={isCreate}
-                                                error={
-                                                    errors.password_confirmation
-                                                }
+                                                error={errors.password_confirmation}
                                             >
                                                 <Input
                                                     type="password"
                                                     placeholder="Repeat password"
-                                                    value={
-                                                        form.password_confirmation
-                                                    }
-                                                    onChange={set(
-                                                        "password_confirmation",
-                                                    )}
+                                                    value={form.password_confirmation}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        setForm((f) => ({ ...f, password_confirmation: value }));
+
+                                                        setErrors((prev) => {
+                                                            const next = { ...prev };
+                                                            if (!value) {
+                                                                if (isCreate) next.password_confirmation = "Please confirm your password";
+                                                                else delete next.password_confirmation;
+                                                            } else if (value !== form.password) {
+                                                                next.password_confirmation = "Passwords do not match";
+                                                            } else {
+                                                                delete next.password_confirmation;
+                                                            }
+                                                            return next;
+                                                        });
+                                                    }}
                                                     className={cn(
-                                                        errors.password_confirmation &&
-                                                            "border-destructive",
+                                                        errors.password_confirmation && "border-destructive",
+                                                        !errors.password_confirmation &&
+                                                        form.password_confirmation &&
+                                                        form.password_confirmation === form.password &&
+                                                        "border-emerald-500",
                                                     )}
                                                 />
                                             </Field>
