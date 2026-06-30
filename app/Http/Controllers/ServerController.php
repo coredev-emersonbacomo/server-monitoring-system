@@ -285,23 +285,27 @@ class ServerController extends Controller
         }
 
         try {
-            $installer = new InstallerService(
-                sshHost: $data->sshHost,
-                sshPort: $data->sshPort,
-                sshUser: Crypt::decryptString($server->ssh_username),
-                sshPassword: Crypt::decryptString($server->ssh_password),
-                serverId: (string) $server->id,
-                apiToken: $data->apiToken,
-            );
+            $log = DB::transaction(function() use ($server, $data) {
+                $installer = new InstallerService(
+                    sshHost: $data->sshHost,
+                    sshPort: $data->sshPort,
+                    sshUser: Crypt::decryptString($server->ssh_username),
+                    sshPassword: Crypt::decryptString($server->ssh_password),
+                    serverId: (string) $server->id,
+                    apiToken: $data->apiToken,
+                );
 
-            $log = $installer->install();
+                $log = $installer->uninstall();
+
+                return $log;
+            });
 
             return [
-                'status' => 'success',
+                'status' => true,
                 'log'    => $log,
             ];
         } catch (\RuntimeException $e) {
-            abort(500, $e->getMessage());
+            abort(500, 'Uninstall failed: ' . $e->getMessage());
         }
     }
 }
