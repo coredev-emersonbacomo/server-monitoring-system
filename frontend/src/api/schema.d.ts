@@ -534,6 +534,8 @@ export interface components {
             severity: string;
             server_id?: number | null;
             client_id?: number | null;
+            server_uuid?: string | null;
+            client_uuid?: string | null;
             client_name?: string | null;
             server_name?: string | null;
             assigned_to?: number | null;
@@ -573,18 +575,21 @@ export interface components {
             offline_count: number;
             top_usage_cpu: {
                 server_id: number;
+                server_uuid: string;
                 server_name: string;
                 client_name: string;
                 value: number;
             }[];
             top_usage_memory: {
                 server_id: number;
+                server_uuid: string;
                 server_name: string;
                 client_name: string;
                 value: number;
             }[];
             top_usage_disk: {
                 server_id: number;
+                server_uuid: string;
                 server_name: string;
                 client_name: string;
                 value: number;
@@ -847,7 +852,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": {
+                "application/json": {
                     name: string;
                     location: string;
                     email: string;
@@ -1436,6 +1441,7 @@ export interface operations {
                     "application/json": components["schemas"]["ServerData"];
                 };
             };
+            401: components["responses"]["AuthenticationException"];
             404: components["responses"]["ModelNotFoundException"];
         };
     };
@@ -1474,21 +1480,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description An error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /**
-                         * @description Error overview.
-                         * @example Unauthorized or invalid server ID.
-                         */
-                        message: string;
-                    };
-                };
-            };
+            401: components["responses"]["AuthenticationException"];
         };
     };
     "session.index": {
@@ -1506,7 +1498,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: string;
+                        data: unknown[];
                     };
                 };
             };

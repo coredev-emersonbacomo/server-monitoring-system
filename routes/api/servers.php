@@ -14,7 +14,7 @@ Route::middleware('auth:jwt')->group(function () {
         Route::delete('/servers/{serverUuid}', [ServerController::class, 'destroy']);
         Route::post('/servers/uninstall', [ServerController::class, 'uninstallServer']);
     });
-});
 
-Route::get('/servers/{serverUuid}', [ServerController::class, 'showWithStats']);
-Route::post('/server/stats', [ServerController::class, 'ingestStats']);
+    Route::get('/servers/{serverUuid}', [ServerController::class, 'showWithStats']);
+    Route::post('/server/stats', [ServerController::class, 'ingestStats']);
+});

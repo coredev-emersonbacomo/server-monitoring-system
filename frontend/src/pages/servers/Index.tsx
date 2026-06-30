@@ -63,20 +63,22 @@ export default function ServersIndex() {
                             </div>
                             <div>
                                 <h1 className="text-lg font-semibold tracking-tight">
-                                    {clientId && clientName
+                                    {clientUuid && clientName
                                         ? `${clientName} Servers`
                                         : "Servers"}
                                 </h1>
-                                {clientId && (
+                                {clientUuid && (
                                     <p className="text-xs text-muted-foreground mt-0.5">
                                         Showing servers for this client only
                                     </p>
                                 )}
                             </div>
                         </div>
-                        {clientId && (
+                        {clientUuid && (
                             <button
-                                onClick={() => navigate(`/clients/${clientId}`)}
+                                onClick={() =>
+                                    navigate(`/clients/${clientUuid}`)
+                                }
                                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                             >
                                 <Building2 className="w-3.5 h-3.5" />
@@ -92,7 +94,9 @@ export default function ServersIndex() {
                     <button
                         onClick={() =>
                             setSearchParams(
-                                clientId ? { client_id: String(clientId) } : {},
+                                clientUuid
+                                    ? { client_id: String(clientUuid) }
+                                    : {},
                             )
                         }
                         className={cn(
@@ -108,8 +112,8 @@ export default function ServersIndex() {
                         onClick={() =>
                             setSearchParams({
                                 status: "online",
-                                ...(clientId
-                                    ? { client_id: String(clientId) }
+                                ...(clientUuid
+                                    ? { client_id: String(clientUuid) }
                                     : {}),
                             })
                         }
@@ -127,8 +131,8 @@ export default function ServersIndex() {
                         onClick={() =>
                             setSearchParams({
                                 status: "warning",
-                                ...(clientId
-                                    ? { client_id: String(clientId) }
+                                ...(clientUuid
+                                    ? { client_id: String(clientUuid) }
                                     : {}),
                             })
                         }
@@ -146,8 +150,8 @@ export default function ServersIndex() {
                         onClick={() =>
                             setSearchParams({
                                 status: "offline",
-                                ...(clientId
-                                    ? { client_id: String(clientId) }
+                                ...(clientUuid
+                                    ? { client_id: String(clientUuid) }
                                     : {}),
                             })
                         }
@@ -176,7 +180,7 @@ export default function ServersIndex() {
                     <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                         <Search className="size-8 mb-2" />
                         <p className="text-sm">
-                            {clientId
+                            {clientUuid
                                 ? `No ${statusFilter ? statusFilter + " " : ""}servers found for this client.`
                                 : `No ${statusFilter ? statusFilter + " " : ""}servers found.`}
                         </p>

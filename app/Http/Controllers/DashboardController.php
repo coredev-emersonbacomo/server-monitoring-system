@@ -36,6 +36,7 @@ class DashboardController extends Controller
             ->join('clients', 'servers.client_id', '=', 'clients.id')
             ->select(
                 'su.server_id',
+                'servers.uuid as server_uuid',
                 'servers.server_name as server_name',
                 'clients.name as client_name',
                 'su.cpu_usage',
@@ -77,6 +78,7 @@ class DashboardController extends Controller
             ->values()
             ->map(fn ($row) => [
                 'server_id'   => $row->server_id,
+                'server_uuid' => $row->server_uuid,
                 'server_name' => $row->server_name,
                 'client_name' => $row->client_name,
                 'value'       => round((float) $row->$column, 1),
@@ -98,7 +100,7 @@ class DashboardController extends Controller
     /** @return ActionItemData[] */
     public function actions(): array
     {
-        $actions = ActionItem::with('assignedUser')
+        $actions = ActionItem::with(['assignedUser', 'server', 'client'])
             ->where('status', '!=', 'completed')
             ->orderByRaw("CASE severity WHEN 'critical' THEN 0 WHEN 'warning' THEN 1 WHEN 'info' THEN 2 ELSE 3 END")
             ->orderBy('created_at', 'desc')
@@ -118,7 +120,7 @@ class DashboardController extends Controller
             $action->update(['assigned_to' => $user->id, 'status' => 'in_progress']);
         }
 
-        $action->load('assignedUser');
+        $action->load(['assignedUser', 'server', 'client']);
         return ActionItemData::fromModel($action);
     }
 
@@ -136,14 +138,14 @@ class DashboardController extends Controller
         }
         $action->update($updates);
 
-        $action->load('assignedUser');
+        $action->load(['assignedUser', 'server', 'client']);
         return ActionItemData::fromModel($action);
     }
 
     /** @return ActionItemData[] */
     public function completed(): array
     {
-        $actions = ActionItem::with('assignedUser')
+        $actions = ActionItem::with(['assignedUser', 'server', 'client'])
             ->where('status', 'completed')
             ->orderBy('completed_at', 'desc')
             ->limit(50)
