@@ -279,12 +279,7 @@ export default function UserDetail() {
             last_name: z.string().trim().min(1, "Required"),
             email: z.string().trim().min(1, "Required").email("Invalid email"),
             username: z.string().trim().min(1, "Required"),
-<<<<<<< HEAD
             phone_number: z.string()
-=======
-            phone_number: z
-                .string()
->>>>>>> 5a4b0a3d186cff85859267ee2d0825476d0b952f
                 .trim()
                 .min(1, "Required")
                 .regex(
@@ -408,13 +403,7 @@ export default function UserDetail() {
                     err?.response?.data?.message || err?.message;
                 toast.error(
                     serverMessage ||
-<<<<<<< HEAD
                     (mode === "create" ? "Failed to create user." : "Failed to update user.")
-=======
-                        (mode === "create"
-                            ? "Failed to create user."
-                            : "Failed to update user."),
->>>>>>> 5a4b0a3d186cff85859267ee2d0825476d0b952f
                 );
             }
         }
@@ -739,7 +728,6 @@ export default function UserDetail() {
                                         isEdit={showEdit}
                                     >
                                         {showEdit ? (
-<<<<<<< HEAD
                                             <div className="flex flex-col gap-1">
                                                 <Input
                                                     placeholder="e.g. 09123456789"
@@ -769,33 +757,6 @@ export default function UserDetail() {
                                         ) : (
                                             <p className="text-sm text-foreground py-1">
                                                 {user?.phone_number ? formatPhoneNumber(user.phone_number) : "—"}
-=======
-                                            <Input
-                                                placeholder="e.g. 09123456789"
-                                                value={form.phone_number}
-                                                onChange={(e) => {
-                                                    const numeric =
-                                                        formatPhoneNumber(
-                                                            e.target.value,
-                                                        );
-                                                    setForm((f) => ({
-                                                        ...f,
-                                                        phone_number: numeric,
-                                                    }));
-                                                }}
-                                                className={cn(
-                                                    errors.phone_number &&
-                                                        "border-destructive",
-                                                )}
-                                            />
-                                        ) : (
-                                            <p className="text-sm text-foreground py-1">
-                                                {user?.phone_number
-                                                    ? formatPhoneNumber(
-                                                          user.phone_number,
-                                                      )
-                                                    : "—"}
->>>>>>> 5a4b0a3d186cff85859267ee2d0825476d0b952f
                                             </p>
                                         )}
                                     </Field>
@@ -821,7 +782,6 @@ export default function UserDetail() {
                                                 required={isCreate}
                                                 error={errors.password}
                                             >
-<<<<<<< HEAD
                                                 <div className="flex flex-col gap-1.5">
                                                     <Input
                                                         type="password"
@@ -877,20 +837,6 @@ export default function UserDetail() {
                                                     {/* Strength meter */}
                                                     {form.password && (
                                                         <PasswordStrength password={form.password} />
-=======
-                                                <Input
-                                                    type="password"
-                                                    placeholder={
-                                                        isCreate
-                                                            ? "Min. 8 characters"
-                                                            : "New password"
-                                                    }
-                                                    value={form.password}
-                                                    onChange={set("password")}
-                                                    className={cn(
-                                                        errors.password &&
-                                                            "border-destructive",
->>>>>>> 5a4b0a3d186cff85859267ee2d0825476d0b952f
                                                     )}
                                                 </div>
                                             </Field>
@@ -922,16 +868,11 @@ export default function UserDetail() {
                                                         });
                                                     }}
                                                     className={cn(
-<<<<<<< HEAD
                                                         errors.password_confirmation && "border-destructive",
                                                         !errors.password_confirmation &&
                                                         form.password_confirmation &&
                                                         form.password_confirmation === form.password &&
                                                         "border-emerald-500",
-=======
-                                                        errors.password_confirmation &&
-                                                            "border-destructive",
->>>>>>> 5a4b0a3d186cff85859267ee2d0825476d0b952f
                                                     )}
                                                 />
                                             </Field>
