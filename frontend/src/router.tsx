@@ -17,6 +17,7 @@ import Sessions from "./pages/settings/sessions";
 import Profile from "./pages/settings/profile";
 import UserDetail from "./pages/users/userDetail";
 import SystemSettings from "./pages/settings/system";
+import AlertThresholds from "./pages/settings/thresholds";
 
 const router = createBrowserRouter([
     {
@@ -94,6 +95,10 @@ const router = createBrowserRouter([
                     {
                         path: "/settings/system",
                         element: <SystemSettings />,
+                    },
+                    {
+                        path: "/settings/thresholds",
+                        element: <AlertThresholds />,
                     },
                     {
                         path: "/profile",
