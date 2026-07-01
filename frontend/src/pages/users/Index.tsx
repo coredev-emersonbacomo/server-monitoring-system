@@ -58,7 +58,7 @@ const Users = () => {
     const deleteUser = useDeleteUser();
 
     const [deleteTarget, setDeleteTarget] = useState<{
-        id: number;
+        uuid: string;
         name: string;
     } | null>(null);
     const [search, setSearch] = useState("");
@@ -77,11 +77,11 @@ const Users = () => {
         });
     }, [search, filter, users]);
 
-    const handleDeleteRequest = (id: number) => {
-        const user = users.find((u) => u.id === id);
+    const handleDeleteRequest = (uuid: string) => {
+        const user = users.find((u) => u.uuid === uuid);
         if (user)
             setDeleteTarget({
-                id,
+                uuid,
                 name: `${user.first_name} ${user.last_name}`,
             });
     };
@@ -89,7 +89,7 @@ const Users = () => {
     const confirmDelete = async () => {
         if (!deleteTarget) return;
         try {
-            await deleteUser.mutateAsync(deleteTarget.id);
+            await deleteUser.mutateAsync(deleteTarget.uuid);
             toast.success(`${deleteTarget.name} has been removed.`);
             setDeleteTarget(null);
         } catch {
@@ -226,8 +226,8 @@ const Users = () => {
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
                         {visible.map((u) => (
                             <ProfileCard
-                                key={u.id}
-                                id={u.id}
+                                key={u.uuid}
+                                uuid={u.uuid}
                                 name={`${u.first_name} ${u.last_name}`}
                                 email={u.email}
                                 imageUrl={u.profile_picture_url}
