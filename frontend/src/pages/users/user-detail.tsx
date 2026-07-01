@@ -128,18 +128,18 @@ function PasswordStrength({ password }: { password: string }) {
         passedCount <= 1
             ? "Weak"
             : passedCount === 2
-              ? "Fair"
-              : passedCount === 3
-                ? "Good"
-                : "Strong";
+                ? "Fair"
+                : passedCount === 3
+                    ? "Good"
+                    : "Strong";
     const strengthColor =
         passedCount <= 1
             ? "bg-destructive"
             : passedCount === 2
-              ? "bg-amber-500"
-              : passedCount === 3
-                ? "bg-blue-500"
-                : "bg-emerald-500";
+                ? "bg-amber-500"
+                : passedCount === 3
+                    ? "bg-blue-500"
+                    : "bg-emerald-500";
 
     return (
         <div className="flex flex-col gap-1.5">
@@ -194,6 +194,7 @@ function PasswordStrength({ password }: { password: string }) {
 export default function UserDetail() {
     const navigate = useNavigate();
     const { uuid = "" } = useParams<{ uuid: string }>();
+
     const { setTrail } = useBreadcrumb();
 
     const [mode, setMode] = useState<"view" | "create" | "edit">(
@@ -274,8 +275,8 @@ export default function UserDetail() {
 
     const set =
         (key: keyof typeof form) =>
-        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-            setForm((f) => ({ ...f, [key]: e.target.value }));
+            (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+                setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const isCreate = mode === "create";
@@ -376,9 +377,9 @@ export default function UserDetail() {
                     phone_number: form.phone_number,
                     ...(form.password
                         ? {
-                              password: form.password,
-                              password_confirmation: form.password_confirmation,
-                          }
+                            password: form.password,
+                            password_confirmation: form.password_confirmation,
+                        }
                         : {}),
                     ...uploadFields,
                 };
@@ -411,9 +412,9 @@ export default function UserDetail() {
                     err?.response?.data?.message || err?.message;
                 toast.error(
                     serverMessage ||
-                        (mode === "create"
-                            ? "Failed to create user."
-                            : "Failed to update user."),
+                    (mode === "create"
+                        ? "Failed to create user."
+                        : "Failed to update user."),
                 );
             }
         }
@@ -695,7 +696,7 @@ export default function UserDetail() {
                                                 onChange={set("email")}
                                                 className={cn(
                                                     errors.email &&
-                                                        "border-destructive",
+                                                    "border-destructive",
                                                 )}
                                             />
                                         ) : (
@@ -722,7 +723,7 @@ export default function UserDetail() {
                                                 onChange={set("username")}
                                                 className={cn(
                                                     errors.username &&
-                                                        "border-destructive",
+                                                    "border-destructive",
                                                 )}
                                             />
                                         ) : (
@@ -805,7 +806,7 @@ export default function UserDetail() {
                                                     maxLength={11}
                                                     className={cn(
                                                         errors.phone_number &&
-                                                            "border-destructive",
+                                                        "border-destructive",
                                                     )}
                                                 />
                                             </div>
@@ -813,8 +814,8 @@ export default function UserDetail() {
                                             <p className="text-sm text-foreground py-1">
                                                 {user?.phone_number
                                                     ? formatPhoneNumber(
-                                                          user.phone_number,
-                                                      )
+                                                        user.phone_number,
+                                                    )
                                                     : "—"}
                                             </p>
                                         )}
@@ -870,9 +871,9 @@ export default function UserDetail() {
                                                             setErrors(
                                                                 (prev) => {
                                                                     const next =
-                                                                        {
-                                                                            ...prev,
-                                                                        };
+                                                                    {
+                                                                        ...prev,
+                                                                    };
 
                                                                     if (
                                                                         !value
@@ -886,30 +887,30 @@ export default function UserDetail() {
                                                                             delete next.password;
                                                                     } else {
                                                                         const checks =
-                                                                            {
-                                                                                length:
-                                                                                    value.length >=
-                                                                                    8,
-                                                                                upper: /[A-Z]/.test(
-                                                                                    value,
-                                                                                ),
-                                                                                number: /[0-9]/.test(
-                                                                                    value,
-                                                                                ),
-                                                                                symbol: /[^A-Za-z0-9]/.test(
-                                                                                    value,
-                                                                                ),
-                                                                            };
+                                                                        {
+                                                                            length:
+                                                                                value.length >=
+                                                                                8,
+                                                                            upper: /[A-Z]/.test(
+                                                                                value,
+                                                                            ),
+                                                                            number: /[0-9]/.test(
+                                                                                value,
+                                                                            ),
+                                                                            symbol: /[^A-Za-z0-9]/.test(
+                                                                                value,
+                                                                            ),
+                                                                        };
                                                                         const failed =
                                                                             !checks.length
                                                                                 ? "Must be at least 8 characters"
                                                                                 : !checks.upper
-                                                                                  ? "Must include an uppercase letter"
-                                                                                  : !checks.number
-                                                                                    ? "Must include a number"
-                                                                                    : !checks.symbol
-                                                                                      ? "Must include a symbol (!@#$...)"
-                                                                                      : null;
+                                                                                    ? "Must include an uppercase letter"
+                                                                                    : !checks.number
+                                                                                        ? "Must include a number"
+                                                                                        : !checks.symbol
+                                                                                            ? "Must include a symbol (!@#$...)"
+                                                                                            : null;
 
                                                                         if (
                                                                             failed
@@ -941,7 +942,7 @@ export default function UserDetail() {
                                                         }}
                                                         className={cn(
                                                             errors.password &&
-                                                                "border-destructive",
+                                                            "border-destructive",
                                                         )}
                                                     />
 
@@ -1002,12 +1003,12 @@ export default function UserDetail() {
                                                     }}
                                                     className={cn(
                                                         errors.password_confirmation &&
-                                                            "border-destructive",
+                                                        "border-destructive",
                                                         !errors.password_confirmation &&
-                                                            form.password_confirmation &&
-                                                            form.password_confirmation ===
-                                                                form.password &&
-                                                            "border-emerald-500",
+                                                        form.password_confirmation &&
+                                                        form.password_confirmation ===
+                                                        form.password &&
+                                                        "border-emerald-500",
                                                     )}
                                                 />
                                             </Field>
@@ -1028,8 +1029,8 @@ export default function UserDetail() {
                                                 isSaving
                                                     ? "Saving…"
                                                     : isCreate
-                                                      ? "Create User"
-                                                      : "Save Changes"
+                                                        ? "Create User"
+                                                        : "Save Changes"
                                             }
                                         />
                                     </div>

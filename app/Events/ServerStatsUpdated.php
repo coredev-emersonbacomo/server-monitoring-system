@@ -14,13 +14,11 @@ class ServerStatsUpdated implements ShouldBroadcastNow
 
     public int $server_id;
     public array $stats;
-    public array $server;
 
-    public function __construct(int $server_id, array $stats, array $server)
+    public function __construct(int $server_id, array $stats)
     {
         $this->server_id = $server_id;
         $this->stats = $stats;
-        $this->server = $server;
     }
 
     public function broadcastOn(): array
