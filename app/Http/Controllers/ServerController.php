@@ -8,9 +8,11 @@ use App\Data\ServerSshData;
 use App\Data\ServerUpdatesData;
 use App\Data\StatPointData;
 use App\Data\UpdateServerData;
+use App\Data\UpdateServerSpecsData;
 use App\Events\ServerStatsUpdated;
 use App\Models\Client;
 use App\Models\Server;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -125,7 +127,9 @@ class ServerController extends Controller
                     ->select('server_id', DB::raw('MAX(created_at) as last_seen'))
                     ->groupBy('server_id'),
                 'lu',
-                'servers.id', '=', 'lu.server_id'
+                'servers.id',
+                '=',
+                'lu.server_id'
             )
             ->join('clients', 'servers.client_id', '=', 'clients.id')
             ->select(
@@ -184,18 +188,18 @@ class ServerController extends Controller
             ->first();
 
         return ServerData::from([
-                'uuid'             => $server->uuid,
-                'server_name'      => $server->server_name,
-                'device_name'      => $server->device_name,
-                'external_ip'      => $server->external_ip,
-                'cpu_cores'        => $server->cpu_cores ?? null,
-                'ram'              => $server->ram ?? null,
-                'operating_system' => $server->operating_system ?? null,
-                'client_id'        => $server->client_id,
-                'client_uuid'      => $client?->uuid ?? '',
-                'client_name'      => $client?->name ?? 'Unknown',
-                'stats'            => $stats,
-            ]);
+            'uuid'             => $server->uuid,
+            'server_name'      => $server->server_name,
+            'device_name'      => $server->device_name,
+            'external_ip'      => $server->external_ip,
+            'cpu_cores'        => $server->cpu_cores ?? null,
+            'ram'              => $server->ram ?? null,
+            'operating_system' => $server->operating_system ?? null,
+            'client_id'        => $server->client_id,
+            'client_uuid'      => $client?->uuid ?? '',
+            'client_name'      => $client?->name ?? 'Unknown',
+            'stats'            => $stats,
+        ]);
     }
 
     public function ingestStats(ServerUpdatesData $data): array
@@ -316,5 +320,20 @@ class ServerController extends Controller
         } catch (\RuntimeException $e) {
             abort(500, 'Uninstall failed: ' . $e->getMessage());
         }
+    }
+
+    public function updateServerSpecs(UpdateServerSpecsData $data): JsonResponse
+    {
+        // Find the record or instantly throw a 404
+        $serverModel = Server::where('uuid', $data->uuid)->firstOrFail();
+
+        $serverModel->update([
+            'cpu_model'        => $data->cpu_model,
+            'cpu_cores'        => $data->cpu_cores,
+            'ram'              => $data->ram,
+            'operating_system' => $data->operating_system,
+        ]);
+
+        return response()->json(['status'  => 'success'], 200);
     }
 }
