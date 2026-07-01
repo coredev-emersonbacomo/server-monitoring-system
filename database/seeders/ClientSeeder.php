@@ -40,7 +40,7 @@ class ClientSeeder extends Seeder
             ],
             [
                 'uuid' => (string) Str::uuid7(),
-                'device_name' => 'Thinkpad',
+                'host_name' => 'Thinkpad',
                 'ssh_username' => 'timocheu',
                 'ssh_password' => 'testing',
                 'external_ip' => '127.0.0.1',

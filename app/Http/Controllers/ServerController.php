@@ -40,7 +40,7 @@ class ServerController extends Controller
                 $server = Server::create([
                     'client_id'    => $clientId,
                     'server_name'  => $data->server_name,
-                    'device_name'  => $data->device_name ?? $data->server_name,
+                    'host_name'  => $data->host_name ?? $data->server_name,
                     'external_ip'  => $data->external_ip,
                     'ssh_port'     => $data->ssh_port,
                     'ssh_username' => Crypt::encryptString($data->ssh_username),
@@ -85,8 +85,8 @@ class ServerController extends Controller
 
         $updateData = $data->toArray();
 
-        if ($data->device_name !== null) {
-            $updateData['device_name'] = $data->device_name;
+        if ($data->host_name !== null) {
+            $updateData['host_name'] = $data->host_name;
         }
         if ($data->external_ip !== null) {
             $updateData['external_ip'] = $data->external_ip;
@@ -137,12 +137,15 @@ class ServerController extends Controller
             ->select(
                 'servers.uuid',
                 'servers.server_name',
-                'servers.device_name',
+                'servers.host_name',
                 'servers.external_ip',
                 'servers.cpu_cores',
                 'servers.ram',
                 'servers.operating_system',
                 'servers.client_id',
+                'servers.record_status',
+                'servers.created_at',
+                'servers.updated_at',
                 'clients.uuid as client_uuid',
                 'clients.name as client_name',
                 'lu.last_seen',
@@ -162,7 +165,23 @@ class ServerController extends Controller
             }
         }
 
-        return ServerData::collect($query->get());
+        $query->orderBy('servers.created_at', 'desc');
+
+        return ServerData::collect($query->get()->map(fn(\stdClass $s) => ServerData::from([
+            'uuid'             => $s->uuid,
+            'server_name'      => $s->server_name,
+            'host_name'      => $s->host_name,
+            'external_ip'      => $s->external_ip,
+            'client_uuid'      => $s->client_uuid,
+            'client_name'      => $s->client_name,
+            'created_at'       => $s->created_at,
+            'updated_at'       => $s->updated_at,
+            'cpu_cores'        => $s->cpu_cores,
+            'ram'              => $s->ram,
+            'operating_system' => $s->operating_system,
+            'record_status'    => $s->record_status,
+            'status'           => $s->status,
+        ])));
     }
 
     public function showWithStats(string $serverUuid): ServerData
@@ -192,14 +211,17 @@ class ServerController extends Controller
         return ServerData::from([
             'uuid'             => $server->uuid,
             'server_name'      => $server->server_name,
-            'device_name'      => $server->device_name,
+            'host_name'      => $server->host_name,
             'external_ip'      => $server->external_ip,
+            'created_at'       => $server->created_at,
+            'updated_at'       => $server->updated_at,
             'cpu_cores'        => $server->cpu_cores ?? null,
             'ram'              => $server->ram ?? null,
             'operating_system' => $server->operating_system ?? null,
             'client_id'        => $server->client_id,
             'client_uuid'      => $client?->uuid ?? '',
             'client_name'      => $client?->name ?? 'Unknown',
+            'record_status'    => $server->record_status,
             'stats'            => $stats,
         ]);
     }
@@ -243,7 +265,7 @@ class ServerController extends Controller
         $server = [
             'uuid'             => $serverInfo->uuid,
             'server_name'      => $serverInfo->server_name,
-            'device_name'      => $serverInfo->device_name,
+            'host_name'      => $serverInfo->host_name,
             'external_ip'      => $serverInfo->external_ip,
             'cpu_cores'        => $serverInfo->cpu_cores ?? null,
             'ram'              => $serverInfo->ram ?? null,

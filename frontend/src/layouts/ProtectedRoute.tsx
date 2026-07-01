@@ -54,7 +54,7 @@ export function ProtectedRoute() {
             <BreadcrumbProvider>
                 <div className="flex h-screen overflow-hidden">
                     <SidebarNav links={sidebarLinks} />
-                    <main className="flex-1 flex flex-col min-h-0 overflow-auto px-8 sm:px-10 lg:px-12 py-5 gap-5">
+                    <main className="flex-1 flex flex-col min-h-0 overflow-auto px-8 sm:px-10 lg:px-12 gap-5">
                         <TopBarNav />
                         <div className="flex-1 flex flex-col min-h-0">
                             <Outlet />

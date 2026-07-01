@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('client_id')->constrained()->onDelete('cascade');
             $table->string('server_name');
 
-            $table->string('device_name');
+            $table->string('host_name');
 
             // Network details
             $table->string('external_ip');

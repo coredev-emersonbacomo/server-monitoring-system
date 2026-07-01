@@ -15,7 +15,7 @@ class SessionResource extends JsonResource
 
         return [
             'session_uuid' => $this->session_uuid,
-            'device_name' => $this->device_name,
+            'host_name' => $this->host_name,
             'device_type' => $this->device_type,
             'browser' => $this->browser,
             'operating_system' => $this->operating_system,

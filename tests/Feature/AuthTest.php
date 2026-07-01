@@ -28,7 +28,7 @@ test('login succeeds with valid credentials', function () {
             'access_token',
             'expires_in',
             'user' => ['id', 'first_name', 'last_name', 'email'],
-            'session' => ['session_uuid', 'device_name'],
+            'session' => ['session_uuid', 'host_name'],
         ]);
 
     expect($response->headers->getCookies())->not->toBeEmpty();
@@ -184,7 +184,7 @@ test('sessions endpoint returns user sessions', function () {
             'data' => [
                 '*' => [
                     'session_uuid',
-                    'device_name',
+                    'host_name',
                     'device_type',
                     'current_session',
                     'status',

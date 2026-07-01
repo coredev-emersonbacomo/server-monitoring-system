@@ -1,15 +1,17 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
     Server,
-    Search,
     Wifi,
     WifiOff,
     AlertTriangle,
     Building2,
+    Search,
 } from "lucide-react";
 import { useServers } from "@/hooks/useServers";
 import { cn } from "@/lib/utils";
+import IndexToolbar from "@/components/IndexToolbar";
+import type { SortOption } from "@/components/IndexToolbar";
 
 const STATUS_META: Record<
     string,
@@ -31,6 +33,16 @@ export default function ServersIndex() {
     const clientUuid = searchParams.get("client_uuid") || undefined;
 
     const { data: servers, isLoading } = useServers(clientUuid);
+    const [sortField, setSortField] = useState<string>("created_at");
+    const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+    const sortOptions = [
+        { label: "Created At", value: "created_at" },
+        { label: "Server Name", value: "server_name" },
+        { label: "Record Status", value: "record_status" },
+    ];
+    const currentSortLabel =
+        sortOptions.find((o) => o.value === sortField)?.label ?? "";
 
     const clientName = useMemo(() => {
         if (!servers || servers.length === 0) return null;
@@ -39,9 +51,23 @@ export default function ServersIndex() {
 
     const filtered = useMemo(() => {
         if (!servers) return [];
-        if (!statusFilter) return servers;
-        return servers.filter((s) => s.status === statusFilter);
-    }, [servers, statusFilter]);
+        const result = statusFilter
+            ? servers.filter((s) => s.status === statusFilter)
+            : [...servers];
+        return result.sort((a, b) => {
+            const cmp = (() => {
+                switch (sortField) {
+                    case "server_name":
+                        return a.server_name.localeCompare(b.server_name);
+                    case "record_status":
+                        return a.record_status.localeCompare(b.record_status);
+                    default:
+                        return a.created_at.localeCompare(b.created_at);
+                }
+            })();
+            return sortDir === "desc" ? -cmp : cmp;
+        });
+    }, [servers, statusFilter, sortField, sortDir]);
 
     const counts = useMemo(() => {
         if (!servers) return { online: 0, warning: 0, offline: 0 };
@@ -89,84 +115,65 @@ export default function ServersIndex() {
                 </div>
             </header>
 
-            <main className="py-6 w-full flex-1 min-h-0 overflow-auto">
-                <div className="flex items-center gap-2 mb-6 flex-wrap">
-                    <button
-                        onClick={() =>
-                            setSearchParams(
-                                clientUuid
-                                    ? { client_id: String(clientUuid) }
-                                    : {},
-                            )
-                        }
-                        className={cn(
-                            "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                            !statusFilter
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-muted text-muted-foreground hover:text-foreground",
-                        )}
-                    >
-                        All ({servers?.length ?? 0})
-                    </button>
-                    <button
-                        onClick={() =>
-                            setSearchParams({
-                                status: "online",
-                                ...(clientUuid
-                                    ? { client_id: String(clientUuid) }
-                                    : {}),
-                            })
-                        }
-                        className={cn(
-                            "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5",
-                            statusFilter === "online"
-                                ? "bg-emerald-500/20 text-emerald-400"
-                                : "bg-muted text-muted-foreground hover:text-foreground",
-                        )}
-                    >
-                        <Wifi className="size-3" />
-                        Online ({counts.online})
-                    </button>
-                    <button
-                        onClick={() =>
-                            setSearchParams({
-                                status: "warning",
-                                ...(clientUuid
-                                    ? { client_id: String(clientUuid) }
-                                    : {}),
-                            })
-                        }
-                        className={cn(
-                            "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5",
-                            statusFilter === "warning"
-                                ? "bg-amber-500/20 text-amber-400"
-                                : "bg-muted text-muted-foreground hover:text-foreground",
-                        )}
-                    >
-                        <AlertTriangle className="size-3" />
-                        Warning ({counts.warning})
-                    </button>
-                    <button
-                        onClick={() =>
-                            setSearchParams({
-                                status: "offline",
-                                ...(clientUuid
-                                    ? { client_id: String(clientUuid) }
-                                    : {}),
-                            })
-                        }
-                        className={cn(
-                            "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5",
-                            statusFilter === "offline"
-                                ? "bg-red-500/20 text-red-400"
-                                : "bg-muted text-muted-foreground hover:text-foreground",
-                        )}
-                    >
-                        <WifiOff className="size-3" />
-                        Offline ({counts.offline})
-                    </button>
-                </div>
-
+            <main className="w-full flex-1 min-h-0 overflow-auto">
+                <IndexToolbar
+                    filterOptions={[
+                        {
+                            label: "All",
+                            value: "",
+                            count: servers?.length ?? 0,
+                        },
+                        {
+                            label: "Online",
+                            value: "online",
+                            count: counts.online,
+                            icon: <Wifi className="size-3 text-emerald-400" />,
+                        },
+                        {
+                            label: "Warning",
+                            value: "warning",
+                            count: counts.warning,
+                            icon: (
+                                <AlertTriangle className="size-3 text-amber-400" />
+                            ),
+                        },
+                        {
+                            label: "Offline",
+                            value: "offline",
+                            count: counts.offline,
+                            icon: <WifiOff className="size-3 text-red-400" />,
+                        },
+                    ]}
+                    filter={statusFilter ?? ""}
+                    onFilterChange={(value) =>
+                        setSearchParams(
+                            value
+                                ? {
+                                      status: value,
+                                      ...(clientUuid
+                                          ? { client_id: String(clientUuid) }
+                                          : {}),
+                                  }
+                                : clientUuid
+                                  ? { client_id: String(clientUuid) }
+                                  : {},
+                        )
+                    }
+                    filterLabel={
+                        statusFilter
+                            ? statusFilter.charAt(0).toUpperCase() +
+                              statusFilter.slice(1)
+                            : "All"
+                    }
+                    sortOptions={sortOptions as SortOption[]}
+                    sortField={sortField}
+                    onSortFieldChange={setSortField}
+                    sortDir={sortDir}
+                    onSortDirChange={() =>
+                        setSortDir((d) => (d === "desc" ? "asc" : "desc"))
+                    }
+                    sortLabel={currentSortLabel}
+                />
                 {isLoading ? (
                     <div className="space-y-2">
                         {Array.from({ length: 6 }).map((_, i) => (

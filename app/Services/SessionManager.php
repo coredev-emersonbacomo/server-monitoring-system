@@ -35,7 +35,7 @@ class SessionManager
             'refresh_token_id' => $refreshTokenId,
             'refresh_token_hash' => $refreshTokenHash,
             'remember_me' => $rememberMe,
-            'device_name' => $this->deviceDetector->detectDeviceName($userAgent),
+            'host_name' => $this->deviceDetector->detectDeviceName($userAgent),
             'device_type' => $deviceType->value,
             'browser' => $this->deviceDetector->detectBrowser($userAgent),
             'operating_system' => $this->deviceDetector->detectOperatingSystem($userAgent),
