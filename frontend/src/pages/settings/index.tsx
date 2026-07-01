@@ -10,7 +10,7 @@ function Settings() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        setTrail([{ label: "Settings", href: "/settings" }]);
+        setTrail([{ label: "Settings" }]);
     }, [setTrail]);
 
     if (authLoading) {

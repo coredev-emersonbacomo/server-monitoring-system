@@ -1,11 +1,7 @@
 import { memo, useState } from "react";
-import {
-    Wifi,
-    WifiOff,
-    AlertTriangle,
-    Trash2,
-} from "lucide-react";
+import { Wifi, WifiOff, AlertTriangle, Trash2 } from "lucide-react";
 import { ServerStatChart } from "./ServerStatChart";
+import type { ServerData } from "@/types/models";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,9 +12,6 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import type { components } from "@/api/schema.d";
-
-type ServerDetailData = components["schemas"]["ServerData"];
 
 const STATUS_CONFIG = {
     online: {
@@ -78,8 +71,8 @@ const CHARTS = [
 ];
 
 interface ServerCardProps {
-    server: ServerDetailData;
-    onDelete?: (id: number) => Promise<void> | void;
+    server: ServerData;
+    onDelete?: (uuid: string) => Promise<void> | void;
 }
 
 export const ServerCard = memo(function ServerCard({
@@ -167,7 +160,10 @@ export const ServerCard = memo(function ServerCard({
             </div>
 
             {/* Delete confirmation dialog */}
-            <Dialog open={showDelete} onOpenChange={(open) => !open && resetDialog()}>
+            <Dialog
+                open={showDelete}
+                onOpenChange={(open) => !open && resetDialog()}
+            >
                 <DialogContent className="sm:max-w-sm">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-destructive">
@@ -178,13 +174,20 @@ export const ServerCard = memo(function ServerCard({
 
                     <p className="text-sm text-muted-foreground">
                         This will permanently stop monitoring{" "}
-                        <strong className="text-foreground">{server.server_name}</strong>{" "}
-                        ({server.internal_ip}) and remove all collected metrics. This cannot be undone.
+                        <strong className="text-foreground">
+                            {server.server_name}
+                        </strong>{" "}
+                        ({server.external_ip}) and remove all collected metrics.
+                        This cannot be undone.
                     </p>
 
                     <div className="flex flex-col gap-1.5 pt-1">
                         <label className="text-xs text-muted-foreground">
-                            Type <strong className="text-foreground font-mono">{server.server_name}</strong> to confirm
+                            Type{" "}
+                            <strong className="text-foreground font-mono">
+                                {server.server_name}
+                            </strong>{" "}
+                            to confirm
                         </label>
                         <Input
                             value={confirmText}
@@ -197,7 +200,11 @@ export const ServerCard = memo(function ServerCard({
 
                     <div className="flex justify-end gap-3 pt-2">
                         <DialogClose asChild>
-                            <Button variant="outline" label="Cancel" onClick={resetDialog} />
+                            <Button
+                                variant="outline"
+                                label="Cancel"
+                                onClick={resetDialog}
+                            />
                         </DialogClose>
                         <Button
                             variant="danger"
@@ -210,4 +217,4 @@ export const ServerCard = memo(function ServerCard({
             </Dialog>
         </div>
     );
-}); 
+});

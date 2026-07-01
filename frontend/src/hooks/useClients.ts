@@ -17,7 +17,7 @@ export const useClient = (clientUuid: string) => {
         queryKey: ["clients", clientUuid],
         queryFn: async () => {
             const { data, error } = await api.GET("/clients/{clientUuid}", {
-                params: { path: { clientUuid: clientUuid } },
+                params: { path: { clientUuid } },
             });
             if (error) throw error;
             return data;
@@ -49,7 +49,7 @@ export const useUpdateClient = (clientUuid: string) => {
     return useMutation({
         mutationFn: async (formData: FormData) => {
             const { data, error } = await api.PUT("/clients/{clientUuid}", {
-                params: { path: { clientUuid: clientUuid } },
+                params: { path: { clientUuid } },
                 body: formData as never,
             });
             if (error) throw error;
@@ -71,7 +71,7 @@ export const useClientServers = (clientUuid: string) => {
             const { data, error } = await api.GET(
                 "/clients/{clientUuid}/servers",
                 {
-                    params: { path: { clientUuid: clientUuid } },
+                    params: { path: { clientUuid } },
                 },
             );
             if (error) throw error;
@@ -87,7 +87,7 @@ export const useDeleteClient = () => {
     return useMutation({
         mutationFn: async (clientUuid: string) => {
             const { error } = await api.DELETE("/clients/{clientUuid}", {
-                params: { path: { clientUuid: clientUuid } },
+                params: { path: { clientUuid } },
             });
             if (error) throw error;
         },
@@ -104,7 +104,7 @@ export const useClientSecops = (clientUuid: string) => {
             const { data, error } = await api.GET(
                 "/clients/{clientUuid}/secops",
                 {
-                    params: { path: { clientUuid: clientUuid } },
+                    params: { path: { clientUuid } },
                 },
             );
             if (error) throw error;
@@ -118,12 +118,12 @@ export const useAddClientSecop = (clientUuid: string) => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (userId: number) => {
+        mutationFn: async (userUuid: string) => {
             const { data, error } = await api.POST(
                 "/clients/{clientUuid}/secops",
                 {
-                    params: { path: { clientUuid: clientUuid } },
-                    body: { user_id: userId },
+                    params: { path: { clientUuid } },
+                    body: { user_uuid: userUuid },
                 },
             );
             if (error) throw error;
@@ -144,11 +144,11 @@ export const useRemoveClientSecop = (clientUuid: string) => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (userId: number) => {
+        mutationFn: async (userUuid: string) => {
             const { error } = await api.DELETE(
-                "/clients/{clientUuid}/secops/{userId}",
+                "/clients/{clientUuid}/secops/{userUuid}",
                 {
-                    params: { path: { clientUuid: clientUuid, userId } },
+                    params: { path: { clientUuid, userUuid } },
                 },
             );
             if (error) throw error;

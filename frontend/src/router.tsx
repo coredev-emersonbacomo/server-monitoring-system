@@ -6,7 +6,7 @@ import { GuestLayout } from "./layouts/GuestLayout";
 import Clients from "./pages/clients/index";
 import UsersIndex from "./pages/users/index";
 import ClientDetail from "./pages/clients/clientDetail";
-import Logs from "./pages/logs";
+import SystemLogs from "./pages/systemLogs";
 import ServerLayout from "./layouts/ServerLayout";
 import ServerDetail from "./pages/servers/serverDetail";
 import CreateServer from "./pages/servers/create";
@@ -18,6 +18,7 @@ import Profile from "./pages/settings/profile";
 import UserDetail from "./pages/users/userDetail";
 import SystemSettings from "./pages/settings/system";
 import AlertThresholds from "./pages/settings/thresholds";
+import ServerLogs from "./pages/serverLogs";
 
 const router = createBrowserRouter([
     {
@@ -51,7 +52,7 @@ const router = createBrowserRouter([
                         element: <ServerLayout />,
                         children: [
                             {
-                                path: "/servers/:serverUuid",
+                                path: "/servers/:uuid",
                                 element: <ServerDetail />,
                             },
                         ],
@@ -65,7 +66,7 @@ const router = createBrowserRouter([
                         element: <ClientDetail />,
                     },
                     {
-                        path: "/clients/:clientUuid",
+                        path: "/clients/:uuid",
                         element: <ClientDetail />,
                     },
                     {
@@ -77,12 +78,16 @@ const router = createBrowserRouter([
                         element: <UserDetail />,
                     },
                     {
-                        path: "/users/:id",
+                        path: "/users/:uuid",
                         element: <UserDetail />,
                     },
                     {
-                        path: "/logs",
-                        element: <Logs />,
+                        path: "/system-logs",
+                        element: <SystemLogs />,
+                    },
+                    {
+                        path: "/server-logs",
+                        element: <ServerLogs />,
                     },
                     {
                         path: "/settings",

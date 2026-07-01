@@ -10,6 +10,7 @@ use App\Data\ServerData;
 use App\Data\UpdateClientData;
 use App\Jobs\DeleteStorageAsset;
 use App\Models\Client;
+use App\Models\User;
 use App\Services\MediaUrlService;
 use App\Services\UploadIntentService;
 use Illuminate\Http\JsonResponse;
@@ -54,7 +55,6 @@ class ClientController extends Controller
         }
 
         $client = Client::create($payload);
-
 
         if (isset($intent)) {
             $intent->update([
@@ -147,11 +147,13 @@ class ClientController extends Controller
     {
         $client = Client::where('uuid', $clientUuid)->firstOrFail();
 
-        if ($client->secopclients()->where('user_id', $data->user_id)->exists()) {
+        $user = User::where('uuid', $data->user_uuid)->firstOrFail();
+
+        if ($client->secopclients()->where('user_id', $user->id)->exists()) {
             return response()->json(['error' => 'User already assigned to this client'], 409);
         }
 
-        $client->secopclients()->attach($data->user_id, [
+        $client->secopclients()->attach($user->id, [
             'uuid' => Str::uuid()->toString(),
             'record_status' => 'active',
         ]);
@@ -159,10 +161,17 @@ class ClientController extends Controller
         return response()->json(['message' => 'SecOps added successfully'], 201);
     }
 
-    public function removeSecop(string $clientUuid, int $userId): JsonResponse
+    public function removeSecop(string $clientUuid, string $userUuid): JsonResponse
     {
         $client = Client::where('uuid', $clientUuid)->firstOrFail();
-        $client->secopclients()->detach($userId);
+
+        $user = User::where('uuid', $userUuid)->firstOrFail();
+
+        if (!$client->secopclients()->where('user_id', $user->id)->exists()) {
+            return response()->json(['error' => 'User not assigned to this client'], 404);
+        }
+
+        $client->secopclients()->detach($user->id);
 
         return response()->json(null, 204);
     }

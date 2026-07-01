@@ -25,6 +25,11 @@ class User extends Authenticatable
 {
     return ['uuid'];
 }
+
+public function getRouteKeyName(): string
+{
+    return 'uuid';
+}
     protected function casts(): array
     {
         return [
