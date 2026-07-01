@@ -6,14 +6,11 @@ import {
     AlertTriangle,
     Trash2,
     Server,
-    Monitor,
-    Cpu,
-    MemoryStick,
-    Globe,
     RefreshCw,
-    Network,
     Plus,
     Loader2,
+    Info,
+    Shield,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -27,10 +24,10 @@ import {
     useAddClientSecop,
     useRemoveClientSecop,
 } from "@/hooks/useClients";
-import type { components } from "@/api/schema.d";
 
 import { useUsers } from "@/hooks/useUsers";
 import { useSettings } from "@/hooks/useSettings";
+import { Tab } from "@/components/ui/tab";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +42,11 @@ import {
 import { cn } from "@/lib/utils";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { uploadFile } from "@/lib/uploadToast";
+import FormSkeleton from "@/components/clientDetails/FormSkeleton";
+import Field from "@/components/clientDetails/Field";
+import SectionHeader from "@/components/clientDetails/SectionHeader";
+import ServerCard from "@/components/clientDetails/ServerCard";
+import ServerCardSkeleton from "@/components/clientDetails/ServerCardSkeleton";
 
 import { Search, Filter, ChevronDown } from "lucide-react";
 import {
@@ -56,175 +58,13 @@ import {
 // Helper function to format phone numbers
 import { formatPhoneNumber } from "@/utils/helpers";
 
-// ─── Form skeleton ────────────────────────────────────────────────────────────
-
-function FormSkeleton() {
-    return (
-        <div className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-6 animate-pulse">
-            <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-muted shrink-0" />
-                <div className="space-y-2 flex-1">
-                    <div className="h-5 w-40 bg-muted rounded" />
-                    <div className="h-3 w-24 bg-muted rounded" />
-                </div>
-            </div>
-            <div className="h-px bg-border" />
-            {[0, 1, 2].map((i) => (
-                <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <div className="h-3 w-16 bg-muted rounded" />
-                        <div className="h-9 bg-muted rounded-md" />
-                    </div>
-                    <div className="space-y-2">
-                        <div className="h-3 w-16 bg-muted rounded" />
-                        <div className="h-9 bg-muted rounded-md" />
-                    </div>
-                </div>
-            ))}
-            <div className="h-px bg-border" />
-            <div className="flex justify-end">
-                <div className="h-9 w-28 bg-muted rounded-md" />
-            </div>
-        </div>
-    );
-}
-
-// ─── Field wrapper ────────────────────────────────────────────────────────────
-
-function Field({
-    label,
-    required,
-    children,
-    error,
-    isEdit = true,
-}: {
-    label: string;
-    required?: boolean;
-    children: React.ReactNode;
-    error?: string;
-    isEdit?: boolean;
-}) {
-    return (
-        <div className="flex flex-col gap-1">
-            <Label>
-                {label}
-                {required && isEdit && (
-                    <span className="text-destructive ml-0.5">*</span>
-                )}
-            </Label>
-            {children}
-            {error && <p className="text-xs text-destructive">{error}</p>}
-        </div>
-    );
-}
-
-// ─── Section header ───────────────────────────────────────────────────────────
-
-function SectionHeader({
-    title,
-    description,
-}: {
-    title: string;
-    description?: string;
-}) {
-    return (
-        <div>
-            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-            {description && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                    {description}
-                </p>
-            )}
-        </div>
-    );
-}
-
-// ─── Server card ──────────────────────────────────────────────────────────────
-
-function ServerCard({
-    server,
-}: {
-    server: components["schemas"]["ServerData"];
-}) {
-    return (
-        <Link
-            to={`/servers/${server.uuid}`}
-            className="bg-card border border-border/60 rounded-xl shadow-sm p-5 flex flex-col gap-3 transition-shadow hover:shadow-md group"
-        >
-            <div className="flex items-start justify-between">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Monitor className="w-5 h-5 text-primary" />
-                </div>
-                <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    Online
-                </span>
-            </div>
-
-            <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                    {server.server_name}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {server.device_name}
-                </p>
-            </div>
-
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1 font-mono">
-                    <Network size={11} />
-                    {server.external_ip}
-                </span>
-                {server.operating_system && (
-                    <span className="flex items-center gap-1">
-                        <Globe size={11} />
-                        {server.operating_system}
-                    </span>
-                )}
-            </div>
-
-            {(server.cpu_cores || server.ram) && (
-                <div className="flex gap-3 text-xs text-muted-foreground pt-1 border-t border-border/40">
-                    {server.cpu_cores && (
-                        <span className="flex items-center gap-1">
-                            <Cpu size={11} />
-                            {server.cpu_cores} cores
-                        </span>
-                    )}
-                    {server.ram && (
-                        <span className="flex items-center gap-1">
-                            <MemoryStick size={11} />
-                            {server.ram} GB
-                        </span>
-                    )}
-                </div>
-            )}
-        </Link>
-    );
-}
-
-function ServerCardSkeleton() {
-    return (
-        <div className="bg-card border border-border/60 rounded-xl p-5 flex flex-col gap-3 animate-pulse">
-            <div className="flex items-start justify-between">
-                <div className="w-10 h-10 rounded-lg bg-muted" />
-                <div className="w-10 h-3 bg-muted rounded" />
-            </div>
-            <div className="h-4 w-28 bg-muted rounded" />
-            <div className="h-3 w-20 bg-muted rounded" />
-            <div className="h-3 w-32 bg-muted rounded" />
-        </div>
-    );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClientDetail() {
     const navigate = useNavigate();
-    const { clientUuid } = useParams<{ clientUuid: string }>();
+    const { uuid: clientUuid } = useParams<{ uuid: string }>();
     const { setTrail } = useBreadcrumb();
 
-    const [activeTab, setActiveTab] = useState<"details" | "secops">("details");
     const [mode, setMode] = useState<"view" | "create" | "edit">(
         clientUuid ? "view" : "create",
     );
@@ -254,7 +94,7 @@ export default function ClientDetail() {
     // ── Local state ────────────────────────────────────────────────────────────
     const [showDelete, setShowDelete] = useState(false);
     const [showSecopDialog, setShowSecopDialog] = useState(false);
-    const [selectedSecopToAdd, setSelectedSecopToAdd] = useState<number | null>(
+    const [selectedSecopToAdd, setSelectedSecopToAdd] = useState<string | null>(
         null,
     );
     const defaultBanner = import.meta.env.VITE_DEFAULT_CLIENT_BANNER as string;
@@ -315,20 +155,20 @@ export default function ClientDetail() {
         if (mode === "create") {
             setTrail([
                 { label: "Clients", href: "/clients" },
-                { label: "Create", href: "/clients/create" },
+                { label: "Create" },
             ]);
         } else if (client) {
             setTrail([
                 { label: "Clients", href: "/clients" },
-                { label: client.name, href: `/clients/${client.uuid}` },
+                { label: client.name },
             ]);
         }
     }, [setTrail, mode, client]);
 
     const set =
         (key: keyof typeof form) =>
-            (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-                setForm((f) => ({ ...f, [key]: e.target.value }));
+        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+            setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const schema = z.object({
@@ -504,14 +344,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                        backgroundImage: `url(${bannerPreview})`,
-                                        backgroundSize: "cover",
-                                        backgroundPosition: "center",
-                                    }
+                                          backgroundImage: `url(${bannerPreview})`,
+                                          backgroundSize: "cover",
+                                          backgroundPosition: "center",
+                                      }
                                     : {
-                                        background:
-                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                    }
+                                          background:
+                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                      }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -543,7 +383,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                        defaultBanner,
+                                                            defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -639,7 +479,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none",
                                             errors.description &&
-                                            "border-destructive",
+                                                "border-destructive",
                                         )}
                                     />
                                 </div>
@@ -657,48 +497,13 @@ export default function ClientDetail() {
                 {/* ── Content ── */}
                 <div className="flex-1 -mt-12 relative z-20 px-6 sm:px-8 lg:px-10 pb-8">
                     <div className="max-w-3xl mx-auto relative flex flex-col gap-6">
-                        {/* Floating Tabs */}
-                        <div className="absolute -top-[44px] right-0 z-30">
-                            <div className="inline-flex rounded-t-xl border border-border border-b-0 bg-card p-1">
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveTab("details")}
-                                    className={cn(
-                                        "px-4 py-2 text-sm rounded-md transition-colors cursor-pointer",
-                                        activeTab === "details"
-                                            ? "text-foreground cursor-default"
-                                            : "bg-background shadow text-muted-foreground cursor-pointer hover:text-foreground"
-                                    )}
+                        <Tab>
+                            <Tab.Item icon={Info} title="Details">
+                                <form
+                                    onSubmit={handleSubmit}
+                                    className="bg-card border border-border/60 rounded-b-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8"
                                 >
-                                    Details
-                                </button>
-
-                                {mode !== "create" && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveTab("secops")}
-                                        className={cn(
-                                            "px-4 py-2 text-sm rounded-md transition-colors cursor-pointer",
-                                            activeTab === "secops"
-                                                ? "text-foreground cursor-default"
-                                                : "bg-background shadow text-muted-foreground cursor-pointer hover:text-foreground"
-                                        )}
-                                    >
-                                        Assign SecOps
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Floating tabs */}
-                        <form
-                            onSubmit={handleSubmit}
-                            className="bg-card border border-border/60 rounded-tl-xl rounded-bl-xl rounded-br-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8"
-                        >
-                            {/* Basic Information */}
-
-                            {activeTab === "details" && (
-                                <>
+                                    {/* Basic Information */}
                                     <section className="space-y-4">
                                         <SectionHeader
                                             title="Basic Information"
@@ -720,7 +525,7 @@ export default function ClientDetail() {
                                                         )}
                                                         className={cn(
                                                             errors.location &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                 ) : (
@@ -755,7 +560,7 @@ export default function ClientDetail() {
                                                         onChange={set("email")}
                                                         className={cn(
                                                             errors.email &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                 ) : (
@@ -792,14 +597,14 @@ export default function ClientDetail() {
                                                         }}
                                                         className={cn(
                                                             errors.contact_number &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                 ) : (
                                                     <p className="text-sm text-foreground py-1">
                                                         {formatPhoneNumber(
                                                             client?.contact_number ||
-                                                            "",
+                                                                "",
                                                         )}
                                                     </p>
                                                 )}
@@ -819,20 +624,19 @@ export default function ClientDetail() {
                                                         isSaving
                                                             ? "Saving…"
                                                             : mode === "create"
-                                                                ? "Create Client"
-                                                                : "Save Changes"
+                                                              ? "Create Client"
+                                                              : "Save Changes"
                                                     }
                                                 />
                                             </div>
                                         </>
                                     )}
-                                </>
-                            )}
+                                </form>
+                            </Tab.Item>
 
-                            {activeTab === "secops" &&
-                                mode !== "create" &&
-                                client && (
-                                    <>
+                            {mode !== "create" && client && (
+                                <Tab.Item icon={Shield} title="Sec Ops">
+                                    <div className="bg-card border border-border/60 rounded-b-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8">
                                         <div className="flex items-center justify-between mb-6">
                                             <div>
                                                 <h2 className="text-base font-semibold text-foreground">
@@ -872,7 +676,7 @@ export default function ClientDetail() {
                                             <div className="space-y-2">
                                                 {currentSecops.map((secop) => (
                                                     <div
-                                                        key={secop.id}
+                                                        key={secop.uuid}
                                                         className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"
                                                     >
                                                         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -913,7 +717,7 @@ export default function ClientDetail() {
                                                             type="button"
                                                             onClick={() =>
                                                                 removeSecop.mutate(
-                                                                    secop.id,
+                                                                    secop.uuid,
                                                                     {
                                                                         onSuccess:
                                                                             () => {
@@ -954,9 +758,10 @@ export default function ClientDetail() {
                                                 </p>
                                             </div>
                                         )}
-                                    </>
-                                )}
-                        </form>
+                                    </div>
+                                </Tab.Item>
+                            )}
+                        </Tab>
 
                         {mode !== "create" && client && (
                             <section>
@@ -1003,8 +808,8 @@ export default function ClientDetail() {
                                                         ? "All"
                                                         : serverFilter ===
                                                             "online"
-                                                            ? "Online"
-                                                            : "Offline"}
+                                                          ? "Online"
+                                                          : "Offline"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -1031,9 +836,9 @@ export default function ClientDetail() {
                                                         onClick={() =>
                                                             setServerFilter(
                                                                 opt.value as
-                                                                | "all"
-                                                                | "online"
-                                                                | "offline",
+                                                                    | "all"
+                                                                    | "online"
+                                                                    | "offline",
                                                             )
                                                         }
                                                         className={cn(
@@ -1177,17 +982,17 @@ export default function ClientDetail() {
                                         .filter(
                                             (user) =>
                                                 !currentSecops.some(
-                                                    (s) => s.id === user.id,
+                                                    (s) => s.uuid === user.uuid,
                                                 ),
                                         )
                                         .map((user) => (
                                             <button
-                                                key={user.id}
+                                                key={user.uuid}
                                                 onClick={() => {
                                                     setSelectedSecopToAdd(
-                                                        user.id,
+                                                        user.uuid,
                                                     );
-                                                    addSecop.mutate(user.id, {
+                                                    addSecop.mutate(user.uuid, {
                                                         onSuccess: () => {
                                                             toast.success(
                                                                 `${user.first_name} added to ${client?.name}.`,
@@ -1209,7 +1014,7 @@ export default function ClientDetail() {
                                                 disabled={
                                                     addSecop.isPending ||
                                                     selectedSecopToAdd ===
-                                                    user.id
+                                                        user.uuid
                                                 }
                                                 className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 text-left border border-border/40 hover:border-border"
                                             >
@@ -1240,7 +1045,7 @@ export default function ClientDetail() {
                                                     </p>
                                                 </div>
                                                 {selectedSecopToAdd ===
-                                                    user.id &&
+                                                    user.uuid &&
                                                     addSecop.isPending && (
                                                         <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                                                     )}
@@ -1249,14 +1054,14 @@ export default function ClientDetail() {
                                     {allUsers.filter(
                                         (user) =>
                                             !currentSecops.some(
-                                                (s) => s.id === user.id,
+                                                (s) => s.uuid === user.uuid,
                                             ),
                                     ).length === 0 && (
-                                            <p className="text-sm text-muted-foreground text-center py-4">
-                                                All users are already assigned to
-                                                this client.
-                                            </p>
-                                        )}
+                                        <p className="text-sm text-muted-foreground text-center py-4">
+                                            All users are already assigned to
+                                            this client.
+                                        </p>
+                                    )}
                                 </div>
                             )}
                         </div>

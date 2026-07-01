@@ -3,6 +3,7 @@ import {
     BreadcrumbItem,
     BreadcrumbLink,
     BreadcrumbList,
+    BreadcrumbPage,
     BreadcrumbSeparator,
 } from "./ui/breadcrumb";
 import React from "react";
@@ -44,16 +45,28 @@ const TopBarNav: React.FC = () => {
                     {trail.map((crumb, index) => (
                         <React.Fragment key={crumb.href || index}>
                             <BreadcrumbItem>
-                                <BreadcrumbLink
-                                    href={crumb.href}
-                                    className={twMerge(
-                                        "text-foreground text-lg leading-3.5 hover:text-blue-500",
-                                        index === 0 &&
-                                            "text-2xl font-bold leading-5",
-                                    )}
-                                >
-                                    {toLabelCase(crumb.label, true)}
-                                </BreadcrumbLink>
+                                {index === trail.length - 1 ? (
+                                    <BreadcrumbPage
+                                        className={twMerge(
+                                            "text-foreground text-lg leading-3.5",
+                                            index === 0 &&
+                                                "text-2xl font-bold leading-5",
+                                        )}
+                                    >
+                                        {toLabelCase(crumb.label, true)}
+                                    </BreadcrumbPage>
+                                ) : (
+                                    <BreadcrumbLink
+                                        href={crumb.href}
+                                        className={twMerge(
+                                            "text-foreground text-lg leading-3.5 hover:text-blue-500",
+                                            index === 0 &&
+                                                "text-2xl font-bold leading-5",
+                                        )}
+                                    >
+                                        {toLabelCase(crumb.label, true)}
+                                    </BreadcrumbLink>
+                                )}
                             </BreadcrumbItem>
                             {index !== trail.length - 1 && (
                                 <BreadcrumbSeparator className="text-foreground text-lg" />

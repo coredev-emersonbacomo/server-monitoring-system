@@ -188,7 +188,7 @@ export default function Sessions() {
     useEffect(() => {
         setTrail([
             { label: "Settings", href: "/settings" },
-            { label: "Sessions & Devices", href: "/settings/sessions" },
+            { label: "Sessions & Devices" },
         ]);
     }, [setTrail]);
 
@@ -675,8 +675,7 @@ export default function Sessions() {
                                                         <span className="flex items-center gap-1">
                                                             <UserCheck className="w-3 h-3" />
                                                             Linked:{" "}
-                                                            {session.created_at ??
-                                                                "Unknown"}
+                                                            {session.created_at}
                                                         </span>
                                                         <span>•</span>
                                                         <span className="flex items-center gap-1">
@@ -787,8 +786,7 @@ export default function Sessions() {
                                                         )}
                                                     </p>
                                                     <p className="text-[10px] text-muted-foreground">
-                                                        {activity.created_at ??
-                                                            "Unknown Timeframe"}
+                                                        {activity.created_at}
                                                     </p>
                                                 </div>
                                             </div>

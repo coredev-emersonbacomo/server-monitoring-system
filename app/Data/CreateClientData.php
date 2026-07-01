@@ -6,6 +6,7 @@ use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Min;
 use Spatie\LaravelData\Attributes\Validation\Required;
+use Spatie\LaravelData\Attributes\Validation\Unique;
 use Illuminate\Http\UploadedFile;
 
 class CreateClientData extends Data
@@ -17,7 +18,7 @@ class CreateClientData extends Data
         #[Required, Min(5)]
         public string $location,
 
-        #[Required, Min(5), Max(255)]
+        #[Required, Min(5), Max(255), Unique('clients', 'email')]
         public string $email,
 
         #[Required, Min(5)]

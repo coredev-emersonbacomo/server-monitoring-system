@@ -4,7 +4,7 @@ import { useDirectUpload } from "@/hooks/useDirectUpload";
 import { updateProfileApi } from "@/api/uploads";
 
 interface UpdateProfileInput {
-    userId: number;
+    userUuid: string;
     firstName: string;
     lastName: string;
     email: string;
@@ -55,11 +55,11 @@ export function useUpdateProfile() {
                 payload.profile_picture_storage_key = storageKey;
             }
 
-            return updateProfileApi(input.userId, payload);
+            return updateProfileApi(input.userUuid, payload);
         },
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["users"] });
-            queryClient.invalidateQueries({ queryKey: ["users", variables.userId] });
+            queryClient.invalidateQueries({ queryKey: ["users", variables.userUuid] });
             toast.success("Profile updated successfully.");
         },
         onError: () => {
