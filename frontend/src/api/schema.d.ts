@@ -85,7 +85,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/clients/{clientUuid}/secops/{userId}": {
+    "/clients/{clientUuid}/secops/{userUuid}": {
         parameters: {
             query?: never;
             header?: never;
@@ -532,19 +532,17 @@ export interface components {
             action_type: string;
             message: string;
             severity: string;
-            server_id?: number | null;
-            client_id?: number | null;
             server_uuid?: string | null;
             client_uuid?: string | null;
             client_name?: string | null;
             server_name?: string | null;
-            assigned_to?: number | null;
+            assigned_to_uuid?: string | null;
             assigned_to_name?: string | null;
             status: string;
         };
         /** AuthUserData */
         AuthUserData: {
-            id: number;
+            uuid: string;
             first_name: string;
             last_name: string;
             email: string;
@@ -574,21 +572,18 @@ export interface components {
             warning_count: number;
             offline_count: number;
             top_usage_cpu: {
-                server_id: number;
                 server_uuid: string;
                 server_name: string;
                 client_name: string;
                 value: number;
             }[];
             top_usage_memory: {
-                server_id: number;
                 server_uuid: string;
                 server_name: string;
                 client_name: string;
                 value: number;
             }[];
             top_usage_disk: {
-                server_id: number;
                 server_uuid: string;
                 server_name: string;
                 client_name: string;
@@ -597,21 +592,21 @@ export interface components {
         };
         /** SecopsUserData */
         SecopsUserData: {
-            id: number;
+            uuid: string;
             first_name: string;
             last_name: string;
             email: string;
             username: string;
-            contact_number?: string | null;
-            profile_picture_url?: string | null;
+            contact_number: string;
+            profile_picture_url: string;
         };
         /** SecurityActivityData */
         SecurityActivityData: {
             id: number;
             event_type: string;
             ip_address?: string | null;
-            created_at?: string | null;
-            created_at_timestamp?: string | null;
+            created_at: string;
+            created_at_timestamp: string;
             metadata?: string | null;
         };
         /** ServerData */
@@ -620,18 +615,15 @@ export interface components {
             uuid: string;
             external_ip: string;
             device_name: string;
+            created_at: string;
+            updated_at: string;
             ssh_port?: number | null;
-            ssh_username?: string | null;
             cpu_cores?: number | null;
             ram?: number | null;
             operating_system?: string | null;
-            client_id?: number | null;
-            client_uuid?: string | null;
-            client_name?: string | null;
-            last_seen?: string | null;
+            client_uuid: string;
+            client_name: string;
             status?: string | null;
-            created_at?: string | null;
-            updated_at?: string | null;
             stats?: components["schemas"]["StatPointData"][];
         };
         /** StatPointData */
@@ -654,20 +646,19 @@ export interface components {
         UploadPurpose: "profile_picture" | "client_banner" | "attachment" | "document";
         /** UserData */
         UserData: {
-            id: number;
+            uuid: string;
             first_name: string;
             last_name: string;
             email: string;
             username: string;
             phone_number: string;
             last_login?: string | null;
-            profile_picture_url?: string | null;
-            profile_picture_storage_key: string;
-            record_status?: string | null;
+            profile_picture_url: string;
+            record_status: string;
             /** Format: date-time */
-            created_at?: string | null;
+            created_at: string;
             /** Format: date-time */
-            updated_at?: string | null;
+            updated_at: string;
         };
     };
     responses: {
@@ -852,9 +843,10 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
+                "multipart/form-data": {
                     name: string;
                     location: string;
+                    /** @description Must be unique in `clients`. */
                     email: string;
                     contact_number: string;
                     description?: string | null;
@@ -991,7 +983,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @description Must exist in `users`. */
-                    user_id: number;
+                    user_uuid: string;
                 };
             };
         };
@@ -1027,7 +1019,7 @@ export interface operations {
             header?: never;
             path: {
                 clientUuid: string;
-                userId: number;
+                userUuid: string;
             };
             cookie?: never;
         };
@@ -1041,6 +1033,17 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["AuthenticationException"];
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        error: "User not assigned to this client";
+                    };
+                };
+            };
         };
     };
     "dashboard.stats": {

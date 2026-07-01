@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserCircle, Monitor, ChevronRight, Loader2, Settings as SettingsIcon } from "lucide-react";
+import { UserCircle, Monitor, ChevronRight, Loader2, Settings as SettingsIcon, Activity } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 
@@ -10,7 +10,7 @@ function Settings() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        setTrail([{ label: "Settings", href: "/settings" }]);
+        setTrail([{ label: "Settings" }]);
     }, [setTrail]);
 
     if (authLoading) {
@@ -53,6 +53,12 @@ function Settings() {
             description: "Manage the system settings and preferences.",
             icon: SettingsIcon,
             href: "/settings/system",
+        },
+        {
+            title: "Alert Thresholds",
+            description: "Configure CPU, RAM, and Storage thresholds for global server alerts.",
+            icon: Activity,
+            href: "/settings/thresholds",
         }
     ];
 

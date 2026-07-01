@@ -12,13 +12,11 @@ class ActionItemData extends Data
         public string $action_type,
         public string $message,
         public string $severity,
-        public ?int $server_id,
-        public ?int $client_id,
         public ?string $server_uuid,
         public ?string $client_uuid,
         public ?string $client_name,
         public ?string $server_name,
-        public ?int $assigned_to,
+        public ?string $assigned_to_uuid,
         public ?string $assigned_to_name,
         public string $status,
     ) {}
@@ -30,8 +28,6 @@ class ActionItemData extends Data
             action_type: $action->action_type,
             message: $action->message,
             severity: $action->severity,
-            server_id: $action->server_id,
-            client_id: $action->client_id,
             server_uuid: $action->relationLoaded('server') && $action->server
                 ? $action->server->uuid
                 : null,
@@ -40,7 +36,9 @@ class ActionItemData extends Data
                 : null,
             client_name: $action->client_name,
             server_name: $action->server_name,
-            assigned_to: $action->assigned_to,
+            assigned_to_uuid: $action->relationLoaded('assignedUser') && $action->assignedUser
+                ? $action->assignedUser->uuid
+                : null,
             assigned_to_name: $action->relationLoaded('assignedUser') && $action->assignedUser
                 ? $action->assignedUser->first_name . ' ' . $action->assignedUser->last_name
                 : null,

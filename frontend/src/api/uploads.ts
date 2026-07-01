@@ -22,11 +22,11 @@ export async function getUploadIntent(
 }
 
 export async function updateProfileApi(
-    userId: number,
+    userUuid: string,
     payload: Record<string, unknown>,
 ): Promise<unknown> {
     const { data, error } = await api.PUT("/users/{user}", {
-        params: { path: { user: userId } },
+        params: { path: { user: userUuid } },
         body: payload as never,
     });
     if (error) throw error;
@@ -34,11 +34,11 @@ export async function updateProfileApi(
 }
 
 export async function updateClientApi(
-    clientId: number,
+    clientUuid: string,
     payload: Record<string, unknown>,
 ): Promise<unknown> {
-    const { data, error } = await api.PUT("/clients/{id}", {
-        params: { path: { id: clientId } },
+    const { data, error } = await api.PUT("/clients/{uuid}", {
+        params: { path: { uuid: clientUuid } },
         body: payload as never,
     });
     if (error) throw error;
