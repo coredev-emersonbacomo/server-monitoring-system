@@ -77,7 +77,7 @@ const router = createBrowserRouter([
                         element: <UserDetail />,
                     },
                     {
-                        path: "/users/:id",
+                        path: "/users/:uuid",
                         element: <UserDetail />,
                     },
                     {
