@@ -324,16 +324,23 @@ class ServerController extends Controller
 
     public function updateServerSpecs(UpdateServerSpecsData $data): JsonResponse
     {
-        // Find the record or instantly throw a 404
-        $serverModel = Server::where('uuid', $data->uuid)->firstOrFail();
+        // Perform the update directly on the matching row
+        $updatedCount = DB::table('servers')
+            ->where('uuid', $data->uuid)
+            ->where('api_key', $data->token)
+            ->update([
+                'cpu_model'        => $data->cpu_model,
+                'cpu_cores'        => $data->cpu_cores,
+                'ram'              => $data->ram,
+                'operating_system' => $data->operating_system,
+                'updated_at'       => now(), // Gotcha: DB::table doesn't auto-update timestamps!
+            ]);
 
-        $serverModel->update([
-            'cpu_model'        => $data->cpu_model,
-            'cpu_cores'        => $data->cpu_cores,
-            'ram'              => $data->ram,
-            'operating_system' => $data->operating_system,
-        ]);
+        // If no rows were updated, it means either the UUID or Token was invalid
+        if ($updatedCount === 0) {
+            return response()->json(['status'  => 'error',], 404);
+        }
 
-        return response()->json(['status'  => 'success'], 200);
+        return response()->json(['status' => 'success'], 200);
     }
 }
