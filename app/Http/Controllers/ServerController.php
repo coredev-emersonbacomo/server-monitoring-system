@@ -114,7 +114,7 @@ class ServerController extends Controller
 
         $serverModel->delete();
 
-        return ServerData::fromModel($serverModel);
+        return response()->json(['status' => 'success']);
     }
 
     #[QueryParameter('client_uuid', type: 'string', description: 'Filter servers by client UUID')]

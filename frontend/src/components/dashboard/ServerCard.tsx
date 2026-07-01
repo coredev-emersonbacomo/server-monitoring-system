@@ -1,11 +1,19 @@
-import { memo } from "react";
-import {
-    Wifi,
-    WifiOff,
-    AlertTriangle,
-} from "lucide-react";
+import { memo, useState } from "react";
+import { Wifi, WifiOff, AlertTriangle, Trash2 } from "lucide-react";
 import { ServerStatChart } from "./ServerStatChart";
+import type { ServerData } from "@/types/models";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogClose,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 import type { components } from "@/api/schema.d";
+import { useDeleteServer } from "@/hooks/useDeleteServer";
 
 type ServerDetailData = components["schemas"]["ServerData"];
 
@@ -67,14 +75,38 @@ const CHARTS = [
 ];
 
 interface ServerCardProps {
-    server: ServerDetailData;
+    server: ServerData;
+    onDelete?: (uuid: string) => Promise<void> | void;
 }
 
-export const ServerCard = memo(function ServerCard({
-    server,
-}: ServerCardProps) {
+export const ServerCard = memo(function ServerCard({ server }: ServerCardProps) {
     const status = "online";
     const { icon: StatusIcon, label, color, bg } = STATUS_CONFIG[status];
+
+    const [showDelete, setShowDelete] = useState(false);
+    const [confirmText, setConfirmText] = useState("");
+    const deleteServer = useDeleteServer();
+
+    const isConfirmed = confirmText.trim() === server.server_name;
+
+    const handleDelete = async () => {
+        if (!isConfirmed || !server.client_uuid) return;
+        try {
+            await deleteServer.mutateAsync({
+                clientUuid: server.client_uuid,
+                serverUuid: server.uuid,
+            });
+            toast.success(`${server.server_name} has been deleted.`);
+            setShowDelete(false);
+        } catch {
+            toast.error("Failed to delete server. Please try again.");
+        }
+    };
+
+    const resetDialog = () => {
+        setShowDelete(false);
+        setConfirmText("");
+    };
 
     return (
         <div className="py-5 px-5">
@@ -101,6 +133,15 @@ export const ServerCard = memo(function ServerCard({
                         {server.cpu_cores ?? "?"}-core · {server.ram ?? "?"} GB
                     </span>
                     <span>{server.operating_system ?? "Unknown"}</span>
+
+                    {/* Delete button */}
+                    <button
+                        onClick={() => setShowDelete(true)}
+                        className="flex items-center gap-1 text-muted-foreground hover:text-destructive transition-colors pl-1"
+                        title="Delete server"
+                    >
+                        <Trash2 size={13} />
+                    </button>
                 </div>
             </div>
 
@@ -118,6 +159,63 @@ export const ServerCard = memo(function ServerCard({
                     />
                 ))}
             </div>
+
+            {/* Delete confirmation dialog */}
+            <Dialog
+                open={showDelete}
+                onOpenChange={(open) => !open && resetDialog()}
+            >
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-destructive">
+                            <Trash2 size={16} />
+                            Delete server
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <p className="text-sm text-muted-foreground">
+                        This will permanently stop monitoring{" "}
+                        <strong className="text-foreground">
+                            {server.server_name}
+                        </strong>{" "}
+                        ({server.external_ip}) and remove all collected metrics.
+                        This cannot be undone.
+                    </p>
+
+                    <div className="flex flex-col gap-1.5 pt-1">
+                        <label className="text-xs text-muted-foreground">
+                            Type{" "}
+                            <strong className="text-foreground font-mono">
+                                {server.server_name}
+                            </strong>{" "}
+                            to confirm
+                        </label>
+                        <Input
+                            value={confirmText}
+                            onChange={(e) => setConfirmText(e.target.value)}
+                            placeholder={server.server_name}
+                            autoFocus
+                            className="font-mono text-sm"
+                        />
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                        <DialogClose asChild>
+                            <Button
+                                variant="outline"
+                                label="Cancel"
+                                onClick={resetDialog}
+                            />
+                        </DialogClose>
+                        <Button
+                            variant="danger"
+                            label={deleteServer.isPending ? "Deleting…" : "Delete server"}
+                            disabled={!isConfirmed || deleteServer.isPending}
+                            onClick={handleDelete}
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 });

@@ -199,10 +199,7 @@ export default function CreateServer() {
     useEffect(() => {
         setTrail([
             { label: "Clients", href: "/clients" },
-            {
-                label: "Add server",
-                href: `/servers/create?client_uuid=${clientUuid}`,
-            },
+            { label: "Add server" },
         ]);
     }, [setTrail, clientUuid]);
 
@@ -350,7 +347,7 @@ export default function CreateServer() {
         const { data, error } = await api.POST(
             "/clients/{clientUuid}/servers",
             {
-                params: { path: { clientUuid: clientUuid } },
+                params: { path: { clientUuid } },
                 body: {
                     server_name: form.serverName.trim(),
                     external_ip: form.ip.trim(),
@@ -369,7 +366,7 @@ export default function CreateServer() {
             apiResolved.current = true;
             apiSuccess.current = false;
         } else {
-            setCreatedUuid(data?.uuid ?? null);
+            setCreatedUuid(data.uuid ?? null);
             apiResolved.current = true;
             apiSuccess.current = true;
         }
@@ -709,7 +706,7 @@ export default function CreateServer() {
                                         icon={<ArrowRight size={14} />}
                                         onClick={() =>
                                             navigate(
-                                                `/servers/${createdUuid}`,
+                                                `/servers/${createdUuid}?client=${clientUuid}`,
                                             )
                                         }
                                     />

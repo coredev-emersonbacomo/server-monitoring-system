@@ -14,21 +14,21 @@ export const useUsers = () =>
         queryFn: async () => {
             const { data, error } = await api.GET("/users");
             if (error) throw error;
-            return data as UserData[];
+            return data;
         },
     });
 
-export const useUser = (id: number | string) =>
+export const useUser = (uuid: string) =>
     useQuery<UserData>({
-        queryKey: ["users", Number(id)],
+        queryKey: ["users", uuid],
         queryFn: async () => {
             const { data, error } = await api.GET("/users/{user}", {
-                params: { path: { user: Number(id) } },
+                params: { path: { user: uuid } },
             });
             if (error) throw error;
-            return data as unknown as UserData;
+            return data;
         },
-        enabled: !!id,
+        enabled: !!uuid,
     });
 
 // ── Mutations ─────────────────────────────────────────────────────────────────
@@ -49,30 +49,30 @@ export const useCreateUser = () => {
     });
 };
 
-export const useUpdateUser = (id: number | string) => {
+export const useUpdateUser = (uuid: string) => {
     const queryClient = useQueryClient();
     return useMutation<UserData, unknown, UpdateUserPayload>({
         mutationFn: async (payload) => {
             const { data, error } = await api.PUT("/users/{user}", {
-                params: { path: { user: Number(id) } },
-                body: payload as never,
+                params: { path: { user: uuid } },
+                body: payload,
             });
             if (error) throw error;
-            return data as unknown as UserData;
+            return data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["users"] });
-            queryClient.invalidateQueries({ queryKey: ["users", Number(id)] });
+            queryClient.invalidateQueries({ queryKey: ["users", uuid] });
         },
     });
 };
 
 export const useDeleteUser = () => {
     const queryClient = useQueryClient();
-    return useMutation<void, unknown, number>({
-        mutationFn: async (id) => {
+    return useMutation<void, unknown, string>({
+        mutationFn: async (uuid) => {
             const { error } = await api.DELETE("/users/{user}", {
-                params: { path: { user: id } },
+                params: { path: { user: uuid } },
             });
             if (error) throw error;
         },

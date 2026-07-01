@@ -6,7 +6,7 @@ export const useServer = (serverUuid: string) => {
         queryKey: ["server", serverUuid],
         queryFn: async () => {
             const { data, error } = await api.GET("/servers/{serverUuid}", {
-                params: { path: { serverUuid: serverUuid } },
+                params: { path: { serverUuid } },
             });
             if (error) throw error;
             return data;

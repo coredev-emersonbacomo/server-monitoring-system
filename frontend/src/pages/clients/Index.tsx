@@ -9,7 +9,6 @@ import {
     Loader2,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { useClients, useDeleteClient } from "@/hooks/useClients";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,12 +31,11 @@ import type { ClientData } from "@/types/models";
 type FilterTab = "all" | "with-servers" | "no-servers";
 
 // How many cards to reveal per "page". Tune freely.
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 12;
 
 // Approximate card height + gap in px — used by the virtualizer for estimation.
 // The virtualizer will measure real heights after mount, so this just avoids
 // a large layout jump on first render.
-const CARD_ESTIMATE_PX = 300;
 
 // ─── Skeleton grid ────────────────────────────────────────────────────────────
 
@@ -135,52 +133,53 @@ function ClientCard({
         </Link>
     );
 }
+import { useVirtualizer } from "@tanstack/react-virtual";
 
-// ─── Virtualised infinite-scroll grid ────────────────────────────────────────
-//
-// TanStack Virtual operates on *rows*, so we group the flat client list into
-// rows of `columnCount` items and virtualise those rows. This keeps the grid
-// layout fully CSS-driven (auto-fill) while the virtualiser only mounts the
-// rows currently in view.
+// Approximate card height + gap in px — the virtualizer measures real
+// heights after mount, this just avoids a big layout jump on first render.
+const CARD_ESTIMATE_PX = 300;
 
-function useColumnCount(containerRef: React.RefObject<HTMLDivElement | null>) {
+function useColumnCount(
+    scrollRef: React.RefObject<HTMLElement | null>,
+) {
     const [cols, setCols] = useState(3);
 
     useEffect(() => {
-        if (!containerRef.current) return;
+        if (!scrollRef.current) return;
         const ro = new ResizeObserver(([entry]) => {
             const w = entry.contentRect.width;
-            // Mirrors the grid: minmax(240px, 1fr)
-            setCols(Math.max(1, Math.floor(w / 240)));
+            const MIN_CARD = 240;
+            const GAP = 16; // matches gap-4
+            // Same math the browser uses for repeat(auto-fill, minmax(240px, 1fr))
+            setCols(Math.max(1, Math.floor((w + GAP) / (MIN_CARD + GAP))));
         });
-        ro.observe(containerRef.current);
+        ro.observe(scrollRef.current);
         return () => ro.disconnect();
-    }, [containerRef]);
+    }, [scrollRef]);
 
     return cols;
 }
 
-function VirtualGrid({
+function ClientGrid({
     clients,
     visibleCount,
     hasMore,
     onDelete,
     onLoadMore,
+    scrollRef,
 }: {
     clients: ClientData[];
     visibleCount: number;
     hasMore: boolean;
     onDelete: (c: ClientData) => void;
     onLoadMore: () => void;
+    scrollRef: React.RefObject<HTMLElement | null>;
 }) {
-    const containerRef = useRef<HTMLDivElement>(null);
     const sentinelRef = useRef<HTMLDivElement>(null);
-    const columnCount = useColumnCount(containerRef);
+    const columnCount = useColumnCount(scrollRef);
 
-    // Only show the slice that has been "revealed" by scrolling
     const visibleClients = clients.slice(0, visibleCount);
 
-    // Group into rows
     const rows = useMemo(() => {
         const result: ClientData[][] = [];
         for (let i = 0; i < visibleClients.length; i += columnCount) {
@@ -191,16 +190,14 @@ function VirtualGrid({
 
     const virtualizer = useVirtualizer({
         count: rows.length,
-        getScrollElement: () => containerRef.current,
-        estimateSize: () => CARD_ESTIMATE_PX + 16, // card height + gap
+        getScrollElement: () => scrollRef.current,
+        estimateSize: () => CARD_ESTIMATE_PX + 16,
         overscan: 3,
     });
 
-    // ── Sentinel lives INSIDE the scroll container so IntersectionObserver
-    //    uses the correct root (the scrollable div, not the page).
     useEffect(() => {
         const sentinel = sentinelRef.current;
-        const scroller = containerRef.current;
+        const scroller = scrollRef.current;
         if (!sentinel || !scroller) return;
 
         const observer = new IntersectionObserver(
@@ -209,25 +206,17 @@ function VirtualGrid({
                     onLoadMore();
                 }
             },
-            {
-                root: scroller, // ← key: observe relative to the scroll container
-                threshold: 0.1,
-            },
+            { root: scroller, threshold: 0.1 },
         );
 
         observer.observe(sentinel);
         return () => observer.disconnect();
-    }, [hasMore, onLoadMore]);
+    }, [hasMore, onLoadMore, scrollRef]);
 
     const totalHeight = virtualizer.getTotalSize();
 
     return (
-        <div
-            ref={containerRef}
-            className="overflow-auto"
-            style={{ height: "calc(100vh - 220px)" }}
-        >
-            {/* Virtualised rows */}
+        <div>
             <div style={{ height: totalHeight, position: "relative" }}>
                 {virtualizer.getVirtualItems().map((virtualRow) => {
                     const row = rows[virtualRow.index];
@@ -247,7 +236,7 @@ function VirtualGrid({
                             <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pb-4">
                                 {row.map((client) => (
                                     <ClientCard
-                                        key={client.id}
+                                        key={client.uuid}
                                         client={client}
                                         onDelete={onDelete}
                                     />
@@ -258,7 +247,6 @@ function VirtualGrid({
                 })}
             </div>
 
-            {/* Sentinel sits after the virtual content, still inside the scroller */}
             <div ref={sentinelRef} className="h-px" />
 
             {hasMore && (
@@ -275,13 +263,13 @@ function VirtualGrid({
         </div>
     );
 }
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Clients() {
     const navigate = useNavigate();
     const { data: clients, isLoading, isError, refetch } = useClients();
     const deleteClient = useDeleteClient();
+    const mainRef = useRef<HTMLElement>(null);
 
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<FilterTab>("all");
@@ -356,7 +344,8 @@ export default function Clients() {
                 description="Manage client accounts and their associated servers."
             />
 
-            <main className="py-6 w-full flex-1 min-h-0 flex flex-col gap-5">
+            <main ref={mainRef} className="py-6 w-full flex-1 min-h-0 flex flex-col gap-5 overflow-y-auto">
+
                 {/* ── Toolbar ── */}
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -474,12 +463,13 @@ export default function Clients() {
                 {/* ── Virtualised grid + infinite scroll ── */}
                 {!isLoading && !isError && filtered.length > 0 && (
                     <div className="flex flex-col gap-0 flex-1 min-h-0">
-                        <VirtualGrid
+                        <ClientGrid
                             clients={filtered}
                             visibleCount={visibleCount}
                             hasMore={hasMore}
                             onDelete={setDeleting}
                             onLoadMore={loadMore}
+                            scrollRef={mainRef}
                         />
                     </div>
                 )}
@@ -522,7 +512,7 @@ export default function Clients() {
                                     if (!deleting) return;
                                     try {
                                         await deleteClient.mutateAsync(
-                                            deleting.id,
+                                            deleting.uuid,
                                         );
                                         toast.success(
                                             `${deleting.name} has been deleted.`,
@@ -539,6 +529,6 @@ export default function Clients() {
                     </DialogContent>
                 </Dialog>
             </main>
-        </div>
+        </div >
     );
 }
