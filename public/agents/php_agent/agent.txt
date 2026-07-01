@@ -131,7 +131,7 @@ function memorySpec()
     preg_match('/MemTotal:\s+(\d+)/', $memInfo, $matches);
     $totalRamGB = round((($matches[1] ?? 0) / 1024 / 1024), 2);
 
-    return $totalRamGB;
+    return $totalRamGB . ' GB';
 }
 
 function diskSpec()

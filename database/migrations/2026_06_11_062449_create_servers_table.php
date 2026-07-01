@@ -33,7 +33,7 @@ return new class extends Migration
             // TODO: add autoscript for getting specs
             $table->string('cpu_model')->nullable();
             $table->integer('cpu_cores')->nullable();
-            $table->integer('ram')->nullable();
+            $table->string('ram')->nullable();
             $table->string('operating_system')->nullable();
             $table->string('record_status')->default('active');
             $table->timestamps();
