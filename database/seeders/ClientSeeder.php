@@ -41,10 +41,9 @@ class ClientSeeder extends Seeder
             [
                 'uuid' => (string) Str::uuid7(),
                 'device_name' => 'Thinkpad',
-                'cpu_cores' => 4,
-                'ram' => 16,
+                'ssh_username' => 'timocheu',
+                'ssh_password' => 'testing',
                 'external_ip' => '127.0.0.1',
-                'operating_system' => 'Ubuntu 20.04',
                 'api_key' => ApiGenerator::GenerateApiKey(),
                 'ssh_port' => 22,
             ]

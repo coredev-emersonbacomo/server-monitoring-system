@@ -8,9 +8,11 @@ use App\Data\ServerSshData;
 use App\Data\ServerUpdatesData;
 use App\Data\StatPointData;
 use App\Data\UpdateServerData;
+use App\Data\UpdateServerSpecsData;
 use App\Events\ServerStatsUpdated;
 use App\Models\Client;
 use App\Models\Server;
+use Illuminate\Http\JsonResponse;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -127,7 +129,9 @@ class ServerController extends Controller
                     ->select('server_id', DB::raw('MAX(created_at) as last_seen'))
                     ->groupBy('server_id'),
                 'lu',
-                'servers.id', '=', 'lu.server_id'
+                'servers.id',
+                '=',
+                'lu.server_id'
             )
             ->join('clients', 'servers.client_id', '=', 'clients.id')
             ->select(
@@ -186,18 +190,18 @@ class ServerController extends Controller
             ->first();
 
         return ServerData::from([
-                'uuid'             => $server->uuid,
-                'server_name'      => $server->server_name,
-                'device_name'      => $server->device_name,
-                'external_ip'      => $server->external_ip,
-                'cpu_cores'        => $server->cpu_cores ?? null,
-                'ram'              => $server->ram ?? null,
-                'operating_system' => $server->operating_system ?? null,
-                'client_id'        => $server->client_id,
-                'client_uuid'      => $client?->uuid ?? '',
-                'client_name'      => $client?->name ?? 'Unknown',
-                'stats'            => $stats,
-            ]);
+            'uuid'             => $server->uuid,
+            'server_name'      => $server->server_name,
+            'device_name'      => $server->device_name,
+            'external_ip'      => $server->external_ip,
+            'cpu_cores'        => $server->cpu_cores ?? null,
+            'ram'              => $server->ram ?? null,
+            'operating_system' => $server->operating_system ?? null,
+            'client_id'        => $server->client_id,
+            'client_uuid'      => $client?->uuid ?? '',
+            'client_name'      => $client?->name ?? 'Unknown',
+            'stats'            => $stats,
+        ]);
     }
 
     public function ingestStats(ServerUpdatesData $data): array
@@ -276,34 +280,69 @@ class ServerController extends Controller
         ];
     }
 
-    public function uninstallServer(ServerSshData $data): array
+    public function uninstallServer(Request $request): array
     {
-        $server = Server::where('uuid', $data->serverId)
-            ->first(['id', 'ssh_password', 'ssh_username']);
+        // 1. Validate that the UUID is provided in the POST request
+        $validated = $request->validate([
+            'uuid' => ['required', 'uuid'],
+        ]);
 
-        if (is_null($server)) {
-            throw (new \Illuminate\Database\Eloquent\ModelNotFoundException)
-                ->setModel(Server::class, [$data->serverId]);
-        }
+        // 2. Fetch all required connection parameters directly from the DB
+        // Assuming columns are named 'id', 'external_ip', 'port', 'ssh_username', 'ssh_password', 'api_key'
+        $server = Server::where('uuid', $validated['uuid'])
+            ->firstOrFail([
+                'id',
+                'external_ip',
+                'port',
+                'ssh_username',
+                'ssh_password',
+                'api_key'
+            ]);
 
         try {
-            $installer = new InstallerService(
-                sshHost: $data->sshHost,
-                sshPort: $data->sshPort,
-                sshUser: Crypt::decryptString($server->ssh_username),
-                sshPassword: Crypt::decryptString($server->ssh_password),
-                serverId: (string) $server->id,
-                apiToken: $data->apiToken,
-            );
+            $log = DB::transaction(function () use ($server) {
+                $installer = new InstallerService(
+                    sshHost: $server->sshHost,
+                    sshPort: $server->sshPort,
+                    sshUser: Crypt::decryptString($server->ssh_username),
+                    sshPassword: Crypt::decryptString($server->ssh_password),
+                    serverId: (string) $server->id,
+                    apiToken: $server->apiToken,
+                );
 
-            $log = $installer->install();
+                $log = $installer->uninstall();
+
+                return $log;
+            });
 
             return [
-                'status' => 'success',
+                'status' => true,
                 'log'    => $log,
             ];
         } catch (\RuntimeException $e) {
-            abort(500, $e->getMessage());
+            abort(500, 'Uninstall failed: ' . $e->getMessage());
         }
+    }
+
+    public function updateServerSpecs(UpdateServerSpecsData $data): JsonResponse
+    {
+        // Perform the update directly on the matching row
+        $updatedCount = DB::table('servers')
+            ->where('uuid', $data->uuid)
+            ->where('api_key', $data->token)
+            ->update([
+                'cpu_model'        => $data->cpu_model,
+                'cpu_cores'        => $data->cpu_cores,
+                'ram'              => $data->ram,
+                'operating_system' => $data->operating_system,
+                'updated_at'       => now(), // Gotcha: DB::table doesn't auto-update timestamps!
+            ]);
+
+        // If no rows were updated, it means either the UUID or Token was invalid
+        if ($updatedCount === 0) {
+            return response()->json(['status'  => 'error',], 404);
+        }
+
+        return response()->json(['status' => 'success'], 200);
     }
 }

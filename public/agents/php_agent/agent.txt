@@ -1,162 +1,414 @@
 <?php
+
+/**
+ * Server monitoring agent
+ * - Sends specs (CPU/RAM/disk/OS) + open database ports to specs_url every
+ *   time the script starts (systemd restart / reboot / manual restart),
+ *   since hardware may have changed
+ * - Then loops every 5 seconds sending live stats + open db ports to api_url
+ * - All HTTP sends go through sendWithRetry(), which retries until the
+ *   internet connection comes back if curl_exec() fails
+ */
+
 $config = json_decode(
     file_get_contents(__DIR__ . '/config.json'),
     true
 );
 
-function cpuUsage()
+if (!$config) {
+    fwrite(STDERR, "Failed to read config.json\n");
+    exit(1);
+}
+
+// -----------------------------------------------------------------------
+// Networking helpers
+// -----------------------------------------------------------------------
+
+/**
+ * Quick check that we actually have internet/DNS, used to decide whether
+ * a curl failure was "no internet" (keep retrying) vs a real HTTP error.
+ */
+function hasInternet(): bool
 {
-    $load = sys_getloadavg();
+    $ch = curl_init('https://1.1.1.1');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_NOBODY => true,
+        CURLOPT_TIMEOUT => 5,
+        CURLOPT_CONNECTTIMEOUT => 5,
+    ]);
+    curl_exec($ch);
+    $ok = curl_errno($ch) === 0;
+    return $ok;
+}
+
+/**
+ * POST $payload (array) to $url as JSON.
+ * Retries forever on curl-level failures (network down), with backoff,
+ * waiting for the internet to come back. Returns the decoded response
+ * (or null) once it actually goes through, or false if it gave up due
+ * to repeated non-network (HTTP-level) failures.
+ *
+ * @param int $maxAttempts  Safety cap on retries (0 = retry forever)
+ */
+function sendWithRetry(string $url, array $payload, array $extraHeaders = [], int $maxAttempts = 0)
+{
+    $attempt = 0;
+    $delay = 2; // seconds, grows with backoff
+    $maxDelay = 60;
+
+    while (true) {
+        $attempt++;
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_HTTPHEADER => array_merge(
+                ['Content-Type: application/json'],
+                $extraHeaders
+            ),
+            CURLOPT_POSTFIELDS => json_encode($payload),
+        ]);
+
+        $response = curl_exec($ch);
+        $curlError = curl_errno($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        if ($curlError === 0 && $httpCode >= 200 && $httpCode < 300) {
+            return json_decode($response, true);
+        }
+
+        // Distinguish "no internet / can't reach host" from a real HTTP error
+        $networkIssue = $curlError !== 0;
+
+        if ($networkIssue) {
+            fwrite(STDERR, "[attempt $attempt] curl error: " . curl_strerror($curlError) . " — waiting for internet...\n");
+
+            // Wait until internet is actually back before retrying, checking periodically
+            while (!hasInternet()) {
+                sleep(5);
+            }
+            // internet is back, retry immediately (no extra backoff needed)
+            continue;
+        }
+
+        // Got a response but a bad HTTP status — log and back off, don't loop forever
+        fwrite(STDERR, "[attempt $attempt] HTTP $httpCode from $url\n");
+
+        if ($maxAttempts > 0 && $attempt >= $maxAttempts) {
+            return false;
+        }
+
+        sleep($delay);
+        $delay = min($delay * 2, $maxDelay);
+    }
+}
+
+// -----------------------------------------------------------------------
+// Hardware / spec collection
+// -----------------------------------------------------------------------
+
+function cpuSpec(): array
+{
+    $cpuInfo = file_get_contents('/proc/cpuinfo');
+    preg_match('/model name\s*:\s*(.*)$/m', $cpuInfo, $match);
+    $cpuName = trim($match[1] ?? 'Unknown CPU');
+    $cores = (int) trim(shell_exec('nproc') ?? '0');
 
     return [
-        'load1' => $load[0],
-        'load5' => $load[1],
-        'load15' => $load[2]
+        'model' => $cpuName,
+        'cores' => $cores,
     ];
 }
 
-function memoryUsage()
+function memorySpec()
 {
-    $data = file('/proc/meminfo');
+    $memInfo = file_get_contents('/proc/meminfo');
+    preg_match('/MemTotal:\s+(\d+)/', $memInfo, $matches);
+    $totalRamGB = round((($matches[1] ?? 0) / 1024 / 1024), 2);
 
-    $mem = [];
+    return $totalRamGB . ' GB';
+}
 
-    foreach ($data as $line) {
-        [$key, $value] = explode(':', $line);
+function diskSpec()
+{
+    $totalGB = round(disk_total_space('/') / (1024 ** 3), 2);
 
-        $mem[$key] = (int) filter_var($value, FILTER_SANITIZE_NUMBER_INT);
+    return $totalGB;
+}
+
+function osSpec()
+{
+    // 1. Get the kernel details (uname -s gives just the kernel name like "Linux")
+    $distro = 'Unknown Linux';
+
+    // 2. Read /etc/os-release safely without relying on parse_ini_file
+    if (is_readable('/etc/os-release')) {
+        $lines = file('/etc/os-release', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            // Look for the PRETTY_NAME row
+            if (str_starts_with($line, 'PRETTY_NAME=')) {
+                // Extract everything inside the quotes
+                $distro = str_replace(['PRETTY_NAME=', '"'], '', $line);
+                break;
+            }
+        }
+    }
+    // 3. Fallback: If os-release failed but lsb_release command exists
+    elseif (shell_exec('command -v lsb_release')) {
+        $distro = trim(shell_exec('lsb_release -ds') ?? '');
     }
 
-    $total = $mem['MemTotal'];
-    $available = $mem['MemAvailable'];
+    return trim($distro); // e.g., "Ubuntu 22.04.3 LTS" or "Ubuntu Linux" ];
+}
 
+// -----------------------------------------------------------------------
+// Open ports — filtered to database services only
+// -----------------------------------------------------------------------
+
+/**
+ * Process names (as they show up in `ss`/`ps`) that we consider "databases"
+ * for the purpose of reporting open ports. Adjust to taste.
+ */
+const DB_PROCESS_NAMES = [
+    'mysqld',
+    'mariadbd',
+    'mariadb',
+    'postgres',
+    'postmaster',
+    'mongod',
+    'redis-server',
+    'memcached',
+    'cassandra',
+    'rabbitmq-server',
+    'beam.smp', // rabbitmq runs on the erlang VM
+    'influxd',
+    'clickhouse-server',
+    'elasticsearch',
+];
+
+/**
+ * Common default ports for the same set of databases, used as a fallback
+ * for cases where the process name can't be resolved (e.g. running
+ * without root, or inside a container/namespace ss can't see into).
+ */
+const DB_DEFAULT_PORTS = [
+    3306 => 'mysql/mariadb',
+    5432 => 'postgresql',
+    27017 => 'mongodb',
+    6379 => 'redis',
+    11211 => 'memcached',
+    9042 => 'cassandra',
+    5672 => 'rabbitmq',
+    8086 => 'influxdb',
+    9000 => 'clickhouse',
+    9200 => 'elasticsearch',
+];
+
+/**
+ * Returns only the open TCP listening ports that belong to database
+ * daemons (mysql, postgres, redis, mongo, etc), filtering out unrelated
+ * system/daemon ports (ssh, http, dns, ...).
+ *
+ * Each entry: ['address' => '127.0.0.1', 'port' => 3306, 'process' => 'mysqld']
+ */
+function openDatabasePorts(): array
+{
+    // `ss -tlnp` needs root (or CAP_NET_ADMIN) to show the owning process;
+    // run as root via cron/systemd for the `process` field to be populated.
+    $output = shell_exec('ss -tlnp 2>/dev/null');
+    if (!$output) {
+        $output = shell_exec('netstat -tlnp 2>/dev/null'); // fallback
+    }
+    if (!$output) {
+        return [];
+    }
+
+    $results = [];
+
+    foreach (explode("\n", trim($output)) as $line) {
+        // skip header lines
+        if (stripos($line, 'State') !== false || trim($line) === '') {
+            continue;
+        }
+
+        // Local address column looks like 127.0.0.1:3306 or [::]:5432 or *:6379
+        if (!preg_match('/(\S+):(\d+)\s+\S+\s+(.*)$/', $line, $m)) {
+            continue;
+        }
+
+        $address = $m[1];
+        $port = (int) $m[2];
+        $tail = $m[3];
+
+        // process name appears inside the tail like: users:(("mysqld",pid=1234,fd=23))
+        $process = null;
+        if (preg_match('/\(\("([^"]+)"/', $tail, $pm)) {
+            $process = $pm[1];
+        } elseif (preg_match('/(\d+)\/([^\s]+)/', $tail, $pm)) {
+            // netstat-style "1234/mysqld"
+            $process = $pm[2];
+        }
+
+        $isDbProcess = $process && in_array($process, DB_PROCESS_NAMES, true);
+        $isDbPort = isset(DB_DEFAULT_PORTS[$port]);
+
+        if (!$isDbProcess && !$isDbPort) {
+            continue; // not a database -> filter it out (ssh, nginx, dns, etc)
+        }
+
+        $results[] = [
+            'address' => $address,
+            'port' => $port,
+            'process' => $process ?? (DB_DEFAULT_PORTS[$port] ?? 'unknown'),
+        ];
+    }
+
+    return $results;
+}
+
+// -----------------------------------------------------------------------
+// Live stats (per-tick monitoring payload)
+// -----------------------------------------------------------------------
+
+function cpuUsage(): array
+{
+    $load = sys_getloadavg();
+    return [
+        'load1' => $load[0],
+        'load5' => $load[1],
+        'load15' => $load[2],
+    ];
+}
+
+function memoryUsage(): array
+{
+    $data = file('/proc/meminfo');
+    $mem = [];
+    foreach ($data as $line) {
+        [$key, $value] = explode(':', $line, 2);
+        $mem[$key] = (int) filter_var($value, FILTER_SANITIZE_NUMBER_INT);
+    }
+    $total = $mem['MemTotal'] ?? 0;
+    $available = $mem['MemAvailable'] ?? 0;
     $used = $total - $available;
 
     return [
         'total_kb' => $total,
         'used_kb' => $used,
         'free_kb' => $available,
-        'percent' => round(($used / $total) * 100, 2)
+        'percent' => $total > 0 ? round(($used / $total) * 100, 2) : 0,
     ];
 }
 
-function diskUsage()
+function diskUsage(): array
 {
-    $total = disk_total_space("/");
-    $free = disk_free_space("/");
+    $total = disk_total_space('/');
+    $free = disk_free_space('/');
 
     return [
         'total' => $total,
         'used' => $total - $free,
         'free' => $free,
-        'percent' => round(
-            (($total - $free) / $total) * 100,
-            2
-        )
+        'percent' => $total > 0 ? round((($total - $free) / $total) * 100, 2) : 0,
     ];
 }
 
-function uptime()
+function uptime(): float
 {
     $uptime = trim(file_get_contents('/proc/uptime'));
-
     return (float) explode(' ', $uptime)[0];
 }
 
-function networkStats()
+function networkStats(): array
 {
     $lines = file('/proc/net/dev');
-
     $stats = [];
-
     foreach ($lines as $line) {
-
         if (!str_contains($line, ':')) {
             continue;
         }
-
-        [$iface, $data] = explode(':', $line);
-
+        [$iface, $data] = explode(':', $line, 2);
         $parts = preg_split('/\s+/', trim($data));
-
         $stats[] = [
             'interface' => trim($iface),
             'rx_bytes' => $parts[0],
-            'tx_bytes' => $parts[8]
+            'tx_bytes' => $parts[8],
         ];
     }
-
     return $stats;
 }
 
-function topProcesses()
+function topProcesses(): array
 {
-    $output = shell_exec(
-        'ps -eo pid,comm,%cpu,%mem --sort=-%cpu | head -6'
-    );
-
+    $output = shell_exec('ps -eo pid,comm,%cpu,%mem --sort=-%cpu | head -6');
     return explode("\n", trim($output));
 }
 
-while (true) {
-    $payload = [
+// -----------------------------------------------------------------------
+// Payload builders
+// -----------------------------------------------------------------------
 
-        'server_id' =>
-        $config['server_id'],
-
-        'token' =>
-        $config['token'],
-
-        'timestamp' =>
-        time(),
-
-        'hostname' =>
-        gethostname(),
-
-        'cpu' =>
-        cpuUsage(),
-
-        'memory' =>
-        memoryUsage(),
-
-        'disk' =>
-        diskUsage(),
-
-        'uptime' =>
-        uptime(),
-
-        'network' =>
-        networkStats(),
-
-        'top_processes' =>
-        topProcesses()
+function buildInitialPayload(array $config): array
+{
+    return [
+        'uuid' => $config['uuid'],
+        'token' => $config['token'],
+        'operating_system' => osSpec(),
+        'cpu' => cpuSpec(),
+        'memory' => memorySpec(),
+        'disk' => diskSpec(),
+        /* 'open_db_ports' => openDatabasePorts(), */
     ];
-
-    $ch = curl_init();
-
-    curl_setopt_array($ch, [
-
-        CURLOPT_URL =>
-        $config['api_url'],
-
-        CURLOPT_POST =>
-        true,
-
-        CURLOPT_RETURNTRANSFER =>
-        true,
-
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json'
-        ],
-
-        CURLOPT_POSTFIELDS =>
-        json_encode($payload)
-    ]);
-
-    print_r($payload);
-
-    curl_exec($ch);
-
-    sleep(1);
 }
 
+function buildMonitorPayload(array $config): array
+{
+    return [
+        'uuid' => $config['uuid'],
+        'token' => $config['token'],
+        'timestamp' => time(),
+        'hostname' => gethostname(),
+        'cpu' => cpuUsage(),
+        'memory' => memoryUsage(),
+        'disk' => diskUsage(),
+        'uptime' => uptime(),
+        'network' => networkStats(),
+        'top_processes' => topProcesses(),
+        'open_db_ports' => openDatabasePorts(),
+    ];
+}
+
+// -----------------------------------------------------------------------
+// Main
+// -----------------------------------------------------------------------
+
+// Send the initial specs/ports payload only once (tracked via state file),
+// so restarts of the agent don't keep re-sending it every time.
+// Specs are sent every time this script starts (systemd restart, reboot,
+// manual restart, etc) since hardware may have changed (RAM/disk upgrade,
+// CPU change, etc). No "only send once" tracking anymore.
+$specsUrl = $config['specs_url'];
+echo "Sending server specs...\n";
+
+$payload = buildInitialPayload($config);
+print_r($payload);
+
+sendWithRetry($specsUrl, $payload);
+echo "Specs payload sent.\n";
+
+// Stats interval is hardcoded — keep it tight so port/stat changes show up fast.
+const STATS_INTERVAL_SECONDS = 5;
+
+while (true) {
+    $payload = buildMonitorPayload($config);
+    print_r($payload);
+
+    sendWithRetry($config['api_url'], $payload);
+
+    sleep(STATS_INTERVAL_SECONDS);
+}
