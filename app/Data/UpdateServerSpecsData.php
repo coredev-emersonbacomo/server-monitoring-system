@@ -19,7 +19,7 @@ class UpdateServerSpecsData extends Data
         public int $cpu_cores,
 
         #[MapInputName('memory')]
-        public int $ram,
+        public string $ram,
 
         public int $disk,
 
