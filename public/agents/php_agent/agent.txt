@@ -326,21 +326,15 @@ function uptime(): float
 
 function networkStats(): array
 {
-    $lines = file('/proc/net/dev');
-    $stats = [];
-    foreach ($lines as $line) {
-        if (!str_contains($line, ':')) {
-            continue;
-        }
-        [$iface, $data] = explode(':', $line, 2);
-        $parts = preg_split('/\s+/', trim($data));
-        $stats[] = [
-            'interface' => trim($iface),
-            'rx_bytes' => $parts[0],
-            'tx_bytes' => $parts[8],
-        ];
-    }
-    return $stats;
+    $data = file_get_contents('/proc/net/dev');
+    // Matches the interface name (starting with eth/en) and extracts rx (group 2) and tx (group 3)
+    preg_match_all('/^\s*(eth\w*|en\w*):\s*(\d+)(?:\s+\d+){6}\s+(\d+)/m', $data, $matches, PREG_SET_ORDER);
+
+    return array_map(fn($m) => [
+        'interface' => $m[1],
+        'rx_bytes'  => (int)$m[2],
+        'tx_bytes'  => (int)$m[3],
+    ], $matches);
 }
 
 function topProcesses(): array
