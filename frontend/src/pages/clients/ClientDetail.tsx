@@ -143,14 +143,12 @@ function SectionHeader({
 
 function ServerCard({
     server,
-    clientUuid,
 }: {
     server: components["schemas"]["ServerData"];
-    clientUuid: string;
 }) {
     return (
         <Link
-            to={`/servers/${server.uuid}?client=${clientUuid}`}
+            to={`/servers/${server.uuid}`}
             className="bg-card border border-border/60 rounded-xl shadow-sm p-5 flex flex-col gap-3 transition-shadow hover:shadow-md group"
         >
             <div className="flex items-start justify-between">
@@ -232,8 +230,6 @@ export default function ClientDetail() {
     );
     const showEdit = mode !== "view";
 
-
-
     // ── Data fetching ──────────────────────────────────────────────────────────
     const { data: client, isLoading, isError } = useClient(clientUuid!);
     const { data: servers = [], isLoading: serversLoading } = useClientServers(
@@ -281,8 +277,6 @@ export default function ClientDetail() {
         email: "",
         contact_number: "",
     });
-
-
 
     // Reset mode when navigating between clients / to create
     useEffect(() => {
@@ -663,7 +657,6 @@ export default function ClientDetail() {
                 {/* ── Content ── */}
                 <div className="flex-1 -mt-12 relative z-20 px-6 sm:px-8 lg:px-10 pb-8">
                     <div className="max-w-3xl mx-auto relative flex flex-col gap-6">
-
                         {/* Floating Tabs */}
                         <div className="absolute -top-[44px] right-0 z-30">
                             <div className="inline-flex rounded-t-xl border border-border border-b-0 bg-card p-1">
@@ -697,13 +690,11 @@ export default function ClientDetail() {
                             </div>
                         </div>
 
-
                         {/* Floating tabs */}
                         <form
                             onSubmit={handleSubmit}
                             className="bg-card border border-border/60 rounded-tl-xl rounded-bl-xl rounded-br-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8"
                         >
-
                             {/* Basic Information */}
 
                             {activeTab === "details" && (
@@ -724,7 +715,9 @@ export default function ClientDetail() {
                                                     <Input
                                                         placeholder="New York, USA"
                                                         value={form.location}
-                                                        onChange={set("location")}
+                                                        onChange={set(
+                                                            "location",
+                                                        )}
                                                         className={cn(
                                                             errors.location &&
                                                             "border-destructive",
@@ -780,14 +773,19 @@ export default function ClientDetail() {
                                                 {showEdit ? (
                                                     <Input
                                                         placeholder="e.g. 09123456789"
-                                                        value={form.contact_number}
+                                                        value={
+                                                            form.contact_number
+                                                        }
                                                         onChange={(e) => {
-                                                            set("contact_number")({
+                                                            set(
+                                                                "contact_number",
+                                                            )({
                                                                 ...e,
                                                                 target: {
                                                                     ...e.target,
                                                                     value: formatPhoneNumber(
-                                                                        e.target.value,
+                                                                        e.target
+                                                                            .value,
                                                                     ),
                                                                 },
                                                             });
@@ -829,7 +827,6 @@ export default function ClientDetail() {
                                         </>
                                     )}
                                 </>
-
                             )}
 
                             {activeTab === "secops" &&
@@ -842,8 +839,8 @@ export default function ClientDetail() {
                                                     SecOps Assignments
                                                 </h2>
                                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                                    Manage SecOps personnel assigned to
-                                                    this client.
+                                                    Manage SecOps personnel
+                                                    assigned to this client.
                                                 </p>
                                             </div>
                                             <Button
@@ -852,9 +849,12 @@ export default function ClientDetail() {
                                                 size="sm"
                                                 icon={<Plus size={14} />}
                                                 label="Add SecOps"
-                                                onClick={() => setShowSecopDialog(true)}
+                                                onClick={() =>
+                                                    setShowSecopDialog(true)
+                                                }
                                                 disabled={
-                                                    currentSecops.length >= secopLimit
+                                                    currentSecops.length >=
+                                                    secopLimit
                                                 }
                                             />
                                         </div>
@@ -875,25 +875,37 @@ export default function ClientDetail() {
                                                         key={secop.id}
                                                         className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"
                                                     >
-
                                                         <div className="flex items-center gap-3 flex-1 min-w-0">
                                                             <div className="w-8 h-8 rounded-full overflow-hidden bg-muted shrink-0">
                                                                 <img
-                                                                    src={secop.profile_picture_url}
+                                                                    src={
+                                                                        secop.profile_picture_url
+                                                                    }
                                                                     alt={`${secop.first_name} ${secop.last_name}`}
                                                                     className="h-full w-full object-cover"
-                                                                    onError={(e) => {
-                                                                        (e.target as HTMLImageElement).style.display = "none";
+                                                                    onError={(
+                                                                        e,
+                                                                    ) => {
+                                                                        (
+                                                                            e.target as HTMLImageElement
+                                                                        ).style.display =
+                                                                            "none";
                                                                     }}
                                                                 />
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-sm font-medium text-foreground truncate">
-                                                                    {secop.first_name}{" "}
-                                                                    {secop.last_name}
+                                                                    {
+                                                                        secop.first_name
+                                                                    }{" "}
+                                                                    {
+                                                                        secop.last_name
+                                                                    }
                                                                 </p>
                                                                 <p className="text-xs text-muted-foreground truncate">
-                                                                    {secop.email}
+                                                                    {
+                                                                        secop.email
+                                                                    }
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -909,11 +921,12 @@ export default function ClientDetail() {
                                                                                     `${secop.first_name} removed from ${client?.name}.`,
                                                                                 );
                                                                             },
-                                                                        onError: () => {
-                                                                            toast.error(
-                                                                                "Failed to remove SecOps.",
-                                                                            );
-                                                                        },
+                                                                        onError:
+                                                                            () => {
+                                                                                toast.error(
+                                                                                    "Failed to remove SecOps.",
+                                                                                );
+                                                                            },
                                                                     },
                                                                 )
                                                             }
@@ -1076,7 +1089,6 @@ export default function ClientDetail() {
                                             <ServerCard
                                                 key={s.uuid}
                                                 server={s}
-                                                clientUuid={client.uuid!}
                                             />
                                         ))}
                                     </div>
@@ -1204,11 +1216,16 @@ export default function ClientDetail() {
                                                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                                                     <div className="w-8 h-8 rounded-full overflow-hidden bg-muted shrink-0">
                                                         <img
-                                                            src={user.profile_picture_url}
+                                                            src={
+                                                                user.profile_picture_url
+                                                            }
                                                             alt={`${user.first_name} ${user.last_name}`}
                                                             className="h-full w-full object-cover"
                                                             onError={(e) => {
-                                                                (e.target as HTMLImageElement).style.display = "none";
+                                                                (
+                                                                    e.target as HTMLImageElement
+                                                                ).style.display =
+                                                                    "none";
                                                             }}
                                                         />
                                                     </div>
