@@ -24,8 +24,6 @@ class ServerData extends Data
 
         public string $updated_at,
 
-        public ?int $ssh_port = null,
-
         public ?int $cpu_cores = null,
 
         public ?int $ram = null,
@@ -47,7 +45,6 @@ class ServerData extends Data
             server_name: $server->server_name,
             device_name: $server->device_name,
             external_ip: $server->external_ip,
-            ssh_port: $server->ssh_port,
             cpu_cores: $server->cpu_cores,
             ram: $server->ram,
             operating_system: $server->operating_system,

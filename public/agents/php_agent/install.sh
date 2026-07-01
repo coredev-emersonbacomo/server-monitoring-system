@@ -10,6 +10,8 @@ readonly AGENT_FILE="$APP_DIR/agent.php"
 readonly CONFIG_FILE="$APP_DIR/config.json"
 readonly SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 readonly LOG_FILE="/var/log/${SERVICE_NAME}-install.log"
+readonly API_URL="http://127.0.0.1:8000/api/server/stats"
+readonly SPECS_URL="http://127.0.0.1:8000/api/server/specs"
 
 # ─── Logging ─────────────────────────────────────────────────
 log()  { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]  $*" | tee -a "$LOG_FILE"; }
@@ -26,7 +28,7 @@ if [[ "$#" -ne 2 ]]; then
     fail "Usage: $0 <server_id> <api_key>"
 fi
 
-SERVER_ID="$1"
+SERVER_UUID="$1"
 API_KEY="$2"
 
 # Validate server_id is alphanumeric
@@ -80,9 +82,10 @@ log "Writing config..."
 
 cat > "$CONFIG_FILE" << EOF
 {
-    "server_id": $(printf '%s' "$SERVER_ID" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'),
+    "uuid": $(printf '%s' "$SERVER_UUID" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'),
     "token":     $(printf '%s' "$API_KEY"   | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'),
-    "api_url":   "https://monitor.example.com/api/metrics"
+    "api_url":   $(printf '%s' "$API_URL"   | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'),
+    "specs_url": $(printf '%s' "$SPECS_URL"   | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'),
 }
 EOF
 

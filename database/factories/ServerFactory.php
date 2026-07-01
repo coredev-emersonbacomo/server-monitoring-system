@@ -20,6 +20,8 @@ class ServerFactory extends Factory
             'server_name' => fake()->domainWord() . '-prod',
             'device_name' => fake()->word() . '-blade-' . fake()->randomDigitNotNull(),
             'operating_system' => fake()->randomElement(['Ubuntu 22.04 LTS', 'Windows Server 2022', 'Debian 12']),
+            'ssh_username' => fake()->unique()->userName(),
+            'ssh_password' => fake()->password(),
             // Network details
             'external_ip' => fake()->ipv4(),
             'ssh_port' => fake()->numberBetween(0, 9999),
