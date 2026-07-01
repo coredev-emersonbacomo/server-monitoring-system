@@ -9,7 +9,7 @@ class SessionData extends Data
 {
     public function __construct(
         public string $session_uuid,
-        public ?string $device_name,
+        public ?string $host_name,
         public ?string $device_type,
         public ?string $browser,
         public ?string $operating_system,
@@ -33,7 +33,7 @@ class SessionData extends Data
     {
         return new self(
             session_uuid: $session->session_uuid,
-            device_name: $session->device_name,
+            host_name: $session->host_name,
             device_type: $session->device_type,
             browser: $session->browser,
             operating_system: $session->operating_system,

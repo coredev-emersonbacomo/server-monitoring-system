@@ -28,7 +28,7 @@ class CreateServerData extends Data
         #[Required, StringType]
         public string $ssh_password,
 
-        public ?string $device_name = null,
+        public ?string $host_name = null,
 
         public ?int $cpu_cores = null,
 

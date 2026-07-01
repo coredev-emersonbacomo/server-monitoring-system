@@ -1,13 +1,6 @@
 // pages/users/index.tsx
 import { useState, useMemo } from "react";
-import {
-    Plus,
-    Search,
-    Users2,
-    RefreshCw,
-    Filter,
-    ChevronDown,
-} from "lucide-react";
+import { Users2, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import ProfileCard from "@/components/ProfileCard";
@@ -19,16 +12,12 @@ import {
     DialogTitle,
     DialogClose,
 } from "@/components/ui/dialog";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
 import { useUsers, useDeleteUser } from "@/hooks/useUsers";
-import { cn } from "@/lib/utils";
+import IndexToolbar from "@/components/IndexToolbar";
+import type { FilterOption, SortOption } from "@/components/IndexToolbar";
 import IndexHeader from "@/components/IndexHeader";
 
-type FilterTab = "all" | "active" | "inactive" | "Admin" | "SecOps";
+type FilterTab = "all" | "active" | "deleted" | "Admin" | "SecOps";
 
 // ─── Skeleton grid ────────────────────────────────────────────────────────────
 
@@ -63,10 +52,12 @@ const Users = () => {
     } | null>(null);
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<FilterTab>("all");
+    const [sortField, setSortField] = useState<string>("created_at");
+    const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
     const visible = useMemo(() => {
         const q = search.toLowerCase();
-        return users.filter((u) => {
+        const filtered = users.filter((u) => {
             const matchSearch =
                 !q ||
                 `${u.first_name} ${u.last_name}`.toLowerCase().includes(q) ||
@@ -75,7 +66,24 @@ const Users = () => {
             const matchFilter = filter === "all" || u.record_status === filter;
             return matchSearch && matchFilter;
         });
-    }, [search, filter, users]);
+        return [...filtered].sort((a, b) => {
+            const cmp = (() => {
+                switch (sortField) {
+                    case "name":
+                        return `${a.first_name} ${a.last_name}`.localeCompare(
+                            `${b.first_name} ${b.last_name}`,
+                        );
+                    case "email":
+                        return a.email.localeCompare(b.email);
+                    case "username":
+                        return a.username.localeCompare(b.username);
+                    default:
+                        return a.created_at.localeCompare(b.created_at);
+                }
+            })();
+            return sortDir === "desc" ? -cmp : cmp;
+        });
+    }, [search, filter, sortField, sortDir, users]);
 
     const handleDeleteRequest = (uuid: string) => {
         const user = users.find((u) => u.uuid === uuid);
@@ -101,87 +109,60 @@ const Users = () => {
         (u) => u.record_status === "active",
     ).length;
     const inactiveCount = users.filter(
-        (u) => u.record_status === "inactive",
+        (u) => u.record_status === "deleted",
     ).length;
 
     const filterOptions = [
         { label: "All", value: "all" as FilterTab, count: users.length },
         { label: "Active", value: "active" as FilterTab, count: activeCount },
         {
-            label: "Inactive",
-            value: "inactive" as FilterTab,
+            label: "Deleted",
+            value: "deleted" as FilterTab,
             count: inactiveCount,
         },
     ];
 
+    const sortOptions = [
+        { label: "Created At", value: "created_at" },
+        { label: "Name", value: "name" },
+        { label: "Email", value: "email" },
+        { label: "Username", value: "username" },
+    ];
+
     const currentFilterLabel =
         filterOptions.find((o) => o.value === filter)?.label ?? "All";
+    const currentSortLabel =
+        sortOptions.find((o) => o.value === sortField)?.label ?? "";
 
     return (
-        <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
+        <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground page-top-padding page-bottom-padding">
             <IndexHeader
                 icon={Users2}
                 title="User Management"
                 description="Manage accounts and assign roles."
             />
 
-            <main className="py-6 w-full flex-1 min-h-0 flex flex-col gap-5">
+            <main className="w-full flex-1 min-h-0 flex flex-col gap-5">
                 {/* ── Toolbar ── */}
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="relative flex-1 max-w-xs">
-                            <Search
-                                size={14}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                            />
-                            <input
-                                type="text"
-                                placeholder="Search users…"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-8 pr-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground transition-colors"
-                            />
-                        </div>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    icon={<Filter size={14} />}
-                                    className="gap-1"
-                                >
-                                    {currentFilterLabel}
-                                    <ChevronDown size={14} />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent align="start" className="w-48 p-1">
-                                {filterOptions.map((option) => (
-                                    <button
-                                        key={option.value}
-                                        onClick={() => setFilter(option.value)}
-                                        className={cn(
-                                            "flex items-center justify-between w-full px-2 py-1.5 rounded-md text-sm transition-colors",
-                                            filter === option.value
-                                                ? "bg-accent text-accent-foreground"
-                                                : "hover:bg-muted text-foreground",
-                                        )}
-                                    >
-                                        <span>{option.label}</span>
-                                        <span className="text-xs text-muted-foreground">
-                                            {option.count}
-                                        </span>
-                                    </button>
-                                ))}
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-
-                    <Button
-                        icon={<Plus size={15} />}
-                        label="Add user"
-                        onClick={() => navigate("/users/create")}
-                    />
-                </div>
+                <IndexToolbar
+                    search={search}
+                    onSearchChange={setSearch}
+                    searchPlaceholder="Search users…"
+                    filterOptions={filterOptions as FilterOption[]}
+                    filter={filter}
+                    onFilterChange={(v) => setFilter(v as FilterTab)}
+                    filterLabel={currentFilterLabel}
+                    sortOptions={sortOptions as SortOption[]}
+                    sortField={sortField}
+                    onSortFieldChange={setSortField}
+                    sortDir={sortDir}
+                    onSortDirChange={() =>
+                        setSortDir((d) => (d === "desc" ? "asc" : "desc"))
+                    }
+                    sortLabel={currentSortLabel}
+                    onCreate={() => navigate("/users/create")}
+                    createLabel="Add user"
+                />
 
                 {/* ── Error state ── */}
                 {isError && (

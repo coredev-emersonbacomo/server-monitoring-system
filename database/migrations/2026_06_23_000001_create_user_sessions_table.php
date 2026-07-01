@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('previous_refresh_token_id', 64)->nullable();
             $table->string('previous_refresh_token_hash', 64)->nullable();
             $table->boolean('remember_me')->default(false);
-            $table->string('device_name')->nullable();
+            $table->string('host_name')->nullable();
             $table->string('device_type')->nullable();
             $table->string('browser')->nullable();
             $table->string('operating_system')->nullable();
