@@ -65,6 +65,8 @@ export default function ClientDetail() {
     const { uuid: clientUuid } = useParams<{ uuid: string }>();
     const { setTrail } = useBreadcrumb();
 
+    const [secopSearch, setSecopSearch] = useState("");
+
     const [mode, setMode] = useState<"view" | "create" | "edit">(
         clientUuid ? "view" : "create",
     );
@@ -167,8 +169,8 @@ export default function ClientDetail() {
 
     const set =
         (key: keyof typeof form) =>
-        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-            setForm((f) => ({ ...f, [key]: e.target.value }));
+            (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+                setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const schema = z.object({
@@ -332,6 +334,26 @@ export default function ClientDetail() {
         return matchSearch;
     });
 
+    // Filter the users
+    const availableSecops = allUsers
+        .filter(
+            (user) =>
+                !currentSecops.some((s) => s.uuid === user.uuid),
+        )
+        .filter((user) => {
+            const q = secopSearch.trim().toLowerCase();
+
+            if (!q) return true;
+
+            return (
+                `${user.first_name} ${user.last_name}`
+                    .toLowerCase()
+                    .includes(q) ||
+                user.email.toLowerCase().includes(q) ||
+                user.username.toLowerCase().includes(q)
+            );
+        });
+
     return (
         <>
             <LoadingOverlay visible={isSaving} />
@@ -344,14 +366,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                          backgroundImage: `url(${bannerPreview})`,
-                                          backgroundSize: "cover",
-                                          backgroundPosition: "center",
-                                      }
+                                        backgroundImage: `url(${bannerPreview})`,
+                                        backgroundSize: "cover",
+                                        backgroundPosition: "center",
+                                    }
                                     : {
-                                          background:
-                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                      }
+                                        background:
+                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                    }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -383,7 +405,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                            defaultBanner,
+                                                        defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -480,7 +502,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none break-all",
                                             errors.description &&
-                                                "border-destructive",
+                                            "border-destructive",
                                         )}
                                     />
                                 </div>
@@ -528,7 +550,7 @@ export default function ClientDetail() {
                                                         )}
                                                         className={cn(
                                                             errors.location &&
-                                                                "border-destructive",
+                                                            "border-destructive",
                                                         )}
                                                     />
                                                 ) : (
@@ -563,7 +585,7 @@ export default function ClientDetail() {
                                                         onChange={set("email")}
                                                         className={cn(
                                                             errors.email &&
-                                                                "border-destructive",
+                                                            "border-destructive",
                                                         )}
                                                     />
                                                 ) : (
@@ -600,14 +622,14 @@ export default function ClientDetail() {
                                                         }}
                                                         className={cn(
                                                             errors.contact_number &&
-                                                                "border-destructive",
+                                                            "border-destructive",
                                                         )}
                                                     />
                                                 ) : (
                                                     <p className="text-sm text-foreground py-1">
                                                         {formatPhoneNumber(
                                                             client?.contact_number ||
-                                                                "",
+                                                            "",
                                                         )}
                                                     </p>
                                                 )}
@@ -627,8 +649,8 @@ export default function ClientDetail() {
                                                         isSaving
                                                             ? "Saving…"
                                                             : mode === "create"
-                                                              ? "Create Client"
-                                                              : "Save Changes"
+                                                                ? "Create Client"
+                                                                : "Save Changes"
                                                     }
                                                 />
                                             </div>
@@ -811,8 +833,8 @@ export default function ClientDetail() {
                                                         ? "All"
                                                         : serverFilter ===
                                                             "online"
-                                                          ? "Online"
-                                                          : "Offline"}
+                                                            ? "Online"
+                                                            : "Offline"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -839,9 +861,9 @@ export default function ClientDetail() {
                                                         onClick={() =>
                                                             setServerFilter(
                                                                 opt.value as
-                                                                    | "all"
-                                                                    | "online"
-                                                                    | "offline",
+                                                                | "all"
+                                                                | "online"
+                                                                | "offline",
                                                             )
                                                         }
                                                         className={cn(
@@ -969,6 +991,20 @@ export default function ClientDetail() {
                                 </span>{" "}
                                 SecOps per client.
                             </p>
+                            <div className="relative">
+                                <Search
+                                    size={16}
+                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                                />
+
+                                <input
+                                    type="text"
+                                    value={secopSearch}
+                                    onChange={(e) => setSecopSearch(e.target.value)}
+                                    placeholder="Search SecOps..."
+                                    className="w-full h-10 rounded-lg border border-border bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                />
+                            </div>
 
                             {usersLoading ? (
                                 <div className="space-y-2">
@@ -981,88 +1017,77 @@ export default function ClientDetail() {
                                 </div>
                             ) : (
                                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                                    {allUsers
-                                        .filter(
-                                            (user) =>
-                                                !currentSecops.some(
-                                                    (s) => s.uuid === user.uuid,
-                                                ),
-                                        )
-                                        .map((user) => (
-                                            <button
-                                                key={user.uuid}
-                                                onClick={() => {
-                                                    setSelectedSecopToAdd(
-                                                        user.uuid,
-                                                    );
-                                                    addSecop.mutate(user.uuid, {
-                                                        onSuccess: () => {
-                                                            toast.success(
-                                                                `${user.first_name} added to ${client?.name}.`,
-                                                            );
-                                                            setShowSecopDialog(
-                                                                false,
-                                                            );
-                                                            setSelectedSecopToAdd(
-                                                                null,
-                                                            );
-                                                        },
-                                                        onError: () => {
-                                                            toast.error(
-                                                                "Failed to add SecOps. You may have reached the limit.",
-                                                            );
-                                                        },
-                                                    });
-                                                }}
-                                                disabled={
-                                                    addSecop.isPending ||
-                                                    selectedSecopToAdd ===
-                                                        user.uuid
-                                                }
-                                                className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 text-left border border-border/40 hover:border-border"
-                                            >
-                                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-muted shrink-0">
-                                                        <img
-                                                            src={
-                                                                user.profile_picture_url
-                                                            }
-                                                            alt={`${user.first_name} ${user.last_name}`}
-                                                            className="h-full w-full object-cover"
-                                                            onError={(e) => {
-                                                                (
-                                                                    e.target as HTMLImageElement
-                                                                ).style.display =
-                                                                    "none";
-                                                            }}
-                                                        />
-                                                    </div>
+                                    {availableSecops.map((user) => (
+                                        <button
+                                            key={user.uuid}
+                                            onClick={() => {
+                                                setSelectedSecopToAdd(
+                                                    user.uuid,
+                                                );
+                                                addSecop.mutate(user.uuid, {
+                                                    onSuccess: () => {
+                                                        toast.success(
+                                                            `${user.first_name} added to ${client?.name}.`,
+                                                        );
+                                                        setShowSecopDialog(
+                                                            false,
+                                                        );
+                                                        setSelectedSecopToAdd(
+                                                            null,
+                                                        );
+                                                    },
+                                                    onError: () => {
+                                                        toast.error(
+                                                            "Failed to add SecOps. You may have reached the limit.",
+                                                        );
+                                                    },
+                                                });
+                                            }}
+                                            disabled={
+                                                addSecop.isPending ||
+                                                selectedSecopToAdd ===
+                                                user.uuid
+                                            }
+                                            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 text-left border border-border/40 hover:border-border"
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                                <div className="w-8 h-8 rounded-full overflow-hidden bg-muted shrink-0">
+                                                    <img
+                                                        src={
+                                                            user.profile_picture_url
+                                                        }
+                                                        alt={`${user.first_name} ${user.last_name}`}
+                                                        className="h-full w-full object-cover"
+                                                        onError={(e) => {
+                                                            (
+                                                                e.target as HTMLImageElement
+                                                            ).style.display =
+                                                                "none";
+                                                        }}
+                                                    />
                                                 </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium text-foreground truncate">
-                                                        {user.first_name}{" "}
-                                                        {user.last_name}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground truncate">
-                                                        {user.email}
-                                                    </p>
-                                                </div>
-                                                {selectedSecopToAdd ===
-                                                    user.uuid &&
-                                                    addSecop.isPending && (
-                                                        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                                                    )}
-                                            </button>
-                                        ))}
-                                    {allUsers.filter(
-                                        (user) =>
-                                            !currentSecops.some(
-                                                (s) => s.uuid === user.uuid,
-                                            ),
-                                    ).length === 0 && (
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-foreground truncate">
+                                                    {user.first_name}{" "}
+                                                    {user.last_name}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground truncate">
+                                                    {user.email}
+                                                </p>
+                                            </div>
+                                            {selectedSecopToAdd ===
+                                                user.uuid &&
+                                                addSecop.isPending && (
+                                                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                                                )}
+                                        </button>
+                                    ))}
+                                    {availableSecops.length === 0 && (
                                         <p className="text-sm text-muted-foreground text-center py-4">
-                                            All users are already assigned to
-                                            this client.
+                                            {secopSearch
+                                                ? "No matching SecOps found."
+                                                : "All users are already assigned to this client."}
                                         </p>
                                     )}
                                 </div>
