@@ -79,7 +79,7 @@ class ClientController extends Controller
     {
         $client = Client::where('uuid', $clientUuid)->firstOrFail();
 
-        $updatePayload = [
+    $updatePayload = [  
             'name' => $data->name,
             'description' => $data->description instanceof \Spatie\LaravelData\Optional ? ($client->description ?? '') : $data->description,
             'location' => $data->location,
