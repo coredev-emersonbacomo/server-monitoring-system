@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 
 export interface Crumb {
     label: string;
-    href: string;
+    href?: string;
 }
 
 interface BreadcrumbContextType {

@@ -6,13 +6,11 @@ export interface ActionItem {
     action_type: "no_secops" | "server_offline" | "server_warning";
     message: string;
     severity: "critical" | "warning" | "info";
-    server_id: number | null;
-    client_id: number | null;
     server_uuid: string | null;
     client_uuid: string | null;
     client_name: string | null;
     server_name: string | null;
-    assigned_to: number | null;
+    assigned_to_uuid: string | null;
     assigned_to_name: string | null;
     status: "open" | "in_progress" | "completed";
 }
