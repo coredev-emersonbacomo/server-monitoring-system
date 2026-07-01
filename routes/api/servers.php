@@ -15,6 +15,9 @@ Route::middleware('auth:jwt')->group(function () {
         Route::post('/servers/uninstall', [ServerController::class, 'uninstallServer']);
     });
 
-    Route::get('/servers/{serverUuid}', [ServerController::class, 'showWithStats']);
+    Route::get('/servers/{uuid}', [ServerController::class, 'showWithStats']);
     Route::post('/server/stats', [ServerController::class, 'ingestStats']);
 });
+
+// No need to have middle as agent have the API key
+Route::post('/server/specs', [ServerController::class, 'updateServerSpecs']);
