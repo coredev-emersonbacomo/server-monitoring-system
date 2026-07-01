@@ -671,10 +671,10 @@ export default function ClientDetail() {
                                     type="button"
                                     onClick={() => setActiveTab("details")}
                                     className={cn(
-                                        "px-4 py-2 text-sm rounded-md transition-colors",
+                                        "px-4 py-2 text-sm rounded-md transition-colors cursor-pointer",
                                         activeTab === "details"
-                                            ? "bg-background shadow text-foreground"
-                                            : "text-muted-foreground hover:text-foreground"
+                                            ? "bg-background shadow text-foreground cursor-default"
+                                            : "text-muted-foreground hover:text-foreground cursor-pointer"
                                     )}
                                 >
                                     Details
@@ -685,10 +685,10 @@ export default function ClientDetail() {
                                         type="button"
                                         onClick={() => setActiveTab("secops")}
                                         className={cn(
-                                            "px-4 py-2 text-sm rounded-md transition-colors",
+                                            "px-4 py-2 text-sm rounded-md transition-colors cursor-pointer",
                                             activeTab === "secops"
-                                                ? "bg-background shadow text-foreground"
-                                                : "text-muted-foreground hover:text-foreground"
+                                                ? "bg-background shadow text-foreground cursor-default"
+                                                : "text-muted-foreground hover:text-foreground cursor-pointer"
                                         )}
                                     >
                                         Assign SecOps
