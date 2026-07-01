@@ -21,7 +21,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/clients/{uuid}/servers": {
+    "/clients/{clientUuid}/servers": {
         parameters: {
             query?: never;
             header?: never;
@@ -30,7 +30,7 @@ export interface paths {
         };
         get: operations["client.servers"];
         put?: never;
-        post?: never;
+        post: operations["server.store"];
         delete?: never;
         options?: never;
         head?: never;
@@ -53,7 +53,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/clients/{uuid}": {
+    "/clients/{clientUuid}": {
         parameters: {
             query?: never;
             header?: never;
@@ -69,7 +69,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/clients/{uuid}/secops": {
+    "/clients/{clientUuid}/secops": {
         parameters: {
             query?: never;
             header?: never;
@@ -85,7 +85,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/clients/{uuid}/secops/{userId}": {
+    "/clients/{clientUuid}/secops/{userId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -277,7 +277,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/clients/{client}/servers/{server}": {
+    "/clients/{clientUuid}/servers/{serverUuid}": {
         parameters: {
             query?: never;
             header?: never;
@@ -293,7 +293,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/clients/{client}/servers/uninstall": {
+    "/clients/{clientUuid}/servers/uninstall": {
         parameters: {
             query?: never;
             header?: never;
@@ -309,7 +309,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/servers/{uuid}": {
+    "/servers/{serverUuid}": {
         parameters: {
             query?: never;
             header?: never;
@@ -534,6 +534,8 @@ export interface components {
             severity: string;
             server_id?: number | null;
             client_id?: number | null;
+            server_uuid?: string | null;
+            client_uuid?: string | null;
             client_name?: string | null;
             server_name?: string | null;
             assigned_to?: number | null;
@@ -573,18 +575,21 @@ export interface components {
             offline_count: number;
             top_usage_cpu: {
                 server_id: number;
+                server_uuid: string;
                 server_name: string;
                 client_name: string;
                 value: number;
             }[];
             top_usage_memory: {
                 server_id: number;
+                server_uuid: string;
                 server_name: string;
                 client_name: string;
                 value: number;
             }[];
             top_usage_disk: {
                 server_id: number;
+                server_uuid: string;
                 server_name: string;
                 client_name: string;
                 value: number;
@@ -614,8 +619,8 @@ export interface components {
             server_name: string;
             uuid: string;
             external_ip: string;
-            ssh_port?: number | null;
             device_name: string;
+            ssh_port?: number | null;
             ssh_username?: string | null;
             cpu_cores?: number | null;
             ram?: number | null;
@@ -656,7 +661,7 @@ export interface components {
             username: string;
             phone_number: string;
             last_login?: string | null;
-            profile_picture_url: string;
+            profile_picture_url?: string | null;
             profile_picture_storage_key: string;
             record_status?: string | null;
             /** Format: date-time */
@@ -751,7 +756,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                uuid: string;
+                clientUuid: string;
             };
             cookie?: never;
         };
@@ -766,6 +771,56 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "server.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    server_name: string;
+                    /** Format: ipv4 */
+                    external_ip: string;
+                    ssh_port: number;
+                    ssh_username: string;
+                    ssh_password: string;
+                    device_name?: string | null;
+                    cpu_cores?: number | null;
+                    ram?: number | null;
+                    operating_system?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `ServerData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            /** @description An error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Error overview. */
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "client.index": {
@@ -797,7 +852,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": {
+                "application/json": {
                     name: string;
                     location: string;
                     email: string;
@@ -827,7 +882,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                uuid: string;
+                clientUuid: string;
             };
             cookie?: never;
         };
@@ -850,7 +905,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                uuid: string;
+                clientUuid: string;
             };
             cookie?: never;
         };
@@ -885,7 +940,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                uuid: string;
+                clientUuid: string;
             };
             cookie?: never;
         };
@@ -906,7 +961,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                uuid: string;
+                clientUuid: string;
             };
             cookie?: never;
         };
@@ -928,7 +983,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                uuid: string;
+                clientUuid: string;
             };
             cookie?: never;
         };
@@ -971,7 +1026,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                uuid: string;
+                clientUuid: string;
                 userId: number;
             };
             cookie?: never;
@@ -1210,7 +1265,10 @@ export interface operations {
     };
     "server.listAll": {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filter servers by client UUID */
+                client_uuid?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1222,7 +1280,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["ServerData"][];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -1233,8 +1291,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                client: string;
-                server: string;
+                clientUuid: string;
+                serverUuid: string;
             };
             cookie?: never;
         };
@@ -1257,8 +1315,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                client: string;
-                server: string;
+                clientUuid: string;
+                serverUuid: string;
             };
             cookie?: never;
         };
@@ -1292,8 +1350,8 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                client: string;
-                server: string;
+                clientUuid: string;
+                serverUuid: string;
             };
             cookie?: never;
         };
@@ -1316,7 +1374,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                client: string;
+                clientUuid: string;
             };
             cookie?: never;
         };
@@ -1368,7 +1426,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                uuid: string;
+                serverUuid: string;
             };
             cookie?: never;
         };
@@ -1383,6 +1441,7 @@ export interface operations {
                     "application/json": components["schemas"]["ServerData"];
                 };
             };
+            401: components["responses"]["AuthenticationException"];
             404: components["responses"]["ModelNotFoundException"];
         };
     };
@@ -1421,21 +1480,7 @@ export interface operations {
                     };
                 };
             };
-            /** @description An error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /**
-                         * @description Error overview.
-                         * @example Unauthorized or invalid server ID.
-                         */
-                        message: string;
-                    };
-                };
-            };
+            401: components["responses"]["AuthenticationException"];
         };
     };
     "session.index": {
@@ -1453,7 +1498,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: string;
+                        data: unknown[];
                     };
                 };
             };

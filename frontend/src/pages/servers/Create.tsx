@@ -347,16 +347,19 @@ export default function CreateServer() {
         setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: "pending" })));
         setCurrentStep(-1);
 
-        const { data, error } = await api.POST("/clients/{client}/servers", {
-            params: { path: { client: clientUuid } },
-            body: {
-                server_name: form.serverName.trim(),
-                external_ip: form.ip.trim(),
-                ssh_port: Number(form.sshPort),
-                ssh_username: form.username.trim(),
-                ssh_password: form.password,
+        const { data, error } = await api.POST(
+            "/clients/{clientUuid}/servers",
+            {
+                params: { path: { clientUuid: clientUuid } },
+                body: {
+                    server_name: form.serverName.trim(),
+                    external_ip: form.ip.trim(),
+                    ssh_port: Number(form.sshPort),
+                    ssh_username: form.username.trim(),
+                    ssh_password: form.password,
+                },
             },
-        });
+        );
 
         if (error) {
             const msg =
@@ -366,7 +369,7 @@ export default function CreateServer() {
             apiResolved.current = true;
             apiSuccess.current = false;
         } else {
-            setCreatedUuid(data?.data?.uuid ?? null);
+            setCreatedUuid(data?.uuid ?? null);
             apiResolved.current = true;
             apiSuccess.current = true;
         }
@@ -706,7 +709,7 @@ export default function CreateServer() {
                                         icon={<ArrowRight size={14} />}
                                         onClick={() =>
                                             navigate(
-                                                `/servers/${createdUuid}?client=${clientUuid}`,
+                                                `/servers/${createdUuid}`,
                                             )
                                         }
                                     />
