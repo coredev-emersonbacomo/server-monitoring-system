@@ -53,7 +53,7 @@ class ServerController extends Controller
                     sshPort: $server->ssh_port,
                     sshUser: $data->ssh_username,
                     sshPassword: $data->ssh_password,
-                    serverId: $server->id,
+                    serverUUID: $server->uuid,
                     apiToken: $server->api_key,
                 );
 
@@ -206,31 +206,29 @@ class ServerController extends Controller
 
     public function ingestStats(ServerUpdatesData $data): array
     {
-        $serverInfo = DB::table('servers')
-            ->where('id', $data->server_id)
+        $server_id = (int) DB::table('servers')
+            ->where('uuid', $data->uuid)
             ->where('api_key', $data->token)
-            ->first();
+            ->value('id');
 
-        if (!$serverInfo) {
-            abort(401, 'Unauthorized or invalid server ID.');
-        }
+        abort_if(!$server_id, 401, 'Unauthorized or invalid server ID.');
 
         $timestamp = $data->timestamp;
 
         DB::table('server_updates')->insert([
-            'server_id'      => $data->server_id,
+            'server_id'      => $server_id,
             'cpu_usage'      => $data->cpu_usage,
             'memory_usage'   => $data->memory_usage,
             'storage'        => $data->storage,
             'uptime'         => $data->uptime,
-            'network_rbytes' => $data->network_rbytes,
-            'network_tbytes' => $data->network_tbytes,
+            'network_rbytes' => $data->network_rxbytes,
+            'network_tbytes' => $data->network_txbytes,
             'created_at'     => date('Y-m-d H:i:s', $timestamp),
             'updated_at'     => now(),
         ]);
 
         $rows = DB::table('server_updates')
-            ->where('server_id', $data->server_id)
+            ->where('uuid', $data->uuid)
             ->orderByDesc('created_at')
             ->limit(2)
             ->get();
@@ -238,19 +236,9 @@ class ServerController extends Controller
         $latest = $rows->first();
         $prev   = $rows->count() > 1 ? $rows->last() : null;
 
-        $point = $latest ? self::computeStatPoint($latest, $prev) : [];
+        $stats = $latest ? self::computeStatPoint($latest, $prev) : [];
 
-        $server = [
-            'uuid'             => $serverInfo->uuid,
-            'server_name'      => $serverInfo->server_name,
-            'device_name'      => $serverInfo->device_name,
-            'external_ip'      => $serverInfo->external_ip,
-            'cpu_cores'        => $serverInfo->cpu_cores ?? null,
-            'ram'              => $serverInfo->ram ?? null,
-            'operating_system' => $serverInfo->operating_system ?? null,
-        ];
-
-        ServerStatsUpdated::dispatch($data->server_id, $point, $server);
+        ServerStatsUpdated::dispatch($server_id, $stats);
 
         return ['success' => true, 'message' => 'Metrics recorded.'];
     }
@@ -291,7 +279,6 @@ class ServerController extends Controller
         // Assuming columns are named 'id', 'external_ip', 'port', 'ssh_username', 'ssh_password', 'api_key'
         $server = Server::where('uuid', $validated['uuid'])
             ->firstOrFail([
-                'id',
                 'external_ip',
                 'port',
                 'ssh_username',
@@ -306,7 +293,7 @@ class ServerController extends Controller
                     sshPort: $server->sshPort,
                     sshUser: Crypt::decryptString($server->ssh_username),
                     sshPassword: Crypt::decryptString($server->ssh_password),
-                    serverId: (string) $server->id,
+                    serverUUID: (string) $server->uuid,
                     apiToken: $server->apiToken,
                 );
 
