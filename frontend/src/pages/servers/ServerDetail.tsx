@@ -12,12 +12,12 @@ import type { components } from "@/api/schema.d";
 type StatPointData = components["schemas"]["StatPointData"];
 
 export default function ServerDetail() {
-    const { uuid } = useParams<{ uuid: string }>();
+    const { serverUuid } = useParams<{ serverUuid: string }>();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const clientFromUrl = searchParams.get("client");
 
-    const { data: initial, isLoading, isError } = useServer(uuid!);
+    const { data: initial, isLoading, isError } = useServer(serverUuid!);
     const [, setWsStatus] = useState<WsStatus>("connecting");
     const [liveStats, setLiveStats] = useState<StatPointData[]>([]);
 
@@ -31,7 +31,7 @@ export default function ServerDetail() {
         });
     }, []);
 
-    useServerSocket(Number(uuid), handleStats, setWsStatus);
+    useServerSocket(Number(serverUuid), handleStats, setWsStatus);
 
     const [time, setTime] = useState(new Date());
     useEffect(() => {
@@ -43,10 +43,20 @@ export default function ServerDetail() {
     useEffect(() => {
         if (!initial) {
             if (clientFromUrl === "all") {
-                setTrail([{ label: "", href: "" }, { label: "", href: "" }], true);
+                setTrail(
+                    [
+                        { label: "", href: "" },
+                        { label: "", href: "" },
+                    ],
+                    true,
+                );
             } else {
                 setTrail(
-                    [{ label: "", href: "" }, { label: "", href: "" }, { label: "", href: "" }],
+                    [
+                        { label: "", href: "" },
+                        { label: "", href: "" },
+                        { label: "", href: "" },
+                    ],
                     true,
                 );
             }
@@ -57,7 +67,10 @@ export default function ServerDetail() {
             setTrail(
                 [
                     { label: "Servers", href: "/servers" },
-                    { label: initial.server_name, href: `/servers/${initial.uuid}` },
+                    {
+                        label: initial.server_name,
+                        href: `/servers/${initial.uuid}`,
+                    },
                 ],
                 false,
             );
@@ -65,8 +78,14 @@ export default function ServerDetail() {
             setTrail(
                 [
                     { label: "Clients", href: "/clients" },
-                    { label: initial.client_name, href: `/clients/${clientFromUrl}` },
-                    { label: initial.server_name, href: `/servers/${initial.uuid}` },
+                    {
+                        label: initial.client_name,
+                        href: `/clients/${clientFromUrl}`,
+                    },
+                    {
+                        label: initial.server_name,
+                        href: `/servers/${initial.uuid}`,
+                    },
                 ],
                 false,
             );
@@ -74,13 +93,19 @@ export default function ServerDetail() {
             setTrail(
                 [
                     { label: "Clients", href: "/clients" },
-                    { label: initial.client_name, href: `/clients/${initial.client_id}` },
-                    { label: initial.server_name, href: `/servers/${initial.uuid}` },
+                    {
+                        label: initial.client_name,
+                        href: `/clients/${initial.client_id}`,
+                    },
+                    {
+                        label: initial.server_name,
+                        href: `/servers/${initial.uuid}`,
+                    },
                 ],
                 false,
             );
         }
-    }, [initial, setTrail, clientFromUrl, uuid]);
+    }, [initial, setTrail, clientFromUrl, serverUuid]);
 
     // ── Loading ──────────────────────────────────────────────────────────────
     if (isLoading) {

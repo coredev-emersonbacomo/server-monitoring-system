@@ -6,10 +6,16 @@
     "build": "npm run build -w frontend && vite build",
     "start": "concurrently --names \"dev,php,ws,schedule\" --prefix-colors \"green,yellow,cyan,blue\" \"npm run dev\" \"php artisan serve\" \"php artisan reverb:start\" \"php artisan schedule:work\"",
     "dev": "npm run dev -w frontend",
-    "gpush": "scripts\\git\\git-push.bat",
     "types": "php artisan scramble:clear && php artisan scramble:export --path=frontend/src/api/api.json && node frontend/scripts/patch-schema.js && npm run types -w frontend",
-    "resetdb": "php artisan migrate:fresh --seed && npm run loadtestfactory",
+
+    "test": "php artisan test",
+    "test:filter": "php artisan test --filter",
+    "test:auth": "php artisan test --filter=AuthTest",
+    "test:middleware": "php artisan test --filter=JwtAuthenticateTest",
+
+    "gpush": "scripts\\git\\git-push.bat",
     "pull": "git stash && git pull && git stash apply",
+    "resetdb": "php artisan migrate:fresh --seed && npm run loadtestfactory",
     "metricsmock": "php artisan server:update-metrics --daemon",
     "loadtestfactory": "php artisan tinker --execute=\"\\App\\Models\\User::factory(25)->create(); \\App\\Models\\Client::factory(10)->create(); \\App\\Models\\Server::factory(100)->create();\""
   },

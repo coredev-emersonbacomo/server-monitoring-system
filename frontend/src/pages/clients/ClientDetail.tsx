@@ -143,14 +143,12 @@ function SectionHeader({
 
 function ServerCard({
     server,
-    clientUuid,
 }: {
     server: components["schemas"]["ServerData"];
-    clientUuid: string;
 }) {
     return (
         <Link
-            to={`/servers/${server.uuid}?client=${clientUuid}`}
+            to={`/servers/${server.uuid}`}
             className="bg-card border border-border/60 rounded-xl shadow-sm p-5 flex flex-col gap-3 transition-shadow hover:shadow-md group"
         >
             <div className="flex items-start justify-between">
@@ -223,22 +221,22 @@ function ServerCardSkeleton() {
 
 export default function ClientDetail() {
     const navigate = useNavigate();
-    const { uuid } = useParams<{ uuid: string }>();
+    const { clientUuid } = useParams<{ clientUuid: string }>();
     const { setTrail } = useBreadcrumb();
 
     const [activeTab, setActiveTab] = useState<"details" | "secops">("details");
     const [mode, setMode] = useState<"view" | "create" | "edit">(
-        uuid ? "view" : "create",
+        clientUuid ? "view" : "create",
     );
     const showEdit = mode !== "view";
 
     // ── Data fetching ──────────────────────────────────────────────────────────
-    const { data: client, isLoading, isError } = useClient(uuid!);
+    const { data: client, isLoading, isError } = useClient(clientUuid!);
     const { data: servers = [], isLoading: serversLoading } = useClientServers(
-        uuid!,
+        clientUuid!,
     );
     const { data: currentSecops = [], isLoading: secopLoading } =
-        useClientSecops(uuid!);
+        useClientSecops(clientUuid!);
     const { data: allUsers = [], isLoading: usersLoading } = useUsers();
     const { data: settings } = useSettings();
     const secopLimit = Math.max(
@@ -248,10 +246,10 @@ export default function ClientDetail() {
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createClient = useCreateClient();
-    const updateClient = useUpdateClient(uuid!);
+    const updateClient = useUpdateClient(clientUuid!);
     const deleteClient = useDeleteClient();
-    const addSecop = useAddClientSecop(uuid!);
-    const removeSecop = useRemoveClientSecop(uuid!);
+    const addSecop = useAddClientSecop(clientUuid!);
+    const removeSecop = useRemoveClientSecop(clientUuid!);
 
     // ── Local state ────────────────────────────────────────────────────────────
     const [showDelete, setShowDelete] = useState(false);
@@ -262,7 +260,7 @@ export default function ClientDetail() {
     const defaultBanner = import.meta.env.VITE_DEFAULT_CLIENT_BANNER as string;
     const [bannerFile, setBannerFile] = useState<File | null>(null);
     const [bannerPreview, setBannerPreview] = useState<string | null>(
-        uuid ? null : defaultBanner,
+        clientUuid ? null : defaultBanner,
     );
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -282,7 +280,7 @@ export default function ClientDetail() {
 
     // Reset mode when navigating between clients / to create
     useEffect(() => {
-        const next = uuid ? "view" : "create";
+        const next = clientUuid ? "view" : "create";
         setMode(next);
         if (next === "create") {
             setForm({
@@ -296,7 +294,7 @@ export default function ClientDetail() {
             setBannerFile(null);
             setErrors({});
         }
-    }, [defaultBanner, uuid]);
+    }, [defaultBanner, clientUuid]);
 
     // Populate form when client data arrives
     useEffect(() => {
@@ -417,7 +415,7 @@ export default function ClientDetail() {
 
     const handleDelete = async () => {
         try {
-            await deleteClient.mutateAsync(uuid!);
+            await deleteClient.mutateAsync(clientUuid!);
             toast.success("Client deleted.");
             navigate("/clients");
         } catch {
@@ -658,44 +656,47 @@ export default function ClientDetail() {
 
                 {/* ── Content ── */}
                 <div className="flex-1 -mt-12 relative z-20 px-6 sm:px-8 lg:px-10 pb-8">
-                    <div className="max-w-3xl mx-auto flex flex-col gap-6">
-                        {/* ── Form card ── */}
-                        <form
-                            onSubmit={handleSubmit}
-                            className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8"
-                        >
-                            {/* Basic Information */}
-                            <div className="flex items-center justify-end mb-6">
-                                <div className="inline-flex rounded-lg border border-border bg-muted/30 p-1">
+                    <div className="max-w-3xl mx-auto relative flex flex-col gap-6">
+                        {/* Floating Tabs */}
+                        <div className="absolute -top-[44px] right-0 z-30">
+                            <div className="inline-flex rounded-t-xl border border-border border-b-0 bg-card p-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab("details")}
+                                    className={cn(
+                                        "px-4 py-2 text-sm rounded-md transition-colors cursor-pointer",
+                                        activeTab === "details"
+                                            ? "text-foreground cursor-default"
+                                            : "bg-background shadow text-muted-foreground cursor-pointer hover:text-foreground"
+                                    )}
+                                >
+                                    Details
+                                </button>
+
+                                {mode !== "create" && (
                                     <button
                                         type="button"
-                                        onClick={() => setActiveTab("details")}
+                                        onClick={() => setActiveTab("secops")}
                                         className={cn(
-                                            "px-4 py-2 text-sm rounded-md transition-colors",
-                                            activeTab === "details"
-                                                ? "bg-background shadow text-foreground"
-                                                : "text-muted-foreground hover:text-foreground"
+                                            "px-4 py-2 text-sm rounded-md transition-colors cursor-pointer",
+                                            activeTab === "secops"
+                                                ? "text-foreground cursor-default"
+                                                : "bg-background shadow text-muted-foreground cursor-pointer hover:text-foreground"
                                         )}
                                     >
-                                        Details
+                                        Assign SecOps
                                     </button>
-
-                                    {mode !== "create" && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setActiveTab("secops")}
-                                            className={cn(
-                                                "px-4 py-2 text-sm rounded-md transition-colors",
-                                                activeTab === "secops"
-                                                    ? "bg-background shadow text-foreground"
-                                                    : "text-muted-foreground hover:text-foreground"
-                                            )}
-                                        >
-                                            Assign SecOps
-                                        </button>
-                                    )}
-                                </div>
+                                )}
                             </div>
+                        </div>
+
+                        {/* Floating tabs */}
+                        <form
+                            onSubmit={handleSubmit}
+                            className="bg-card border border-border/60 rounded-tl-xl rounded-bl-xl rounded-br-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8"
+                        >
+                            {/* Basic Information */}
+
                             {activeTab === "details" && (
                                 <>
                                     <section className="space-y-4">
@@ -714,7 +715,9 @@ export default function ClientDetail() {
                                                     <Input
                                                         placeholder="New York, USA"
                                                         value={form.location}
-                                                        onChange={set("location")}
+                                                        onChange={set(
+                                                            "location",
+                                                        )}
                                                         className={cn(
                                                             errors.location &&
                                                             "border-destructive",
@@ -770,14 +773,19 @@ export default function ClientDetail() {
                                                 {showEdit ? (
                                                     <Input
                                                         placeholder="e.g. 09123456789"
-                                                        value={form.contact_number}
+                                                        value={
+                                                            form.contact_number
+                                                        }
                                                         onChange={(e) => {
-                                                            set("contact_number")({
+                                                            set(
+                                                                "contact_number",
+                                                            )({
                                                                 ...e,
                                                                 target: {
                                                                     ...e.target,
                                                                     value: formatPhoneNumber(
-                                                                        e.target.value,
+                                                                        e.target
+                                                                            .value,
                                                                     ),
                                                                 },
                                                             });
@@ -819,31 +827,34 @@ export default function ClientDetail() {
                                         </>
                                     )}
                                 </>
-
                             )}
 
-{activeTab === "secops" &&
-                            mode !== "create" &&
-                            client && (
-                                <>
+                            {activeTab === "secops" &&
+                                mode !== "create" &&
+                                client && (
+                                    <>
                                         <div className="flex items-center justify-between mb-6">
                                             <div>
                                                 <h2 className="text-base font-semibold text-foreground">
                                                     SecOps Assignments
                                                 </h2>
                                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                                    Manage SecOps personnel assigned to
-                                                    this client.
+                                                    Manage SecOps personnel
+                                                    assigned to this client.
                                                 </p>
                                             </div>
                                             <Button
+                                                type="button"
                                                 variant="outline"
                                                 size="sm"
                                                 icon={<Plus size={14} />}
                                                 label="Add SecOps"
-                                                onClick={() => setShowSecopDialog(true)}
+                                                onClick={() =>
+                                                    setShowSecopDialog(true)
+                                                }
                                                 disabled={
-                                                    currentSecops.length >= secopLimit
+                                                    currentSecops.length >=
+                                                    secopLimit
                                                 }
                                             />
                                         </div>
@@ -865,19 +876,36 @@ export default function ClientDetail() {
                                                         className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"
                                                     >
                                                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                                                <span className="text-xs font-medium text-primary">
-                                                                    {secop.first_name?.[0]?.toUpperCase() ??
-                                                                        "?"}
-                                                                </span>
+                                                            <div className="w-8 h-8 rounded-full overflow-hidden bg-muted shrink-0">
+                                                                <img
+                                                                    src={
+                                                                        secop.profile_picture_url
+                                                                    }
+                                                                    alt={`${secop.first_name} ${secop.last_name}`}
+                                                                    className="h-full w-full object-cover"
+                                                                    onError={(
+                                                                        e,
+                                                                    ) => {
+                                                                        (
+                                                                            e.target as HTMLImageElement
+                                                                        ).style.display =
+                                                                            "none";
+                                                                    }}
+                                                                />
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-sm font-medium text-foreground truncate">
-                                                                    {secop.first_name}{" "}
-                                                                    {secop.last_name}
+                                                                    {
+                                                                        secop.first_name
+                                                                    }{" "}
+                                                                    {
+                                                                        secop.last_name
+                                                                    }
                                                                 </p>
                                                                 <p className="text-xs text-muted-foreground truncate">
-                                                                    {secop.email}
+                                                                    {
+                                                                        secop.email
+                                                                    }
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -889,15 +917,16 @@ export default function ClientDetail() {
                                                                     {
                                                                         onSuccess:
                                                                             () => {
-                                                                                toast.success(
-                                                                                    `${secop.first_name} removed from client.`,
+                                                                                toast.error(
+                                                                                    `${secop.first_name} removed from ${client?.name}.`,
                                                                                 );
                                                                             },
-                                                                        onError: () => {
-                                                                            toast.error(
-                                                                                "Failed to remove SecOps.",
-                                                                            );
-                                                                        },
+                                                                        onError:
+                                                                            () => {
+                                                                                toast.error(
+                                                                                    "Failed to remove SecOps.",
+                                                                                );
+                                                                            },
                                                                     },
                                                                 )
                                                             }
@@ -925,8 +954,8 @@ export default function ClientDetail() {
                                                 </p>
                                             </div>
                                         )}
-                                </>
-                            )}
+                                    </>
+                                )}
                         </form>
 
                         {mode !== "create" && client && (
@@ -1060,7 +1089,6 @@ export default function ClientDetail() {
                                             <ServerCard
                                                 key={s.uuid}
                                                 server={s}
-                                                clientUuid={client.uuid!}
                                             />
                                         ))}
                                     </div>
@@ -1162,7 +1190,7 @@ export default function ClientDetail() {
                                                     addSecop.mutate(user.id, {
                                                         onSuccess: () => {
                                                             toast.success(
-                                                                `${user.first_name} added to client.`,
+                                                                `${user.first_name} added to ${client?.name}.`,
                                                             );
                                                             setShowSecopDialog(
                                                                 false,
@@ -1186,10 +1214,21 @@ export default function ClientDetail() {
                                                 className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 text-left border border-border/40 hover:border-border"
                                             >
                                                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                                    <span className="text-xs font-medium text-primary">
-                                                        {user.first_name?.[0]?.toUpperCase() ??
-                                                            "?"}
-                                                    </span>
+                                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-muted shrink-0">
+                                                        <img
+                                                            src={
+                                                                user.profile_picture_url
+                                                            }
+                                                            alt={`${user.first_name} ${user.last_name}`}
+                                                            className="h-full w-full object-cover"
+                                                            onError={(e) => {
+                                                                (
+                                                                    e.target as HTMLImageElement
+                                                                ).style.display =
+                                                                    "none";
+                                                            }}
+                                                        />
+                                                    </div>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-foreground truncate">

@@ -13,6 +13,7 @@ use App\Events\ServerStatsUpdated;
 use App\Models\Client;
 use App\Models\Server;
 use Illuminate\Http\JsonResponse;
+use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -21,16 +22,16 @@ use Infrastructure\Service\InstallerService;
 
 class ServerController extends Controller
 {
-    public function index(string $client)
+    public function index(string $clientUuid)
     {
-        $clientModel = Client::where('uuid', $client)->firstOrFail();
+        $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
         $servers = Server::where('client_id', $clientModel->id)->get();
         return ServerData::collect($servers->map(fn(Server $s) => ServerData::fromModel($s)));
     }
 
-    public function store(CreateServerData $data, string $client): ServerData
+    public function store(CreateServerData $data, string $clientUuid): ServerData
     {
-        $clientModel = Client::where('uuid', $client)->firstOrFail();
+        $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
         $clientId = $clientModel->id;
 
         try {
@@ -67,19 +68,19 @@ class ServerController extends Controller
         }
     }
 
-    public function show(string $client, string $server): ServerData
+    public function show(string $clientUuid, string $serverUuid): ServerData
     {
-        $serverModel = Server::where('uuid', $server)
-            ->whereHas('client', fn($q) => $q->where('uuid', $client))
+        $serverModel = Server::where('uuid', $serverUuid)
+            ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
             ->firstOrFail();
 
         return ServerData::fromModel($serverModel);
     }
 
-    public function update(UpdateServerData $data, string $client, string $server): ServerData
+    public function update(UpdateServerData $data, string $clientUuid, string $serverUuid): ServerData
     {
-        $serverModel = Server::where('uuid', $server)
-            ->whereHas('client', fn($q) => $q->where('uuid', $client))
+        $serverModel = Server::where('uuid', $serverUuid)
+            ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
             ->firstOrFail();
 
         $updateData = $data->toArray();
@@ -105,10 +106,10 @@ class ServerController extends Controller
         return ServerData::fromModel($serverModel);
     }
 
-    public function destroy(string $client, string $server): ServerData
+    public function destroy(string $clientUuid, string $serverUuid): ServerData
     {
-        $serverModel = Server::where('uuid', $server)
-            ->whereHas('client', fn($q) => $q->where('uuid', $client))
+        $serverModel = Server::where('uuid', $serverUuid)
+            ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
             ->firstOrFail();
 
         $serverModel->delete();
@@ -116,7 +117,8 @@ class ServerController extends Controller
         return ServerData::fromModel($serverModel);
     }
 
-    public function listAll(Request $request): \Illuminate\Support\Collection
+    #[QueryParameter('client_uuid', type: 'string', description: 'Filter servers by client UUID')]
+    public function listAll(Request $request)
     {
         $onlineThreshold  = now()->subMinutes(5);
         $warningThreshold = now()->subMinutes(15);
@@ -163,9 +165,9 @@ class ServerController extends Controller
         return ServerData::collect($query->get());
     }
 
-    public function showWithStats(string $uuid): ServerData
+    public function showWithStats(string $serverUuid): ServerData
     {
-        $server = DB::table('servers')->where('uuid', $uuid)->first();
+        $server = DB::table('servers')->where('uuid', $serverUuid)->first();
         if (!$server) {
             abort(404, 'Server not found.');
         }
