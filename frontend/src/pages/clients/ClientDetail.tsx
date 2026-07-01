@@ -221,7 +221,7 @@ function ServerCardSkeleton() {
 
 export default function ClientDetail() {
     const navigate = useNavigate();
-    const { clientUuid } = useParams<{ clientUuid: string }>();
+    const { uuid: clientUuid } = useParams<{ uuid: string }>();
     const { setTrail } = useBreadcrumb();
 
     const [activeTab, setActiveTab] = useState<"details" | "secops">("details");
@@ -658,7 +658,7 @@ export default function ClientDetail() {
                 <div className="flex-1 -mt-12 relative z-20 px-6 sm:px-8 lg:px-10 pb-8">
                     <div className="max-w-3xl mx-auto relative flex flex-col gap-6">
                         {/* Floating Tabs */}
-                        <div className="absolute -top-[44px] right-0 z-30">
+                        <div className="absolute -top-11 right-0 z-30">
                             <div className="inline-flex rounded-t-xl border border-border border-b-0 bg-card p-1">
                                 <button
                                     type="button"

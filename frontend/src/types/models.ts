@@ -16,7 +16,6 @@ export type UploadPurpose = components["schemas"]["UploadPurpose"];
 export type UserData = components["schemas"]["UserData"];
 
 // --- Inlined Operation Payloads ---
-export type ServerStorePayload = NonNullable<operations["server.store"]["requestBody"]>["content"]["application/json"];
 export type ClientStorePayload = NonNullable<operations["client.store"]["requestBody"]>["content"]["multipart/form-data"];
 export type ClientUpdatePayload = NonNullable<operations["client.update"]["requestBody"]>["content"]["application/json"];
 export type ClientAddSecopPayload = NonNullable<operations["client.addSecop"]["requestBody"]>["content"]["application/json"];
