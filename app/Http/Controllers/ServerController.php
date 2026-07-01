@@ -53,7 +53,7 @@ class ServerController extends Controller
                     sshPort: $server->ssh_port,
                     sshUser: $data->ssh_username,
                     sshPassword: $data->ssh_password,
-                    serverId: $server->id,
+                    serverUUID: $server->uuid,
                     apiToken: $server->api_key,
                 );
 
@@ -279,7 +279,6 @@ class ServerController extends Controller
         // Assuming columns are named 'id', 'external_ip', 'port', 'ssh_username', 'ssh_password', 'api_key'
         $server = Server::where('uuid', $validated['uuid'])
             ->firstOrFail([
-                'id',
                 'external_ip',
                 'port',
                 'ssh_username',
@@ -294,7 +293,7 @@ class ServerController extends Controller
                     sshPort: $server->sshPort,
                     sshUser: Crypt::decryptString($server->ssh_username),
                     sshPassword: Crypt::decryptString($server->ssh_password),
-                    serverId: (string) $server->id,
+                    serverUUID: (string) $server->uuid,
                     apiToken: $server->apiToken,
                 );
 
