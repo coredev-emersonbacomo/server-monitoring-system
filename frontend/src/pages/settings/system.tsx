@@ -52,7 +52,7 @@ export default function SystemSettings() {
     useEffect(() => {
         setTrail([
             { label: "Settings", href: "/settings" },
-            { label: "System Settings", href: "/settings/system" },
+            { label: "System Settings" },
         ]);
     }, [setTrail]);
 

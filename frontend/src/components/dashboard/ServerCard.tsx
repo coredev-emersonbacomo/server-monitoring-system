@@ -1,13 +1,7 @@
 import { memo } from "react";
-import {
-    Wifi,
-    WifiOff,
-    AlertTriangle,
-} from "lucide-react";
+import { Wifi, WifiOff, AlertTriangle } from "lucide-react";
 import { ServerStatChart } from "./ServerStatChart";
-import type { components } from "@/api/schema.d";
-
-type ServerDetailData = components["schemas"]["ServerData"];
+import type { ServerData } from "@/types/models";
 
 const STATUS_CONFIG = {
     online: {
@@ -67,7 +61,7 @@ const CHARTS = [
 ];
 
 interface ServerCardProps {
-    server: ServerDetailData;
+    server: ServerData;
 }
 
 export const ServerCard = memo(function ServerCard({

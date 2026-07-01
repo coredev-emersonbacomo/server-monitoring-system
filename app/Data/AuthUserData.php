@@ -8,7 +8,7 @@ use Spatie\LaravelData\Data;
 class AuthUserData extends Data
 {
     public function __construct(
-        public int $id,
+        public string $uuid,
         public string $first_name,
         public string $last_name,
         public string $email,
@@ -21,7 +21,7 @@ class AuthUserData extends Data
     public static function fromModel(User $user): self
     {
         return new self(
-            id: $user->id,
+            uuid: $user->uuid,
             first_name: $user->first_name,
             last_name: $user->last_name,
             email: $user->email,

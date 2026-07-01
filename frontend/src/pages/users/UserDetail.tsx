@@ -251,15 +251,12 @@ export default function UserDetail() {
         if (mode === "create") {
             setTrail([
                 { label: "Users", href: "/users" },
-                { label: "Create", href: "/users/create" },
+                { label: "Create" },
             ]);
         } else if (user) {
             setTrail([
                 { label: "Users", href: "/users" },
-                {
-                    label: `${user.first_name} ${user.last_name}`,
-                    href: `/users/${user.id}`,
-                },
+                { label: `${user.first_name} ${user.last_name}` },
             ]);
         }
     }, [setTrail, mode, user]);
