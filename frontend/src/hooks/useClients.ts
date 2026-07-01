@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
-import type { components } from "@/api/schema.d";
 
 export const useClients = () => {
     return useQuery({
@@ -16,9 +15,9 @@ export const useClients = () => {
 export const useClient = (clientUuid: string) => {
     return useQuery({
         queryKey: ["clients", clientUuid],
-        queryFn: async (): Promise<components["schemas"]["ClientData"]> => {
-            const { data, error } = await api.GET("/clients/{uuid}", {
-                params: { path: { uuid: clientUuid } },
+        queryFn: async () => {
+            const { data, error } = await api.GET("/clients/{clientUuid}", {
+                params: { path: { clientUuid } },
             });
             if (error) throw error;
             return data;
@@ -49,8 +48,8 @@ export const useUpdateClient = (clientUuid: string) => {
 
     return useMutation({
         mutationFn: async (formData: FormData) => {
-            const { data, error } = await api.PUT("/clients/{uuid}", {
-                params: { path: { uuid: clientUuid } },
+            const { data, error } = await api.PUT("/clients/{clientUuid}", {
+                params: { path: { clientUuid } },
                 body: formData as never,
             });
             if (error) throw error;
@@ -58,7 +57,9 @@ export const useUpdateClient = (clientUuid: string) => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["clients"] });
-            queryClient.invalidateQueries({ queryKey: ["clients", clientUuid] });
+            queryClient.invalidateQueries({
+                queryKey: ["clients", clientUuid],
+            });
         },
     });
 };
@@ -66,12 +67,15 @@ export const useUpdateClient = (clientUuid: string) => {
 export const useClientServers = (clientUuid: string) => {
     return useQuery({
         queryKey: ["clients", clientUuid, "servers"],
-        queryFn: async (): Promise<components["schemas"]["ServerData"][]> => {
-            const { data, error } = await api.GET("/clients/{client}/servers", {
-                params: { path: { client: clientUuid } },
-            });
+        queryFn: async () => {
+            const { data, error } = await api.GET(
+                "/clients/{clientUuid}/servers",
+                {
+                    params: { path: { clientUuid } },
+                },
+            );
             if (error) throw error;
-            return data as components["schemas"]["ServerData"][];
+            return data;
         },
         enabled: !!clientUuid,
     });
@@ -82,8 +86,8 @@ export const useDeleteClient = () => {
 
     return useMutation({
         mutationFn: async (clientUuid: string) => {
-            const { error } = await api.DELETE("/clients/{uuid}", {
-                params: { path: { uuid: clientUuid } },
+            const { error } = await api.DELETE("/clients/{clientUuid}", {
+                params: { path: { clientUuid } },
             });
             if (error) throw error;
         },
@@ -96,12 +100,15 @@ export const useDeleteClient = () => {
 export const useClientSecops = (clientUuid: string) => {
     return useQuery({
         queryKey: ["clients", clientUuid, "secops"],
-        queryFn: async (): Promise<components["schemas"]["SecopsUserData"][]> => {
-            const { data, error } = await api.GET("/clients/{client}/secops", {
-                params: { path: { client: clientUuid } },
-            });
+        queryFn: async () => {
+            const { data, error } = await api.GET(
+                "/clients/{clientUuid}/secops",
+                {
+                    params: { path: { clientUuid } },
+                },
+            );
             if (error) throw error;
-            return (data ?? []) as components["schemas"]["SecopsUserData"][];
+            return data ?? [];
         },
         enabled: !!clientUuid,
     });
@@ -111,17 +118,24 @@ export const useAddClientSecop = (clientUuid: string) => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (userId: number) => {
-            const { data, error } = await api.POST("/clients/{client}/secops", {
-                params: { path: { client: clientUuid } },
-                body: { user_id: userId },
-            });
+        mutationFn: async (userUuid: string) => {
+            const { data, error } = await api.POST(
+                "/clients/{clientUuid}/secops",
+                {
+                    params: { path: { clientUuid } },
+                    body: { user_uuid: userUuid },
+                },
+            );
             if (error) throw error;
             return data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["clients", clientUuid, "secops"] });
-            queryClient.invalidateQueries({ queryKey: ["clients", clientUuid] });
+            queryClient.invalidateQueries({
+                queryKey: ["clients", clientUuid, "secops"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["clients", clientUuid],
+            });
         },
     });
 };
@@ -130,15 +144,22 @@ export const useRemoveClientSecop = (clientUuid: string) => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (userId: number) => {
-            const { error } = await api.DELETE("/clients/{client}/secops/{userId}", {
-                params: { path: { client: clientUuid, userId } },
-            });
+        mutationFn: async (userUuid: string) => {
+            const { error } = await api.DELETE(
+                "/clients/{clientUuid}/secops/{userUuid}",
+                {
+                    params: { path: { clientUuid, userUuid } },
+                },
+            );
             if (error) throw error;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["clients", clientUuid, "secops"] });
-            queryClient.invalidateQueries({ queryKey: ["clients", clientUuid] });
+            queryClient.invalidateQueries({
+                queryKey: ["clients", clientUuid, "secops"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["clients", clientUuid],
+            });
         },
     });
 };

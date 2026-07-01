@@ -9,7 +9,7 @@ use Illuminate\Support\Carbon;
 class UserData extends Data
 {
     public function __construct(
-        public int $id,
+        public string $uuid,
         public string $first_name,
         public string $last_name,
         public string $email,
@@ -18,14 +18,14 @@ class UserData extends Data
         public ?string $last_login,
         public string $profile_picture_url,
         public string $record_status,
-        public ?Carbon $created_at,
-        public ?Carbon $updated_at,
+        public Carbon $created_at,
+        public Carbon $updated_at,
     ) {}
 
     public static function fromModel(User $user): self
     {
         return new self(
-            id: $user->id,
+            uuid: $user->uuid,
             first_name: $user->first_name,
             last_name: $user->last_name,
             email: $user->email,

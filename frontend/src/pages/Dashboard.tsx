@@ -394,7 +394,8 @@ export default function Dashboard() {
                                     const border =
                                         SEVERITY_BORDER[action.severity];
                                     const isMine =
-                                        user && action.assigned_to === user.id;
+                                        user &&
+                                        action.assigned_to_uuid === user.uuid;
 
                                     return (
                                         <div
@@ -419,11 +420,15 @@ export default function Dashboard() {
                                                 <div
                                                     className="flex-1 min-w-0 cursor-pointer"
                                                     onClick={() => {
-                                                        if (action.server_uuid) {
+                                                        if (
+                                                            action.server_uuid
+                                                        ) {
                                                             navigate(
                                                                 `/servers/${action.server_uuid}`,
                                                             );
-                                                        } else if (action.client_uuid) {
+                                                        } else if (
+                                                            action.client_uuid
+                                                        ) {
                                                             navigate(
                                                                 `/clients/${action.client_uuid}`,
                                                             );
@@ -555,17 +560,17 @@ export default function Dashboard() {
                                                           );
                                                       return (
                                                           <div
-                                                               key={
-                                                                   item.server_uuid
-                                                               }
-                                                               className={cn(
-                                                                   "group cursor-pointer",
-                                                               )}
-                                                               onClick={() =>
-                                                                   navigate(
-                                                                       `/servers/${item.server_uuid}`,
-                                                                   )
-                                                               }
+                                                              key={
+                                                                  item.server_uuid
+                                                              }
+                                                              className={cn(
+                                                                  "group cursor-pointer",
+                                                              )}
+                                                              onClick={() =>
+                                                                  navigate(
+                                                                      `/servers/${item.server_uuid}`,
+                                                                  )
+                                                              }
                                                           >
                                                               <div className="flex items-center justify-between text-xs mb-1">
                                                                   <div className="flex items-center gap-1.5 min-w-0">

@@ -26,13 +26,13 @@ class ClientData extends Data
             uuid: $client->uuid,
             name: $client->name,
             description: $client->description ?? '',
-            location: $client->location ?? '',
+            location: $client->location,
             email: $client->email,
-            contact_number: (string) ($client->contact_number ?? ''),
-            banner_image_url: $client->banner_image_url,
+            contact_number: $client->contact_number,
+            banner_image_url: $client->banner_image_url ?? '',
             servers_count: $client->servers_count,
-            created_at: $client->created_at?->toIso8601String() ?? '',
-            updated_at: $client->updated_at?->toIso8601String() ?? '',
+            created_at: $client->created_at->toIso8601String(),
+            updated_at: $client->updated_at->toIso8601String(),
         );
     }
 }

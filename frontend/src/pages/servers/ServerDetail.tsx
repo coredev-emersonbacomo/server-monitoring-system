@@ -7,15 +7,13 @@ import { ServerCard } from "@/components/dashboard/ServerCard";
 import { ChartZoomProvider } from "@/contexts/ChartZoomContext";
 import { Button } from "@/components/ui/button";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
-import type { components } from "@/api/schema.d";
-
-type StatPointData = components["schemas"]["StatPointData"];
+import type { StatPointData } from "@/types/models";
 
 export default function ServerDetail() {
     const { uuid } = useParams<{ uuid: string }>();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const clientFromUrl = searchParams.get("client");
+    const allClient = searchParams.get("client") === "all";
 
     const { data: initial, isLoading, isError } = useServer(uuid!);
     const [, setWsStatus] = useState<WsStatus>("connecting");
@@ -42,41 +40,19 @@ export default function ServerDetail() {
     const { setTrail } = useBreadcrumb();
     useEffect(() => {
         if (!initial) {
-            if (clientFromUrl === "all") {
-                setTrail(
-                    [
-                        { label: "", href: "" },
-                        { label: "", href: "" },
-                    ],
-                    true,
-                );
+            if (allClient) {
+                setTrail([{ label: "" }, { label: "" }], true);
             } else {
-                setTrail(
-                    [
-                        { label: "", href: "" },
-                        { label: "", href: "" },
-                        { label: "", href: "" },
-                    ],
-                    true,
-                );
+                setTrail([{ label: "" }, { label: "" }, { label: "" }], true);
             }
             return;
         }
 
-        if (clientFromUrl === "all") {
+        if (allClient) {
             setTrail(
                 [
                     { label: "Servers", href: "/servers" },
-                    { label: initial.server_name, href: `/servers/${initial.uuid}` },
-                ],
-                false,
-            );
-        } else if (clientFromUrl) {
-            setTrail(
-                [
-                    { label: "Clients", href: "/clients" },
-                    { label: initial.client_name, href: `/clients/${clientFromUrl}` },
-                    { label: initial.server_name, href: `/servers/${initial.uuid}` },
+                    { label: initial.server_name },
                 ],
                 false,
             );
@@ -84,13 +60,16 @@ export default function ServerDetail() {
             setTrail(
                 [
                     { label: "Clients", href: "/clients" },
-                    { label: initial.client_name, href: `/clients/${initial.client_id}` },
-                    { label: initial.server_name, href: `/servers/${initial.uuid}` },
+                    {
+                        label: initial.client_name,
+                        href: `/clients/${initial.client_uuid}`,
+                    },
+                    { label: initial.server_name },
                 ],
                 false,
             );
         }
-    }, [initial, setTrail, clientFromUrl, uuid]);
+    }, [initial, setTrail, uuid, allClient]);
 
     // ── Loading ──────────────────────────────────────────────────────────────
     if (isLoading) {

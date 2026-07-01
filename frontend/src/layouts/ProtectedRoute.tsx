@@ -5,7 +5,8 @@ import {
     Users,
     Landmark,
     type LucideProps,
-    ClipboardClock,
+    FileText,
+    Terminal,
 } from "lucide-react";
 import { SidebarNav } from "@/components/SidebarNav";
 import { BreadcrumbProvider } from "@/contexts/BreadCrumbContext";
@@ -28,7 +29,8 @@ export function ProtectedRoute() {
             ),
         },
         { name: "Users", href: "/users", icon: Users },
-        { name: "Logs", href: "/logs", icon: ClipboardClock },
+        { name: "Server Logs", href: "/server-logs", icon: FileText },
+        { name: "System Logs", href: "/system-logs", icon: Terminal },
         { name: "Settings", href: "/settings", icon: Settings },
     ];
 
