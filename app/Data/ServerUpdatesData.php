@@ -12,7 +12,7 @@ class ServerUpdatesData extends Data
 {
     public function __construct(
         #[Required]
-        public int $server_id,
+        public string $uuid,
 
         #[Required]
         public string $token,
@@ -21,25 +21,25 @@ class ServerUpdatesData extends Data
         public int $timestamp,
 
         // Tell Spatie to look inside the 'cpu' array for 'load1'
-        #[Required,  MapInputName('cpu.load1')]
+        #[Required, MapInputName('cpu.load1')]
         public float $cpu_usage,
 
         // Tell Spatie to look inside the 'memory' array for 'percent'
-        #[Required,  MapInputName('memory.percent')]
+        #[Required, MapInputName('memory.percent')]
         public float $memory_usage,
 
         // Tell Spatie to look inside the 'disk' array for 'percent'
-        #[Required,  MapInputName('disk.percent')]
+        #[Required, MapInputName('disk.percent')]
         public float $storage,
 
         #[Required]
         public int $uptime,
 
         // We can handle the network totals inside a custom mapping method below
-        #[Required]
-        public int $network_rbytes,
-        #[Required]
-        public int $network_tbytes
+        #[Required, MapInputName('network.0.rx_bytes')]
+        public int $network_rxbytes,
+        #[Required, MapInputName('network.0.tx_bytes')]
+        public int $network_txbytes
     ) {}
 
     /**

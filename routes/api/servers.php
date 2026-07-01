@@ -16,8 +16,8 @@ Route::middleware('auth:jwt')->group(function () {
     });
 
     Route::get('/servers/{uuid}', [ServerController::class, 'showWithStats']);
-    Route::post('/server/stats', [ServerController::class, 'ingestStats']);
 });
 
 // No need to have middle as agent have the API key
+Route::post('/server/stats', [ServerController::class, 'ingestStats']);
 Route::post('/server/specs', [ServerController::class, 'updateServerSpecs']);
