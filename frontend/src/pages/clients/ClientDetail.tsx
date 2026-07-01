@@ -666,8 +666,8 @@ export default function ClientDetail() {
                                     className={cn(
                                         "px-4 py-2 text-sm rounded-md transition-colors cursor-pointer",
                                         activeTab === "details"
-                                            ? "bg-background shadow text-foreground cursor-default"
-                                            : "text-muted-foreground hover:text-foreground cursor-pointer"
+                                            ? "text-foreground cursor-default"
+                                            : "bg-background shadow text-muted-foreground cursor-pointer hover:text-foreground"
                                     )}
                                 >
                                     Details
@@ -680,8 +680,8 @@ export default function ClientDetail() {
                                         className={cn(
                                             "px-4 py-2 text-sm rounded-md transition-colors cursor-pointer",
                                             activeTab === "secops"
-                                                ? "bg-background shadow text-foreground cursor-default"
-                                                : "text-muted-foreground hover:text-foreground cursor-pointer"
+                                                ? "text-foreground cursor-default"
+                                                : "bg-background shadow text-muted-foreground cursor-pointer hover:text-foreground"
                                         )}
                                     >
                                         Assign SecOps
