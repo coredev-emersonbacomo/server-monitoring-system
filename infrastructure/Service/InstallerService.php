@@ -10,7 +10,7 @@ class InstallerService
         private string $sshHost,
         private string $sshUser,
         private string $sshPassword,
-        private string $serverId,
+        private string $serverUUID,
         private ?string $apiToken = null,
         // Default port 22
         private int    $sshPort = 22,
@@ -45,7 +45,7 @@ class InstallerService
             sprintf(
                 'echo "%s" | sudo -S bash /tmp/install.sh %s %s',
                 escapeshellarg($this->sshPassword),
-                escapeshellarg($this->serverId),
+                escapeshellarg($this->serverUUID),
                 escapeshellarg($this->apiToken)
             )
         );
