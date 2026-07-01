@@ -173,7 +173,7 @@ export default function ClientDetail() {
     // ── Validation ─────────────────────────────────────────────────────────────
     const schema = z.object({
         name: z.string().trim().min(2, "Minimum 2 characters"),
-        description: z.string().optional(),
+        description: z.string().max(255, "Maximum 255 characters").optional(),
         location: z.string().trim().min(2, "Minimum 2 characters"),
         email: z.email("Invalid email address").trim().min(1, "Required"),
         contact_number: z.string().trim().min(5, "Minimum 5 characters"),
@@ -476,8 +476,9 @@ export default function ClientDetail() {
                                         onChange={set("description")}
                                         placeholder="Brief description about the client..."
                                         rows={2}
+                                        maxLength={255}
                                         className={cn(
-                                            "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none",
+                                            "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none break-all",
                                             errors.description &&
                                                 "border-destructive",
                                         )}
@@ -485,9 +486,11 @@ export default function ClientDetail() {
                                 </div>
                             ) : (
                                 client?.description && (
-                                    <p className="text-sm text-muted-foreground">
-                                        {client.description}
-                                    </p>
+                                    <div className="w-full max-w-full px-6">
+                                        <p className="text-sm text-muted-foreground/85 break-all whitespace-pre-wrap">
+                                            {client.description}
+                                        </p>
+                                    </div>
                                 )
                             )}
                         </div>

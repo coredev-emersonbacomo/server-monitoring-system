@@ -7,6 +7,9 @@ import {
     Filter,
     ChevronDown,
     Loader2,
+    Phone,
+    Mail,
+    MapPin,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useClients, useDeleteClient } from "@/hooks/useClients";
@@ -109,24 +112,10 @@ function ClientCard({
 
                 <div className="text-center w-full flex flex-col items-center gap-1.5">
                     {client.name}
-
-                    <p className="text-muted-foreground text-sm">
-                        {client.email}
-                    </p>
-
-                    {client.location && (
-                        <p className="text-muted-foreground text-xs">
-                            {client.location}
+                    <div className="flex flex-col items-center gap-1.5 mt-1 text-center w-full">
+                        <p className="text-sm text-muted-foreground text-center line-clamp-3 break-all">
+                            {client.description}
                         </p>
-                    )}
-
-                    <div className="flex items-center gap-1.5 text-muted-foreground text-sm mt-1">
-                        <Landmark size={16} className="text-muted-foreground" />
-                        <span>
-                            {client.contact_number
-                                .replace(/\D/g, "")
-                                .replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")}
-                        </span>
                     </div>
                 </div>
             </div>
@@ -139,9 +128,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 // heights after mount, this just avoids a big layout jump on first render.
 const CARD_ESTIMATE_PX = 300;
 
-function useColumnCount(
-    scrollRef: React.RefObject<HTMLElement | null>,
-) {
+function useColumnCount(scrollRef: React.RefObject<HTMLElement | null>) {
     const [cols, setCols] = useState(3);
 
     useEffect(() => {
@@ -344,8 +331,10 @@ export default function Clients() {
                 description="Manage client accounts and their associated servers."
             />
 
-            <main ref={mainRef} className="py-6 w-full flex-1 min-h-0 flex flex-col gap-5 overflow-y-auto">
-
+            <main
+                ref={mainRef}
+                className="py-6 w-full flex-1 min-h-0 flex flex-col gap-5 overflow-y-auto"
+            >
                 {/* ── Toolbar ── */}
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -529,6 +518,6 @@ export default function Clients() {
                     </DialogContent>
                 </Dialog>
             </main>
-        </div >
+        </div>
     );
 }

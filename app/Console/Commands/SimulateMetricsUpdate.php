@@ -59,12 +59,12 @@ class SimulateMetricsUpdate extends Command
 
             ServerUpdate::create([
                 'server_id' => $server->id,
-                'cpu_usage' => rand(500, 9500) / 100,
-                'memory_usage' => rand(3000, 8500) / 100,
-                'storage' => rand(4000, 9000) / 100,
-                'uptime' => rand(3600, 86400),
-                'network_rbytes' => rand(10000, 999999),
-                'network_tbytes' => rand(10000, 999999),
+                'cpu_usage' => rand(50, 950) / 100,
+                'memory_usage' => rand(30, 850) / 100,
+                'storage' => rand(40, 900) / 100,
+                'uptime' => rand(360, 8640),
+                'network_rbytes' => rand(1, 99999),
+                'network_tbytes' => rand(1, 99999),
                 'created_at' => now(),
             ]);
         }
