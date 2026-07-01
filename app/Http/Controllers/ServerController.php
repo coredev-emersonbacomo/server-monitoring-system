@@ -11,7 +11,10 @@ use App\Data\UpdateServerData;
 use App\Events\ServerStatsUpdated;
 use App\Models\Client;
 use App\Models\Server;
+<<<<<<< Updated upstream
 use Dedoc\Scramble\Attributes\QueryParameter;
+=======
+>>>>>>> Stashed changes
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -20,16 +23,28 @@ use Infrastructure\Service\InstallerService;
 
 class ServerController extends Controller
 {
+<<<<<<< Updated upstream
     public function index(string $clientUuid)
     {
         $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
+=======
+    public function index(string $client)
+    {
+        $clientModel = Client::where('uuid', $client)->firstOrFail();
+>>>>>>> Stashed changes
         $servers = Server::where('client_id', $clientModel->id)->get();
         return ServerData::collect($servers->map(fn(Server $s) => ServerData::fromModel($s)));
     }
 
+<<<<<<< Updated upstream
     public function store(CreateServerData $data, string $clientUuid): ServerData
     {
         $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
+=======
+    public function store(CreateServerData $data, string $client): ServerData
+    {
+        $clientModel = Client::where('uuid', $client)->firstOrFail();
+>>>>>>> Stashed changes
         $clientId = $clientModel->id;
 
         try {
@@ -66,19 +81,33 @@ class ServerController extends Controller
         }
     }
 
+<<<<<<< Updated upstream
     public function show(string $clientUuid, string $serverUuid): ServerData
     {
         $serverModel = Server::where('uuid', $serverUuid)
             ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
+=======
+    public function show(string $client, string $server): ServerData
+    {
+        $serverModel = Server::where('uuid', $server)
+            ->whereHas('client', fn($q) => $q->where('uuid', $client))
+>>>>>>> Stashed changes
             ->firstOrFail();
 
         return ServerData::fromModel($serverModel);
     }
 
+<<<<<<< Updated upstream
     public function update(UpdateServerData $data, string $clientUuid, string $serverUuid): ServerData
     {
         $serverModel = Server::where('uuid', $serverUuid)
             ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
+=======
+    public function update(UpdateServerData $data, string $client, string $server): ServerData
+    {
+        $serverModel = Server::where('uuid', $server)
+            ->whereHas('client', fn($q) => $q->where('uuid', $client))
+>>>>>>> Stashed changes
             ->firstOrFail();
 
         $updateData = $data->toArray();
@@ -104,10 +133,17 @@ class ServerController extends Controller
         return ServerData::fromModel($serverModel);
     }
 
+<<<<<<< Updated upstream
     public function destroy(string $clientUuid, string $serverUuid): ServerData
     {
         $serverModel = Server::where('uuid', $serverUuid)
             ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
+=======
+    public function destroy(string $client, string $server): ServerData
+    {
+        $serverModel = Server::where('uuid', $server)
+            ->whereHas('client', fn($q) => $q->where('uuid', $client))
+>>>>>>> Stashed changes
             ->firstOrFail();
 
         $serverModel->delete();
@@ -115,8 +151,12 @@ class ServerController extends Controller
         return ServerData::fromModel($serverModel);
     }
 
+<<<<<<< Updated upstream
     #[QueryParameter('client_uuid', type: 'string', description: 'Filter servers by client UUID')]
     public function listAll(Request $request)
+=======
+    public function listAll(Request $request): \Illuminate\Support\Collection
+>>>>>>> Stashed changes
     {
         $onlineThreshold  = now()->subMinutes(5);
         $warningThreshold = now()->subMinutes(15);
@@ -161,9 +201,15 @@ class ServerController extends Controller
         return ServerData::collect($query->get());
     }
 
+<<<<<<< Updated upstream
     public function showWithStats(string $serverUuid): ServerData
     {
         $server = DB::table('servers')->where('uuid', $serverUuid)->first();
+=======
+    public function showWithStats(string $uuid): ServerData
+    {
+        $server = DB::table('servers')->where('uuid', $uuid)->first();
+>>>>>>> Stashed changes
         if (!$server) {
             abort(404, 'Server not found.');
         }

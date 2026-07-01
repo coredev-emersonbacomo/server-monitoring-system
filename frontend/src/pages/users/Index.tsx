@@ -58,7 +58,7 @@ const Users = () => {
     const deleteUser = useDeleteUser();
 
     const [deleteTarget, setDeleteTarget] = useState<{
-        id: number;
+        uuid: string;
         name: string;
     } | null>(null);
     const [search, setSearch] = useState("");
@@ -77,11 +77,11 @@ const Users = () => {
         });
     }, [search, filter, users]);
 
-    const handleDeleteRequest = (id: number) => {
-        const user = users.find((u) => u.id === id);
+    const handleDeleteRequest = (uuid: string) => {
+        const user = users.find((u) => String(u.id) === uuid);
         if (user)
             setDeleteTarget({
-                id,
+                uuid,
                 name: `${user.first_name} ${user.last_name}`,
             });
     };
@@ -89,7 +89,7 @@ const Users = () => {
     const confirmDelete = async () => {
         if (!deleteTarget) return;
         try {
-            await deleteUser.mutateAsync(deleteTarget.id);
+            await deleteUser.mutateAsync(deleteTarget.uuid);
             toast.success(`${deleteTarget.name} has been removed.`);
             setDeleteTarget(null);
         } catch {

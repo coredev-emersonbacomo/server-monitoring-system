@@ -4,7 +4,7 @@ import { useDirectUpload } from "@/hooks/useDirectUpload";
 import { updateClientApi } from "@/api/uploads";
 
 interface UpdateClientInput {
-    clientId: number;
+    clientUuid: string;
     name: string;
     description: string;
     location: string;
@@ -48,11 +48,11 @@ export function useUpdateClient() {
                 payload.banner_image_storage_key = storageKey;
             }
 
-            return updateClientApi(input.clientId, payload);
+            return updateClientApi(input.clientUuid, payload);
         },
         onSuccess: (_data, variables) => {
             queryClient.invalidateQueries({ queryKey: ["clients"] });
-            queryClient.invalidateQueries({ queryKey: ["clients", variables.clientId] });
+            queryClient.invalidateQueries({ queryKey: ["clients", variables.clientUuid] });
             toast.success("Client updated successfully.");
         },
         onError: () => {

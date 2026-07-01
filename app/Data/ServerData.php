@@ -15,9 +15,15 @@ class ServerData extends Data
 
         public string $external_ip,
 
+<<<<<<< Updated upstream
         public string $device_name,
 
         public ?int $ssh_port = null,
+=======
+        public ?int $ssh_port = null,
+
+        public string $device_name,
+>>>>>>> Stashed changes
 
         public ?string $ssh_username = null,
 

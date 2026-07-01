@@ -179,9 +179,8 @@ function PasswordStrength({ password }: { password: string }) {
 
 export default function UserDetail() {
     const navigate = useNavigate();
-    const { id } = useParams<{ id: string }>();
+    const { id: userUuid } = useParams<{ id: string }>();
     const { setTrail } = useBreadcrumb();
-    const userId = Number(id);
 
     const [mode, setMode] = useState<"view" | "create" | "edit">(
         id ? "view" : "create",
@@ -189,11 +188,11 @@ export default function UserDetail() {
     const showEdit = mode !== "view";
 
     // ── Data fetching ──────────────────────────────────────────────────────────
-    const { data: user, isLoading, isError } = useUser(userId);
+    const { data: user, isLoading, isError } = useUser(userUuid);
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createUser = useCreateUser();
-    const updateUser = useUpdateUser(userId);
+    const updateUser = useUpdateUser(userUuid);
     const deleteUser = useDeleteUser();
 
     // ── Local state ────────────────────────────────────────────────────────────
@@ -411,7 +410,7 @@ export default function UserDetail() {
 
     const handleDelete = async () => {
         try {
-            await deleteUser.mutateAsync(userId);
+            await deleteUser.mutateAsync(userUuid);
             toast.success("User deleted.");
             navigate("/users");
         } catch {
