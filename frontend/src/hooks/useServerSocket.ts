@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import Echo from "laravel-echo";
 import Pusher from "pusher-js";
 import { getAccessToken } from "@/api/tokenManager";
+import { globalMetrics } from "@/lib/metricsBuffer";
 import type { StatPoint } from "@/types/stats";
 
 declare global {
@@ -16,21 +17,10 @@ window.Pusher = Pusher;
 
 export type WsStatus = "connecting" | "connected" | "disconnected";
 
-interface WsPointPayload {
-    timestamp: number;
-    cpu: number;
-    memory: number;
-    netIn: number;
-    netOut: number;
-    disk: number;
-}
-
 export function useServerSocket(
     serverUuid: string,
-    onStats: (point: StatPoint) => void,
     onStatus: (status: WsStatus) => void,
 ) {
-    const onStatsRef = useRef(onStats);
     const onStatusRef = useRef(onStatus);
 
     useEffect(() => {
@@ -67,16 +57,16 @@ export function useServerSocket(
 
         echo.private(channel).listen(
             ".ServerStatsUpdated",
-            (e: { stats: WsPointPayload }) => {
-                const point: StatPoint = {
-                    timestamp: e.stats.timestamp,
-                    cpu: e.stats.cpu,
-                    memory: e.stats.memory,
-                    netIn: e.stats.netIn,
-                    netOut: e.stats.netOut,
-                    disk: e.stats.disk,
-                };
-                onStatsRef.current(point);
+            (e: {
+                t: number;
+                c: number;
+                m: number;
+                i: number;
+                o: number;
+                d: number;
+            }) => {
+                console.log(e);
+                globalMetrics.push(serverUuid, e);
             },
         );
 
@@ -85,4 +75,11 @@ export function useServerSocket(
             echo.disconnect();
         };
     }, [serverUuid]);
+}
+
+export function useLiveStats(serverUuid: string): StatPoint | null {
+    return useSyncExternalStore(
+        (cb) => globalMetrics.subscribe(cb),
+        () => globalMetrics.getSnapshot().get(serverUuid) ?? null,
+    );
 }
