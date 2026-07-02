@@ -21,7 +21,7 @@ class UserController extends Controller
 
     public function index()
     {
-        $users = User::all();
+        $users = User::orderBy('created_at', 'desc')->get();
 
         return $users->map(fn(User $u) => UserData::fromModel($u));
     }

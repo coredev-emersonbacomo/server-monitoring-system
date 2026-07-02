@@ -26,7 +26,7 @@ class LoginResponseData extends Data
             user: $user,
             session: [
                 'session_uuid' => $session->session_uuid,
-                'device_name' => $session->device_name,
+                'host_name' => $session->host_name,
                 'device_type' => $session->device_type,
                 'browser' => $session->browser,
                 'operating_system' => $session->operating_system,

@@ -614,7 +614,7 @@ export interface components {
             server_name: string;
             uuid: string;
             external_ip: string;
-            device_name: string;
+            host_name: string;
             created_at: string;
             updated_at: string;
             ssh_port?: number | null;
@@ -624,6 +624,7 @@ export interface components {
             client_uuid: string;
             client_name: string;
             status?: string | null;
+            record_status: string;
             stats?: components["schemas"]["StatPointData"][];
         };
         /** StatPointData */
@@ -643,7 +644,11 @@ export interface components {
          * UploadPurpose
          * @enum {string}
          */
-        UploadPurpose: "profile_picture" | "client_banner" | "attachment" | "document";
+        UploadPurpose:
+            | "profile_picture"
+            | "client_banner"
+            | "attachment"
+            | "document";
         /** UserData */
         UserData: {
             uuid: string;
@@ -782,7 +787,7 @@ export interface operations {
                     ssh_port: number;
                     ssh_username: string;
                     ssh_password: string;
-                    device_name?: string | null;
+                    host_name?: string | null;
                     cpu_cores?: number | null;
                     ram?: number | null;
                     operating_system?: string | null;
@@ -1327,7 +1332,7 @@ export interface operations {
             content: {
                 "application/json": {
                     server_name?: string | null;
-                    device_name?: string | null;
+                    host_name?: string | null;
                     external_ip?: string | null;
                     ssh_port?: number | null;
                     ssh_username?: string | null;
@@ -1596,13 +1601,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Session must be revoked before permanent deletion.";
-                    } | {
-                        /** @constant */
-                        message: "Cannot delete current session.";
-                    };
+                    "application/json":
+                        | {
+                              /** @constant */
+                              message: "Session must be revoked before permanent deletion.";
+                          }
+                        | {
+                              /** @constant */
+                              message: "Cannot delete current session.";
+                          };
                 };
             };
         };
