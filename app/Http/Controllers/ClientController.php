@@ -10,6 +10,7 @@ use App\Data\ServerData;
 use App\Data\UpdateClientData;
 use App\Jobs\DeleteStorageAsset;
 use App\Models\Client;
+use App\Models\Server;
 use App\Models\User;
 use App\Services\MediaUrlService;
 use App\Services\UploadIntentService;
@@ -79,13 +80,13 @@ class ClientController extends Controller
     {
         $client = Client::where('uuid', $clientUuid)->firstOrFail();
 
-    $updatePayload = [  
-            'name' => $data->name,
-            'description' => $data->description instanceof \Spatie\LaravelData\Optional ? ($client->description ?? '') : $data->description,
-            'location' => $data->location,
-            'email' => $data->email,
-            'contact_number' => $data->contact_number,
-        ];
+        $updatePayload = [  
+                'name' => $data->name,
+                'description' => $data->description instanceof \Spatie\LaravelData\Optional ? ($client->description ?? '') : $data->description,
+                'location' => $data->location,
+                'email' => $data->email,
+                'contact_number' => $data->contact_number,
+            ];
 
         if (!($data->upload_intent_id instanceof \Spatie\LaravelData\Optional) && $data->upload_intent_id !== null) {
             $oldStorageKey = $client->banner_image_storage_key;

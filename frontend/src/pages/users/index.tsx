@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import ProfileCard from "@/components/ProfileCard";
 import { Button } from "@/components/ui/button";
+import PageLayout from "@/components/PageLayout";
 import {
     Dialog,
     DialogContent,
@@ -135,7 +136,7 @@ const Users = () => {
         sortOptions.find((o) => o.value === sortField)?.label ?? "";
 
     return (
-        <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground page-top-padding page-bottom-padding">
+        <PageLayout>
             <IndexHeader
                 icon={Users2}
                 title="User Management"
@@ -258,7 +259,7 @@ const Users = () => {
                     </DialogContent>
                 </Dialog>
             </main>
-        </div>
+        </PageLayout>
     );
 };
 

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { UserCircle, Monitor, ChevronRight, Loader2, Settings as SettingsIcon, Activity } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
+import PageLayout from "@/components/PageLayout";
 
 function Settings() {
     const { user, isLoading: authLoading } = useJwtAuth();
@@ -63,7 +64,7 @@ function Settings() {
     ];
 
     return (
-        <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
+        <PageLayout>
             <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
                 <div className="flex items-start justify-between gap-4 py-3 px-6 sm:px-8 lg:px-10">
                     <div className="flex items-start gap-3">
@@ -82,7 +83,7 @@ function Settings() {
                 </div>
             </header>
 
-            <main className="py-6 w-full flex-1 min-h-0 overflow-auto">
+            <main className="py-6 w-full flex-1">
                 <div className="max-w-2xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-3">
                     {settingsSections.map((section) => (
                         <button
@@ -106,7 +107,7 @@ function Settings() {
                     ))}
                 </div>
             </main>
-        </div>
+        </PageLayout>
     );
 }
 

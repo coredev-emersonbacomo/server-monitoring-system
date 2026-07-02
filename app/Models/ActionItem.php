@@ -2,12 +2,22 @@
 
 namespace App\Models;
 
+use App\Enums\ActionItemSeverity;
+use App\Enums\ActionItemStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ActionItem extends Model
 {
     protected $guarded = [];
+
+    protected function casts(): array
+    {
+        return [
+            'severity' => ActionItemSeverity::class,
+            'status'   => ActionItemStatus::class,
+        ];
+    }
 
     public function assignedUser(): BelongsTo
     {

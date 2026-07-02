@@ -2,10 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\ServerHealth;
 use App\Models\ActionItem;
 use App\Models\Client;
+use App\Models\Server;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class SyncActionItems extends Command
 {
@@ -33,30 +34,7 @@ class SyncActionItems extends Command
         $onlineThreshold  = now()->subMinutes(5);
         $warningThreshold = now()->subMinutes(15);
 
-        $serverStatus = DB::table('servers')
-            ->leftJoinSub(
-                DB::table('server_updates')
-                    ->select('server_id', DB::raw('MAX(created_at) as last_seen'))
-                    ->groupBy('server_id'),
-                'lu',
-                'servers.id', '=', 'lu.server_id'
-            )
-            ->join('clients', 'servers.client_id', '=', 'clients.id')
-            ->select(
-                'servers.id as server_id',
-                'servers.server_name',
-                'servers.client_id',
-                'clients.name as client_name',
-                'lu.last_seen',
-            )
-            ->selectRaw("
-                CASE
-                    WHEN lu.last_seen >= ? THEN 'online'
-                    WHEN lu.last_seen < ? AND lu.last_seen >= ? THEN 'warning'
-                    ELSE 'offline'
-                END as status
-            ", [$onlineThreshold, $onlineThreshold, $warningThreshold])
-            ->get();
+        $servers = Server::with('client', 'latestUpdate')->get();
 
         $issues = [];
 
@@ -76,25 +54,28 @@ class SyncActionItems extends Command
             ];
         }
 
-        foreach ($serverStatus as $server) {
-            if ($server->status === 'offline') {
+        foreach ($servers as $server) {
+            $lastSeen = $server->latestUpdate?->created_at;
+            $health = Server::computeHealth($lastSeen, $onlineThreshold, $warningThreshold);
+
+            if ($health === ServerHealth::Offline) {
                 $issues[] = [
                     'action_type' => 'server_offline',
                     'severity' => 'critical',
                     'message' => "{$server->server_name} is offline",
-                    'server_id' => $server->server_id,
+                    'server_id' => $server->id,
                     'client_id' => $server->client_id,
-                    'client_name' => $server->client_name,
+                    'client_name' => $server->client->name,
                     'server_name' => $server->server_name,
                 ];
-            } elseif ($server->status === 'warning') {
+            } elseif ($health === ServerHealth::Warning) {
                 $issues[] = [
                     'action_type' => 'server_warning',
                     'severity' => 'warning',
                     'message' => "{$server->server_name} has not reported in",
-                    'server_id' => $server->server_id,
+                    'server_id' => $server->id,
                     'client_id' => $server->client_id,
-                    'client_name' => $server->client_name,
+                    'client_name' => $server->client->name,
                     'server_name' => $server->server_name,
                 ];
             }
