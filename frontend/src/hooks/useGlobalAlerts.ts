@@ -1,17 +1,46 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import jwtClient from "@/api/jwtClient";
 
+export type NotificationSeverity =
+    | "light"
+    | "warning"
+    | "critical";
+
+export type NotificationChannel =
+    | "email"
+    | "sms";
+
 export interface GlobalAlert {
+    id: number;
+
     metric: string;
+
+    name: string;
+
     threshold: number;
-    notification_channel: string;
+
+    severity: NotificationSeverity;
+
+    channels: NotificationChannel[];
+
+    enabled: boolean;
+
+    created_at: string;
+
+    updated_at: string;
+}
+
+export interface UpdateGlobalAlertsPayload {
+    alerts: GlobalAlert[];
 }
 
 export const useGlobalAlerts = () =>
     useQuery<GlobalAlert[]>({
         queryKey: ["global-alerts"],
         queryFn: async () => {
-            const { data } = await jwtClient.get<GlobalAlert[]>("/global-alerts");
+            const { data } =
+                await jwtClient.get<GlobalAlert[]>("/global-alerts");
+
             return data;
         },
         staleTime: 60_000,
@@ -19,13 +48,24 @@ export const useGlobalAlerts = () =>
 
 export const useUpdateGlobalAlerts = () => {
     const queryClient = useQueryClient();
+
     return useMutation({
-        mutationFn: async (payload: { alerts: GlobalAlert[] }) => {
-            const { data } = await jwtClient.put<{ message: string }>("/global-alerts", payload);
+        mutationFn: async (
+            payload: UpdateGlobalAlertsPayload
+        ) => {
+            const { data } =
+                await jwtClient.put<{ message: string }>(
+                    "/global-alerts",
+                    payload
+                );
+
             return data;
         },
+
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["global-alerts"] });
+            queryClient.invalidateQueries({
+                queryKey: ["global-alerts"],
+            });
         },
     });
 };
