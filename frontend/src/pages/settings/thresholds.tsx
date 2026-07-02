@@ -86,25 +86,39 @@ export default function AlertThresholds() {
         setIsDirty(true);
     };
 
+    // const handleSave = async () => {
+    //     const alertsToUpdate = [];
+    
+    //     Object.entries(metrics).forEach(([metric, levels]) => {
+    //         levels.forEach((level) => {
+    //             alertsToUpdate.push({
+    //                 metric,
+    //                 name: level.name,
+    //                 threshold: level.threshold,
+    //                 severity: level.severity,
+    //                 channels: level.channels,
+    //                 enabled: true,
+    //             });
+    //         });
+    //     });
+    
+    //     try {
+    //         await updateAlerts.mutateAsync({
+    //             alerts: alertsToUpdate,
+    //         });
+    
+    //         setIsDirty(false);
+    
+    //         toast.success("Alert thresholds updated.");
+    //     } catch {
+    //         toast.error("Failed to update thresholds.");
+    //     }
+    // };
+
     const handleSave = async () => {
-        const alertsToUpdate = [];
-    
-        Object.entries(metrics).forEach(([metric, levels]) => {
-            levels.forEach((level) => {
-                alertsToUpdate.push({
-                    metric,
-                    name: level.name,
-                    threshold: level.threshold,
-                    severity: level.severity,
-                    channels: level.channels,
-                    enabled: true,
-                });
-            });
-        });
-    
         try {
             await updateAlerts.mutateAsync({
-                alerts: alertsToUpdate,
+                metrics,
             });
     
             setIsDirty(false);
