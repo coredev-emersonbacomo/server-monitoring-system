@@ -30,7 +30,7 @@ class ServerUpdatesData extends Data
 
         // Tell Spatie to look inside the 'disk' array for 'percent'
         #[Required, MapInputName('disk.percent')]
-        public float $storage,
+        public float $disk_usage,
 
         #[Required]
         public int $uptime,
