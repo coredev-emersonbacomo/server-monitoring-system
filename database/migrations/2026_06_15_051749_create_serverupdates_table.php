@@ -15,10 +15,10 @@ return new class extends Migration
             $table->foreignId('server_id')->constrained();
             $table->float('cpu_usage');
             $table->float('memory_usage');
-            $table->float('storage')->unsigned(true);
-            $table->integer('uptime')->unsigned(true);
-            $table->integer('network_rbytes')->unsigned(true);
-            $table->integer('network_tbytes')->unsigned(true);
+            $table->float('disk_usage')->unsigned();
+            $table->integer('uptime')->unsigned();
+            $table->integer('network_rbytes')->unsigned();
+            $table->integer('network_tbytes')->unsigned();
             $table->timestamps();
         });
     }
