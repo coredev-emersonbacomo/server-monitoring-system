@@ -6,24 +6,45 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('global_alerts', function (Blueprint $table) {
             $table->id();
+        
             $table->string('metric');
-            $table->integer('threshold');
-            $table->string('notification_channel');
+        
+            $table->string('name');
+        
+            $table->unsignedTinyInteger('threshold');
+        
+            $table->enum('severity', [
+                'light',
+                'warning',
+                'critical',
+            ]);
+        
+            $table->json('channels');
+        
+            $table->boolean('enabled')->default(true);
+        
+            $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('global_alerts');
+        Schema::table('global_alerts', function (Blueprint $table) {
+
+            $table->string('notification_channel');
+
+            $table->dropColumn([
+                'name',
+                'severity',
+                'channels',
+                'enabled',
+                'created_at',
+                'updated_at',
+            ]);
+        });
     }
 };

@@ -9,31 +9,45 @@ class GlobalAlertController extends Controller
 {
     public function index()
     {
-        $alerts = GlobalAlert::all();
-        return response()->json($alerts);
+        return response()->json(
+            GlobalAlert::orderBy('metric')
+                ->orderBy('threshold')
+                ->get()
+        );
     }
 
     public function update(Request $request)
     {
         $validated = $request->validate([
-            'alerts' => 'required|array',
-            'alerts.*.metric' => 'required|string',
-            'alerts.*.notification_channel' => 'required|string',
-            'alerts.*.threshold' => 'required|numeric|min:0|max:100',
+            'alerts' => ['required', 'array'],
+
+            'alerts.*.metric' => ['required', 'string'],
+            'alerts.*.name' => ['required', 'string'],
+            'alerts.*.threshold' => ['required', 'integer', 'between:0,100'],
+            'alerts.*.severity' => ['required', 'in:light,warning,critical'],
+            'alerts.*.channels' => ['required', 'array'],
+            'alerts.*.channels.*' => ['required', 'in:email,sms'],
+            'alerts.*.enabled' => ['boolean'],
         ]);
 
-        foreach ($validated['alerts'] as $alertData) {
+        foreach ($validated['alerts'] as $alert) {
+
             GlobalAlert::updateOrCreate(
                 [
-                    'metric' => $alertData['metric'],
-                    'notification_channel' => $alertData['notification_channel']
+                    'metric' => $alert['metric'],
+                    'name'   => $alert['name'],
                 ],
                 [
-                    'threshold' => $alertData['threshold']
+                    'threshold' => $alert['threshold'],
+                    'severity'  => $alert['severity'],
+                    'channels'  => $alert['channels'],
+                    'enabled'   => $alert['enabled'] ?? true,
                 ]
             );
         }
 
-        return response()->json(['message' => 'Global alerts updated successfully']);
+        return response()->json([
+            'message' => 'Global alerts updated successfully',
+        ]);
     }
 }
