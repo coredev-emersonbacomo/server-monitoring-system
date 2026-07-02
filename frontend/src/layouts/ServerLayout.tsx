@@ -34,8 +34,8 @@ export default function ServerLayout() {
     );
 
     return (
-        <div className="flex-1 flex flex-row h-full gap-6 overflow-hidden">
-            <div className="flex-1 min-w-0 overflow-auto">
+        <div className="flex-1 flex flex-row gap-6">
+            <div className="flex-1 min-w-0">
                 <Outlet key={uuid} />
             </div>
 

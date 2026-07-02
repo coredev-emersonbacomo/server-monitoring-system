@@ -396,7 +396,7 @@ export default function CreateServer() {
     return (
         <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
             {/* ── Body ── */}
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1">
                 <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 flex flex-col gap-8">
                     {/* ════════════════════════════════════════════════════ FORM PHASE */}
                     {phase === "form" && (

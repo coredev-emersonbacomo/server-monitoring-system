@@ -1,5 +1,7 @@
+import PageLayout from "@/components/PageLayout";
+
 const ServerLogs = () => {
-    return <div>Server Logs</div>;
+    return <PageLayout>Server Logs</PageLayout>;
 };
 
 export default ServerLogs;
