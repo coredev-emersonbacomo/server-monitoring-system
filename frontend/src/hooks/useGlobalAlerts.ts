@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import jwtClient from "@/api/jwtClient";
+import type { NotificationLevel } from "@/components/thresholds/types";
 
 export type NotificationSeverity =
     | "light"
@@ -31,7 +32,7 @@ export interface GlobalAlert {
 }
 
 export interface UpdateGlobalAlertsPayload {
-    alerts: GlobalAlert[];
+    metrics: Record<string, NotificationLevel[]>;
 }
 
 export const useGlobalAlerts = () =>
