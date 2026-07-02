@@ -208,7 +208,7 @@ class ServerController extends Controller
         $server->updates()->create([
             'cpu_usage'      => $data->cpu_usage,
             'memory_usage'   => $data->memory_usage,
-            'storage'        => $data->storage,
+            'disk_usage'     => $data->disk_usage,
             'uptime'         => $data->uptime,
             'network_rbytes' => $data->network_rxbytes,
             'network_tbytes' => $data->network_txbytes,
