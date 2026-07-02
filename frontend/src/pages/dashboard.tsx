@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import PageLayout from "@/components/PageLayout";
 import {
     Activity,
     Server,
@@ -241,7 +242,7 @@ export default function Dashboard() {
         : [];
 
     return (
-        <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
+        <PageLayout>
             <IndexHeader icon={Activity} title="Dashboard" />
 
             <main className="py-6 w-full flex-1 min-h-0">
@@ -627,6 +628,6 @@ export default function Dashboard() {
                 open={completedOpen}
                 onClose={() => setCompletedOpen(false)}
             />
-        </div>
+        </PageLayout>
     );
 }

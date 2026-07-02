@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Server;
 use App\Models\ServerUpdate;
+use App\Events\ServerStatsUpdated;
 
 class SimulateMetricsUpdate extends Command
 {
@@ -18,7 +19,7 @@ class SimulateMetricsUpdate extends Command
             
             while (true) {
                 $this->fireMetrics();
-                sleep(10);
+                sleep(1);
             }
         }
 
@@ -57,7 +58,7 @@ class SimulateMetricsUpdate extends Command
                 'operating_system' => $server->operating_system ?? $operatingSystems[array_rand($operatingSystems)],
             ]);
 
-            ServerUpdate::create([
+            $update = ServerUpdate::create([
                 'server_id' => $server->id,
                 'cpu_usage' => rand(500, 9500) / 100,
                 'memory_usage' => rand(3000, 8500) / 100,
@@ -67,6 +68,18 @@ class SimulateMetricsUpdate extends Command
                 'network_tbytes' => rand(10000, 999999),
                 'created_at' => now(),
             ]);
+
+            ServerStatsUpdated::dispatch(
+                $server->id,
+                [
+                    'timestamp' => $update->created_at->getPreciseTimestamp(3),
+                    'cpu'       => round((float) $update->cpu_usage, 1),
+                    'memory'    => round((float) $update->memory_usage, 1),
+                    'netIn'     => 0,
+                    'netOut'    => 0,
+                    'disk'      => round((float) $update->storage, 1),
+                ],
+            );
         }
     }
 }

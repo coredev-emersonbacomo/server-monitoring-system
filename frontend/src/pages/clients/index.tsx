@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { Landmark, RefreshCw, Loader2, Plus } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useClients, useDeleteClient } from "@/hooks/useClients";
+import PageLayout from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -179,15 +180,14 @@ function ClientGrid({
     // eslint-disable-next-line react-hooks/incompatible-library
     const virtualizer = useVirtualizer({
         count: rows.length,
-        getScrollElement: () => scrollRef.current,
+        getScrollElement: () => document.documentElement,
         estimateSize: () => CARD_ESTIMATE_PX + 16,
         overscan: 3,
     });
 
     useEffect(() => {
         const sentinel = sentinelRef.current;
-        const scroller = scrollRef.current;
-        if (!sentinel || !scroller) return;
+        if (!sentinel) return;
 
         const observer = new IntersectionObserver(
             ([entry]) => {
@@ -195,12 +195,12 @@ function ClientGrid({
                     onLoadMore();
                 }
             },
-            { root: scroller, threshold: 0.1 },
+            { threshold: 0.1 },
         );
 
         observer.observe(sentinel);
         return () => observer.disconnect();
-    }, [hasMore, onLoadMore, scrollRef]);
+    }, [hasMore, onLoadMore]);
 
     const totalHeight = virtualizer.getTotalSize();
 
@@ -354,7 +354,7 @@ export default function Clients() {
         sortOptions.find((o) => o.value === sortField)?.label ?? "";
 
     return (
-        <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground page-top-padding page-bottom-padding">
+        <PageLayout>
             <IndexHeader
                 icon={Landmark}
                 title="Client Management"
@@ -511,6 +511,6 @@ export default function Clients() {
                     </DialogContent>
                 </Dialog>
             </main>
-        </div>
+        </PageLayout>
     );
 }

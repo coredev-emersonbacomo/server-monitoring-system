@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import PageLayout from "@/components/PageLayout";
 import {
     Server,
     Wifi,
@@ -79,7 +80,7 @@ export default function ServersIndex() {
     }, [servers]);
 
     return (
-        <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
+        <PageLayout>
             <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
                 <div>
                     <div className="flex h-16 items-center justify-between gap-4">
@@ -115,7 +116,7 @@ export default function ServersIndex() {
                 </div>
             </header>
 
-            <main className="w-full flex-1 min-h-0 overflow-auto">
+            <main className="w-full flex-1">
                 <IndexToolbar
                     filterOptions={[
                         {
@@ -246,6 +247,6 @@ export default function ServersIndex() {
                     </div>
                 )}
             </main>
-        </div>
+        </PageLayout>
     );
 }

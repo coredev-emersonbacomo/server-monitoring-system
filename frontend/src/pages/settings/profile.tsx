@@ -1,6 +1,7 @@
 // frontend/src/pages/Profile.tsx
 import React from "react";
 import { useAuthContext } from "@/hooks/useAuthContext";
+import PageLayout from "@/components/PageLayout";
 import {
     Loader2,
     ShieldCheck,
@@ -44,7 +45,7 @@ export const Profile: React.FC = () => {
         : "—";
     const avatarSrc = user.profile_picture_url || import.meta.env.VITE_DEFAULT_PROFILE_PICTURE || null;
     return (
-        <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
+        <PageLayout>
             {/* ── Page header ── */}
             <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
                 <div>
@@ -66,7 +67,7 @@ export const Profile: React.FC = () => {
                 </div>
             </header>
 
-            <main className="py-6 w-full flex-1 min-h-0 overflow-auto flex flex-col gap-6">
+            <main className="py-6 w-full flex-1 flex flex-col gap-6">
                 {/* ── Main card ── */}
                 <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
                     {/* Top banner */}
@@ -115,7 +116,7 @@ export const Profile: React.FC = () => {
                     </div>
                 </div>
             </main>
-        </div>
+        </PageLayout>
     );
 };
 
