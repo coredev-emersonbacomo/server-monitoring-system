@@ -225,7 +225,16 @@ class ServerController extends Controller
 
         $stats = $latest ? self::computeStatPoint($latest, $prev) : [];
 
-        ServerStatsUpdated::dispatch($server->id, $stats);
+        $broadcast = $stats ? [
+            't' => $stats['timestamp'],
+            'c' => $stats['cpu'],
+            'm' => $stats['memory'],
+            'i' => $stats['netIn'],
+            'o' => $stats['netOut'],
+            'd' => $stats['disk'],
+        ] : [];
+
+        ServerStatsUpdated::dispatchSync($server->uuid, $broadcast);
 
         return ['success' => true, 'message' => 'Metrics recorded.'];
     }
