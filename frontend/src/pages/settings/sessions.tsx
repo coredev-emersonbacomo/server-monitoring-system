@@ -378,8 +378,7 @@ export default function Sessions() {
                                 {
                                     label: "Current Device",
                                     value:
-                                        currentSession?.device_name ??
-                                        "Unknown",
+                                        currentSession?.host_name ?? "Unknown",
                                     icon: Monitor,
                                     color: "text-violet-500 bg-violet-500/10",
                                     truncate: true,
@@ -449,7 +448,7 @@ export default function Sessions() {
                                                 <div className="min-w-0 space-y-1">
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <span className="font-medium text-sm text-foreground">
-                                                            {session.device_name ??
+                                                            {session.host_name ??
                                                                 "Unknown Device"}
                                                         </span>
                                                         {getStatusBadge(
@@ -507,7 +506,7 @@ export default function Sessions() {
                                             <div className="min-w-0 space-y-1">
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     <h3 className="font-medium text-sm text-foreground">
-                                                        {currentSession.device_name ??
+                                                        {currentSession.host_name ??
                                                             "Unknown Device"}
                                                     </h3>
                                                     {getStatusBadge(
@@ -644,7 +643,7 @@ export default function Sessions() {
                                                 <div className="min-w-0 space-y-1">
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <h3 className="font-medium text-sm text-foreground truncate max-w-[220px]">
-                                                            {session.device_name ??
+                                                            {session.host_name ??
                                                                 "Unknown Device"}
                                                         </h3>
                                                         {getStatusBadge(

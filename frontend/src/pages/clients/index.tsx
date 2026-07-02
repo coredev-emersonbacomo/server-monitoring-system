@@ -1,16 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import {
-    Plus,
-    Search,
-    Landmark,
-    RefreshCw,
-    Filter,
-    ChevronDown,
-    Loader2,
-    Phone,
-    Mail,
-    MapPin,
-} from "lucide-react";
+import { Landmark, RefreshCw, Loader2, Plus } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useClients, useDeleteClient } from "@/hooks/useClients";
 import { Button } from "@/components/ui/button";
@@ -21,14 +10,11 @@ import {
     DialogTitle,
     DialogClose,
 } from "@/components/ui/dialog";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import IndexHeader from "@/components/IndexHeader";
+import IndexToolbar from "@/components/IndexToolbar";
+import type { FilterOption, SortOption } from "@/components/IndexToolbar";
 import type { ClientData } from "@/types/models";
 
 type FilterTab = "all" | "with-servers" | "no-servers";
@@ -162,6 +148,7 @@ function ClientGrid({
     onLoadMore: () => void;
     scrollRef: React.RefObject<HTMLElement | null>;
 }) {
+    "use no memo";
     const sentinelRef = useRef<HTMLDivElement>(null);
     const columnCount = useColumnCount(scrollRef);
 
@@ -175,6 +162,7 @@ function ClientGrid({
         return result;
     }, [visibleClients, columnCount]);
 
+    // eslint-disable-next-line react-hooks/incompatible-library
     const virtualizer = useVirtualizer({
         count: rows.length,
         getScrollElement: () => scrollRef.current,
@@ -260,12 +248,14 @@ export default function Clients() {
 
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<FilterTab>("all");
+    const [sortField, setSortField] = useState<string>("created_at");
+    const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
     const [deleting, setDeleting] = useState<ClientData | null>(null);
 
-    // ── Filtering ──────────────────────────────────────────────────────────────
+    // ── Filtering & Sorting ────────────────────────────────────────────────────
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
-        return (clients ?? []).filter((c) => {
+        const result = (clients ?? []).filter((c) => {
             const matchSearch =
                 !q ||
                 c.name.toLowerCase().includes(q) ||
@@ -278,7 +268,24 @@ export default function Clients() {
                 (filter === "no-servers" && c.servers_count === 0);
             return matchSearch && matchFilter;
         });
-    }, [search, filter, clients]);
+        return [...result].sort((a, b) => {
+            const cmp = (() => {
+                switch (sortField) {
+                    case "name":
+                        return a.name.localeCompare(b.name);
+                    case "email":
+                        return a.email.localeCompare(b.email);
+                    case "location":
+                        return (a.location ?? "").localeCompare(
+                            b.location ?? "",
+                        );
+                    default:
+                        return a.created_at.localeCompare(b.created_at);
+                }
+            })();
+            return sortDir === "desc" ? -cmp : cmp;
+        });
+    }, [search, filter, sortField, sortDir, clients]);
 
     // ── Infinite-scroll page tracking ─────────────────────────────────────────
     // `visibleCount` tracks how many items from `filtered` are currently shown.
@@ -320,11 +327,20 @@ export default function Clients() {
         },
     ];
 
+    const sortOptions = [
+        { label: "Created At", value: "created_at" },
+        { label: "Name", value: "name" },
+        { label: "Email", value: "email" },
+        { label: "Location", value: "location" },
+    ];
+
     const currentFilterLabel =
         filterOptions.find((o) => o.value === filter)?.label ?? "All";
+    const currentSortLabel =
+        sortOptions.find((o) => o.value === sortField)?.label ?? "";
 
     return (
-        <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground">
+        <div className="flex-1 flex flex-col min-h-0 bg-background text-foreground page-top-padding page-bottom-padding">
             <IndexHeader
                 icon={Landmark}
                 title="Client Management"
@@ -333,65 +349,28 @@ export default function Clients() {
 
             <main
                 ref={mainRef}
-                className="py-6 w-full flex-1 min-h-0 flex flex-col gap-5 overflow-y-auto"
+                className="w-full flex-1 min-h-0 flex flex-col gap-5"
             >
                 {/* ── Toolbar ── */}
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="relative flex-1 max-w-xs">
-                            <Search
-                                size={14}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                            />
-                            <input
-                                type="text"
-                                placeholder="Search clients…"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-8 pr-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground transition-colors"
-                            />
-                        </div>
-
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    icon={<Filter size={15} />}
-                                    className="gap-1 h-9"
-                                >
-                                    {currentFilterLabel}
-                                    <ChevronDown size={15} />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent align="start" className="w-48 p-1">
-                                {filterOptions.map((option) => (
-                                    <button
-                                        key={option.value}
-                                        onClick={() => setFilter(option.value)}
-                                        className={cn(
-                                            "flex items-center justify-between w-full px-2 py-1.5 rounded-md text-sm transition-colors",
-                                            filter === option.value
-                                                ? "bg-accent text-accent-foreground"
-                                                : "hover:bg-muted text-foreground",
-                                        )}
-                                    >
-                                        <span>{option.label}</span>
-                                        <span className="text-xs text-muted-foreground">
-                                            {option.count}
-                                        </span>
-                                    </button>
-                                ))}
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-
-                    <Button
-                        icon={<Plus size={15} />}
-                        label="Add client"
-                        onClick={() => navigate("/clients/create")}
-                    />
-                </div>
+                <IndexToolbar
+                    search={search}
+                    onSearchChange={setSearch}
+                    searchPlaceholder="Search clients…"
+                    filterOptions={filterOptions as FilterOption[]}
+                    filter={filter}
+                    onFilterChange={(v) => setFilter(v as typeof filter)}
+                    filterLabel={currentFilterLabel}
+                    sortOptions={sortOptions as SortOption[]}
+                    sortField={sortField}
+                    onSortFieldChange={setSortField}
+                    sortDir={sortDir}
+                    onSortDirChange={() =>
+                        setSortDir((d) => (d === "desc" ? "asc" : "desc"))
+                    }
+                    sortLabel={currentSortLabel}
+                    onCreate={() => navigate("/clients/create")}
+                    createLabel="Add client"
+                />
 
                 {/* ── Error state ── */}
                 {isError && (

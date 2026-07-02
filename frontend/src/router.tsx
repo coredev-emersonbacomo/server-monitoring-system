@@ -5,20 +5,20 @@ import { ProtectedRoute } from "./layouts/ProtectedRoute";
 import { GuestLayout } from "./layouts/GuestLayout";
 import Clients from "./pages/clients/index";
 import UsersIndex from "./pages/users/index";
-import ClientDetail from "./pages/clients/clientDetail";
-import SystemLogs from "./pages/systemLogs";
+import ClientDetail from "./pages/clients/client-detail";
+import SystemLogs from "./pages/system-logs";
 import ServerLayout from "./layouts/ServerLayout";
-import ServerDetail from "./pages/servers/serverDetail";
+import ServerDetail from "./pages/servers/server-detail";
 import CreateServer from "./pages/servers/create";
 import ServersIndex from "./pages/servers/index";
 import RootLayout from "./layouts/RootLayout";
 import Settings from "./pages/settings";
 import Sessions from "./pages/settings/sessions";
 import Profile from "./pages/settings/profile";
-import UserDetail from "./pages/users/userDetail";
+import UserDetail from "./pages/users/user-detail";
 import SystemSettings from "./pages/settings/system";
 import AlertThresholds from "./pages/settings/thresholds";
-import ServerLogs from "./pages/serverLogs";
+import ServerLogs from "./pages/server-logs";
 
 const router = createBrowserRouter([
     {

@@ -1,11 +1,5 @@
 import { Link } from "react-router-dom";
-import {
-    Monitor,
-    Network,
-    Globe,
-    Cpu,
-    MemoryStick,
-} from "lucide-react";
+import { Monitor, Network, Globe, Cpu, MemoryStick } from "lucide-react";
 import type { ServerData } from "@/types/models";
 
 export default function ServerCard({ server }: { server: ServerData }) {
@@ -29,7 +23,7 @@ export default function ServerCard({ server }: { server: ServerData }) {
                     {server.server_name}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {server.device_name}
+                    {server.host_name}
                 </p>
             </div>
 

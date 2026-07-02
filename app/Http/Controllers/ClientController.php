@@ -27,7 +27,7 @@ class ClientController extends Controller
     /** @return ClientData[] */
     public function index(): array
     {
-        $clients = Client::withCount('servers')->get();
+        $clients = Client::withCount('servers')->orderBy('created_at', 'desc')->get();
 
         return $clients->map(fn(Client $client) => ClientData::fromModel($client))->toArray();
     }
@@ -118,7 +118,7 @@ class ClientController extends Controller
         $client = Client::where('uuid', $clientUuid)->firstOrFail();
         $servers = $client->servers()->get();
 
-        return ServerData::collect($servers)->toArray();
+        return ServerData::collect($servers->map(fn(Server $s) => ServerData::fromModel($s)))->toArray();
     }
 
     public function destroy(string $clientUuid): JsonResponse

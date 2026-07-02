@@ -16,7 +16,7 @@ const IndexHeader: React.FC<IndexHeaderProps> = ({
     return (
         <header>
             <div>
-                <div className="flex items-start justify-between gap-4 py-3">
+                <div className="flex items-start justify-between gap-4">
                     <div
                         className={cn(
                             "flex gap-3",
