@@ -27,7 +27,7 @@ class ActionItemData extends Data
             id: $action->id,
             action_type: $action->action_type,
             message: $action->message,
-            severity: $action->severity,
+            severity: $action->severity->value,
             server_uuid: $action->relationLoaded('server') && $action->server
                 ? $action->server->uuid
                 : null,
@@ -42,7 +42,7 @@ class ActionItemData extends Data
             assigned_to_name: $action->relationLoaded('assignedUser') && $action->assignedUser
                 ? $action->assignedUser->first_name . ' ' . $action->assignedUser->last_name
                 : null,
-            status: $action->status,
+            status: $action->status->value,
         );
     }
 }

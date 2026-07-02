@@ -55,7 +55,7 @@ class Server extends Model
 
     public function latestUpdate(): HasOne
     {
-        return $this->hasOne(ServerUpdate::class, 'server_id')->latestOfMany();
+        return $this->hasOne(ServerUpdate::class, 'server_id')->latestOfMany('created_at');
     }
 
     public static function computeHealth(?Carbon $lastSeen, Carbon $onlineThreshold, Carbon $warningThreshold): ServerHealth
