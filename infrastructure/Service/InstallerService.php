@@ -45,6 +45,7 @@ class InstallerService
             sprintf(
                 'echo "%s" | sudo -S bash /tmp/install.sh %s %s',
                 escapeshellarg($this->sshPassword),
+                escapeshellarg(env('APP_URL', 'http://localhost')),
                 escapeshellarg($this->serverUUID),
                 escapeshellarg($this->apiToken)
             )
