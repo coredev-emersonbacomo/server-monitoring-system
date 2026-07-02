@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import { useServer } from "@/hooks/useServer";
-import { useServerSocket, type WsStatus } from "@/hooks/useServerSocket";
+import { useServerSocket, useLiveStats, type WsStatus } from "@/hooks/useServerSocket";
 import PageLayout from "@/components/PageLayout";
 import { ServerCard } from "@/components/dashboard/ServerCard";
 import { ChartZoomProvider } from "@/contexts/ChartZoomContext";
@@ -18,19 +18,19 @@ export default function ServerDetail() {
 
     const { data: initial, isLoading, isError } = useServer(uuid!);
     const [, setWsStatus] = useState<WsStatus>("connecting");
-    const [liveStats, setLiveStats] = useState<StatPointData[]>([]);
+    const [history, setHistory] = useState<StatPointData[]>([]);
 
-    const handleStats = useCallback((point: StatPointData) => {
-        setLiveStats((prev) => {
-            const window = 144;
-            const next = [...prev, point];
-            return next.length > window
-                ? next.slice(next.length - window)
-                : next;
+    useServerSocket(uuid!, setWsStatus);
+
+    const live = useLiveStats(uuid!);
+
+    useEffect(() => {
+        if (!live) return;
+        setHistory((prev) => {
+            const next = [...prev, live as unknown as StatPointData];
+            return next.length > 144 ? next.slice(next.length - 144) : next;
         });
-    }, []);
-
-    useServerSocket(uuid!, handleStats, setWsStatus);
+    }, [live]);
 
     const [time, setTime] = useState(new Date());
     useEffect(() => {
@@ -72,7 +72,6 @@ export default function ServerDetail() {
         }
     }, [initial, setTrail, uuid, allClient]);
 
-    // ── Loading ──────────────────────────────────────────────────────────────
     if (isLoading) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
@@ -82,7 +81,6 @@ export default function ServerDetail() {
         );
     }
 
-    // ── Error ────────────────────────────────────────────────────────────────
     if (isError || !initial) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
@@ -99,9 +97,9 @@ export default function ServerDetail() {
         );
     }
 
-    // ── Merge initial stats with live WS points ──────────────────────────────
+    const initialStats = initial?.stats ?? [];
     const allStats =
-        liveStats.length > 0 ? [...initial.stats, ...liveStats] : initial.stats;
+        history.length > 0 ? [...initialStats, ...history] : initialStats;
 
     return (
         <ChartZoomProvider>

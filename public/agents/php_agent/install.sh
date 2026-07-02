@@ -1,17 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
+APP_URL=$1
+
 # ─── Constants ───────────────────────────────────────────────
 readonly APP_DIR="/opt/monitor-agent"
 readonly SERVICE_NAME="monitor-agent"
 # Change upon production
-readonly AGENT_URL="http://127.0.0.1:8000/agents/php_agent/agent.txt"
+readonly AGENT_URL="$APP_URL/agents/php_agent/agent.txt"
 readonly AGENT_FILE="$APP_DIR/agent.php"
 readonly CONFIG_FILE="$APP_DIR/config.json"
 readonly SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 readonly LOG_FILE="/var/log/${SERVICE_NAME}-install.log"
-readonly API_URL="http://127.0.0.1:8000/api/server/stats"
-readonly SPECS_URL="http://127.0.0.1:8000/api/server/specs"
+readonly API_URL="$APP_URL/api/server/stats"
+readonly SPECS_URL="$APP_URL/api/server/specs"
 
 # ─── Logging ─────────────────────────────────────────────────
 log()  { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]  $*" | tee -a "$LOG_FILE"; }
@@ -24,12 +26,13 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # ─── Argument validation ──────────────────────────────────────
-if [[ "$#" -ne 2 ]]; then
-    fail "Usage: $0 <server_id> <api_key>"
+if [[ "$#" -ne 3 ]]; then
+    fail "Usage: $0  <app_url> <server_uuid> <api_key>"
 fi
 
-SERVER_UUID="$1"
-API_KEY="$2"
+# Credentials
+SERVER_UUID="$2"
+API_KEY="$3"
 
 # Validate server_id is alphanumeric
 if [[ ! "$SERVER_ID" =~ ^[a-zA-Z0-9_-]+$ ]]; then
