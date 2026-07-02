@@ -2,6 +2,9 @@
 
 namespace App\Console\Commands;
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Pool;
+use GuzzleHttp\Psr7\Request;
 use Illuminate\Console\Command;
 use App\Models\Server;
 use App\Models\ServerUpdate;
@@ -11,6 +14,8 @@ class SimulateMetricsUpdate extends Command
 {
     protected $signature = 'server:update-metrics {--daemon}';
     protected $description = 'Simulates incoming daemon metric updates and hardware profiles for all servers';
+
+    private const CONCURRENCY = 20;
 
     public function handle()
     {
@@ -32,55 +37,66 @@ class SimulateMetricsUpdate extends Command
             return;
         }
 
-        $batchSize = min($servers->count(), 3);
-        $this->info("Starting metrics simulator for {$servers->count()} servers (Ctrl+C to stop)...");
+        $this->info("Starting concurrent HTTP simulator for {$servers->count()} servers (Ctrl+C to stop)...");
+
+        $client = new Client([
+            'base_uri' => 'http://server-monitoring-system.test',
+            'timeout' => 5,
+            'http_errors' => false,
+        ]);
 
         while (true) {
             $start = microtime(true);
-            $broadcastCount = 0;
+            $success = 0;
+            $failed = 0;
 
-            foreach ($servers as $server) {
-                try {
-                    $this->updateServer($server, $broadcastCount < $batchSize);
-                    $broadcastCount++;
-                } catch (\Throwable $e) {
-                    $this->error("  [{$server->server_name}] Error: " . $e->getMessage());
+            $requests = function () use ($servers) {
+                foreach ($servers as $server) {
+                    yield new Request('POST', '/api/server/stats', [
+                        'Content-Type' => 'application/json',
+                        'Accept' => 'application/json',
+                    ], json_encode([
+                        'uuid' => $server->uuid,
+                        'token' => $server->api_key,
+                        'timestamp' => time(),
+                        'cpu' => ['load1' => rand(500, 9500) / 100],
+                        'memory' => ['percent' => rand(3000, 8500) / 100],
+                        'disk' => ['percent' => rand(4000, 9000) / 100],
+                        'uptime' => rand(3600, 86400),
+                        'network' => [
+                            ['rx_bytes' => rand(10000, 999999), 'tx_bytes' => rand(10000, 999999)],
+                        ],
+                    ]));
                 }
-            }
+            };
+
+            $pool = new Pool($client, $requests(), [
+                'concurrency' => self::CONCURRENCY,
+                'fulfilled' => function () use (&$success) {
+                    $success++;
+                },
+                'rejected' => function ($reason) use (&$failed) {
+                    $failed++;
+
+                    dump($reason);
+
+                    if ($reason instanceof \GuzzleHttp\Exception\RequestException) {
+                        dump($reason->getMessage());
+
+                        if ($reason->hasResponse()) {
+                            dump((string) $reason->getResponse()->getBody());
+                        }
+                    }
+                },
+            ]);
+
+            $pool->promise()->wait();
 
             $elapsed = (microtime(true) - $start) * 1000;
-            $this->line("  Batch: {$servers->count()} servers (broadcast {$batchSize}) in {$elapsed}ms");
+            $this->line("  Batch: {$servers->count()} servers ({$success} ok, {$failed} fail) in {$elapsed}ms");
 
             $sleep = max(0, 1_000_000 - (int) ($elapsed * 1000));
             usleep($sleep);
-        }
-    }
-
-    protected function updateServer(Server $server, bool $shouldBroadcast = true): void
-    {
-        $update = ServerUpdate::create([
-            'server_id' => $server->id,
-            'cpu_usage' => rand(500, 9500) / 100,
-            'memory_usage' => rand(3000, 8500) / 100,
-            'storage' => rand(4000, 9000) / 100,
-            'uptime' => rand(3600, 86400),
-            'network_rbytes' => rand(10000, 999999),
-            'network_tbytes' => rand(10000, 999999),
-            'created_at' => now(),
-        ]);
-
-        if ($shouldBroadcast) {
-            ServerStatsUpdated::dispatchSync(
-                $server->uuid,
-                [
-                    't' => $update->created_at->getPreciseTimestamp(3),
-                    'c' => round((float) $update->cpu_usage, 1),
-                    'm' => round((float) $update->memory_usage, 1),
-                    'i' => 0,
-                    'o' => 0,
-                    'd' => round((float) $update->storage, 1),
-                ],
-            );
         }
     }
 

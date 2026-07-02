@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Broadcast::routes(['middleware' => ['auth:jwt']]);
+Broadcast::routes(['middleware' => [\App\Http\Middleware\JwtAuthenticate::class]]);
 
 Route::group([], base_path('routes/api/auth.php'));
 Route::group([], base_path('routes/api/servers.php'));
