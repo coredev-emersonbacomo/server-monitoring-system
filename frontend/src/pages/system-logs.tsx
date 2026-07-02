@@ -1,5 +1,7 @@
+import PageLayout from "@/components/PageLayout";
+
 const SystemLogs = () => {
-    return <div>System Logs</div>;
+    return <PageLayout>System Logs</PageLayout>;
 };
 
 export default SystemLogs;

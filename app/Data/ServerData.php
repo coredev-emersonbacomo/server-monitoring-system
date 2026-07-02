@@ -56,7 +56,7 @@ class ServerData extends Data
             cpu_cores: $server->cpu_cores,
             ram: $server->ram,
             operating_system: $server->operating_system,
-            record_status: $server->record_status,
+            record_status: $server->record_status->value,
             created_at: $server->created_at->toIso8601String(),
             updated_at: $server->updated_at->toIso8601String(),
         );

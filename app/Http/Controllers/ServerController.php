@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Data\CreateServerData;
 use App\Data\ServerData;
-use App\Data\ServerSshData;
 use App\Data\ServerUpdatesData;
 use App\Data\StatPointData;
 use App\Data\UpdateServerData;
@@ -12,6 +11,7 @@ use App\Data\UpdateServerSpecsData;
 use App\Events\ServerStatsUpdated;
 use App\Models\Client;
 use App\Models\Server;
+use App\Models\ServerUpdate;
 use Illuminate\Http\JsonResponse;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\Request;
@@ -123,76 +123,47 @@ class ServerController extends Controller
         $onlineThreshold  = now()->subMinutes(5);
         $warningThreshold = now()->subMinutes(15);
 
-        $query = DB::table('servers')
-            ->leftJoinSub(
-                DB::table('server_updates')
-                    ->select('server_id', DB::raw('MAX(created_at) as last_seen'))
-                    ->groupBy('server_id'),
-                'lu',
-                'servers.id',
-                '=',
-                'lu.server_id'
-            )
-            ->join('clients', 'servers.client_id', '=', 'clients.id')
-            ->select(
-                'servers.uuid',
-                'servers.server_name',
-                'servers.host_name',
-                'servers.external_ip',
-                'servers.cpu_cores',
-                'servers.ram',
-                'servers.operating_system',
-                'servers.client_id',
-                'servers.record_status',
-                'servers.created_at',
-                'servers.updated_at',
-                'clients.uuid as client_uuid',
-                'clients.name as client_name',
-                'lu.last_seen',
-            )
-            ->selectRaw("
-                CASE
-                    WHEN lu.last_seen >= ? THEN 'online'
-                    WHEN lu.last_seen < ? AND lu.last_seen >= ? THEN 'warning'
-                    ELSE 'offline'
-                END as status
-            ", [$onlineThreshold, $onlineThreshold, $warningThreshold]);
+        $query = Server::with('client', 'latestUpdate');
 
         if ($clientUuid = $request->query('client_uuid')) {
             $client = Client::where('uuid', $clientUuid)->first();
             if ($client) {
-                $query->where('servers.client_id', $client->id);
+                $query->where('client_id', $client->id);
             }
         }
 
-        $query->orderBy('servers.created_at', 'desc');
+        $servers = $query->orderBy('created_at', 'desc')->get();
 
-        return ServerData::collect($query->get()->map(fn(\stdClass $s) => ServerData::from([
-            'uuid'             => $s->uuid,
-            'server_name'      => $s->server_name,
-            'host_name'      => $s->host_name,
-            'external_ip'      => $s->external_ip,
-            'client_uuid'      => $s->client_uuid,
-            'client_name'      => $s->client_name,
-            'created_at'       => $s->created_at,
-            'updated_at'       => $s->updated_at,
-            'cpu_cores'        => $s->cpu_cores,
-            'ram'              => $s->ram,
-            'operating_system' => $s->operating_system,
-            'record_status'    => $s->record_status,
-            'status'           => $s->status,
-        ])));
+        return ServerData::collect($servers->map(function (Server $server) use ($onlineThreshold, $warningThreshold) {
+            $lastSeen = $server->latestUpdate?->created_at;
+            $health = Server::computeHealth($lastSeen, $onlineThreshold, $warningThreshold);
+
+            return ServerData::from([
+                'uuid'             => $server->uuid,
+                'server_name'      => $server->server_name,
+                'host_name'        => $server->host_name,
+                'external_ip'      => $server->external_ip,
+                'client_uuid'      => $server->client->uuid,
+                'client_name'      => $server->client->name,
+                'created_at'       => $server->created_at->toIso8601String(),
+                'updated_at'       => $server->updated_at->toIso8601String(),
+                'cpu_cores'        => $server->cpu_cores,
+                'ram'              => $server->ram,
+                'operating_system' => $server->operating_system,
+                'record_status'    => $server->record_status->value,
+                'status'           => $health->value,
+            ]);
+        }));
     }
 
     public function showWithStats(string $serverUuid): ServerData
     {
-        $server = DB::table('servers')->where('uuid', $serverUuid)->first();
+        $server = Server::where('uuid', $serverUuid)->first();
         if (!$server) {
             abort(404, 'Server not found.');
         }
 
-        $updates = DB::table('server_updates')
-            ->where('server_id', $server->id)
+        $updates = $server->updates()
             ->orderBy('created_at')
             ->limit(144)
             ->get();
@@ -204,55 +175,47 @@ class ServerController extends Controller
             $prev = $row;
         }
 
-        $client = DB::table('clients')
-            ->where('id', $server->client_id)
-            ->first();
+        $client = $server->client;
 
         return ServerData::from([
             'uuid'             => $server->uuid,
             'server_name'      => $server->server_name,
-            'host_name'      => $server->host_name,
+            'host_name'        => $server->host_name,
             'external_ip'      => $server->external_ip,
             'ssh_port'         => $server->ssh_port,
             'ssh_username'     => $server->ssh_username,
-            'created_at'       => $server->created_at,
-            'updated_at'       => $server->updated_at,
+            'created_at'       => $server->created_at->toIso8601String(),
+            'updated_at'       => $server->updated_at->toIso8601String(),
             'cpu_cores'        => $server->cpu_cores ?? null,
             'ram'              => $server->ram ?? null,
             'operating_system' => $server->operating_system ?? null,
             'client_id'        => $server->client_id,
             'client_uuid'      => $client?->uuid ?? '',
             'client_name'      => $client?->name ?? 'Unknown',
-            'record_status'    => $server->record_status,
+            'record_status'    => $server->record_status->value,
             'stats'            => $stats,
         ]);
     }
 
     public function ingestStats(ServerUpdatesData $data): array
     {
-        $server_id = (int) DB::table('servers')
-            ->where('uuid', $data->uuid)
+        $server = Server::where('uuid', $data->uuid)
             ->where('api_key', $data->token)
-            ->value('id');
+            ->first();
 
-        abort_if(!$server_id, 401, 'Unauthorized or invalid server ID.');
+        abort_if(!$server, 401, 'Unauthorized or invalid server ID.');
 
-        $timestamp = $data->timestamp;
-
-        DB::table('server_updates')->insert([
-            'server_id'      => $server_id,
+        $server->updates()->create([
             'cpu_usage'      => $data->cpu_usage,
             'memory_usage'   => $data->memory_usage,
             'storage'        => $data->storage,
             'uptime'         => $data->uptime,
             'network_rbytes' => $data->network_rxbytes,
             'network_tbytes' => $data->network_txbytes,
-            'created_at'     => date('Y-m-d H:i:s', $timestamp),
-            'updated_at'     => now(),
+            'created_at'     => date('Y-m-d H:i:s', $data->timestamp),
         ]);
 
-        $rows = DB::table('server_updates')
-            ->where('uuid', $data->uuid)
+        $rows = $server->updates()
             ->orderByDesc('created_at')
             ->limit(2)
             ->get();
@@ -262,19 +225,19 @@ class ServerController extends Controller
 
         $stats = $latest ? self::computeStatPoint($latest, $prev) : [];
 
-        ServerStatsUpdated::dispatch($server_id, $stats);
+        ServerStatsUpdated::dispatch($server->id, $stats);
 
         return ['success' => true, 'message' => 'Metrics recorded.'];
     }
 
-    private static function computeStatPoint(object $row, ?object $prev): array
+    private static function computeStatPoint(ServerUpdate $row, ?ServerUpdate $prev): array
     {
-        $ts = strtotime($row->created_at) * 1000;
+        $ts = $row->created_at->getPreciseTimestamp(3);
 
         $netIn = 0;
         $netOut = 0;
         if ($prev) {
-            $prevTs = strtotime($prev->created_at) * 1000;
+            $prevTs = $prev->created_at->getPreciseTimestamp(3);
             $dt = ($ts - $prevTs) / 1000;
             if ($dt > 0) {
                 $netIn = (($row->network_rbytes - $prev->network_rbytes) / 1_000_000) / $dt;
@@ -294,13 +257,10 @@ class ServerController extends Controller
 
     public function uninstallServer(Request $request): array
     {
-        // 1. Validate that the UUID is provided in the POST request
         $validated = $request->validate([
             'uuid' => ['required', 'uuid'],
         ]);
 
-        // 2. Fetch all required connection parameters directly from the DB
-        // Assuming columns are named 'id', 'external_ip', 'port', 'ssh_username', 'ssh_password', 'api_key'
         $server = Server::where('uuid', $validated['uuid'])
             ->firstOrFail([
                 'external_ip',
@@ -337,20 +297,16 @@ class ServerController extends Controller
 
     public function updateServerSpecs(UpdateServerSpecsData $data): JsonResponse
     {
-        // Perform the update directly on the matching row
-        $updatedCount = DB::table('servers')
-            ->where('uuid', $data->uuid)
+        $updated = Server::where('uuid', $data->uuid)
             ->where('api_key', $data->token)
             ->update([
                 'cpu_model'        => $data->cpu_model,
                 'cpu_cores'        => $data->cpu_cores,
                 'ram'              => $data->ram,
                 'operating_system' => $data->operating_system,
-                'updated_at'       => now(), // Gotcha: DB::table doesn't auto-update timestamps!
             ]);
 
-        // If no rows were updated, it means either the UUID or Token was invalid
-        if ($updatedCount === 0) {
+        if ($updated === 0) {
             return response()->json(['status'  => 'error',], 404);
         }
 

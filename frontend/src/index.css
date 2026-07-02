@@ -208,12 +208,4 @@
     .dark *::-webkit-scrollbar-thumb:hover {
         background: oklch(0.556 0 0);
     }
-
-    .page-top-padding {
-        padding-top: 2rem;
-    }
-
-    .page-bottom-padding {
-        padding-bottom: 1.5rem;
-    }
 }
