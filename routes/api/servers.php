@@ -21,3 +21,8 @@ Route::middleware('auth:jwt')->group(function () {
 // No need to have middle as agent have the API key
 Route::post('/server/stats', [ServerController::class, 'ingestStats']);
 Route::post('/server/specs', [ServerController::class, 'updateServerSpecs']);
+
+Route::get('/server/{serverId}/minute', [ServerController::class, 'dailyUsage']);
+Route::get('/server/{serverId}/{date}', [ServerController::class, 'dayAverage'])
+    ->where('date', '\d{4}-\d{2}-\d{2}'); // only match YYYY-MM-DD
+

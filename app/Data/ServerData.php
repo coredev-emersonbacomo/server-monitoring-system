@@ -15,7 +15,7 @@ class ServerData extends Data
         public string $external_ip,
 
         public string $host_name,
-        
+
         public ?int $ssh_port,
 
         public ?string $ssh_username,
@@ -32,7 +32,7 @@ class ServerData extends Data
 
         public ?int $cpu_cores = null,
 
-        public ?int $ram = null,
+        public ?string $ram = null,
 
         public ?string $operating_system = null,
 
