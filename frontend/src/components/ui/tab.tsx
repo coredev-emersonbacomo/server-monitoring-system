@@ -1,4 +1,4 @@
-import { useCallback, Children, isValidElement } from "react";
+import { useCallback, useState, Children, isValidElement } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,12 +12,15 @@ interface TabItemProps {
 interface TabProps {
     children: React.ReactNode;
     className?: string;
+    syncUrl?: boolean;
 }
 
 const TAB_RADIUS = 10;
 
-function Tab({ children, className }: TabProps) {
+function Tab({ children, className, syncUrl = true }: TabProps) {
     const [searchParams, setSearchParams] = useSearchParams();
+    const [localTab, setLocalTab] = useState<string | null>(null);
+
     const items = Children.toArray(children).filter(
         (child): child is React.ReactElement<TabItemProps> =>
             isValidElement(child) &&
@@ -28,28 +31,39 @@ function Tab({ children, className }: TabProps) {
     );
 
     const activeTab = (() => {
-        const tabFromUrl = searchParams.get("tab");
-        if (
-            tabFromUrl &&
-            items.some((item) => item.props.title === tabFromUrl)
+        if (syncUrl) {
+            const tabFromUrl = searchParams.get("tab");
+            if (
+                tabFromUrl &&
+                items.some((item) => item.props.title === tabFromUrl)
+            ) {
+                return tabFromUrl;
+            }
+        } else if (
+            localTab &&
+            items.some((item) => item.props.title === localTab)
         ) {
-            return tabFromUrl;
+            return localTab;
         }
         return items[0]?.props.title ?? "";
     })();
 
     const handleTabChange = useCallback(
         (title: string) => {
-            setSearchParams(
-                (prev) => {
-                    const next = new URLSearchParams(prev);
-                    next.set("tab", title);
-                    return next;
-                },
-                { replace: true },
-            );
+            if (syncUrl) {
+                setSearchParams(
+                    (prev) => {
+                        const next = new URLSearchParams(prev);
+                        next.set("tab", title);
+                        return next;
+                    },
+                    { replace: true },
+                );
+            } else {
+                setLocalTab(title);
+            }
         },
-        [setSearchParams],
+        [syncUrl, setSearchParams],
     );
 
     const activeItem =

@@ -455,7 +455,7 @@ export default function ClientDetail() {
                                         size="sm"
                                         label="Cancel"
                                         onClick={() => navigate("/clients")}
-                                    />
+                                />
                                 )}
                             </div>
                         </div>
