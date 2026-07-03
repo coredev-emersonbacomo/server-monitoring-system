@@ -427,7 +427,7 @@ export default function ClientDetail() {
                                         size="sm"
                                         icon={<Trash2 size={13} />}
                                         label="Delete"
-                                        className="bg-red-600/70"
+                                        className="bg-red-600/70 cursor-pointer"
                                         onClick={() => setShowDelete(true)}
                                     />
                                 )}
@@ -443,6 +443,7 @@ export default function ClientDetail() {
                                 )}
                                 {showEdit && mode !== "create" && (
                                     <Button
+                                        className="cursor-pointer"
                                         variant="outline"
                                         size="sm"
                                         label="Cancel"
@@ -640,6 +641,7 @@ export default function ClientDetail() {
                                             <div className="h-px bg-border" />
                                             <div className="flex items-center justify-end gap-3">
                                                 <Button
+                                                    className="cursor-pointer"
                                                     type="submit"
                                                     disabled={isSaving}
                                                     label={
@@ -670,6 +672,7 @@ export default function ClientDetail() {
                                                 </p>
                                             </div>
                                             <Button
+                                                className="cursor-pointer"
                                                 type="button"
                                                 variant="outline"
                                                 size="sm"
@@ -759,7 +762,7 @@ export default function ClientDetail() {
                                                             disabled={
                                                                 removeSecop.isPending
                                                             }
-                                                            className="text-xs text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50"
+                                                            className="text-xs text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50 cursor-pointer"
                                                         >
                                                             Remove
                                                         </button>
@@ -824,7 +827,7 @@ export default function ClientDetail() {
                                                     variant="outline"
                                                     size="sm"
                                                     icon={<Filter size={14} />}
-                                                    className="gap-1"
+                                                    className="gap-1 cursor-pointer"
                                                 >
                                                     {serverFilter === "all"
                                                         ? "All"
@@ -864,7 +867,7 @@ export default function ClientDetail() {
                                                             )
                                                         }
                                                         className={cn(
-                                                            "flex items-center w-full px-2 py-1.5 rounded-md text-sm transition-colors",
+                                                            "flex items-center w-full px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer",
                                                             serverFilter ===
                                                                 opt.value
                                                                 ? "bg-accent text-accent-foreground"
@@ -881,6 +884,7 @@ export default function ClientDetail() {
                                             to={`/servers?client_uuid=${client.uuid}`}
                                         >
                                             <Button
+                                                className="cursor-pointer"
                                                 variant="outline"
                                                 size="sm"
                                                 label="View All"
@@ -890,6 +894,7 @@ export default function ClientDetail() {
                                             to={`/servers/create?client_uuid=${client.uuid}`}
                                         >
                                             <Button
+                                                className="cursor-pointer"
                                                 variant="outline"
                                                 size="sm"
                                                 icon={<Plus size={14} />}
@@ -1045,7 +1050,7 @@ export default function ClientDetail() {
                                                 selectedSecopToAdd ===
                                                 user.uuid
                                             }
-                                            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 text-left border border-border/40 hover:border-border"
+                                            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 text-left border border-border/40 hover:border-border cursor-pointer"
                                         >
                                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                                                 <div className="w-8 h-8 rounded-full overflow-hidden bg-muted shrink-0">

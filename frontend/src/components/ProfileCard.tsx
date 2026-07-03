@@ -30,7 +30,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                         e.preventDefault();
                         onDelete?.(uuid);
                     }}
-                    className="absolute top-4 right-4 text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded text-[11px]"
+                    className="absolute top-4 right-4 text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded text-[11px] cursor-pointer"
                 >
                     Remove
                 </button>

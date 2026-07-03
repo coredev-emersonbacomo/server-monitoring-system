@@ -95,7 +95,7 @@ export default function MetricCard({
 
                         <button
                             onClick={() => setOpen(true)}
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border hover:bg-muted transition-colors"
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border hover:bg-muted transition-colors cursor-pointer"
                         >
                             <Settings2 className="h-5 w-5" />
                         </button>
