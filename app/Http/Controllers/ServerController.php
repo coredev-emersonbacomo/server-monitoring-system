@@ -8,7 +8,7 @@ use App\Data\ServerUpdatesData;
 use App\Data\StatPointData;
 use App\Data\UpdateServerData;
 use App\Data\UpdateServerSpecsData;
-use App\Events\ServerStatsUpdated;
+use Illuminate\Support\Carbon;
 use App\Jobs\BroadcastServerStats;
 use App\Models\Client;
 use App\Models\Server;
@@ -310,5 +310,31 @@ class ServerController extends Controller
         }
 
         return response()->json(['status' => 'success'], 200);
+    }
+
+
+    public function dailyUsage(int $serverId)
+    {
+        $data = DB::table('server_updates_agg_minute')
+            ->select(['bucket', 'avg_cpu_usage', 'avg_memory_usage', 'avg_disk_usage'])
+            ->where('server_id', $serverId)
+            ->where('bucket', '>=', Carbon::now()->subDay())
+            ->orderBy('bucket')
+            ->get();
+
+        return response()->json($data);
+    }
+
+    public function dayAverage(int $serverId, string $date)
+    {
+        $day = Carbon::parse($date)->startOfDay();
+
+        $row = DB::table('server_updates_agg_day')
+            ->select(['bucket', 'avg_cpu_usage', 'avg_memory_usage', 'avg_disk_usage'])
+            ->where('server_id', $serverId)
+            ->where('bucket', $day)
+            ->first();
+
+        return response()->json($row);
     }
 }
