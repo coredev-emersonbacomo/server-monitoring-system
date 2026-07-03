@@ -524,13 +524,14 @@ export default function UserDetail() {
                                         size="sm"
                                         icon={<Trash2 size={13} />}
                                         label="Delete"
-                                        className="bg-red-600/70"
+                                        className="bg-red-600/70 cursor-pointer"
                                         onClick={() => setShowDelete(true)}
                                     />
                                 )}
 
                                 {mode !== "create" && !showEdit && (
                                     <Button
+                                        className="cursor-pointer"
                                         variant="outline"
                                         size="sm"
                                         icon={<Pencil className="w-4 h-4" />}
@@ -540,6 +541,7 @@ export default function UserDetail() {
                                 )}
                                 {showEdit && mode !== "create" && (
                                     <Button
+                                        className="cursor-pointer"
                                         variant="outline"
                                         size="sm"
                                         label="Cancel"
@@ -1023,6 +1025,7 @@ export default function UserDetail() {
                                     <div className="h-px bg-border" />
                                     <div className="flex items-center justify-end gap-3">
                                         <Button
+                                            className="cursor-pointer"
                                             type="submit"
                                             disabled={isSaving}
                                             label={

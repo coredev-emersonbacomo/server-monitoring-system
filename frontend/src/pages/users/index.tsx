@@ -240,12 +240,14 @@ const Users = () => {
                         <div className="flex justify-end gap-2 pt-2">
                             <DialogClose asChild>
                                 <Button
+                                    className="cursor-pointer"
                                     variant="outline"
                                     label="Cancel"
                                     onClick={() => setDeleteTarget(null)}
                                 />
                             </DialogClose>
                             <Button
+                                className="cursor-pointer"
                                 variant="danger"
                                 label={
                                     deleteUser.isPending
