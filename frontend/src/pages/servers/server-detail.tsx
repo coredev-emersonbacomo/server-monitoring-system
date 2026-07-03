@@ -104,12 +104,6 @@ export default function ServerDetail() {
     return (
         <ChartZoomProvider>
             <PageLayout>
-                <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md pb-3 px-5 flex justify-end items-center">
-                    <time className="text-sm text-muted-foreground">
-                        {time.toLocaleTimeString()}
-                    </time>
-                </header>
-
                 <main className="py-3 w-full flex-1">
                     <ServerCard server={{ ...initial, stats: allStats }} />
                 </main>
