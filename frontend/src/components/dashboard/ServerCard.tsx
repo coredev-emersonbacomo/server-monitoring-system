@@ -78,7 +78,9 @@ interface ServerCardProps {
     onDelete?: (uuid: string) => Promise<void> | void;
 }
 
-export const ServerCard = memo(function ServerCard({ server }: ServerCardProps) {
+export const ServerCard = memo(function ServerCard({
+    server,
+}: ServerCardProps) {
     const status = "online";
     const { icon: StatusIcon, label, color, bg } = STATUS_CONFIG[status];
 
@@ -106,7 +108,6 @@ export const ServerCard = memo(function ServerCard({ server }: ServerCardProps) 
         setShowDelete(false);
         setConfirmText("");
     };
-
     return (
         <div className="py-5 px-5">
             {/* Server header */}
@@ -271,4 +272,4 @@ export const ServerCard = memo(function ServerCard({ server }: ServerCardProps) 
             </Dialog>
         </div>
     );
-});
+}); 
