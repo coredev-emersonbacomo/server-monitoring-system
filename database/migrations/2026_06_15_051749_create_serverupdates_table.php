@@ -50,16 +50,18 @@ return new class extends Migration
         Schema::continuousAggregate('server_updates_agg_minute', function (CaggBlueprint $table) {
             $table->as("
                 SELECT
-                    time_bucket('1 minute', created_at) AS bucket,
+                    time_bucket('1 minute', created_at) AS timestamp,
                     server_id,
-                    AVG(cpu_usage) AS avg_cpu_usage,
-                    AVG(memory_usage) AS avg_memory_usage,
-                    AVG(disk_usage) AS avg_disk_usage
+                    AVG(cpu_usage) AS cpu,
+                    AVG(memory_usage) AS memory,
+                    AVG(disk_usage) AS disk,
+                    AVG(network_rbytes) AS netIn,
+                    AVG(network_tbytes) AS netOut
                 FROM server_updates
-                GROUP BY bucket, server_id
+                GROUP BY timestamp, server_id
             ");
             $table->realtime();
-            $table->index(['server_id', 'bucket']);
+            $table->index(['server_id', 'timestamp']);
             $table->timescale(
                 // run every minute, look back 1 hour, don't touch the last minute (still filling)
                 new CreateRefreshPolicy('1 minute', '1 hour', '1 minute'),
@@ -71,21 +73,51 @@ return new class extends Migration
         });
 
         // ---------------------------------------------------------------
+        // 1 hour rollup
+        // ---------------------------------------------------------------
+        Schema::continuousAggregate('server_updates_agg_hour', function (CaggBlueprint $table) {
+            $table->as("
+                SELECT
+                    time_bucket('1 hour', created_at) AS timestamp,
+                    server_id,
+                    AVG(cpu_usage) AS cpu,
+                    AVG(memory_usage) AS memory,
+                    AVG(disk_usage) AS disk,
+                    AVG(network_rbytes) AS netIn,
+                    AVG(network_tbytes) AS netOut
+                FROM server_updates
+                GROUP BY timestamp, server_id
+            ");
+            $table->realtime();
+            $table->index(['server_id', 'timestamp']);
+            $table->timescale(
+                // run every minute, look back 1 hour, don't touch the last minute (still filling)
+                new CreateRefreshPolicy('1 hour', '24 hour', '1 hour'),
+                new EnableColumnstore(),
+                new CreateColumnstorePolicy('1 day'),
+                // minute-level detail is rrely useful past a month, keep the cagg small
+                new CreateRetentionPolicy('2 month'),
+            );
+        });
+
+        // ---------------------------------------------------------------
         // 1 day rollup
         // ---------------------------------------------------------------
         Schema::continuousAggregate('server_updates_agg_day', function (CaggBlueprint $table) {
             $table->as("
                 SELECT
-                    time_bucket('1 day', created_at) AS bucket,
+                    time_bucket('1 day', created_at) AS timestamp,
                     server_id,
-                    AVG(cpu_usage) AS avg_cpu_usage,
-                    AVG(memory_usage) AS avg_memory_usage,
-                    AVG(disk_usage) AS avg_disk_usage
+                    AVG(cpu_usage) AS cpu,
+                    AVG(memory_usage) AS memory,
+                    AVG(disk_usage) AS disk,
+                    AVG(network_rbytes) AS netIn,
+                    AVG(network_tbytes) AS netOut
                 FROM server_updates
-                GROUP BY bucket, server_id
+                GROUP BY timestamp, server_id
             ");
             $table->realtime();
-            $table->index(['server_id', 'bucket']);
+            $table->index(['server_id', 'timestamp']);
             $table->timescale(
                 // run hourly, look back 7 days, leave the current day open until it's done
                 new CreateRefreshPolicy('1 hour', '7 days', '1 day'),
@@ -100,15 +132,17 @@ return new class extends Migration
         Schema::continuousAggregate('server_updates_agg_week', function (CaggBlueprint $table) {
             $table->as("
                 SELECT
-                    time_bucket('1 week', created_at) AS bucket,
+                    time_bucket('1 week', created_at) AS timestamp,
                     server_id,
-                    AVG(cpu_usage) AS avg_cpu_usage,
-                    AVG(memory_usage) AS avg_memory_usage,
-                    AVG(disk_usage) AS avg_disk_usage
+                    AVG(cpu_usage) AS cpu,
+                    AVG(memory_usage) AS memory,
+                    AVG(disk_usage) AS disk,
+                    AVG(network_rbytes) AS netIn,
+                    AVG(network_tbytes) AS netOut
                 FROM server_updates
-                GROUP BY bucket, server_id
+                GROUP BY timestamp, server_id
             ");
-            $table->index(['server_id', 'bucket']);
+            $table->index(['server_id', 'timestamp']);
             $table->timescale(
                 // run every 6 hours, look back 2 months, leave the current week open
                 new CreateRefreshPolicy('6 hours', '2 months', '1 week'),
@@ -123,15 +157,17 @@ return new class extends Migration
         Schema::continuousAggregate('server_updates_agg_month', function (CaggBlueprint $table) {
             $table->as("
                 SELECT
-                    time_bucket('1 month', created_at) AS bucket,
+                    time_bucket('1 month', created_at) AS timestamp,
                     server_id,
-                    AVG(cpu_usage) AS avg_cpu_usage,
-                    AVG(memory_usage) AS avg_memory_usage,
-                    AVG(disk_usage) AS avg_disk_usage
+                    AVG(cpu_usage) AS cpu,
+                    AVG(memory_usage) AS memory,
+                    AVG(disk_usage) AS disk,
+                    AVG(network_rbytes) AS netIn,
+                    AVG(network_tbytes) AS netOut
                 FROM server_updates
-                GROUP BY bucket, server_id
+                GROUP BY timestamp, server_id
             ");
-            $table->index(['server_id', 'bucket']);
+            $table->index(['server_id', 'timestamp']);
             $table->timescale(
                 // run daily, look back 6 months, leave the current month open
                 new CreateRefreshPolicy('1 day', '6 months', '1 month'),
@@ -146,6 +182,7 @@ return new class extends Migration
         Schema::dropContinuousAggregateIfExists('server_updates_agg_month');
         Schema::dropContinuousAggregateIfExists('server_updates_agg_week');
         Schema::dropContinuousAggregateIfExists('server_updates_agg_day');
+        Schema::dropContinuousAggregateIfExists('server_updates_agg_hour');
         Schema::dropContinuousAggregateIfExists('server_updates_agg_minute');
         Schema::dropIfExists('server_updates');
     }
