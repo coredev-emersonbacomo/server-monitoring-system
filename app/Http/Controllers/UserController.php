@@ -79,8 +79,8 @@ class UserController extends Controller
         if (!($data->email instanceof \Spatie\LaravelData\Optional)) {
             $payload['email'] = $data->email;
         }
-        if(!($data->phone_number instanceof \Spatie\LaravelData\Optional)) {
-            $payload['contact_number'] = $data->phone_number;
+        if (!($data->phone_number instanceof \Spatie\LaravelData\Optional)) {
+            $payload['phone_number'] = $data->phone_number;
         }
         if (!($data->username instanceof \Spatie\LaravelData\Optional)) {
             $payload['username'] = $data->username;

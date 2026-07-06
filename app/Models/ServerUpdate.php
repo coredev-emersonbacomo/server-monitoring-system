@@ -13,9 +13,12 @@ class ServerUpdate extends Model
 
     protected $guarded = [];
 
-    protected $primaryKey = 'server_id';
-
     public $incrementing = false;
+
+    public function getKeyName(): string
+    {
+        return 'created_at';
+    }
 
     public function server(): BelongsTo
     {

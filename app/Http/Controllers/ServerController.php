@@ -9,6 +9,7 @@ use App\Data\StatPointData;
 use App\Data\UpdateServerData;
 use App\Data\UpdateServerSpecsData;
 use App\Events\ServerStatsUpdated;
+use App\Jobs\BroadcastServerStats;
 use App\Models\Client;
 use App\Models\Server;
 use App\Models\ServerUpdate;
@@ -201,6 +202,7 @@ class ServerController extends Controller
     {
         $server = Server::where('uuid', $data->uuid)
             ->where('api_key', $data->token)
+            ->select(['id', 'uuid'])
             ->first();
 
         abort_if(!$server, 401, 'Unauthorized or invalid server ID.');
@@ -208,26 +210,23 @@ class ServerController extends Controller
         $server->updates()->create([
             'cpu_usage'      => $data->cpu_usage,
             'memory_usage'   => $data->memory_usage,
-            'storage'        => $data->storage,
+            'disk_usage'     => $data->disk_usage,
             'uptime'         => $data->uptime,
             'network_rbytes' => $data->network_rxbytes,
             'network_tbytes' => $data->network_txbytes,
             'created_at'     => date('Y-m-d H:i:s', $data->timestamp),
         ]);
 
-        $rows = $server->updates()
-            ->orderByDesc('created_at')
-            ->limit(2)
-            ->get();
-
-        $latest = $rows->first();
-        $prev   = $rows->count() > 1 ? $rows->last() : null;
-
-        $stats = $latest ? self::computeStatPoint($latest, $prev) : [];
-
-        ServerStatsUpdated::dispatch($server->id, $stats);
+        // Dispatch broadcast asynchronously — keeps ingest latency to a single INSERT
+        BroadcastServerStats::dispatch($server->id, $server->uuid);
 
         return ['success' => true, 'message' => 'Metrics recorded.'];
+    }
+
+    /** @internal Also used by BroadcastServerStats job */
+    public static function computeStatPointPublic(ServerUpdate $row, ?ServerUpdate $prev): array
+    {
+        return self::computeStatPoint($row, $prev);
     }
 
     private static function computeStatPoint(ServerUpdate $row, ?ServerUpdate $prev): array
