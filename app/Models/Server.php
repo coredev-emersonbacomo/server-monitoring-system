@@ -2,22 +2,31 @@
 
 namespace App\Models;
 
-use App\Enums\ServerHealth;
-use App\Enums\RecordStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Client;
-use App\Models\ServerUpdate;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Support\Carbon;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
+use App\Enums\RecordStatus;
+use App\Enums\ServerHealth;
 
 class Server extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, Notifiable, HasUuids, LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logAll()
+            ->logOnlyDirty();
+    }
+
 
     public function newUniqueId(): string
     {
@@ -55,7 +64,7 @@ class Server extends Model
 
     public function latestUpdate(): HasOne
     {
-        return $this->hasOne(ServerUpdate::class, 'server_id')->latestOfMany();
+        return $this->hasOne(ServerUpdate::class, 'server_id')->latestOfMany('created_at');
     }
 
     public static function computeHealth(?Carbon $lastSeen, Carbon $onlineThreshold, Carbon $warningThreshold): ServerHealth

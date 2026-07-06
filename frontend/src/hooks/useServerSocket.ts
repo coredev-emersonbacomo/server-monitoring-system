@@ -1,7 +1,12 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import Echo from "laravel-echo";
 import Pusher from "pusher-js";
+import type { ChannelAuthorizationCallback } from "pusher-js";
+// Derive the authorization data shape from the callback type — ChannelAuthorizationData
+// is not a named export in all pusher-js versions, so we extract it from the callback.
+type ChannelAuthorizationData = NonNullable<Parameters<ChannelAuthorizationCallback>[1]>;
 import { getAccessToken } from "@/api/tokenManager";
+import { globalMetrics } from "@/lib/metricsBuffer";
 import type { StatPoint } from "@/types/stats";
 
 declare global {
@@ -16,73 +21,112 @@ window.Pusher = Pusher;
 
 export type WsStatus = "connecting" | "connected" | "disconnected";
 
-interface WsPointPayload {
-    timestamp: number;
-    cpu: number;
-    memory: number;
-    netIn: number;
-    netOut: number;
-    disk: number;
+// ---------------------------------------------------------------------------
+// Singleton Echo — one WS connection for the entire app lifetime.
+// Re-creating Echo per component causes repeated auth handshakes (~500 ms ea).
+// ---------------------------------------------------------------------------
+let echoSingleton: Echo<"reverb"> | null = null;
+
+function getEcho(): Echo<"reverb"> {
+    if (echoSingleton) return echoSingleton;
+
+    echoSingleton = new Echo({
+        broadcaster: "reverb",
+        key: import.meta.env.VITE_REVERB_APP_KEY,
+        wsHost: import.meta.env.VITE_REVERB_HOST,
+        wsPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
+        wssPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
+        forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? "https") === "https",
+        enabledTransports: ["ws", "wss"],
+        // Use a custom authorizer so the JWT token is always read fresh at
+        // subscription time — no stale token, no internal config mutation.
+        authorizer: (channel: { name: string }) => ({
+            authorize: (
+                socketId: string,
+                callback: (error: Error | null, data: ChannelAuthorizationData | null) => void,
+            ) => {
+                fetch("/api/broadcasting/auth", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${getAccessToken()}`,
+                    },
+                    body: JSON.stringify({
+                        socket_id: socketId,
+                        channel_name: channel.name,
+                    }),
+                })
+                    .then((res) => res.json())
+                    .then((data: ChannelAuthorizationData) => callback(null, data))
+                    .catch((err) => callback(err instanceof Error ? err : new Error(String(err)), null));
+            },
+        }),
+    });
+
+    return echoSingleton;
 }
 
 export function useServerSocket(
     serverUuid: string,
-    onStats: (point: StatPoint) => void,
     onStatus: (status: WsStatus) => void,
 ) {
-    const onStatsRef = useRef(onStats);
     const onStatusRef = useRef(onStatus);
+    useEffect(() => {
+        onStatusRef.current = onStatus;
+    });
 
     useEffect(() => {
         if (!serverUuid) return;
 
-        const echo = new Echo({
-            broadcaster: "reverb",
-            key: import.meta.env.VITE_REVERB_APP_KEY,
-            wsHost: import.meta.env.VITE_REVERB_HOST,
-            wsPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
-            wssPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
-            forceTLS:
-                (import.meta.env.VITE_REVERB_SCHEME ?? "https") === "https",
-            enabledTransports: ["ws", "wss"],
-            authEndpoint: "/api/broadcasting/auth",
-            auth: {
-                headers: {
-                    Authorization: `Bearer ${getAccessToken()}`,
-                },
-            },
-        });
+        const echo = getEcho();
 
-        echo.connector.pusher.connection.bind("connected", () => {
+        const onConnected = () => {
             console.info("[WS] Connected to Reverb");
             onStatusRef.current("connected");
-        });
-
-        echo.connector.pusher.connection.bind("disconnected", () => {
+        };
+        const onDisconnected = () => {
             console.info("[WS] Disconnected from Reverb");
             onStatusRef.current("disconnected");
-        });
+        };
+
+        echo.connector.pusher.connection.bind("connected", onConnected);
+        echo.connector.pusher.connection.bind("disconnected", onDisconnected);
+
+        // Fire immediately if already connected
+        if (echo.connector.pusher.connection.state === "connected") {
+            onStatusRef.current("connected");
+        }
 
         const channel = `server.${serverUuid}`;
 
         echo.private(channel).listen(
             ".ServerStatsUpdated",
-            (e: { stats: WsPointPayload }) => {
-                const point: StatPoint = {
-                    timestamp: e.stats.timestamp,
-                    cpu: e.stats.cpu,
-                    memory: e.stats.memory,
-                    netIn: e.stats.netIn,
-                    netOut: e.stats.netOut,
-                    disk: e.stats.disk,
-                };
-                onStatsRef.current(point);
+            (e: {
+                t: number;
+                c: number;
+                m: number;
+                i: number;
+                o: number;
+                d: number;
+            }) => {
+                globalMetrics.push(serverUuid, e);
             },
         );
 
         return () => {
+            echo.connector.pusher.connection.unbind("connected", onConnected);
+            echo.connector.pusher.connection.unbind(
+                "disconnected",
+                onDisconnected,
+            );
             echo.leaveChannel(channel);
-            echo.disconnect();
         };
     }, [serverUuid]);
+}
+
+export function useLiveStats(serverUuid: string): StatPoint | null {
+    return useSyncExternalStore(
+        (cb) => globalMetrics.subscribe(cb),
+        () => globalMetrics.getSnapshot().get(serverUuid) ?? null,
+    );
 }

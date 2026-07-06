@@ -1,4 +1,12 @@
-import { ChevronDown, Filter, Plus, Search, ArrowDownWideNarrow, ArrowUpWideNarrow, ArrowUpDown } from "lucide-react";
+import {
+    ChevronDown,
+    Filter,
+    Plus,
+    Search,
+    ArrowDownWideNarrow,
+    ArrowUpWideNarrow,
+    ArrowUpDown,
+} from "lucide-react";
 import {
     Popover,
     PopoverContent,
@@ -90,39 +98,56 @@ function IndexToolbar({
                                 {filterLabel}
                                 <span className="text-muted-foreground">·</span>
                                 <span className="font-normal">{sortLabel}</span>
-                                {sortDir === "desc"
-                                    ? <ArrowDownWideNarrow size={12} className="text-muted-foreground" />
-                                    : <ArrowUpWideNarrow size={12} className="text-muted-foreground" />}
+                                {sortDir === "desc" ? (
+                                    <ArrowDownWideNarrow
+                                        size={12}
+                                        className="text-muted-foreground"
+                                    />
+                                ) : (
+                                    <ArrowUpWideNarrow
+                                        size={12}
+                                        className="text-muted-foreground"
+                                    />
+                                )}
                             </span>
                             <ChevronDown size={14} />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent align="start" className="w-56 p-2 space-y-2">
+                    <PopoverContent align="start" className="w-56 p-2 ">
                         {/* Filter section */}
-                        <div className="flex items-center text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
-                            Filter
+                        <div className="flex flex-col gap-2">
+                            <div className="flex items-center text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1 ">
+                                Filter
+                            </div>
+                            <div>
+                                {filterOptions.map((option) => (
+                                    <label
+                                        key={option.value}
+                                        className="flex items-center justify-between w-full px-2 py-1 rounded-md text-sm transition-colors cursor-pointer hover:bg-muted text-foreground"
+                                    >
+                                        <span className="flex items-center gap-1.5 ">
+                                            <input
+                                                type="radio"
+                                                name="filter"
+                                                value={option.value}
+                                                checked={
+                                                    filter === option.value
+                                                }
+                                                onChange={() =>
+                                                    onFilterChange(option.value)
+                                                }
+                                                className="h-3.5 w-3.5 accent-black cursor-pointer bg-background border-foreground"
+                                            />
+                                            {option.icon}
+                                            {option.label}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {option.count}
+                                        </span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
-                        {filterOptions.map((option) => (
-                            <button
-                                key={option.value}
-                                onClick={() => onFilterChange(option.value)}
-                                className={cn(
-                                    "flex items-center justify-between w-full px-2 py-1.5 rounded-md text-sm transition-colors",
-                                    filter === option.value
-                                        ? "bg-accent text-accent-foreground"
-                                        : "hover:bg-muted text-foreground",
-                                )}
-                            >
-                                <span className="flex items-center gap-1.5">
-                                    {option.icon}
-                                    {option.label}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                    {option.count}
-                                </span>
-                            </button>
-                        ))}
-
                         <div className="h-px bg-border" />
 
                         {/* Sort section */}
@@ -134,7 +159,7 @@ function IndexToolbar({
                                 type="button"
                                 onClick={onSortDirChange}
                                 className={cn(
-                                    "flex items-center gap-1 text-xs font-medium rounded-md px-1.5 py-0.5 transition-colors",
+                                    "flex items-center gap-1 text-xs cursor-pointer font-medium rounded-md px-1.5 py-0.5 transition-colors",
                                     sortDir === "desc"
                                         ? "text-primary"
                                         : "text-muted-foreground hover:text-foreground",
@@ -144,20 +169,26 @@ function IndexToolbar({
                                 {sortDir === "desc" ? "desc" : "asc"}
                             </button>
                         </div>
-                        {sortOptions.map((option) => (
-                            <button
-                                key={option.value}
-                                onClick={() => onSortFieldChange(option.value)}
-                                className={cn(
-                                    "flex items-center w-full px-2 py-1.5 rounded-md text-sm transition-colors",
-                                    sortField === option.value
-                                        ? "bg-accent text-accent-foreground"
-                                        : "hover:bg-muted text-foreground",
-                                )}
-                            >
-                                {option.label}
-                            </button>
-                        ))}
+                        <div>
+                            {sortOptions.map((option) => (
+                                <label
+                                    key={option.value}
+                                    className="flex items-center gap-1.5 w-full px-2 py-1 rounded-md text-sm transition-colors cursor-pointer hover:bg-muted text-foreground"
+                                >
+                                    <input
+                                        type="radio"
+                                        name="sort"
+                                        value={option.value}
+                                        checked={sortField === option.value}
+                                        onChange={() =>
+                                            onSortFieldChange(option.value)
+                                        }
+                                        className="h-3.5 w-3.5 accent-black cursor-pointer bg-background border-foreground"
+                                    />
+                                    {option.label}
+                                </label>
+                            ))}
+                        </div>
                     </PopoverContent>
                 </Popover>
             </div>
