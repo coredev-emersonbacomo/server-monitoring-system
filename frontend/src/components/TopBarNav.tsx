@@ -16,7 +16,7 @@ const TopBarNav: React.FC = () => {
 
     if (isLoading) {
         return (
-            <div className="flex justify-between items-center relative h-16 py-2">
+            <div className="flex justify-between items-center relative h-10">
                 <div className="flex items-center gap-3 animate-pulse">
                     {trail.map((_, i) => (
                         <React.Fragment key={i}>
@@ -39,7 +39,7 @@ const TopBarNav: React.FC = () => {
     }
 
     return (
-        <div className="flex justify-between items-center relative h-16 py-2">
+        <div className="flex justify-between items-center relative h-10">
             <Breadcrumb>
                 <BreadcrumbList className="items-end">
                     {trail.map((crumb, index) => (

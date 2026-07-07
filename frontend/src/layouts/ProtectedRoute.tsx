@@ -7,8 +7,9 @@ import {
     type LucideProps,
     FileText,
     Terminal,
+    Server,
 } from "lucide-react";
-import { SidebarNav } from "@/components/SidebarNav";
+import { SidebarNav, type SidebarNavLink } from "@/components/SidebarNav";
 import { BreadcrumbProvider } from "@/contexts/BreadCrumbContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import TopBarNav from "@/components/TopBarNav";
@@ -19,7 +20,7 @@ export function ProtectedRoute() {
     const { user, isLoading } = useJwtAuth();
     const location = useLocation();
 
-    const sidebarLinks = [
+    const sidebarLinks: SidebarNavLink[] = [
         { name: "Dashboard", href: "/", icon: Activity },
         {
             name: "Clients",
@@ -27,6 +28,11 @@ export function ProtectedRoute() {
             icon: (props: LucideProps) => (
                 <Landmark {...props} strokeWidth="1.75" />
             ),
+        },
+        {
+            name: "Servers",
+            href: "/servers",
+            icon: Server,
         },
         { name: "Users", href: "/users", icon: Users },
         { name: "Server Logs", href: "/server-logs", icon: FileText },
@@ -54,7 +60,7 @@ export function ProtectedRoute() {
             <BreadcrumbProvider>
                 <div className="flex">
                     <SidebarNav links={sidebarLinks} />
-                    <main className="flex-1 flex flex-col px-8 sm:px-10 lg:px-12 gap-5 min-h-screen">
+                    <main className="flex-1 flex flex-col px-8 py-8 sm:px-10 lg:px-12 gap-5 min-h-screen">
                         <TopBarNav />
                         <div className="flex-1 flex flex-col">
                             <Outlet />

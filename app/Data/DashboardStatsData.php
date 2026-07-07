@@ -7,6 +7,7 @@ use Spatie\LaravelData\Data;
 class DashboardStatsData extends Data
 {
     public function __construct(
+        public int $total_users,
         public int $total_clients,
         public int $total_servers,
         public int $online_count,

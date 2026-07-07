@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "npm run build -w frontend && vite build",
-    "start": "concurrently --names \"dev,ws,queue,schedule\" --prefix-colors \"green,cyan,magenta,blue\" \"npm run dev\" \"php artisan reverb:start\" \"php artisan queue:work\" \"php artisan schedule:work\"",
+    "start": "concurrently --names \"dev,ws,queue,schedule\" --prefix-colors \"green,cyan,magenta,blue\" \"npm run dev\" \"php artisan reverb:start\" \"php artisan queue:work -q\" \"php artisan schedule:work\"",
     "dev": "npm run dev -w frontend",
     "types": "php artisan scramble:clear && php artisan scramble:export --path=frontend/src/api/api.json && node frontend/scripts/patch-schema.js && npm run types -w frontend",
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import {
     Tooltip,
@@ -12,7 +12,7 @@ import { CircleUser, EllipsisVertical, Menu } from "lucide-react";
 import { Button } from "./ui/button";
 import ThemeToggle from "./ThemeToggle";
 
-interface SidebarNavLink {
+export interface SidebarNavLink {
     name: string;
     href: string;
     icon: React.ComponentType<{ variant?: string; className?: string }>;
@@ -77,12 +77,12 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
         >
             <div className="flex gap-sidebar-section-gap items-center h-16">
                 <button
-                    className="p-sidebar-item-padding"
+                    className="p-sidebar-item-padding cursor-pointer"
                     onClick={toggleSidebar}
                 >
                     <Menu
                         className={twMerge(
-                            "size-icon cursor-pointer transition-all duration-300 ease-in-out",
+                            "size-icon transition-all duration-300 ease-in-out",
                             isCollapsed && "rotate-180",
                         )}
                     />
@@ -103,10 +103,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                     return (
                         <Tooltip key={link.name}>
                             <TooltipTrigger asChild>
-                                <div
-                                    onClick={() => {
-                                        navigate(link.href);
-                                    }}
+                                <Link
+                                    to={link.href}
                                     className={twMerge(
                                         "rounded-xl text-lg transition-all duration-300 ease-in-out overflow-hidden cursor-pointer",
                                         isCollapsed
@@ -117,7 +115,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                                             : "text-muted-foreground hover:bg-sidebar-hover",
                                     )}
                                 >
-                                    <div className="flex items-center gap-sidebar-section-gap p-sidebar-item-padding w-sidebar-button">
+                                    <div className="flex items-center gap-sidebar-section-gap p-sidebar-item-padding w-sidebar-button cursor-pointer">
                                         {
                                             <link.icon
                                                 variant={
@@ -133,9 +131,9 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                                                 )}
                                             />
                                         }
-                                        <label>{link.name}</label>
+                                        <label className="cursor-pointer">{link.name}</label>
                                     </div>
-                                </div>
+                                </Link>
                             </TooltipTrigger>
                             <TooltipContent
                                 side="right"
@@ -179,6 +177,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                         />
                     ) : (
                         <Button
+                            className="cursor-pointer"
                             variant={"outline"}
                             icon={<CircleUser />}
                             label="Profile"
@@ -188,6 +187,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                     <ThemeToggle />
 
                     <Button
+                        className="cursor-pointer"
                         label="Logout"
                         variant={"danger"}
                         onClick={handleLogout}
@@ -230,9 +230,9 @@ const ProfileBar = ({
             onClick={
                 asNavigation
                     ? () => {
-                          navigate("/profile");
-                          setPopoverOpen?.(false);
-                      }
+                        navigate("/profile");
+                        setPopoverOpen?.(false);
+                    }
                     : undefined
             }
             className={twMerge(
@@ -240,7 +240,7 @@ const ProfileBar = ({
                 isCollapsed ? "w-sidebar-button-collapsed" : "w-sidebar-button",
                 "text-muted-foreground hover:bg-sidebar-hover",
                 asNavigation &&
-                    "cursor-pointer rounded-lg py-2 hover:bg-foreground/2 hover:ring-transparent",
+                "cursor-pointer rounded-lg py-2 hover:bg-foreground/2 hover:ring-transparent",
             )}
         >
             <div className="flex items-center gap-sidebar-section-gap p-[calc(var(--spacing-sidebar-item-padding)-0.25rem)] w-sidebar-button">

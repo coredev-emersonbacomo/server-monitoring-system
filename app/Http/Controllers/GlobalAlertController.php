@@ -4,36 +4,49 @@ namespace App\Http\Controllers;
 
 use App\Models\GlobalAlert;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class GlobalAlertController extends Controller
 {
     public function index()
     {
-        $alerts = GlobalAlert::all();
-        return response()->json($alerts);
+        return response()->json(
+            GlobalAlert::orderBy('metric')
+                ->orderBy('threshold')
+                ->get()
+        );
     }
 
     public function update(Request $request)
     {
         $validated = $request->validate([
-            'alerts' => 'required|array',
-            'alerts.*.metric' => 'required|string',
-            'alerts.*.notification_channel' => 'required|string',
-            'alerts.*.threshold' => 'required|numeric|min:0|max:100',
+            'metrics' => ['required', 'array'],
         ]);
-
-        foreach ($validated['alerts'] as $alertData) {
-            GlobalAlert::updateOrCreate(
-                [
-                    'metric' => $alertData['metric'],
-                    'notification_channel' => $alertData['notification_channel']
-                ],
-                [
-                    'threshold' => $alertData['threshold']
-                ]
-            );
-        }
-
-        return response()->json(['message' => 'Global alerts updated successfully']);
+    
+        DB::transaction(function () use ($validated) {
+    
+            foreach ($validated['metrics'] as $metric => $levels) {
+    
+                // Remove all existing levels for this metric
+                GlobalAlert::where('metric', $metric)->delete();
+    
+                // Insert the new levels
+                foreach ($levels as $level) {
+    
+                    GlobalAlert::create([
+                        'metric' => $metric,
+                        'name' => $level['name'],
+                        'threshold' => $level['threshold'],
+                        'severity' => $level['severity'],
+                        'channels' => $level['channels'],
+                        'enabled' => $level['enabled'] ?? true,
+                    ]);
+                }
+            }
+        });
+    
+        return response()->json([
+            'message' => 'Global alerts updated successfully',
+        ]);
     }
 }
