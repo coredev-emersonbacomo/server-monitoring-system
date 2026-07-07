@@ -566,6 +566,7 @@ export interface components {
         };
         /** DashboardStatsData */
         DashboardStatsData: {
+            total_users: number;
             total_clients: number;
             total_servers: number;
             online_count: number;

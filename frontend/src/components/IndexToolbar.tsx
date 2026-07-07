@@ -84,9 +84,9 @@ function IndexToolbar({
                         <Button
                             variant="outline"
                             icon={<Filter size={14} />}
-                            className="gap-1"
+                            className="gap-1 cursor-pointer"
                         >
-                            <span className="flex items-center gap-1.5">
+                            <span className="flex items-center gap-1.5  ">
                                 {filterLabel}
                                 <span className="text-muted-foreground">·</span>
                                 <span className="font-normal">{sortLabel}</span>
@@ -107,7 +107,7 @@ function IndexToolbar({
                                 key={option.value}
                                 onClick={() => onFilterChange(option.value)}
                                 className={cn(
-                                    "flex items-center justify-between w-full px-2 py-1.5 rounded-md text-sm transition-colors",
+                                    "flex items-center justify-between w-full px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer",
                                     filter === option.value
                                         ? "bg-accent text-accent-foreground"
                                         : "hover:bg-muted text-foreground",
@@ -134,7 +134,7 @@ function IndexToolbar({
                                 type="button"
                                 onClick={onSortDirChange}
                                 className={cn(
-                                    "flex items-center gap-1 text-xs font-medium rounded-md px-1.5 py-0.5 transition-colors",
+                                    "flex items-center gap-1 text-xs font-medium rounded-md px-1.5 py-0.5 transition-colors cursor-pointer",
                                     sortDir === "desc"
                                         ? "text-primary"
                                         : "text-muted-foreground hover:text-foreground",
@@ -149,7 +149,7 @@ function IndexToolbar({
                                 key={option.value}
                                 onClick={() => onSortFieldChange(option.value)}
                                 className={cn(
-                                    "flex items-center w-full px-2 py-1.5 rounded-md text-sm transition-colors",
+                                    "flex items-center w-full px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer",
                                     sortField === option.value
                                         ? "bg-accent text-accent-foreground"
                                         : "hover:bg-muted text-foreground",
@@ -164,6 +164,7 @@ function IndexToolbar({
 
             {onCreate && (
                 <Button
+                    className="cursor-pointer"
                     icon={<Plus size={15} />}
                     label={createLabel}
                     onClick={onCreate}

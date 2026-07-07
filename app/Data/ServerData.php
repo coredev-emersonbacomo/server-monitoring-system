@@ -32,7 +32,9 @@ class ServerData extends Data
 
         public ?int $cpu_cores = null,
 
-        public ?int $ram = null,
+        public ?string $ram = null,
+
+        public ?string $disk = null,
 
         public ?string $operating_system = null,
 
@@ -53,8 +55,10 @@ class ServerData extends Data
             external_ip: $server->external_ip,
             ssh_port: $server->ssh_port,
             ssh_username: $server->ssh_username,
+            cpu_model: $server->cpu_model,
             cpu_cores: $server->cpu_cores,
             ram: $server->ram,
+            disk: $server->disk,
             operating_system: $server->operating_system,
             record_status: $server->record_status->value,
             created_at: $server->created_at->toIso8601String(),

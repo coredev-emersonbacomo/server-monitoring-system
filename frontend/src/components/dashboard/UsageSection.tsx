@@ -253,6 +253,17 @@ function UsageSection({
         return trimEdgeNulls(mergeSeries(flattenedData.series));
     }, [flattenedData?.series]);
 
+    const xDomain = useMemo(() => {
+        if (mergedData.length === 0) return undefined;
+        const min = mergedData[0].timestamp;
+        const max = mergedData[mergedData.length - 1].timestamp;
+        if (min === max) {
+            const pad = 60000;
+            return [min - pad, max + pad];
+        }
+        return [min, max];
+    }, [mergedData]);
+
     const nonNullCounts = useMemo(() => {
         const map = new Map<string, number>();
         if (!flattenedData?.series) return map;
@@ -338,7 +349,7 @@ function UsageSection({
         }
 
         prevScrollWidth.current = scrollWidth;
-    }, [mergedData.length, unit, containerWidth]);
+    }, [mergedData.length, unit]);
 
     useEffect(() => {
         const el = scrollContainerRef.current;
@@ -355,7 +366,7 @@ function UsageSection({
     const chartWidth =
         mergedData.length === 0
             ? undefined
-            : Math.max(mergedData.length * 40, containerWidth);
+            : mergedData.length * 40;
 
     const handleWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
         if (e.shiftKey) {
@@ -612,7 +623,7 @@ function UsageSection({
                                             dataKey="timestamp"
                                             type="number"
                                             scale="time"
-                                            domain={["dataMin", "dataMax"]}
+                                            domain={xDomain}
                                             minTickGap={40}
                                             tickLine={false}
                                             axisLine={false}

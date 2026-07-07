@@ -1,4 +1,4 @@
-import { useCallback, Children, isValidElement } from "react";
+import { useCallback, useState, Children, isValidElement } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,12 +12,15 @@ interface TabItemProps {
 interface TabProps {
     children: React.ReactNode;
     className?: string;
+    syncUrl?: boolean;
 }
 
-const TAB_RADIUS = 10;
+const TAB_RADIUS = 12;
 
-function Tab({ children, className }: TabProps) {
+function Tab({ children, className, syncUrl = true }: TabProps) {
     const [searchParams, setSearchParams] = useSearchParams();
+    const [localTab, setLocalTab] = useState<string | null>(null);
+
     const items = Children.toArray(children).filter(
         (child): child is React.ReactElement<TabItemProps> =>
             isValidElement(child) &&
@@ -28,28 +31,39 @@ function Tab({ children, className }: TabProps) {
     );
 
     const activeTab = (() => {
-        const tabFromUrl = searchParams.get("tab");
-        if (
-            tabFromUrl &&
-            items.some((item) => item.props.title === tabFromUrl)
+        if (syncUrl) {
+            const tabFromUrl = searchParams.get("tab");
+            if (
+                tabFromUrl &&
+                items.some((item) => item.props.title === tabFromUrl)
+            ) {
+                return tabFromUrl;
+            }
+        } else if (
+            localTab &&
+            items.some((item) => item.props.title === localTab)
         ) {
-            return tabFromUrl;
+            return localTab;
         }
         return items[0]?.props.title ?? "";
     })();
 
     const handleTabChange = useCallback(
         (title: string) => {
-            setSearchParams(
-                (prev) => {
-                    const next = new URLSearchParams(prev);
-                    next.set("tab", title);
-                    return next;
-                },
-                { replace: true },
-            );
+            if (syncUrl) {
+                setSearchParams(
+                    (prev) => {
+                        const next = new URLSearchParams(prev);
+                        next.set("tab", title);
+                        return next;
+                    },
+                    { replace: true },
+                );
+            } else {
+                setLocalTab(title);
+            }
         },
-        [setSearchParams],
+        [syncUrl, setSearchParams],
     );
 
     const activeItem =
@@ -97,13 +111,13 @@ function Tab({ children, className }: TabProps) {
                     display: none;
                 }
                 .chrome-tab:first-child::before {
-                    display: none;
+                    left: -${TAB_RADIUS}px;
                 }
                 .chrome-tab:last-child::after {
                     display: none;
                 }
             `}</style>
-            <div className={cn("relative", className)}>
+            <div className={cn("relative ", className)}>
                 <div className="flex items-end justify-end relative z-30">
                     {items.map((item) => {
                         const isActive = item.props.title === activeTab;
@@ -116,9 +130,9 @@ function Tab({ children, className }: TabProps) {
                                     handleTabChange(item.props.title)
                                 }
                                 style={{
-                                    ['--tab-bg' as string]: isActive
-                                        ? 'var(--color-card, oklch(0.25 0.02 260))'
-                                        : 'var(--color-background, oklch(0.15 0.01 260))',
+                                    ["--tab-bg" as string]: isActive
+                                        ? "var(--color-card, oklch(0.25 0.02 260))"
+                                        : "var(--color-background, oklch(0.15 0.01 260))",
                                 }}
                                 className={cn(
                                     "chrome-tab inline-flex items-center gap-1.5 px-5 py-2 text-sm cursor-pointer relative border border-border/60",
@@ -133,7 +147,9 @@ function Tab({ children, className }: TabProps) {
                         );
                     })}
                 </div>
-                <div className="relative -mt-px z-20">{activeItem}</div>
+                <div className="relative -mt-px z-20 rounded-tl-xl rounded-b-xl overflow-hidden">
+                    {activeItem}
+                </div>
             </div>
         </>
     );
