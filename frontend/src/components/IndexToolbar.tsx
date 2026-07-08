@@ -92,9 +92,9 @@ function IndexToolbar({
                         <Button
                             variant="outline"
                             icon={<Filter size={14} />}
-                            className="gap-1"
+                            className="gap-1 cursor-pointer"
                         >
-                            <span className="flex items-center gap-1.5">
+                            <span className="flex items-center gap-1.5  ">
                                 {filterLabel}
                                 <span className="text-muted-foreground">·</span>
                                 <span className="font-normal">{sortLabel}</span>
@@ -148,6 +148,27 @@ function IndexToolbar({
                                 ))}
                             </div>
                         </div>
+                        {filterOptions.map((option) => (
+                            <button
+                                key={option.value}
+                                onClick={() => onFilterChange(option.value)}
+                                className={cn(
+                                    "flex items-center justify-between w-full px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer",
+                                    filter === option.value
+                                        ? "bg-accent text-accent-foreground"
+                                        : "hover:bg-muted text-foreground",
+                                )}
+                            >
+                                <span className="flex items-center gap-1.5">
+                                    {option.icon}
+                                    {option.label}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                    {option.count}
+                                </span>
+                            </button>
+                        ))}
+
                         <div className="h-px bg-border" />
 
                         {/* Sort section */}
@@ -195,6 +216,7 @@ function IndexToolbar({
 
             {onCreate && (
                 <Button
+                    className="cursor-pointer"
                     icon={<Plus size={15} />}
                     label={createLabel}
                     onClick={onCreate}

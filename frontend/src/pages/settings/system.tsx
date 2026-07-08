@@ -104,7 +104,7 @@ export default function SystemSettings() {
                 <div className="flex items-center gap-4 py-3 px-6 sm:px-8 lg:px-10">
                     <button
                         onClick={() => navigate("/settings")}
-                        className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                        className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
                         aria-label="Back to Settings"
                     >
                         <ChevronLeft className="w-4 h-4" />

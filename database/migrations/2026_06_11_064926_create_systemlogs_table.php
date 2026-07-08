@@ -15,6 +15,8 @@ return new class extends Migration
             $blueprint->unsignedBigInteger('user_id')->nullable();
             $blueprint->string('user')->nullable();
             $blueprint->string('action');
+            $blueprint->text('details')->nullable(false);
+
             $blueprint->timestamps();
 
             $blueprint->index(['logable_type', 'logable_id']);

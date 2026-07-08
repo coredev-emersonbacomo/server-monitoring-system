@@ -11,21 +11,15 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use App\Enums\RecordStatus;
 use App\Enums\ServerHealth;
 
 class Server extends Model
 {
-    use HasFactory, Notifiable, HasUuids, LogsActivity;
+    use HasFactory, Notifiable, HasUuids;
 
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logAll()
-            ->logOnlyDirty();
-    }
+
 
 
     public function newUniqueId(): string

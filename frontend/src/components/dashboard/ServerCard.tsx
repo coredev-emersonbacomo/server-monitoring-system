@@ -1,5 +1,6 @@
 import { memo, useState } from "react";
-import { Wifi, WifiOff, AlertTriangle, Trash2 } from "lucide-react";
+import { Wifi, WifiOff, AlertTriangle, Trash2, Cpu, MemoryStick, HardDrive, Monitor, Info, BarChart3, Bell, Server, Network } from "lucide-react";
+import { Tab } from "@/components/ui/tab";
 import { ServerStatChart } from "./ServerStatChart";
 import type { ServerData } from "@/types/models";
 import { Button } from "@/components/ui/button";
@@ -14,8 +15,6 @@ import {
 import { toast } from "sonner";
 import type { components } from "@/api/schema.d";
 import { useDeleteServer } from "@/hooks/useDeleteServer";
-
-type ServerDetailData = components["schemas"]["ServerData"];
 
 const STATUS_CONFIG = {
     online: {
@@ -79,7 +78,9 @@ interface ServerCardProps {
     onDelete?: (uuid: string) => Promise<void> | void;
 }
 
-export const ServerCard = memo(function ServerCard({ server }: ServerCardProps) {
+export const ServerCard = memo(function ServerCard({
+    server,
+}: ServerCardProps) {
     const status = "online";
     const { icon: StatusIcon, label, color, bg } = STATUS_CONFIG[status];
 
@@ -107,58 +108,111 @@ export const ServerCard = memo(function ServerCard({ server }: ServerCardProps) 
         setShowDelete(false);
         setConfirmText("");
     };
-
     return (
         <div className="py-5 px-5">
             {/* Server header */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
-                <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-semibold text-foreground text-sm">
-                        {server.server_name}
-                    </span>
-                    <span className="text-muted-foreground text-xs font-mono">
-                        {server.external_ip}
-                    </span>
-                </div>
-
                 <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${bg} ${color}`}
+                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${bg} ${color}`}
                 >
-                    <StatusIcon size={11} />
+                    <StatusIcon size={14} />
                     {label}
                 </span>
 
-                <div className="flex items-center gap-3 text-xs text-muted-foreground ml-auto">
-                    <span>
-                        {server.cpu_cores ?? "?"}-core · {server.ram ?? "?"} GB
-                    </span>
-                    <span>{server.operating_system ?? "Unknown"}</span>
-
+                <div className="flex items-center ml-auto">
                     {/* Delete button */}
                     <button
                         onClick={() => setShowDelete(true)}
-                        className="flex items-center gap-1 text-muted-foreground hover:text-destructive transition-colors pl-1"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-red-600/90 hover:bg-red-600 text-white transition-colors cursor-pointer"
                         title="Delete server"
                     >
-                        <Trash2 size={13} />
+                        <Trash2 size={14} />
+                        Delete
                     </button>
                 </div>
             </div>
 
-            {/* Charts grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                {CHARTS.map((cfg) => (
-                    <ServerStatChart
-                        key={cfg.dataKey}
-                        title={cfg.title}
-                        data={server.stats}
-                        dataKey={cfg.dataKey}
-                        color={cfg.color}
-                        unit={cfg.unit}
-                        yDomain={cfg.yDomain}
-                    />
-                ))}
-            </div>
+            {/* Tabs: Info / Metrics / Alerts */}
+            <Tab syncUrl={false}>
+                <Tab.Item icon={Info} title="Info">
+                    <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
+
+                        {[
+                            {
+                                icon: Server,
+                                label: "Name",
+                                value: server.server_name,
+                            },
+                            {
+                                icon: Network,
+                                label: "IP Address",
+                                value: server.external_ip,
+                            },
+                            {
+                                icon: Cpu,
+                                label: "CPU",
+                                value: server.cpu_model
+                                    ? `${server.cpu_model} · ${server.cpu_cores ?? "?"} cores`
+                                    : `${server.cpu_cores ?? "?"} cores`,
+                            },
+                            {
+                                icon: MemoryStick,
+                                label: "Memory",
+                                value: `${server.ram ?? "?"} GB`,
+                            },
+                            {
+                                icon: HardDrive,
+                                label: "Disk",
+                                value: `${server.disk ?? "?"} GB`,
+                            },
+                            {
+                                icon: Monitor,
+                                label: "OS",
+                                value: server.operating_system ?? "Unknown",
+                            },
+                        ].map(({ icon: ItemIcon, label, value }) => (
+                            <div
+                                key={label}
+                                className="group flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all"
+                            >
+                                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
+                                    <ItemIcon size={17} />
+                                </div>
+                                <div className="flex flex-col min-w-0 gap-0.5">
+                                    <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
+                                        {label}
+                                    </span>
+                                    <span className="text-sm font-semibold text-foreground break-words">
+                                        {value}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Tab.Item>
+                <Tab.Item icon={BarChart3} title="Metrics">
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
+                        {CHARTS.map((cfg) => (
+                            <ServerStatChart
+                                key={cfg.dataKey}
+                                title={cfg.title}
+                                data={server.stats}
+                                dataKey={cfg.dataKey}
+                                color={cfg.color}
+                                unit={cfg.unit}
+                                yDomain={cfg.yDomain}
+                            />
+                        ))}
+                    </div>
+                </Tab.Item>
+
+                <Tab.Item icon={Bell} title="Alerts">
+                    <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2 bg-card border border-t-0 border-border/60 rounded-b-lg">
+                        <Bell size={22} className="opacity-30" />
+                        <p className="text-xs">No alerts for this server.</p>
+                    </div>
+                </Tab.Item>
+            </Tab>
 
             {/* Delete confirmation dialog */}
             <Dialog
@@ -182,7 +236,7 @@ export const ServerCard = memo(function ServerCard({ server }: ServerCardProps) 
                         This cannot be undone.
                     </p>
 
-                    <div className="flex flex-col gap-1.5 pt-1">
+                    <div className="flex flex-col gap-2 pt-1">
                         <label className="text-xs text-muted-foreground">
                             Type{" "}
                             <strong className="text-foreground font-mono">
@@ -218,4 +272,4 @@ export const ServerCard = memo(function ServerCard({ server }: ServerCardProps) 
             </Dialog>
         </div>
     );
-});
+}); 

@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Support\Str;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use App\Models\CustomActivityLog;
 
@@ -19,18 +18,13 @@ use App\Models\CustomActivityLog;
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasUuids, LogsActivity;
+    use HasFactory, Notifiable, HasUuids;
 
     public function activity(): \Illuminate\Database\Eloquent\Relations\MorphMany
     {
         return $this->morphMany(CustomActivityLog::class, 'subject');
     }
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logAll()
-            ->logOnlyDirty();
-    }
+
     public function newUniqueId(): string
     {
         return (string) Str::uuid7();

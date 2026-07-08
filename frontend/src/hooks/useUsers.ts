@@ -35,13 +35,12 @@ export const useUser = (uuid: string) =>
 
 export const useCreateUser = () => {
     const queryClient = useQueryClient();
-    return useMutation<UserData, unknown, CreateUserPayload>({
+    return useMutation<unknown, unknown, CreateUserPayload>({
         mutationFn: async (payload) => {
-            const { data, error } = await api.POST("/users", {
+            const {  error } = await api.POST("/users", {
                 body: payload as never,
             });
             if (error) throw error;
-            return data as unknown as UserData;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["users"] });

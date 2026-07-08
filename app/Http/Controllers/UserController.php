@@ -11,6 +11,9 @@ use App\Services\UploadIntentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use App\Data\UserData;
+use App\Models\CustomActivityLog;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
@@ -58,7 +61,20 @@ class UserController extends Controller
             ]);
         }
 
-        return UserData::fromModel($user)->toResponse(request())->setStatusCode(201);
+        $actor = request()->user();
+
+        CustomActivityLog::create([
+            'logable_type' => User::class,
+            'logable_id' => (string) $user->uuid,
+            'user_id' => $actor ? $actor->id : null,
+            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action' => 'Create User',
+            'details' => [
+                'message' => "Created user account: {$user->username}",
+                'username' => $user->username,
+                'email' => $user->email,
+            ],
+        ]);
     }
 
     public function show(User $user): UserData
@@ -110,6 +126,60 @@ class UserController extends Controller
 
         $user->update($payload);
 
+        // logs area ----------------------
+        if ($user->wasChanged()) {
+            $changes = $user->getChanges();
+
+            unset(
+                $changes['updated_at'],
+                $changes['password'],
+                $changes['profile_picture_storage_key'],
+                $changes['profile_picture_url']
+            );
+
+            if (isset($payload['profile_picture_storage_key'])) {
+                $changes['profile_picture'] = 'changed';
+            }
+
+            $oldValues = [];
+            $newValues = [];
+
+            foreach (array_keys($changes) as $field) {
+                if ($field === 'profile_picture') {
+                    $oldValues['profile_picture'] = $user['profile_picture_storage_key'] ? 'has_picture' : 'none';
+                    $newValues['profile_picture'] = 'updated';
+                    continue;
+                }
+
+                $oldValues[$field] = $user[$field] ?? null;
+                $newValues[$field] = $user->{$field};
+            }
+
+            $details = [
+                'message' => "Updated user profile details for {$user->username}",
+                'old' => $oldValues,
+                'new' => $newValues,
+            ];
+        } else {
+            $details = [
+                'message' => "Saved profile snapshot without modifications for user {$user->username}",
+                'old' => [],
+                'new' => [],
+            ];
+        }
+
+        $actor = request()->user();
+
+        CustomActivityLog::create([
+            'logable_type' => User::class,
+            'logable_id' => (string) $user->uuid,
+            'user_id' => $actor ? $actor->id : null,
+            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action' => 'Update User',
+            'details' => $details,
+        ]);
+        // logs area ends here ----------------------
+
         return UserData::fromModel($user);
     }
 
@@ -120,7 +190,23 @@ class UserController extends Controller
             DeleteStorageAsset::dispatch($user->profile_picture_storage_key, $folder);
         }
 
+        $actor = request()->user();
+
+        CustomActivityLog::create([
+            'logable_type' => User::class,
+            'logable_id' => (string) $user->uuid,
+            'user_id' => $actor ? $actor->id : null,
+            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action' => 'Delete User',
+            'details' => [
+                'message' => "Deleted user account: {$user->username}",
+                'username' => $user->username,
+                'email' => $user->email,
+            ],
+        ]);
+
         $user->delete();
+
         return response()->json(null, 204);
     }
 }

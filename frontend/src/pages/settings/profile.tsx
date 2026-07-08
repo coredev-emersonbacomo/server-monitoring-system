@@ -9,10 +9,13 @@ import {
     User,
     AtSign,
     UserCircle,
+    ChevronLeft
 } from "lucide-react";
+import { useNavigate } from 'react-router-dom'
 
 export const Profile: React.FC = () => {
     const { user, isLoading } = useAuthContext();
+    const navigate = useNavigate();
 
     if (isLoading) {
         return (
@@ -40,8 +43,8 @@ export const Profile: React.FC = () => {
     const username = user.username ?? email.split("@")[0];
     const phone_number = user.phone_number
         ? user.phone_number
-              .replace(/\D/g, "")
-              .replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")
+            .replace(/\D/g, "")
+            .replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")
         : "—";
     const avatarSrc =
         user.profile_picture_url ||
@@ -52,8 +55,15 @@ export const Profile: React.FC = () => {
             {/* ── Page header ── */}
             <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
                 <div>
-                    <div className="flex items-start justify-between gap-4 py-3">
-                        <div className="flex items-start gap-3">
+                    <div className="flex items-center justify-between gap-4 py-3">
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => navigate("/settings")}
+                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
+                                aria-label="Back to Settings"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
                             <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
                                 <UserCircle className="w-5 h-5 text-primary" />
                             </div>

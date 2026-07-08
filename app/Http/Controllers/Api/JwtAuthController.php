@@ -76,6 +76,20 @@ class JwtAuthController extends Controller
             $request->userAgent(),
         );
 
+        \App\Models\CustomActivityLog::create([
+            'logable_type' => User::class,
+            'logable_id' => (string) $user->uuid,
+            'user_id' => $user->id,
+            'user' => "{$user->first_name} {$user->last_name}",
+            'action' => 'Login',
+            'details' => [
+                'message' => "User {$user->username} Logged in successfully.",
+                'session_uuid' => $session->session_uuid,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ],
+        ]);
+
         $responseData = LoginResponseData::fromAuth(
             accessToken: $accessToken,
             expiresIn: config('jwt.access_ttl', 15) * 60,
@@ -137,14 +151,25 @@ class JwtAuthController extends Controller
         if ($sessionUuid) {
             $session = UserSession::where('session_uuid', $sessionUuid)->first();
             if ($session) {
+                $user = $session->user;
+
+                if ($user) {
+                    \App\Models\CustomActivityLog::create([
+                        'logable_type' => User::class,
+                        'logable_id' => (string) $user->uuid,
+                        'user_id' => $user->id,
+                        'user' => "{$user->first_name} {$user->last_name}",
+                        'action' => 'Logout',
+                        'details' => [
+                            'message' => "User {$user->username} Logged out successfully.",
+                            'session_uuid' => $sessionUuid,
+                            'ip_address' => $request->ip(),
+                            'user_agent' => $request->userAgent(),
+                        ],
+                    ]);
+                }
+
                 $this->sessionManager->revokeSession($session);
-                $this->auditService->log(
-                    AuthEventType::Logout,
-                    $session->user_id,
-                    $session->session_uuid,
-                    $request->ip(),
-                    $request->userAgent(),
-                );
             }
         }
 
