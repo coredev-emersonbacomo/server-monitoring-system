@@ -4,27 +4,28 @@ namespace App\Data;
 
 use App\Enums\TimeUnits;
 use Carbon\Carbon;
+use Spatie\LaravelData\Attributes\MapInputName;
 use Spatie\LaravelData\Data;
 
 class ServerDataRequest extends Data
 {
     public function __construct(
-        public readonly Carbon $startFrom,
+        #[MapInputName('time_subtract')]
+        public readonly string $timeSubtract, // Keep as string here
+
+        #[MapInputName('time_unit')]
         public readonly TimeUnits $unit
     ) {}
 
-    public static function fromArray(array $data): self
+    // Expose a helper to fetch the processed Carbon instance on demand
+    public function getStartFromDatetime(): Carbon
     {
-        return new self(
-            // Carbon safely parses strings like "2026-07-07" or "-2 hours"
-            startFrom: Carbon::parse($data['time_subtract']),
-            unit: TimeUnits::from($data['time_unit'])
-        );
+        return Carbon::parse($this->timeSubtract ?? '-1 hour');
     }
 
     public function getTableUnits(): string
     {
-        return match($this->unit) {
+        return match ($this->unit) {
             TimeUnits::Minute => 'server_updates_agg_minute',
             TimeUnits::Hour   => 'server_updates_agg_hour',
             TimeUnits::Day    => 'server_updates_agg_day',
