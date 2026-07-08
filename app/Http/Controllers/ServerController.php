@@ -9,7 +9,8 @@ use App\Data\ServerUpdatesData;
 use App\Data\StatPointData;
 use App\Data\UpdateServerData;
 use App\Data\UpdateServerSpecsData;
-use Illuminate\Support\Carbon;
+use App\Enums\TimeUnits;
+use Carbon\Carbon;
 use App\Jobs\BroadcastServerStats;
 use App\Models\Client;
 use App\Models\Server;
@@ -17,6 +18,7 @@ use App\Models\ServerUpdate;
 use Illuminate\Http\JsonResponse;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Infrastructure\Api\ApiGenerator;
@@ -170,7 +172,6 @@ class ServerController extends Controller
             ->limit(144)
             ->get();
 
-
         $stats = [];
         $prev = null;
         foreach ($updates as $row) {
@@ -242,7 +243,7 @@ class ServerController extends Controller
             $dt = ($ts - $prevTs) / 1000;
             if ($dt > 0) {
                 $netIn = (($row->netIn - $prev->netIn) / 1_000_000) / $dt;
-                $netOut = (($row->netOut- $prev->netOut) / 1_000_000) / $dt;
+                $netOut = (($row->netOut - $prev->netOut) / 1_000_000) / $dt;
             }
         }
 
@@ -314,14 +315,14 @@ class ServerController extends Controller
         return response()->json(['status' => 'success'], 200);
     }
 
-    public function getData(int $serverId): JsonResponse
+    public function getData(int $serverId, string $tableUnit, Carbon $subTime): Collection
     {
-        $row = DB::table('server_updates_agg_hour')
+        $row = DB::table($tableUnit)
             ->select(['timestamp', 'cpu', 'memory', 'disk', 'netin', 'netout'])
             ->where('server_id', $serverId)
-            ->where('timestamp', '>=', Carbon::now()->subHour())
+            ->where('timestamp', '>=', $subTime)
             ->get();
 
-        return response()->json($row);
+        return $row;
     }
 }
