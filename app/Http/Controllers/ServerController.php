@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Data\CreateServerData;
 use App\Data\ServerData;
+use App\Data\ServerDataRequest;
 use App\Data\ServerUpdatesData;
 use App\Data\StatPointData;
 use App\Data\UpdateServerData;
@@ -169,6 +170,7 @@ class ServerController extends Controller
             ->limit(144)
             ->get();
 
+
         $stats = [];
         $prev = null;
         foreach ($updates as $row) {
@@ -229,7 +231,7 @@ class ServerController extends Controller
         return self::computeStatPoint($row, $prev);
     }
 
-    private static function computeStatPoint(ServerUpdate $row, ?ServerUpdate $prev): array
+    private static function computeStatPoint($row, ?ServerUpdate $prev): array
     {
         $ts = $row->created_at->getPreciseTimestamp(3);
 
@@ -239,8 +241,8 @@ class ServerController extends Controller
             $prevTs = $prev->created_at->getPreciseTimestamp(3);
             $dt = ($ts - $prevTs) / 1000;
             if ($dt > 0) {
-                $netIn = (($row->network_rbytes - $prev->network_rbytes) / 1_000_000) / $dt;
-                $netOut = (($row->network_tbytes - $prev->network_tbytes) / 1_000_000) / $dt;
+                $netIn = (($row->netIn - $prev->netIn) / 1_000_000) / $dt;
+                $netOut = (($row->netOut- $prev->netOut) / 1_000_000) / $dt;
             }
         }
 
@@ -312,28 +314,13 @@ class ServerController extends Controller
         return response()->json(['status' => 'success'], 200);
     }
 
-
-    public function dailyUsage(int $serverId)
+    public function getData(int $serverId): JsonResponse
     {
-        $data = DB::table('server_updates_agg_minute')
-            ->select(['bucket', 'avg_cpu_usage', 'avg_memory_usage', 'avg_disk_usage'])
+        $row = DB::table('server_updates_agg_hour')
+            ->select(['timestamp', 'cpu', 'memory', 'disk', 'netin', 'netout'])
             ->where('server_id', $serverId)
-            ->where('bucket', '>=', Carbon::now()->subDay())
-            ->orderBy('bucket')
+            ->where('timestamp', '>=', Carbon::now()->subHour())
             ->get();
-
-        return response()->json($data);
-    }
-
-    public function dayAverage(int $serverId, string $date)
-    {
-        $day = Carbon::parse($date)->startOfDay();
-
-        $row = DB::table('server_updates_agg_day')
-            ->select(['bucket', 'avg_cpu_usage', 'avg_memory_usage', 'avg_disk_usage'])
-            ->where('server_id', $serverId)
-            ->where('bucket', $day)
-            ->first();
 
         return response()->json($row);
     }
