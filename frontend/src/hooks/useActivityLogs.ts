@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "@/api/api";
 
-export interface SystemLogData {
+export interface ActivityLogData {
     id: number;
     logable_type: string;
     logable_id: string;
@@ -13,11 +13,11 @@ export interface SystemLogData {
     updated_at: string | null;
 }
 
-export const useSystemLogs = () => {
-    return useQuery<SystemLogData[]>({
-        queryKey: ["system-logs"],
+export const useActivityLogs = () => {
+    return useQuery<ActivityLogData[]>({
+        queryKey: ["activity-logs"],
         queryFn: async () => {
-            const { data, error } = await api.GET("/system-logs", { params: {} });
+            const { data, error } = await api.GET("/activity-logs" as any, { params: {} });
             if (error) throw error;
             return data ?? [];
         },

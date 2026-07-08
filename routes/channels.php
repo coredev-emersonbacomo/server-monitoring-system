@@ -6,6 +6,6 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
-Broadcast::channel('dashboard', fn ($user) => true);
+Broadcast::channel('dashboard', fn ($user) => true, ['guards' => ['jwt']]);
 
 Broadcast::channel('server.{serverUuid}', fn ($user, $serverUuid) => true, ['guards' => ['jwt']]);

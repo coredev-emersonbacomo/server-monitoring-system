@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import PageLayout from "@/components/PageLayout";
 import {
     Activity,
     Server,
     Landmark,
+    Users2,
     AlertTriangle,
     Gauge,
     RefreshCw,
@@ -18,6 +19,9 @@ import {
     ScrollText,
     X,
     Link2Off,
+    Cpu,
+    Database,
+    HardDrive,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useDashboardStats } from "@/hooks/useDashboard";
@@ -32,6 +36,8 @@ import { useAuthContext } from "@/hooks/useAuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import IndexHeader from "@/components/IndexHeader";
+import UsageSection from "@/components/dashboard/UsageSection";
+import type { TimeUnit } from "@/types/dashboard";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -40,30 +46,6 @@ const STATUS_COLORS = {
     warning: "#f59e0b",
     offline: "#ef4444",
 };
-
-type MetricKey = "cpu" | "memory" | "disk";
-
-const METRICS: {
-    key: MetricKey;
-    label: string;
-    color: string;
-    dataKey: string;
-}[] = [
-        { key: "cpu", label: "CPU", color: "#8b5cf6", dataKey: "top_usage_cpu" },
-        {
-            key: "memory",
-            label: "Memory",
-            color: "#10b981",
-            dataKey: "top_usage_memory",
-        },
-        { key: "disk", label: "Disk", color: "#3b82f6", dataKey: "top_usage_disk" },
-    ];
-
-function usageColor(value: number): string {
-    if (value >= 80) return "#ef4444";
-    if (value >= 60) return "#f59e0b";
-    return "#10b981";
-}
 
 // ─── Custom tooltip — uses CSS variables for dark-mode awareness ───────────────
 
@@ -99,25 +81,6 @@ function ActionCardSkeleton() {
             <div className="flex-1 space-y-2">
                 <div className="h-4 w-3/4 bg-muted rounded" />
                 <div className="h-3 w-1/2 bg-muted rounded" />
-            </div>
-        </div>
-    );
-}
-
-function RankingSkeleton() {
-    return (
-        <div className="rounded-xl border border-border/60 bg-card p-4 animate-pulse">
-            <div className="h-4 w-12 bg-muted rounded mb-3" />
-            <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i}>
-                        <div className="flex justify-between mb-1">
-                            <div className="h-3 w-28 bg-muted rounded" />
-                            <div className="h-3 w-10 bg-muted rounded" />
-                        </div>
-                        <div className="w-full h-1.5 bg-muted rounded-full" />
-                    </div>
-                ))}
             </div>
         </div>
     );
@@ -210,6 +173,22 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const { user } = useAuthContext();
     const [completedOpen, setCompletedOpen] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const unit = (searchParams.get("unit") as TimeUnit | null) ?? "hour";
+    const setUnit = (next: string) => {
+        setSearchParams(
+            (prev) => {
+                const params = new URLSearchParams(prev);
+                if (next === "hour") {
+                    params.delete("unit");
+                } else {
+                    params.set("unit", next);
+                }
+                return params;
+            },
+            { replace: true },
+        );
+    };
 
     const {
         data: stats,
@@ -221,24 +200,33 @@ export default function Dashboard() {
     const claimMutation = useClaimAction();
     const statusMutation = useUpdateActionStatus();
 
+    const leftDivRef = useRef<HTMLDivElement>(null);
+    const [leftDivHeight, setLeftDivHeight] = useState(0);
+
+    useEffect(() => {
+        if (leftDivRef.current) {
+            setLeftDivHeight(leftDivRef.current.offsetHeight);
+        }
+    }, [stats]);
+
     const pieData = stats
         ? [
-            {
-                name: "Online",
-                value: stats.online_count,
-                color: STATUS_COLORS.online,
-            },
-            {
-                name: "Warning",
-                value: stats.warning_count,
-                color: STATUS_COLORS.warning,
-            },
-            {
-                name: "Offline",
-                value: stats.offline_count,
-                color: STATUS_COLORS.offline,
-            },
-        ]
+              {
+                  name: "Online",
+                  value: stats.online_count,
+                  color: STATUS_COLORS.online,
+              },
+              {
+                  name: "Warning",
+                  value: stats.warning_count,
+                  color: STATUS_COLORS.warning,
+              },
+              {
+                  name: "Offline",
+                  value: stats.offline_count,
+                  color: STATUS_COLORS.offline,
+              },
+          ]
         : [];
 
     return (
@@ -265,100 +253,150 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* ── Donut Chart + Action Board ── */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Pie chart */}
-                    <div className="lg:col-span-1 rounded-xl border border-border/60 bg-card p-6 h-fit">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-sm font-semibold text-foreground">
-                                Server Overview
-                            </h2>
-                            {!statsLoading && (
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                    <span
-                                        onClick={() => navigate("/clients")}
-                                        className="flex items-center gap-1.5 cursor-pointer hover:text-foreground transition-colors"
-                                    >
-                                        <Landmark className="size-3.5" />
-                                        <span>{stats?.total_clients ?? 0}</span>
-                                        <span className="text-muted-foreground/60">
-                                            clients
-                                        </span>
-                                    </span>
-                                    <span
-                                        onClick={() => navigate("/servers")}
-                                        className="flex items-center gap-1.5 cursor-pointer hover:text-foreground transition-colors"
-                                    >
-                                        <Server className="size-3.5" />
-                                        <span>{stats?.total_servers ?? 0}</span>
-                                        <span className="text-muted-foreground/60">
-                                            servers
-                                        </span>
-                                    </span>
+                {/* ── Cards + Server Overview + Action Board ── */}
+                <div className="flex flex-col lg:flex-row gap-6 items-start">
+                    <div
+                        ref={leftDivRef}
+                        className="min-w-0 flex-1 w-full max-w-130 space-y-6"
+                    >
+                        {/* Stat Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                            <div
+                                onClick={() => navigate("/servers")}
+                                className="rounded-xl border border-border/60 bg-card p-5 flex items-center gap-4 cursor-pointer hover:bg-muted/30 transition-colors h-fit w-full"
+                            >
+                                <div className="p-3 rounded-lg bg-primary/10 text-primary">
+                                    <Server className="size-6" />
                                 </div>
-                            )}
-                        </div>
-                        {statsLoading ? (
-                            <PieChartSkeleton />
-                        ) : pieData.length > 0 ? (
-                            <div className="flex flex-col items-center">
-                                <ResponsiveContainer width="100%" height={220}>
-                                    <PieChart>
-                                        <Pie
-                                            data={pieData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={90}
-                                            paddingAngle={3}
-                                            dataKey="value"
-                                            isAnimationActive={false}
-                                        >
-                                            {pieData.map((entry, index) => (
-                                                <Cell
-                                                    key={index}
-                                                    fill={entry.color}
-                                                />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip content={<ChartTooltip />} />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                                <div className="flex flex-wrap gap-4 mt-2 justify-center">
-                                    {pieData.map((d) => (
-                                        <div
-                                            key={d.name}
-                                            onClick={() =>
-                                                navigate(
-                                                    `/servers?status=${d.name.toLowerCase()}`,
-                                                )
-                                            }
-                                            className="flex items-center gap-1.5 text-xs cursor-pointer hover:opacity-80 transition-opacity"
-                                        >
-                                            <span
-                                                className="w-2.5 h-2.5 rounded-full"
-                                                style={{
-                                                    backgroundColor: d.color,
-                                                }}
-                                            />
-                                            <span className="text-muted-foreground">
-                                                {d.name}
-                                            </span>
-                                            <span className="font-medium text-foreground">
-                                                {d.value}
-                                            </span>
-                                        </div>
-                                    ))}
+                                <div>
+                                    <p className="text-2xl font-bold text-foreground">
+                                        {statsLoading
+                                            ? "—"
+                                            : (stats?.total_servers ?? 0)}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Servers
+                                    </p>
                                 </div>
                             </div>
-                        ) : (
-                            <p className="text-sm text-muted-foreground text-center py-8">
-                                No servers
-                            </p>
-                        )}
+                            <div
+                                onClick={() => navigate("/clients")}
+                                className="rounded-xl border border-border/60 bg-card p-5 flex items-center gap-4 cursor-pointer hover:bg-muted/30 transition-colors h-fit w-full"
+                            >
+                                <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-400">
+                                    <Landmark className="size-6" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold text-foreground">
+                                        {statsLoading
+                                            ? "—"
+                                            : (stats?.total_clients ?? 0)}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Clients
+                                    </p>
+                                </div>
+                            </div>
+                            <div
+                                onClick={() => navigate("/users")}
+                                className="rounded-xl border border-border/60 bg-card p-5 flex items-center gap-4 cursor-pointer hover:bg-muted/30 transition-colors h-fit w-full"
+                            >
+                                <div className="p-3 rounded-lg bg-amber-500/10 text-amber-400">
+                                    <Users2 className="size-6" />
+                                </div>
+                                <div>
+                                    <p className="text-2xl font-bold text-foreground">
+                                        {statsLoading
+                                            ? "—"
+                                            : (stats?.total_users ?? 0)}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Users
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Server Overview */}
+                        <div className="rounded-xl border border-border/60 bg-card p-6 h-fit w-full">
+                            <h2 className="text-sm font-semibold text-foreground mb-4">
+                                Server Overview
+                            </h2>
+                            {statsLoading ? (
+                                <PieChartSkeleton />
+                            ) : pieData.length > 0 ? (
+                                <div className="flex flex-col items-center">
+                                    <ResponsiveContainer
+                                        width="100%"
+                                        height={220}
+                                    >
+                                        <PieChart>
+                                            <Pie
+                                                data={pieData}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={60}
+                                                outerRadius={90}
+                                                paddingAngle={3}
+                                                dataKey="value"
+                                                isAnimationActive={false}
+                                            >
+                                                {pieData.map((entry, index) => (
+                                                    <Cell
+                                                        key={index}
+                                                        fill={entry.color}
+                                                    />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip
+                                                content={<ChartTooltip />}
+                                            />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                    <div className="flex flex-wrap gap-4 mt-2 justify-center">
+                                        {pieData.map((d) => (
+                                            <div
+                                                key={d.name}
+                                                onClick={() =>
+                                                    navigate(
+                                                        `/servers?status=${d.name.toLowerCase()}`,
+                                                    )
+                                                }
+                                                className="flex items-center gap-1.5 text-xs cursor-pointer hover:opacity-80 transition-opacity"
+                                            >
+                                                <span
+                                                    className="w-2.5 h-2.5 rounded-full"
+                                                    style={{
+                                                        backgroundColor:
+                                                            d.color,
+                                                    }}
+                                                />
+                                                <span className="text-muted-foreground">
+                                                    {d.name}
+                                                </span>
+                                                <span className="font-medium text-foreground">
+                                                    {d.value}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground text-center py-8">
+                                    No servers
+                                </p>
+                            )}
+                        </div>
                     </div>
-                    <div className="relative lg:col-span-2 rounded-xl border border-border/60 bg-card max-h-150 overflow-y-auto">
-                        <div className="sticky top-0 z-10 bg-card border-b border-border/60 p-6 flex items-center justify-between">
+
+                    {/* Action Board */}
+                    <div
+                        className="w-full flex-1 min-w-0 rounded-xl border border-border/60 bg-card flex flex-col min-h-0"
+                        style={{
+                            height: leftDivHeight ? leftDivHeight : undefined,
+                        }}
+                    >
+                        <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
                             <div className="flex items-center gap-6">
                                 <h2 className="text-sm font-semibold text-foreground">
                                     Action Board
@@ -380,7 +418,7 @@ export default function Dashboard() {
                             />
                         </div>
 
-                        <div className="space-y-1">
+                        <div className="flex-1 overflow-y-auto min-h-0 p-4 pt-3 space-y-1">
                             {actionsLoading ? (
                                 Array.from({ length: 4 }).map((_, i) => (
                                     <ActionCardSkeleton key={i} />
@@ -459,36 +497,36 @@ export default function Dashboard() {
 
                                                 <div className="flex items-center gap-1 shrink-0">
                                                     {action.status ===
-                                                        "completed" ? null : isMine ? (
-                                                            <>
-                                                                <button
-                                                                    title="Unclaim"
-                                                                    onClick={() =>
-                                                                        claimMutation.mutate(
-                                                                            action.id,
-                                                                        )
-                                                                    }
-                                                                    className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                                                                >
-                                                                    <Link2Off className="size-4" />
-                                                                </button>
-                                                                <button
-                                                                    title="Mark completed"
-                                                                    onClick={() =>
-                                                                        statusMutation.mutate(
-                                                                            {
-                                                                                actionId:
-                                                                                    action.id,
-                                                                                status: "completed",
-                                                                            },
-                                                                        )
-                                                                    }
-                                                                    className="p-1.5 rounded-md hover:bg-muted transition-colors text-emerald-400 hover:text-emerald-300"
-                                                                >
-                                                                    <CircleCheckBig className="size-4" />
-                                                                </button>
-                                                            </>
-                                                        ) : (
+                                                    "completed" ? null : isMine ? (
+                                                        <>
+                                                            <button
+                                                                title="Unclaim"
+                                                                onClick={() =>
+                                                                    claimMutation.mutate(
+                                                                        action.id,
+                                                                    )
+                                                                }
+                                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                                            >
+                                                                <Link2Off className="size-4" />
+                                                            </button>
+                                                            <button
+                                                                title="Mark completed"
+                                                                onClick={() =>
+                                                                    statusMutation.mutate(
+                                                                        {
+                                                                            actionId:
+                                                                                action.id,
+                                                                            status: "completed",
+                                                                        },
+                                                                    )
+                                                                }
+                                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-emerald-400 hover:text-emerald-300"
+                                                            >
+                                                                <CircleCheckBig className="size-4" />
+                                                            </button>
+                                                        </>
+                                                    ) : (
                                                         <button
                                                             title="Claim"
                                                             onClick={() =>
@@ -511,116 +549,36 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* ── Top Usage Rankings ── */}
+                {/* ── Usage Section ── */}
                 <div className="mt-8">
                     <div className="flex items-center gap-2 mb-4">
                         <Gauge className="w-4 h-4 text-muted-foreground" />
                         <h2 className="text-sm font-semibold text-foreground">
-                            Top Usage
+                            Usage
                         </h2>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {statsLoading
-                            ? Array.from({ length: 3 }).map((_, i) => (
-                                <RankingSkeleton key={i} />
-                            ))
-                            : METRICS.map((metric) => {
-                                const items =
-                                    metric.key === "cpu"
-                                        ? stats?.top_usage_cpu
-                                        : metric.key === "memory"
-                                            ? stats?.top_usage_memory
-                                            : stats?.top_usage_disk;
-
-                                return (
-                                    <div
-                                        key={metric.key}
-                                        className="rounded-xl border border-border/60 bg-card p-4"
-                                    >
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <span
-                                                className="w-2 h-2 rounded-full"
-                                                style={{
-                                                    backgroundColor:
-                                                        metric.color,
-                                                }}
-                                            />
-                                            <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                                                {metric.label}
-                                            </span>
-                                        </div>
-                                        <div className="space-y-2.5">
-                                            {!items?.length ? (
-                                                <p className="text-xs text-muted-foreground">
-                                                    No data
-                                                </p>
-                                            ) : (
-                                                items.map((item, idx) => {
-                                                    const barColor =
-                                                        usageColor(
-                                                            item.value,
-                                                        );
-                                                    return (
-                                                        <div
-                                                            key={
-                                                                item.server_uuid
-                                                            }
-                                                            className={cn(
-                                                                "group cursor-pointer",
-                                                            )}
-                                                            onClick={() =>
-                                                                navigate(
-                                                                    `/servers/${item.server_uuid}`,
-                                                                )
-                                                            }
-                                                        >
-                                                            <div className="flex items-center justify-between text-xs mb-1">
-                                                                <div className="flex items-center gap-1.5 min-w-0">
-                                                                    <span className="text-muted-foreground font-medium w-3.5 text-right">
-                                                                        {idx +
-                                                                            1}
-                                                                    </span>
-                                                                    <span className="font-medium text-foreground truncate">
-                                                                        {
-                                                                            item.server_name
-                                                                        }
-                                                                    </span>
-                                                                    <span className="text-muted-foreground truncate hidden sm:inline">
-                                                                        {
-                                                                            item.client_name
-                                                                        }
-                                                                    </span>
-                                                                </div>
-                                                                <span
-                                                                    className="font-mono font-medium tabular-nums ml-2"
-                                                                    style={{
-                                                                        color: barColor,
-                                                                    }}
-                                                                >
-                                                                    {item.value.toFixed(
-                                                                        1,
-                                                                    )}
-                                                                    %
-                                                                </span>
-                                                            </div>
-                                                            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                                                                <div
-                                                                    className="h-full rounded-full transition-all"
-                                                                    style={{
-                                                                        width: `${item.value}%`,
-                                                                        backgroundColor:
-                                                                            barColor,
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                    <div className="grid grid-cols-1 gap-6">
+                        <UsageSection
+                            title="CPU"
+                            metric="cpu"
+                            icon={<Cpu size={14} />}
+                            unit={unit}
+                            onUnitChange={setUnit}
+                        />
+                        <UsageSection
+                            title="Memory"
+                            metric="memory"
+                            icon={<Database size={14} />}
+                            unit={unit}
+                            onUnitChange={setUnit}
+                        />
+                        <UsageSection
+                            title="Disk"
+                            metric="disk"
+                            icon={<HardDrive size={14} />}
+                            unit={unit}
+                            onUnitChange={setUnit}
+                        />
                     </div>
                 </div>
             </main>

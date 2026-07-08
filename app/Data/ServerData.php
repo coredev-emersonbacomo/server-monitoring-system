@@ -35,6 +35,8 @@ class ServerData extends Data
         public ?string $ram = null,
 
         public ?string $disk = null,
+        
+        public ?string $cpu_model = null,
 
         public ?string $operating_system = null,
 

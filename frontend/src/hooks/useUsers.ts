@@ -80,3 +80,70 @@ export const useDeleteUser = () => {
         },
     });
 };
+
+export const useUserClients = (userUuid: string) => {
+    return useQuery({
+        queryKey: ["users", userUuid, "clients"],
+        queryFn: async () => {
+            const { data, error } = await api.GET(
+                "/users/{userUuid}/clients",
+                {
+                    params: { path: { userUuid } },
+                },
+            );
+            if (error) throw error;
+            return data ?? [];
+        },
+        enabled: !!userUuid,
+    });
+};
+
+export const useAddUserClient = (userUuid: string) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (clientUuid: string) => {
+            const { data, error } = await api.POST(
+                "/users/{userUuid}/clients",
+                {
+                    params: { path: { userUuid } },
+                    body: { client_uuid: clientUuid },
+                },
+            );
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["users", userUuid, "clients"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["users", userUuid],
+            });
+        },
+    });
+};
+
+export const useRemoveUserClient = (userUuid: string) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (clientUuid: string) => {
+            const { error } = await api.DELETE(
+                "/users/{userUuid}/clients/{clientUuid}",
+                {
+                    params: { path: { userUuid, clientUuid } },
+                },
+            );
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["users", userUuid, "clients"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["users", userUuid],
+            });
+        },
+    });
+};

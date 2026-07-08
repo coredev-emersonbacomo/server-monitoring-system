@@ -48,7 +48,7 @@ class User extends Authenticatable
 
     public function clients(): BelongsToMany
     {
-        return $this->belongsToMany(Client::class, 'sec_op_clients', 'user_id', 'client_id', 'uuid');
+        return $this->belongsToMany(Client::class, 'sec_op_clients', 'user_id', 'client_id');
     }
 
     public function sessions(): HasMany

@@ -212,6 +212,7 @@ const Users = () => {
                                 uuid={u.uuid}
                                 name={`${u.first_name} ${u.last_name}`}
                                 email={u.email}
+                                phone_number={u.phone_number}
                                 imageUrl={u.profile_picture_url}
                                 onDelete={handleDeleteRequest}
                             />

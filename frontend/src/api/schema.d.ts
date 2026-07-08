@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/activity-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["activityLog.index"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/broadcasting/auth": {
         parameters: {
             query?: never;
@@ -109,6 +125,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["dashboard.stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["dashboard.usage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -490,22 +522,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/system-logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["systemLog.index"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/upload-intents": {
         parameters: {
             query?: never;
@@ -570,6 +586,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users/{userUuid}/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["user.clients"];
+        put?: never;
+        post: operations["user.addClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userUuid}/clients/{clientUuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["user.removeClient"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -587,6 +635,20 @@ export interface components {
             assigned_to_uuid?: string | null;
             assigned_to_name?: string | null;
             status: string;
+        };
+        /** ActivityLog */
+        ActivityLog: {
+            id: number;
+            logable_type: string | null;
+            logable_id: string | null;
+            user_id: number | null;
+            user: string | null;
+            action: string;
+            details: string | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
         };
         /** AuthUserData */
         AuthUserData: {
@@ -614,6 +676,7 @@ export interface components {
         };
         /** DashboardStatsData */
         DashboardStatsData: {
+            total_users: number;
             total_clients: number;
             total_servers: number;
             online_count: number;
@@ -687,6 +750,7 @@ export interface components {
             cpu_cores?: number | null;
             ram?: string | null;
             disk?: string | null;
+            cpu_model?: string | null;
             operating_system?: string | null;
             status?: string | null;
             stats?: components["schemas"]["StatPointData"][];
@@ -703,20 +767,6 @@ export interface components {
         /** StoreUploadIntentRequest */
         StoreUploadIntentRequest: {
             purpose: components["schemas"]["UploadPurpose"];
-        };
-        /** SystemLogs */
-        SystemLogs: {
-            id: number;
-            logable_type: string;
-            logable_id: string;
-            user_id: number | null;
-            user: string | null;
-            action: string;
-            details: string;
-            /** Format: date-time */
-            created_at: string | null;
-            /** Format: date-time */
-            updated_at: string | null;
         };
         /** UpdateUserData */
         UpdateUserData: {
@@ -808,6 +858,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "activityLog.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityLog"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
     "broadcast.authenticate": {
         parameters: {
             query?: never;
@@ -1150,6 +1220,56 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "dashboard.usage": {
+        parameters: {
+            query: {
+                unit: "second" | "minute" | "hour" | "day" | "week" | "month";
+                metric: "cpu" | "memory" | "disk";
+                before?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        unit: string;
+                        metric: string;
+                        series: {
+                            server_uuid: string;
+                            server_name: string;
+                            client_name: string;
+                            points: {
+                                timestamp: string;
+                                value: string | null;
+                            }[];
+                        }[];
+                        top: {
+                            server_uuid: string;
+                            server_name: string;
+                            client_name: string;
+                            value: number;
+                        }[];
+                        nextCursor: null;
+                    } | {
+                        unit: string;
+                        metric: string;
+                        series: string[];
+                        top: string[];
+                        nextCursor: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "dashboard.actions": {
@@ -1894,25 +2014,6 @@ export interface operations {
             };
         };
     };
-    "systemLog.index": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SystemLogs"][];
-                };
-            };
-        };
-    };
     "upload-intents.store": {
         parameters: {
             query?: never;
@@ -2148,6 +2249,104 @@ export interface operations {
             };
             401: components["responses"]["AuthenticationException"];
             404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "user.clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientData"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "user.addClient": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Must exist in `clients`. */
+                    client_uuid: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Client added successfully";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        error: "Client already assigned to this user";
+                    };
+                };
+            };
+        };
+    };
+    "user.removeClient": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userUuid: string;
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        error: "Client not assigned to this user";
+                    };
+                };
+            };
         };
     };
 }

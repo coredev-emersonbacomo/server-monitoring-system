@@ -15,7 +15,7 @@ interface TabProps {
     syncUrl?: boolean;
 }
 
-const TAB_RADIUS = 10;
+const TAB_RADIUS = 12;
 
 function Tab({ children, className, syncUrl = true }: TabProps) {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -111,13 +111,13 @@ function Tab({ children, className, syncUrl = true }: TabProps) {
                     display: none;
                 }
                 .chrome-tab:first-child::before {
-                    display: none;
+                    left: -${TAB_RADIUS}px;
                 }
                 .chrome-tab:last-child::after {
                     display: none;
                 }
             `}</style>
-            <div className={cn("relative", className)}>
+            <div className={cn("relative ", className)}>
                 <div className="flex items-end justify-end relative z-30">
                     {items.map((item) => {
                         const isActive = item.props.title === activeTab;
@@ -130,9 +130,9 @@ function Tab({ children, className, syncUrl = true }: TabProps) {
                                     handleTabChange(item.props.title)
                                 }
                                 style={{
-                                    ['--tab-bg' as string]: isActive
-                                        ? 'var(--color-card, oklch(0.25 0.02 260))'
-                                        : 'var(--color-background, oklch(0.15 0.01 260))',
+                                    ["--tab-bg" as string]: isActive
+                                        ? "var(--color-card, oklch(0.25 0.02 260))"
+                                        : "var(--color-background, oklch(0.15 0.01 260))",
                                 }}
                                 className={cn(
                                     "chrome-tab inline-flex items-center gap-1.5 px-5 py-2 text-sm cursor-pointer relative border border-border/60",
@@ -147,7 +147,9 @@ function Tab({ children, className, syncUrl = true }: TabProps) {
                         );
                     })}
                 </div>
-                <div className="relative -mt-px z-20">{activeItem}</div>
+                <div className="relative -mt-px z-20 rounded-tl-xl rounded-b-xl overflow-hidden">
+                    {activeItem}
+                </div>
             </div>
         </>
     );

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CustomActivityLog extends Model
 {
-    protected $table = 'systemlogs';
+    protected $table = 'activity_logs';
     protected $casts = [
         'details' => 'array',
     ];

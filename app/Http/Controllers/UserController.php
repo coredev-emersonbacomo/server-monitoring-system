@@ -209,4 +209,76 @@ class UserController extends Controller
 
         return response()->json(null, 204);
     }
+
+    /** @return \App\Data\ClientData[] */
+    public function clients(string $userUuid): array
+    {
+        $user = User::where('uuid', $userUuid)->firstOrFail();
+        $clients = $user->clients()->withCount('servers')->get();
+
+        return \App\Data\ClientData::collect($clients->map(fn(\App\Models\Client $client) => \App\Data\ClientData::fromModel($client)))->toArray();
+    }
+
+    public function addClient(\App\Data\AddClientData $data, string $userUuid): JsonResponse
+    {
+        $user = User::where('uuid', $userUuid)->firstOrFail();
+        $client = \App\Models\Client::where('uuid', $data->client_uuid)->firstOrFail();
+
+        if ($user->clients()->where('client_id', $client->id)->exists()) {
+            return response()->json(['error' => 'Client already assigned to this user'], 409);
+        }
+
+        $user->clients()->attach($client->id, [
+            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+            'record_status' => 'active',
+        ]);
+
+        $actor = request()->user();
+
+        CustomActivityLog::create([
+            'logable_type' => User::class,
+            'logable_id' => (string) $user->uuid,
+            'user_id' => $actor ? $actor->id : null,
+            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action' => 'Assign Client',
+            'details' => [
+                'message' => "Assigned client {$client->name} to user {$user->username}",
+                'client_name' => $client->name,
+                'user_id' => $user->id,
+                'username' => $user->username,
+            ],
+        ]);
+
+        return response()->json(['message' => 'Client added successfully'], 201);
+    }
+
+    public function removeClient(string $userUuid, string $clientUuid): JsonResponse
+    {
+        $user = User::where('uuid', $userUuid)->firstOrFail();
+        $client = \App\Models\Client::where('uuid', $clientUuid)->firstOrFail();
+
+        if (!$user->clients()->where('client_id', $client->id)->exists()) {
+            return response()->json(['error' => 'Client not assigned to this user'], 404);
+        }
+
+        $actor = request()->user();
+
+        CustomActivityLog::create([
+            'logable_type' => User::class,
+            'logable_id' => (string) $user->uuid,
+            'user_id' => $actor ? $actor->id : null,
+            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action' => 'Remove Client',
+            'details' => [
+                'message' => "Removed client {$client->name} from user {$user->username}",
+                'client_name' => $client->name,
+                'user_id' => $user->id,
+                'username' => $user->username,
+            ],
+        ]);
+
+        $user->clients()->detach($client->id);
+
+        return response()->json(null, 204);
+    }
 }
