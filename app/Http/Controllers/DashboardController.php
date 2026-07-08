@@ -45,17 +45,17 @@ class DashboardController extends Controller
                     'server_name' => $server->server_name,
                     'client_name' => $server->client->name,
                     'cpu_usage'   => $server->latestUpdate->cpu_usage,
-                    'memory_usage'=> $server->latestUpdate->memory_usage,
+                    'memory_usage' => $server->latestUpdate->memory_usage,
                     'storage'     => $server->latestUpdate->storage,
                 ]);
             }
         }
 
-        $buildRanking = fn (string $column) => $latestUpdates
+        $buildRanking = fn(string $column) => $latestUpdates
             ->sortByDesc($column)
             ->take(5)
             ->values()
-            ->map(fn ($row) => [
+            ->map(fn($row) => [
                 'server_id'   => $row->server_id,
                 'server_uuid' => $row->server_uuid,
                 'server_name' => $row->server_name,
@@ -65,14 +65,14 @@ class DashboardController extends Controller
             ->toArray();
 
         return new DashboardStatsData(
-            total_clients:    $totalClients,
-            total_servers:    $totalServers,
-            online_count:     $onlineCount,
-            warning_count:    $warningCount,
-            offline_count:    $offlineCount,
-            top_usage_cpu:    $buildRanking('cpu_usage'),
+            total_clients: $totalClients,
+            total_servers: $totalServers,
+            online_count: $onlineCount,
+            warning_count: $warningCount,
+            offline_count: $offlineCount,
+            top_usage_cpu: $buildRanking('cpu_usage'),
             top_usage_memory: $buildRanking('memory_usage'),
-            top_usage_disk:   $buildRanking('storage'),
+            top_usage_disk: $buildRanking('storage'),
         );
     }
 
@@ -104,11 +104,42 @@ class DashboardController extends Controller
         $user = request()->user();
         $action = ActionItem::findOrFail($actionId);
 
-        if ($action->assigned_to === $user->id) {
-            $action->update(['assigned_to' => null, 'status' => 'open']);
+        $requestedStatus = request()->get('status');
+
+        if ($requestedStatus === 'completed') {
+            $action->update([
+                'assigned_to' => $user->id,
+                'status' => 'completed',
+                'completed_at' => now(),
+            ]);
+            $logAction = 'complete action item';
+            $message = "User {$user->username} completed action item #{$action->id}";
         } else {
-            $action->update(['assigned_to' => $user->id, 'status' => 'in_progress']);
+            $isUnclaiming = $action->assigned_to === $user->id;
+
+            if ($isUnclaiming) {
+                $action->update(['assigned_to' => null, 'status' => 'open']);
+                $logAction = 'unclaim action item';
+                $message = "User {$user->username} unclaimed action item #{$action->id} (Status reset to open)";
+            } else {
+                $action->update(['assigned_to' => $user->id, 'status' => 'in_progress']);
+                $logAction = 'claim action item';
+                $message = "User {$user->username} claimed action item #{$action->id} (Status updated to in_progress)";
+            }
         }
+
+        \App\Models\CustomActivityLog::create([
+            'logable_type' => ActionItem::class,
+            'logable_id' => (string) $action->id,
+            'user_id' => $user ? $user->id : null,
+            'user' => $user ? "{$user->first_name} {$user->last_name}" : 'System',
+            'action' => $logAction,
+            'details' => [
+                'message' => $message,
+                'action_item_id' => $action->id,
+                'status' => $action->status,
+            ],
+        ]);
 
         $action->load(['assignedUser', 'server', 'client']);
         return ActionItemData::fromModel($action);
@@ -121,12 +152,35 @@ class DashboardController extends Controller
         ]);
 
         $action = ActionItem::findOrFail($actionId);
+        $oldStatus = $action->status;
 
         $updates = ['status' => $data['status']];
         if ($data['status'] === 'completed') {
             $updates['completed_at'] = now();
+            $logAction = 'complete action item';
+            $message = "User " . request()->user()->username . " completed action item #{$action->id}";
+        } else {
+            $logAction = 'update action status';
+            $message = "Changed action item #{$action->id} status from '{$oldStatus}' to '{$data['status']}'";
         }
+
         $action->update($updates);
+
+        $actor = request()->user();
+
+        \App\Models\CustomActivityLog::create([
+            'logable_type' => ActionItem::class,
+            'logable_id' => (string) $action->id,
+            'user_id' => $actor ? $actor->id : null,
+            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action' => $logAction,
+            'details' => [
+                'message' => $message,
+                'action_item_id' => $action->id,
+                'old_status' => $oldStatus,
+                'new_status' => $data['status'],
+            ],
+        ]);
 
         $action->load(['assignedUser', 'server', 'client']);
         return ActionItemData::fromModel($action);

@@ -9,13 +9,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class CustomActivityLog extends Model
 {
     protected $table = 'systemlogs';
-
+    protected $casts = [
+        'details' => 'array',
+    ];
     protected $fillable = [
         'logable_type',
         'logable_id',
         'user_id',
         'user',
         'action',
+        'details',
     ];
 
     public function logable(): MorphTo

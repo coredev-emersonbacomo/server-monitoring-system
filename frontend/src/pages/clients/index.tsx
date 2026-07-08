@@ -83,7 +83,7 @@ function ClientCard({
                             e.stopPropagation();
                             onDelete(client);
                         }}
-                        className="text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded text-[11px]"
+                        className="text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded text-[11px] cursor-pointer"
                     >
                         Remove
                     </button>

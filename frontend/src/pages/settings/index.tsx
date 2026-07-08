@@ -89,7 +89,7 @@ function Settings() {
                         <button
                             key={section.href}
                             onClick={() => navigate(section.href)}
-                            className="flex items-center gap-4 p-4 bg-card border border-border/60 rounded-xl shadow-sm hover:shadow-md hover:border-border transition-all text-left group"
+                            className="flex items-center gap-4 p-4 bg-card border border-border/60 rounded-xl shadow-sm hover:shadow-md hover:border-border transition-all text-left group cursor-pointer"
                         >
                             <div className="p-2.5 bg-primary/10 rounded-lg shrink-0">
                                 <section.icon className="w-5 h-5 text-primary" />

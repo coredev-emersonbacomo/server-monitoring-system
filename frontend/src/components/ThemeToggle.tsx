@@ -9,7 +9,7 @@ export default function ThemeToggle({ className }: { className?: string }) {
         <button
             onClick={toggleTheme}
             className={twMerge(
-                "flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors w-full hover:bg-muted",
+                "flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors w-full hover:bg-muted cursor-pointer",
                 className,
             )}
         >

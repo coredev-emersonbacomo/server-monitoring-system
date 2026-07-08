@@ -15,7 +15,7 @@
 
     "gpush": "scripts\\git\\git-push.bat",
     "pull": "git stash && git pull && git stash apply",
-    "resetdb": "php artisan migrate:fresh --seed",
+    "resetdb": "php artisan migrate:fresh --seed && php artisan actions:sync",
     "metricsmock": "php artisan server:update-metrics --daemon",
     "loadtestfactory": "php artisan tinker --execute=\"\\App\\Models\\User::factory(25)->create(); \\App\\Models\\Client::factory(10)->create(); \\App\\Models\\Server::factory(100)->create();\""
   },

@@ -49,15 +49,15 @@ const METRICS: {
     color: string;
     dataKey: string;
 }[] = [
-    { key: "cpu", label: "CPU", color: "#8b5cf6", dataKey: "top_usage_cpu" },
-    {
-        key: "memory",
-        label: "Memory",
-        color: "#10b981",
-        dataKey: "top_usage_memory",
-    },
-    { key: "disk", label: "Disk", color: "#3b82f6", dataKey: "top_usage_disk" },
-];
+        { key: "cpu", label: "CPU", color: "#8b5cf6", dataKey: "top_usage_cpu" },
+        {
+            key: "memory",
+            label: "Memory",
+            color: "#10b981",
+            dataKey: "top_usage_memory",
+        },
+        { key: "disk", label: "Disk", color: "#3b82f6", dataKey: "top_usage_disk" },
+    ];
 
 function usageColor(value: number): string {
     if (value >= 80) return "#ef4444";
@@ -162,7 +162,7 @@ function CompletedModal({
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-1 rounded-md hover:bg-muted transition-colors"
+                        className="p-1 rounded-md hover:bg-muted transition-colors cursor-pointer"
                     >
                         <X className="size-4 text-muted-foreground" />
                     </button>
@@ -223,22 +223,22 @@ export default function Dashboard() {
 
     const pieData = stats
         ? [
-              {
-                  name: "Online",
-                  value: stats.online_count,
-                  color: STATUS_COLORS.online,
-              },
-              {
-                  name: "Warning",
-                  value: stats.warning_count,
-                  color: STATUS_COLORS.warning,
-              },
-              {
-                  name: "Offline",
-                  value: stats.offline_count,
-                  color: STATUS_COLORS.offline,
-              },
-          ]
+            {
+                name: "Online",
+                value: stats.online_count,
+                color: STATUS_COLORS.online,
+            },
+            {
+                name: "Warning",
+                value: stats.warning_count,
+                color: STATUS_COLORS.warning,
+            },
+            {
+                name: "Offline",
+                value: stats.offline_count,
+                color: STATUS_COLORS.offline,
+            },
+        ]
         : [];
 
     return (
@@ -371,6 +371,7 @@ export default function Dashboard() {
                             </div>
 
                             <Button
+                                className="cursor-pointer"
                                 variant="ghost"
                                 size="sm"
                                 icon={<ScrollText size={14} />}
@@ -458,36 +459,36 @@ export default function Dashboard() {
 
                                                 <div className="flex items-center gap-1 shrink-0">
                                                     {action.status ===
-                                                    "completed" ? null : isMine ? (
-                                                        <>
-                                                            <button
-                                                                title="Unclaim"
-                                                                onClick={() =>
-                                                                    claimMutation.mutate(
-                                                                        action.id,
-                                                                    )
-                                                                }
-                                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                                                            >
-                                                                <Link2Off className="size-4" />
-                                                            </button>
-                                                            <button
-                                                                title="Mark completed"
-                                                                onClick={() =>
-                                                                    statusMutation.mutate(
-                                                                        {
-                                                                            actionId:
-                                                                                action.id,
-                                                                            status: "completed",
-                                                                        },
-                                                                    )
-                                                                }
-                                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-emerald-400 hover:text-emerald-300"
-                                                            >
-                                                                <CircleCheckBig className="size-4" />
-                                                            </button>
-                                                        </>
-                                                    ) : (
+                                                        "completed" ? null : isMine ? (
+                                                            <>
+                                                                <button
+                                                                    title="Unclaim"
+                                                                    onClick={() =>
+                                                                        claimMutation.mutate(
+                                                                            action.id,
+                                                                        )
+                                                                    }
+                                                                    className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                                                >
+                                                                    <Link2Off className="size-4" />
+                                                                </button>
+                                                                <button
+                                                                    title="Mark completed"
+                                                                    onClick={() =>
+                                                                        statusMutation.mutate(
+                                                                            {
+                                                                                actionId:
+                                                                                    action.id,
+                                                                                status: "completed",
+                                                                            },
+                                                                        )
+                                                                    }
+                                                                    className="p-1.5 rounded-md hover:bg-muted transition-colors text-emerald-400 hover:text-emerald-300"
+                                                                >
+                                                                    <CircleCheckBig className="size-4" />
+                                                                </button>
+                                                            </>
+                                                        ) : (
                                                         <button
                                                             title="Claim"
                                                             onClick={() =>
@@ -521,105 +522,105 @@ export default function Dashboard() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {statsLoading
                             ? Array.from({ length: 3 }).map((_, i) => (
-                                  <RankingSkeleton key={i} />
-                              ))
+                                <RankingSkeleton key={i} />
+                            ))
                             : METRICS.map((metric) => {
-                                  const items =
-                                      metric.key === "cpu"
-                                          ? stats?.top_usage_cpu
-                                          : metric.key === "memory"
+                                const items =
+                                    metric.key === "cpu"
+                                        ? stats?.top_usage_cpu
+                                        : metric.key === "memory"
                                             ? stats?.top_usage_memory
                                             : stats?.top_usage_disk;
 
-                                  return (
-                                      <div
-                                          key={metric.key}
-                                          className="rounded-xl border border-border/60 bg-card p-4"
-                                      >
-                                          <div className="flex items-center gap-2 mb-3">
-                                              <span
-                                                  className="w-2 h-2 rounded-full"
-                                                  style={{
-                                                      backgroundColor:
-                                                          metric.color,
-                                                  }}
-                                              />
-                                              <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                                                  {metric.label}
-                                              </span>
-                                          </div>
-                                          <div className="space-y-2.5">
-                                              {!items?.length ? (
-                                                  <p className="text-xs text-muted-foreground">
-                                                      No data
-                                                  </p>
-                                              ) : (
-                                                  items.map((item, idx) => {
-                                                      const barColor =
-                                                          usageColor(
-                                                              item.value,
-                                                          );
-                                                      return (
-                                                          <div
-                                                              key={
-                                                                  item.server_uuid
-                                                              }
-                                                              className={cn(
-                                                                  "group cursor-pointer",
-                                                              )}
-                                                              onClick={() =>
-                                                                  navigate(
-                                                                      `/servers/${item.server_uuid}`,
-                                                                  )
-                                                              }
-                                                          >
-                                                              <div className="flex items-center justify-between text-xs mb-1">
-                                                                  <div className="flex items-center gap-1.5 min-w-0">
-                                                                      <span className="text-muted-foreground font-medium w-3.5 text-right">
-                                                                          {idx +
-                                                                              1}
-                                                                      </span>
-                                                                      <span className="font-medium text-foreground truncate">
-                                                                          {
-                                                                              item.server_name
-                                                                          }
-                                                                      </span>
-                                                                      <span className="text-muted-foreground truncate hidden sm:inline">
-                                                                          {
-                                                                              item.client_name
-                                                                          }
-                                                                      </span>
-                                                                  </div>
-                                                                  <span
-                                                                      className="font-mono font-medium tabular-nums ml-2"
-                                                                      style={{
-                                                                          color: barColor,
-                                                                      }}
-                                                                  >
-                                                                      {item.value.toFixed(
-                                                                          1,
-                                                                      )}
-                                                                      %
-                                                                  </span>
-                                                              </div>
-                                                              <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                                                                  <div
-                                                                      className="h-full rounded-full transition-all"
-                                                                      style={{
-                                                                          width: `${item.value}%`,
-                                                                          backgroundColor:
-                                                                              barColor,
-                                                                      }}
-                                                                  />
-                                                              </div>
-                                                          </div>
-                                                      );
-                                                  })
-                                              )}
-                                          </div>
-                                      </div>
-                                  );
-                              })}
+                                return (
+                                    <div
+                                        key={metric.key}
+                                        className="rounded-xl border border-border/60 bg-card p-4"
+                                    >
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <span
+                                                className="w-2 h-2 rounded-full"
+                                                style={{
+                                                    backgroundColor:
+                                                        metric.color,
+                                                }}
+                                            />
+                                            <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                                                {metric.label}
+                                            </span>
+                                        </div>
+                                        <div className="space-y-2.5">
+                                            {!items?.length ? (
+                                                <p className="text-xs text-muted-foreground">
+                                                    No data
+                                                </p>
+                                            ) : (
+                                                items.map((item, idx) => {
+                                                    const barColor =
+                                                        usageColor(
+                                                            item.value,
+                                                        );
+                                                    return (
+                                                        <div
+                                                            key={
+                                                                item.server_uuid
+                                                            }
+                                                            className={cn(
+                                                                "group cursor-pointer",
+                                                            )}
+                                                            onClick={() =>
+                                                                navigate(
+                                                                    `/servers/${item.server_uuid}`,
+                                                                )
+                                                            }
+                                                        >
+                                                            <div className="flex items-center justify-between text-xs mb-1">
+                                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                                    <span className="text-muted-foreground font-medium w-3.5 text-right">
+                                                                        {idx +
+                                                                            1}
+                                                                    </span>
+                                                                    <span className="font-medium text-foreground truncate">
+                                                                        {
+                                                                            item.server_name
+                                                                        }
+                                                                    </span>
+                                                                    <span className="text-muted-foreground truncate hidden sm:inline">
+                                                                        {
+                                                                            item.client_name
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                                <span
+                                                                    className="font-mono font-medium tabular-nums ml-2"
+                                                                    style={{
+                                                                        color: barColor,
+                                                                    }}
+                                                                >
+                                                                    {item.value.toFixed(
+                                                                        1,
+                                                                    )}
+                                                                    %
+                                                                </span>
+                                                            </div>
+                                                            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                                                                <div
+                                                                    className="h-full rounded-full transition-all"
+                                                                    style={{
+                                                                        width: `${item.value}%`,
+                                                                        backgroundColor:
+                                                                            barColor,
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                     </div>
                 </div>
             </main>
