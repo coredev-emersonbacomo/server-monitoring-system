@@ -20,15 +20,12 @@ class ServerFactory extends Factory
             'server_name' => fake()->domainWord() . '-prod',
             'host_name' => fake()->word() . '-blade-' . fake()->randomDigitNotNull(),
             'operating_system' => fake()->randomElement(['Ubuntu 22.04 LTS', 'Windows Server 2022', 'Debian 12']),
-            'ssh_username' => fake()->unique()->userName(),
-            'ssh_password' => fake()->password(),
             // Network details
             'external_ip' => fake()->ipv4(),
             'cpu_model' => fake()->randomElement(['Intel Xeon E5-2670', 'AMD EPYC 7742', 'Intel Core i9-11900K']),
             'cpu_cores' => fake()->randomElement([2, 4, 8, 16]),
             'ram' => fake()->randomElement(['16GB', '32GB', '64GB']),
-            'disk' => fake()->randomElement(['512GB SSD', '1TB NVMe']),
-            'ssh_port' => fake()->numberBetween(0, 9999),
+            'disk' => fake()->randomElement(['256GB', '512GB', '1TB']),
 
             'api_key' => ApiGenerator::GenerateApiKey()
         ];
