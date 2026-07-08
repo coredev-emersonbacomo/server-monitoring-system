@@ -74,7 +74,7 @@ export const ServerStatChart = memo(function ServerStatChart({
     const tsValues = displayData.map((d) => d.timestamp);
     const xDomain: [number, number] =
         tsValues.length < 2
-            ? [0, 0]
+            ? [tsValues[0] - 60000, tsValues[0] + 60000]
             : [Math.min(...tsValues), Math.max(...tsValues)];
 
     return (
@@ -92,7 +92,7 @@ export const ServerStatChart = memo(function ServerStatChart({
                     <ResponsiveContainer width="100%" height={110}>
                         <LineChart
                             data={displayData}
-                            margin={{ top: 4, right: 6, left: 6, bottom: 0 }}
+                            margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
                         >
                             <CartesianGrid
                                 stroke="var(--color-border)"

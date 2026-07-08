@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import {
     Tooltip,
@@ -12,7 +12,7 @@ import { CircleUser, EllipsisVertical, Menu } from "lucide-react";
 import { Button } from "./ui/button";
 import ThemeToggle from "./ThemeToggle";
 
-interface SidebarNavLink {
+export interface SidebarNavLink {
     name: string;
     href: string;
     icon: React.ComponentType<{ variant?: string; className?: string }>;
@@ -103,10 +103,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                     return (
                         <Tooltip key={link.name}>
                             <TooltipTrigger asChild>
-                                <div
-                                    onClick={() => {
-                                        navigate(link.href);
-                                    }}
+                                <Link
+                                    to={link.href}
                                     className={twMerge(
                                         "rounded-xl text-lg transition-all duration-300 ease-in-out overflow-hidden cursor-pointer",
                                         isCollapsed
@@ -135,7 +133,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                                         }
                                         <label className="cursor-pointer">{link.name}</label>
                                     </div>
-                                </div>
+                                </Link>
                             </TooltipTrigger>
                             <TooltipContent
                                 side="right"

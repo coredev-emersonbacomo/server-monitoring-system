@@ -4,6 +4,7 @@
 import type { components, operations } from "@/api/schema";
 
 export type ActionItemData = components["schemas"]["ActionItemData"];
+export type ActivityLog = components["schemas"]["ActivityLog"];
 export type AuthUserData = components["schemas"]["AuthUserData"];
 export type ClientData = components["schemas"]["ClientData"];
 export type DashboardStatsData = components["schemas"]["DashboardStatsData"];
@@ -13,7 +14,6 @@ export type SecurityActivityData = components["schemas"]["SecurityActivityData"]
 export type ServerData = components["schemas"]["ServerData"];
 export type StatPointData = components["schemas"]["StatPointData"];
 export type StoreUploadIntentRequest = components["schemas"]["StoreUploadIntentRequest"];
-export type SystemLogs = components["schemas"]["SystemLogs"];
 export type UpdateUserData = components["schemas"]["UpdateUserData"];
 export type UploadPurpose = components["schemas"]["UploadPurpose"];
 export type UserData = components["schemas"]["UserData"];
@@ -32,3 +32,4 @@ export type ServerUpdateServerSpecsPayload = NonNullable<operations["server.upda
 export type UploadIntentsStorePayload = NonNullable<operations["upload-intents.store"]["requestBody"]>["content"]["application/json"];
 export type UsersStorePayload = NonNullable<operations["users.store"]["requestBody"]>["content"]["application/json"];
 export type UsersUpdatePayload = NonNullable<operations["users.update"]["requestBody"]>["content"]["application/json"];
+export type UserAddClientPayload = NonNullable<operations["user.addClient"]["requestBody"]>["content"]["application/json"];

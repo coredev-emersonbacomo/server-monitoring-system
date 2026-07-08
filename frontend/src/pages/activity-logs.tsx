@@ -7,10 +7,9 @@ import {
     ArrowDown,
     ArrowUpDown,
     X,
-    Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSystemLogs, type SystemLogData } from "@/hooks/useSystemLogs";
+import { useActivityLogs, type ActivityLogData } from "@/hooks/useActivityLogs";
 
 // ─── Column config ────────────────────────────────────────────────────────────
 
@@ -22,7 +21,7 @@ interface Column {
 }
 
 const COLUMNS: Column[] = [
-    { key: "created_at", label: "Date" },
+    { key: "created_at", label: "Timestamp" },
     { key: "logable_type", label: "Subject" },
     { key: "user", label: "User" },
     { key: "action", label: "Action" },
@@ -79,7 +78,7 @@ function LogDetailModal({
     log,
     onClose,
 }: {
-    log: SystemLogData | null;
+    log: ActivityLogData | null;
     onClose: () => void;
 }) {
     if (!log) return null;
@@ -364,12 +363,12 @@ function LogDetailModal({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function SystemLogs() {
-    const { data: logs = [], isLoading } = useSystemLogs();
+export default function ActivityLogs() {
+    const { data: logs = [], isLoading } = useActivityLogs();
 
     const [sortField, setSortField] = useState<SortableKey>("created_at");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-    const [selectedLog, setSelectedLog] = useState<SystemLogData | null>(null);
+    const [selectedLog, setSelectedLog] = useState<ActivityLogData | null>(null);
 
     const handleSort = (key: SortableKey) => {
         if (sortField === key) {
@@ -404,7 +403,7 @@ export default function SystemLogs() {
 
     return (
         <PageLayout>
-            <IndexHeader icon={ScrollText} title="System Logs" />
+            <IndexHeader icon={ScrollText} title="Activity Logs" />
 
             <main className="py-6 w-full flex-1 min-h-0">
                 <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
@@ -469,7 +468,7 @@ export default function SystemLogs() {
                                             colSpan={COLUMNS.length + 1}
                                             className="px-4 py-12 text-center text-sm text-muted-foreground"
                                         >
-                                            No system logs recorded yet.
+                                            No activity logs recorded yet.
                                         </td>
                                     </tr>
                                 ) : (

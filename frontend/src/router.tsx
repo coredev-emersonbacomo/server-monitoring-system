@@ -6,7 +6,7 @@ import { GuestLayout } from "./layouts/GuestLayout";
 import Clients from "./pages/clients/index";
 import UsersIndex from "./pages/users/index";
 import ClientDetail from "./pages/clients/client-detail";
-import SystemLogs from "./pages/system-logs";
+import ActivityLogs from "./pages/activity-logs";
 import ServerLayout from "./layouts/ServerLayout";
 import ServerDetail from "./pages/servers/server-detail";
 import CreateServer from "./pages/servers/create";
@@ -82,8 +82,8 @@ const router = createBrowserRouter([
                         element: <UserDetail />,
                     },
                     {
-                        path: "/system-logs",
-                        element: <SystemLogs />,
+                        path: "/activity-logs",
+                        element: <ActivityLogs />,
                     },
                     {
                         path: "/server-logs",

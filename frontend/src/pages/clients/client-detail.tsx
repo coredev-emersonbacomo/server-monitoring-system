@@ -169,8 +169,8 @@ export default function ClientDetail() {
 
     const set =
         (key: keyof typeof form) =>
-            (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-                setForm((f) => ({ ...f, [key]: e.target.value }));
+        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+            setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const schema = z.object({
@@ -336,10 +336,7 @@ export default function ClientDetail() {
 
     // Filter the users
     const availableSecops = allUsers
-        .filter(
-            (user) =>
-                !currentSecops.some((s) => s.uuid === user.uuid),
-        )
+        .filter((user) => !currentSecops.some((s) => s.uuid === user.uuid))
         .filter((user) => {
             const q = secopSearch.trim().toLowerCase();
 
@@ -366,14 +363,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                        backgroundImage: `url(${bannerPreview})`,
-                                        backgroundSize: "cover",
-                                        backgroundPosition: "center",
-                                    }
+                                          backgroundImage: `url(${bannerPreview})`,
+                                          backgroundSize: "cover",
+                                          backgroundPosition: "center",
+                                      }
                                     : {
-                                        background:
-                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                    }
+                                          background:
+                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                      }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -405,7 +402,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                        defaultBanner,
+                                                            defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -503,7 +500,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none break-all",
                                             errors.description &&
-                                            "border-destructive",
+                                                "border-destructive",
                                         )}
                                     />
                                 </div>
@@ -527,7 +524,7 @@ export default function ClientDetail() {
                             <Tab.Item icon={Info} title="Details">
                                 <form
                                     onSubmit={handleSubmit}
-                                    className="bg-card border border-border/60 rounded-b-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8"
+                                    className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-8"
                                 >
                                     {/* Basic Information */}
                                     <section className="space-y-4">
@@ -551,7 +548,7 @@ export default function ClientDetail() {
                                                         )}
                                                         className={cn(
                                                             errors.location &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                 ) : (
@@ -586,7 +583,7 @@ export default function ClientDetail() {
                                                         onChange={set("email")}
                                                         className={cn(
                                                             errors.email &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                 ) : (
@@ -623,14 +620,14 @@ export default function ClientDetail() {
                                                         }}
                                                         className={cn(
                                                             errors.contact_number &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                 ) : (
                                                     <p className="text-sm text-foreground py-1">
                                                         {formatPhoneNumber(
                                                             client?.contact_number ||
-                                                            "",
+                                                                "",
                                                         )}
                                                     </p>
                                                 )}
@@ -651,8 +648,8 @@ export default function ClientDetail() {
                                                         isSaving
                                                             ? "Saving…"
                                                             : mode === "create"
-                                                                ? "Create Client"
-                                                                : "Save Changes"
+                                                              ? "Create Client"
+                                                              : "Save Changes"
                                                     }
                                                 />
                                             </div>
@@ -663,7 +660,7 @@ export default function ClientDetail() {
 
                             {mode !== "create" && client && (
                                 <Tab.Item icon={Shield} title="Sec Ops">
-                                    <div className="bg-card border border-border/60 rounded-b-xl shadow-sm p-6 sm:p-8 flex flex-col gap-8">
+                                    <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-8">
                                         <div className="flex items-center justify-between mb-6">
                                             <div>
                                                 <h2 className="text-base font-semibold text-foreground">
@@ -707,7 +704,14 @@ export default function ClientDetail() {
                                                         key={secop.uuid}
                                                         className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"
                                                     >
-                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                                                        <div
+                                                            className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+                                                            onClick={() =>
+                                                                navigate(
+                                                                    `/users/${secop.uuid}`,
+                                                                )
+                                                            }
+                                                        >
                                                             <div className="w-8 h-8 rounded-full overflow-hidden bg-muted shrink-0">
                                                                 <img
                                                                     src={
@@ -836,8 +840,8 @@ export default function ClientDetail() {
                                                         ? "All"
                                                         : serverFilter ===
                                                             "online"
-                                                            ? "Online"
-                                                            : "Offline"}
+                                                          ? "Online"
+                                                          : "Offline"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -864,9 +868,9 @@ export default function ClientDetail() {
                                                         onClick={() =>
                                                             setServerFilter(
                                                                 opt.value as
-                                                                | "all"
-                                                                | "online"
-                                                                | "offline",
+                                                                    | "all"
+                                                                    | "online"
+                                                                    | "offline",
                                                             )
                                                         }
                                                         className={cn(
@@ -1005,7 +1009,9 @@ export default function ClientDetail() {
                                 <input
                                     type="text"
                                     value={secopSearch}
-                                    onChange={(e) => setSecopSearch(e.target.value)}
+                                    onChange={(e) =>
+                                        setSecopSearch(e.target.value)
+                                    }
                                     placeholder="Search SecOps..."
                                     className="w-full h-10 rounded-lg border border-border bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                                 />
@@ -1050,8 +1056,7 @@ export default function ClientDetail() {
                                             }}
                                             disabled={
                                                 addSecop.isPending ||
-                                                selectedSecopToAdd ===
-                                                user.uuid
+                                                selectedSecopToAdd === user.uuid
                                             }
                                             className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 text-left border border-border/40 hover:border-border cursor-pointer"
                                         >
@@ -1081,8 +1086,7 @@ export default function ClientDetail() {
                                                     {user.email}
                                                 </p>
                                             </div>
-                                            {selectedSecopToAdd ===
-                                                user.uuid &&
+                                            {selectedSecopToAdd === user.uuid &&
                                                 addSecop.isPending && (
                                                     <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                                                 )}
