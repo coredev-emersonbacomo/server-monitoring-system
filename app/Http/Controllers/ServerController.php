@@ -41,34 +41,16 @@ class ServerController extends Controller
         $clientId = $clientModel->id;
 
         try {
-            $result = DB::transaction(function () use ($data, $clientId) {
+            $server = Server::create([
+                'client_id'    => $clientId,
+                'server_name'  => $data->server_name,
+                'host_name'  => $data->host_name ?? $data->server_name,
+                'external_ip'  => $data->external_ip,
+                'api_key'      => ApiGenerator::GenerateApiKey(),
+            ]);
 
-                $server = Server::create([
-                    'client_id'    => $clientId,
-                    'server_name'  => $data->server_name,
-                    'host_name'  => $data->host_name ?? $data->server_name,
-                    'external_ip'  => $data->external_ip,
-                    'ssh_port'     => $data->ssh_port,
-                    'ssh_username' => Crypt::encryptString($data->ssh_username),
-                    'ssh_password' => Crypt::encryptString($data->ssh_password),
-                    'api_key'      => ApiGenerator::GenerateApiKey(),
-                ]);
+            return ServerData::fromModel($server);
 
-                $installer = new InstallerService(
-                    sshHost: $server->external_ip,
-                    sshPort: $server->ssh_port,
-                    sshUser: $data->ssh_username,
-                    sshPassword: $data->ssh_password,
-                    serverUUID: $server->uuid,
-                    apiToken: $server->api_key,
-                );
-
-                $installer->install();
-
-                return $server;
-            });
-
-            return ServerData::fromModel($result);
         } catch (\RuntimeException $e) {
             abort(500, 'Installation failed: ' . $e->getMessage());
         }
@@ -259,46 +241,6 @@ class ServerController extends Controller
             'netOut'    => round($netOut, 2),
             'disk'      => round((float) $row->storage, 1),
         ];
-    }
-
-    public function uninstallServer(Request $request): array
-    {
-        $validated = $request->validate([
-            'uuid' => ['required', 'uuid'],
-        ]);
-
-        $server = Server::where('uuid', $validated['uuid'])
-            ->firstOrFail([
-                'external_ip',
-                'port',
-                'ssh_username',
-                'ssh_password',
-                'api_key'
-            ]);
-
-        try {
-            $log = DB::transaction(function () use ($server) {
-                $installer = new InstallerService(
-                    sshHost: $server->sshHost,
-                    sshPort: $server->sshPort,
-                    sshUser: Crypt::decryptString($server->ssh_username),
-                    sshPassword: Crypt::decryptString($server->ssh_password),
-                    serverUUID: (string) $server->uuid,
-                    apiToken: $server->apiToken,
-                );
-
-                $log = $installer->uninstall();
-
-                return $log;
-            });
-
-            return [
-                'status' => true,
-                'log'    => $log,
-            ];
-        } catch (\RuntimeException $e) {
-            abort(500, 'Uninstall failed: ' . $e->getMessage());
-        }
     }
 
     public function updateServerSpecs(UpdateServerSpecsData $data): JsonResponse
