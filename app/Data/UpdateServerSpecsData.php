@@ -21,7 +21,7 @@ class UpdateServerSpecsData extends Data
         #[MapInputName('memory')]
         public string $ram,
 
-        public int $disk,
+        public string $disk,
 
         public string $operating_system,
     ) {}
