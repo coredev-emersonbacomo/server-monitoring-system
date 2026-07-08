@@ -13,7 +13,7 @@ class SecopsUserData extends Data
         public string $last_name,
         public string $email,
         public string $username,
-        public string $contact_number,
+        public string $phone_number,
         public string $profile_picture_url,
     ) {}
 
@@ -25,7 +25,7 @@ class SecopsUserData extends Data
             last_name: $user->last_name,
             email: $user->email,
             username: $user->username,
-            contact_number: $user->phone_number,
+            phone_number: $user->phone_number,
             profile_picture_url: $user->profile_picture_url,
         );
     }

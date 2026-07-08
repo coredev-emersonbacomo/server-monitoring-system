@@ -35,13 +35,12 @@ export const useUser = (uuid: string) =>
 
 export const useCreateUser = () => {
     const queryClient = useQueryClient();
-    return useMutation<UserData, unknown, CreateUserPayload>({
+    return useMutation<unknown, unknown, CreateUserPayload>({
         mutationFn: async (payload) => {
-            const { data, error } = await api.POST("/users", {
+            const {  error } = await api.POST("/users", {
                 body: payload as never,
             });
             if (error) throw error;
-            return data as unknown as UserData;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -78,6 +77,73 @@ export const useDeleteUser = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["users"] });
+        },
+    });
+};
+
+export const useUserClients = (userUuid: string) => {
+    return useQuery({
+        queryKey: ["users", userUuid, "clients"],
+        queryFn: async () => {
+            const { data, error } = await api.GET(
+                "/users/{userUuid}/clients",
+                {
+                    params: { path: { userUuid } },
+                },
+            );
+            if (error) throw error;
+            return data ?? [];
+        },
+        enabled: !!userUuid,
+    });
+};
+
+export const useAddUserClient = (userUuid: string) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (clientUuid: string) => {
+            const { data, error } = await api.POST(
+                "/users/{userUuid}/clients",
+                {
+                    params: { path: { userUuid } },
+                    body: { client_uuid: clientUuid },
+                },
+            );
+            if (error) throw error;
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["users", userUuid, "clients"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["users", userUuid],
+            });
+        },
+    });
+};
+
+export const useRemoveUserClient = (userUuid: string) => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (clientUuid: string) => {
+            const { error } = await api.DELETE(
+                "/users/{userUuid}/clients/{clientUuid}",
+                {
+                    params: { path: { userUuid, clientUuid } },
+                },
+            );
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["users", userUuid, "clients"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["users", userUuid],
+            });
         },
     });
 };

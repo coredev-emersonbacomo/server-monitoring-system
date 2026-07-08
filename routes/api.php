@@ -23,3 +23,4 @@ Route::group([], base_path('routes/api/settings.php'));
 Route::group([], base_path('routes/api/clients.php'));
 Route::group([], base_path('routes/api/dashboard.php'));
 Route::group([], base_path('routes/api/uploads.php'));
+Route::group([], base_path('routes/api/activity-logs.php'));

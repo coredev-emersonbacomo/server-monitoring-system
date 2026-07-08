@@ -3,19 +3,19 @@ import { Mail, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface ProfileCardProps {
-    uuid?: string;
-    name?: string;
-    email?: string;
-    phone_number?: string;
-    imageUrl?: string;
-    onDelete?: (uuid: string) => void;
+    uuid: string;
+    name: string;
+    email: string;
+    phone_number: string;
+    imageUrl: string;
+    onDelete: (uuid: string) => void;
 }
 
 export const ProfileCard: React.FC<ProfileCardProps> = ({
-    uuid = "",
-    name = "Ruby A Arnold",
-    email = "r.a.arnold@devify.com",
-    phone_number = "09123456789",
+    uuid,
+    name,
+    email,
+    phone_number,
     imageUrl,
     onDelete,
 }) => {
@@ -30,7 +30,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                         e.preventDefault();
                         onDelete?.(uuid);
                     }}
-                    className="absolute top-4 right-4 text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded text-[11px]"
+                    className="absolute top-4 right-4 text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded text-[11px] cursor-pointer"
                 >
                     Remove
                 </button>

@@ -34,6 +34,7 @@ return new class extends Migration
             $table->string('cpu_model')->nullable();
             $table->integer('cpu_cores')->nullable();
             $table->string('ram')->nullable();
+            $table->string('disk')->nullable();
             $table->string('operating_system')->nullable();
             $table->string('record_status')->default('active');
             $table->timestamps();

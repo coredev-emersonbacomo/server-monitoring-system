@@ -24,6 +24,7 @@ class UpdateClientData extends Data
         #[Required, Min(5)]
         public string $contact_number,
 
+        #[Min(5), Max(255), Sometimes]
         public string|Optional $description,
 
         public string|Optional|null $upload_intent_id,

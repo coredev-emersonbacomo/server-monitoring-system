@@ -24,6 +24,7 @@ class CreateClientData extends Data
         #[Required, Min(5)]
         public string $contact_number,
 
+        #[Required, Min(5), Max(255)]
         public ?string $description = null,
 
         public ?UploadedFile $banner_image = null,

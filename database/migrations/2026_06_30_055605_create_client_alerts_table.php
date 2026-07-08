@@ -11,14 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('logs', function (Blueprint $table) {
+        Schema::create('client_alerts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained();
-            $table->string('user_firstname');
-            $table->string('user_lastname');
-            $table->text('action');
-            $table->string('type');
-            $table->timestamps();
+            $table->foreignId('client_id')->constrained()->onDelete('cascade');
+            $table->string('metric');
+            $table->integer('threshold');
+            $table->string('notification_channel');
         });
     }
 
@@ -27,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('logs');
+        Schema::dropIfExists('client_alerts');
     }
 };
