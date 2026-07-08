@@ -138,7 +138,7 @@ function diskSpec()
 {
     $totalGB = round(disk_total_space('/') / (1024 ** 3), 2);
 
-    return $totalGB;
+    return $totalGB . ' GB';
 }
 
 function osSpec()

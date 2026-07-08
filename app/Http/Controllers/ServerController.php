@@ -21,8 +21,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Infrastructure\Api\ApiGenerator;
 use Infrastructure\Service\InstallerService;
+use Throwable;
 
 class ServerController extends Controller
 {
@@ -301,20 +303,65 @@ class ServerController extends Controller
 
     public function updateServerSpecs(UpdateServerSpecsData $data): JsonResponse
     {
-        $updated = Server::where('uuid', $data->uuid)
-            ->where('api_key', $data->token)
-            ->update([
-                'cpu_model'        => $data->cpu_model,
-                'cpu_cores'        => $data->cpu_cores,
-                'ram'              => $data->ram,
-                'operating_system' => $data->operating_system,
+        try {
+            $updated = Server::where('uuid', $data->uuid)
+                ->where('api_key', $data->token)
+                ->update([
+                    'cpu_model'        => $data->cpu_model,
+                    'cpu_cores'        => $data->cpu_cores,
+                    'ram'              => $data->ram,
+                    'operating_system' => $data->operating_system,
+                    'disk'             => $data->disk,
+                ]);
+
+            if ($updated === 0) {
+                // Check isolating factors independently to verify inputs
+                $uuidExists   = Server::where('uuid', $data->uuid)->exists();
+                $tokenExists  = Server::where('api_key', $data->token)->exists();
+
+                // Check if the data sent is simply identical to what is already in the database
+                $isAlreadyIdentical = Server::where('uuid', $data->uuid)
+                    ->where('api_key', $data->token)
+                    ->where('cpu_model', $data->cpu_model)
+                    ->where('cpu_cores', $data->cpu_cores)
+                    ->where('ram', $data->ram)
+                    ->where('operating_system', $data->operating_system)
+                    ->exists();
+
+                Log::warning("Server specs update skipped or failed.", [
+                    'input_uuid'       => $data->uuid,
+                    'input_token_mask' => substr($data->token, 0, 6) . '...',
+                    'diagnostics' => [
+                        'uuid_exists_in_db'      => $uuidExists ? 'YES' : 'NO',
+                        'token_exists_anywhere'  => $tokenExists ? 'YES' : 'NO',
+                        'data_already_identical' => $isAlreadyIdentical ? 'YES' : 'NO',
+                        'likely_cause'           => match (true) {
+                            $isAlreadyIdentical => 'The update payload is identical to existing DB data. Postgres did not change anything.',
+                            !$uuidExists        => 'The provided UUID cannot be found in the servers table.',
+                            !$tokenExists       => 'The API token does not exist for any record.',
+                            default             => 'The UUID exists, but the accompanying API token is mismatched/invalid for this specific server.'
+                        }
+                    ]
+                ]);
+
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => $isAlreadyIdentical ? 'No changes detected.' : 'Server credentials mismatch or record not found.'
+                ], 404);
+            }
+
+            return response()->json(['status' => 'success'], 200);
+        } catch (Throwable $e) {
+            Log::error("System error caught during server specs update execution", [
+                'error_message' => $e->getMessage(),
+                'trace'         => $e->getTraceAsString()
             ]);
 
-        if ($updated === 0) {
-            return response()->json(['status'  => 'error',], 404);
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Internal query or database server error.'
+            ], 500);
         }
-
-        return response()->json(['status' => 'success'], 200);
     }
 
     public function getData(int $serverId, string $tableUnit, Carbon $subTime): Collection
