@@ -11,25 +11,33 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Support\Str;
+use Spatie\Activitylog\Support\LogOptions;
+use App\Models\CustomActivityLog;
 
 #[Fillable(['first_name', 'last_name', 'email', 'password', 'username', 'phone_number', 'status', 'profile_picture_url', 'profile_picture_public_id', 'profile_picture_storage_key'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     use HasFactory, Notifiable, HasUuids;
+
+    public function activity(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(CustomActivityLog::class, 'subject');
+    }
+
     public function newUniqueId(): string
     {
         return (string) Str::uuid7();
     }
     public function uniqueIds(): array
-{
-    return ['uuid'];
-}
+    {
+        return ['uuid'];
+    }
 
-public function getRouteKeyName(): string
-{
-    return 'uuid';
-}
+    public function getRouteKeyName(): string
+    {
+        return 'uuid';
+    }
     protected function casts(): array
     {
         return [
@@ -40,7 +48,7 @@ public function getRouteKeyName(): string
 
     public function clients(): BelongsToMany
     {
-        return $this->belongsToMany(Client::class, 'sec_op_clients', 'user_id', 'client_id', 'uuid');
+        return $this->belongsToMany(Client::class, 'sec_op_clients', 'user_id', 'client_id');
     }
 
     public function sessions(): HasMany

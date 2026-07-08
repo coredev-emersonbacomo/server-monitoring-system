@@ -83,7 +83,7 @@ function ClientCard({
                             e.stopPropagation();
                             onDelete(client);
                         }}
-                        className="text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded text-[11px]"
+                        className="text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded text-[11px] cursor-pointer"
                     >
                         Remove
                     </button>
@@ -99,24 +99,10 @@ function ClientCard({
 
                 <div className="text-center w-full flex flex-col items-center gap-1.5">
                     {client.name}
-
-                    <p className="text-muted-foreground text-sm">
-                        {client.email}
-                    </p>
-
-                    {client.location && (
-                        <p className="text-muted-foreground text-xs">
-                            {client.location}
+                    <div className="flex flex-col items-center gap-1.5 mt-1 text-center w-full">
+                        <p className="text-sm text-muted-foreground text-center line-clamp-3 break-all">
+                            {client.description}
                         </p>
-                    )}
-
-                    <div className="flex items-center gap-1.5 text-muted-foreground text-sm mt-1">
-                        <Landmark size={16} className="text-muted-foreground" />
-                        <span>
-                            {client.contact_number
-                                .replace(/\D/g, "")
-                                .replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")}
-                        </span>
                     </div>
                 </div>
             </div>

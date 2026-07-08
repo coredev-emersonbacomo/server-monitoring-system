@@ -50,5 +50,7 @@ class BroadcastServerStats implements ShouldQueue
         ];
 
         ServerStatsUpdated::dispatchSync($this->serverUuid, $broadcast);
+
+        BroadcastDashboardUsage::dispatch();
     }
 }

@@ -21,6 +21,10 @@ window.Pusher = Pusher;
 
 export type WsStatus = "connecting" | "connected" | "disconnected";
 
+export function getEchoInstance(): Echo<"reverb"> {
+    return getEcho();
+}
+
 // ---------------------------------------------------------------------------
 // Singleton Echo — one WS connection for the entire app lifetime.
 // Re-creating Echo per component causes repeated auth handshakes (~500 ms ea).

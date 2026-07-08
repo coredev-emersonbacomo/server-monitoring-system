@@ -2,22 +2,25 @@
 
 namespace App\Models;
 
-use App\Enums\ServerHealth;
-use App\Enums\RecordStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Client;
-use App\Models\ServerUpdate;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Support\Carbon;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
+use Spatie\Activitylog\Support\LogOptions;
+use App\Enums\RecordStatus;
+use App\Enums\ServerHealth;
 
 class Server extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, Notifiable, HasUuids;
+
+
+
 
     public function newUniqueId(): string
     {

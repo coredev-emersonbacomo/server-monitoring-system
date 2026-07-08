@@ -28,6 +28,28 @@ class SimulateMetricsUpdate extends Command
         $this->info('Injected single-shot metrics update.');
     }
 
+    protected function buildRanges(iterable $servers): array
+    {
+        $ranges = [];
+        foreach ($servers as $server) {
+            $seed = crc32($server->uuid);
+            mt_srand($seed);
+            $spread = mt_rand(10, 25);
+            $ranges[$server->id] = [
+                'cpu'    => [mt_rand(0, 80), $spread],
+                'memory' => [mt_rand(5, 80), $spread],
+                'disk'   => [mt_rand(0, 80), $spread],
+            ];
+            mt_srand();
+        }
+        return $ranges;
+    }
+
+    protected function randInRange(array $range): float
+    {
+        return max(0, min(100, rand($range[0], $range[0] + $range[1])));
+    }
+
     protected function runDaemon(): void
     {
         $servers = Server::all();
@@ -36,6 +58,8 @@ class SimulateMetricsUpdate extends Command
             $this->warn('No servers found in database.');
             return;
         }
+
+        $ranges = $this->buildRanges($servers);
 
         $this->info("Starting concurrent HTTP simulator for {$servers->count()} servers (Ctrl+C to stop)...");
 
@@ -50,8 +74,9 @@ class SimulateMetricsUpdate extends Command
             $success = 0;
             $failed = 0;
 
-            $requests = function () use ($servers) {
+            $requests = function () use ($servers, $ranges) {
                 foreach ($servers as $server) {
+                    $r = $ranges[$server->id];
                     yield new Request('POST', '/api/server/stats', [
                         'Content-Type' => 'application/json',
                         'Accept' => 'application/json',
@@ -59,9 +84,9 @@ class SimulateMetricsUpdate extends Command
                         'uuid' => $server->uuid,
                         'token' => $server->api_key,
                         'timestamp' => time(),
-                        'cpu' => ['load1' => rand(500, 9500) / 100],
-                        'memory' => ['percent' => rand(3000, 8500) / 100],
-                        'disk' => ['percent' => rand(4000, 9000) / 100],
+                        'cpu' => ['load1' => $this->randInRange($r['cpu'])],
+                        'memory' => ['percent' => $this->randInRange($r['memory'])],
+                        'disk' => ['percent' => $this->randInRange($r['disk'])],
                         'uptime' => rand(3600, 86400),
                         'network' => [
                             ['rx_bytes' => rand(10000, 999999), 'tx_bytes' => rand(10000, 999999)],
@@ -109,6 +134,8 @@ class SimulateMetricsUpdate extends Command
             return;
         }
 
+        $ranges = $this->buildRanges($servers);
+
         $this->info('Found ' . $servers->count() . ' servers.');
 
         $statuses = ['online', 'offline'];
@@ -132,11 +159,12 @@ class SimulateMetricsUpdate extends Command
             ]);
 
             try {
+                $r = $ranges[$server->id];
                 $update = ServerUpdate::create([
                     'server_id' => $server->id,
-                    'cpu_usage' => rand(500, 9500) / 100,
-                    'memory_usage' => rand(3000, 8500) / 100,
-                    'storage' => rand(4000, 9000) / 100,
+                    'cpu_usage' => $this->randInRange($r['cpu']),
+                    'memory_usage' => $this->randInRange($r['memory']),
+                    'storage' => $this->randInRange($r['disk']),
                     'uptime' => rand(3600, 86400),
                     'network_rbytes' => rand(10000, 999999),
                     'network_tbytes' => rand(10000, 999999),

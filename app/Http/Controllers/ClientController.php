@@ -22,8 +22,7 @@ class ClientController extends Controller
     public function __construct(
         private readonly UploadIntentService $uploadIntentService,
         private readonly MediaUrlService $mediaUrlService,
-    ) {
-    }
+    ) {}
 
     /** @return ClientData[] */
     public function index(): array
@@ -64,6 +63,21 @@ class ClientController extends Controller
             ]);
         }
 
+        $actor = request()->user();
+
+        \App\Models\CustomActivityLog::create([
+            'logable_type' => Client::class,
+            'logable_id' => (string) $client->uuid,
+            'user_id' => $actor ? $actor->id : null,
+            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action' => 'Create Client',
+            'details' => [
+                'message' => "Created client profile: {$client->name}",
+                'name' => $client->name,
+                'email' => $client->email,
+            ],
+        ]);
+
         $client->loadCount('servers');
 
         return ClientData::fromModel($client);
@@ -81,12 +95,12 @@ class ClientController extends Controller
         $client = Client::where('uuid', $clientUuid)->firstOrFail();
 
         $updatePayload = [
-                'name' => $data->name,
-                'description' => $data->description instanceof \Spatie\LaravelData\Optional ? ($client->description ?? '') : $data->description,
-                'location' => $data->location,
-                'email' => $data->email,
-                'contact_number' => $data->contact_number,
-            ];
+            'name' => $data->name,
+            'description' => $data->description instanceof \Spatie\LaravelData\Optional ? ($client->description ?? '') : $data->description,
+            'location' => $data->location,
+            'email' => $data->email,
+            'contact_number' => $data->contact_number,
+        ];
 
         if (!($data->upload_intent_id instanceof \Spatie\LaravelData\Optional) && $data->upload_intent_id !== null) {
             $oldStorageKey = $client->banner_image_storage_key;
@@ -107,7 +121,61 @@ class ClientController extends Controller
             }
         }
 
+        $originalAttributes = $client->getRawOriginal();
+
         $client->update($updatePayload);
+
+        if ($client->wasChanged()) {
+            $changes = $client->getChanges();
+
+            unset(
+                $changes['updated_at'],
+                $changes['banner_image_storage_key'],
+                $changes['banner_image_url']
+            );
+
+            if (isset($updatePayload['banner_image_storage_key'])) {
+                $changes['banner_image'] = 'changed';
+            }
+
+            $oldValues = [];
+            $newValues = [];
+
+            foreach (array_keys($changes) as $field) {
+                if ($field === 'banner_image') {
+                    $oldValues['banner_image'] = $originalAttributes['banner_image_storage_key'] ? 'has_banner' : 'none';
+                    $newValues['banner_image'] = 'updated';
+                    continue;
+                }
+
+                $oldValues[$field] = $originalAttributes[$field] ?? null;
+                $newValues[$field] = $client->{$field};
+            }
+
+            $details = [
+                'message' => "Updated client profile details for {$client->name}",
+                'old' => $oldValues,
+                'new' => $newValues,
+            ];
+        } else {
+            $details = [
+                'message' => "Saved client profile configurations without modifications for {$client->name}",
+                'old' => [],
+                'new' => [],
+            ];
+        }
+
+        $actor = request()->user();
+
+        \App\Models\CustomActivityLog::create([
+            'logable_type' => Client::class,
+            'logable_id' => (string) $client->uuid,
+            'user_id' => $actor ? $actor->id : null,
+            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action' => 'Update Client',
+            'details' => $details,
+        ]);
+
         $client->loadCount('servers');
 
         return ClientData::fromModel($client);
@@ -130,6 +198,21 @@ class ClientController extends Controller
             $folder = config('uploads.purposes.client_banner.folder');
             DeleteStorageAsset::dispatch($client->banner_image_storage_key, $folder);
         }
+
+        $actor = request()->user();
+
+        \App\Models\CustomActivityLog::create([
+            'logable_type' => Client::class,
+            'logable_id' => (string) $client->uuid,
+            'user_id' => $actor ? $actor->id : null,
+            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action' => 'Delete Client',
+            'details' => [
+                'message' => "Deleted client profile: {$client->name}",
+                'name' => $client->name,
+                'email' => $client->email,
+            ],
+        ]);
 
         $client->delete();
 
@@ -159,6 +242,22 @@ class ClientController extends Controller
             'record_status' => 'active',
         ]);
 
+        $actor = request()->user();
+
+        \App\Models\CustomActivityLog::create([
+            'logable_type' => Client::class,
+            'logable_id' => (string) $client->uuid,
+            'user_id' => $actor ? $actor->id : null,
+            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action' => 'Assign SecOps',
+            'details' => [
+                'message' => "Assigned SecOps user {$user->username} to client {$client->name}",
+                'client_name' => $client->name,
+                'secops_user_id' => $user->id,
+                'secops_username' => $user->username,
+            ],
+        ]);
+
         return response()->json(['message' => 'SecOps added successfully'], 201);
     }
 
@@ -171,6 +270,22 @@ class ClientController extends Controller
         if (!$client->secopclients()->where('user_id', $user->id)->exists()) {
             return response()->json(['error' => 'User not assigned to this client'], 404);
         }
+
+        $actor = request()->user();
+
+        \App\Models\CustomActivityLog::create([
+            'logable_type' => Client::class,
+            'logable_id' => (string) $client->uuid,
+            'user_id' => $actor ? $actor->id : null,
+            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action' => 'Remove SecOps',
+            'details' => [
+                'message' => "Removed SecOps user {$user->username} from client {$client->name}",
+                'client_name' => $client->name,
+                'secops_user_id' => $user->id,
+                'secops_username' => $user->username,
+            ],
+        ]);
 
         $client->secopclients()->detach($user->id);
 

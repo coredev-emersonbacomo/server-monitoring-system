@@ -212,6 +212,7 @@ const Users = () => {
                                 uuid={u.uuid}
                                 name={`${u.first_name} ${u.last_name}`}
                                 email={u.email}
+                                phone_number={u.phone_number}
                                 imageUrl={u.profile_picture_url}
                                 onDelete={handleDeleteRequest}
                             />
@@ -240,12 +241,14 @@ const Users = () => {
                         <div className="flex justify-end gap-2 pt-2">
                             <DialogClose asChild>
                                 <Button
+                                    className="cursor-pointer"
                                     variant="outline"
                                     label="Cancel"
                                     onClick={() => setDeleteTarget(null)}
                                 />
                             </DialogClose>
                             <Button
+                                className="cursor-pointer"
                                 variant="danger"
                                 label={
                                     deleteUser.isPending

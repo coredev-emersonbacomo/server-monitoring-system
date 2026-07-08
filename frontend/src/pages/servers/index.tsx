@@ -1,18 +1,12 @@
 import { useState, useMemo } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import PageLayout from "@/components/PageLayout";
-import {
-    Server,
-    Wifi,
-    WifiOff,
-    AlertTriangle,
-    Building2,
-    Search,
-} from "lucide-react";
+import { Server, Wifi, WifiOff, AlertTriangle, Search } from "lucide-react";
 import { useServers } from "@/hooks/useServers";
 import { cn } from "@/lib/utils";
 import IndexToolbar from "@/components/IndexToolbar";
 import type { SortOption } from "@/components/IndexToolbar";
+import IndexHeader from "@/components/IndexHeader";
 
 const STATUS_META: Record<
     string,
@@ -28,7 +22,6 @@ const STATUS_META: Record<
 };
 
 export default function ServersIndex() {
-    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const statusFilter = searchParams.get("status");
     const clientUuid = searchParams.get("client_uuid") || undefined;
@@ -81,40 +74,15 @@ export default function ServersIndex() {
 
     return (
         <PageLayout>
-            <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
-                <div>
-                    <div className="flex h-16 items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-lg">
-                                <Server className="w-5 h-5 text-primary" />
-                            </div>
-                            <div>
-                                <h1 className="text-lg font-semibold tracking-tight">
-                                    {clientUuid && clientName
-                                        ? `${clientName} Servers`
-                                        : "Servers"}
-                                </h1>
-                                {clientUuid && (
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                        Showing servers for this client only
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                        {clientUuid && (
-                            <button
-                                onClick={() =>
-                                    navigate(`/clients/${clientUuid}`)
-                                }
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                            >
-                                <Building2 className="w-3.5 h-3.5" />
-                                Back to Client
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </header>
+            <IndexHeader
+                icon={Server}
+                title={
+                    clientUuid && clientName
+                        ? `${clientName} Servers`
+                        : "Servers"
+                }
+                description={`Manage ${clientUuid ? clientName + "'s" : "all"} servers.`}
+            />
 
             <main className="w-full flex-1">
                 <IndexToolbar
@@ -199,13 +167,9 @@ export default function ServersIndex() {
                             const meta = STATUS_META[server.status];
                             const Icon = meta.icon;
                             return (
-                                <div
+                                <Link
                                     key={server.uuid}
-                                    onClick={() =>
-                                        navigate(
-                                            `/servers/${server.uuid}?client=all`,
-                                        )
-                                    }
+                                    to={`/servers/${server.uuid}?client=all`}
                                     className="flex items-center gap-4 p-4 rounded-lg border border-border/60 bg-card hover:bg-muted/20 transition-colors cursor-pointer"
                                 >
                                     <div
@@ -241,7 +205,7 @@ export default function ServersIndex() {
                                     >
                                         {server.status}
                                     </span>
-                                </div>
+                                </Link>
                             );
                         })}
                     </div>
