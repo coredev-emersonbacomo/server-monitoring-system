@@ -49,7 +49,6 @@ export default function CreateServer() {
     const { setTrail } = useBreadcrumb();
 
     const [serverName, setServerName] = useState("");
-    const [environment, setEnvironment] = useState("production");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -165,27 +164,6 @@ export default function CreateServer() {
                                     )}
                                 />
                             </Field>
-
-                            <div className="flex flex-col gap-1.5">
-                                <Label className="text-xs font-medium text-foreground/80">
-                                    Environment
-                                </Label>
-                                <select
-                                    value={environment}
-                                    onChange={(e) =>
-                                        setEnvironment(e.target.value)
-                                    }
-                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    <option value="production">
-                                        Production
-                                    </option>
-                                    <option value="staging">Staging</option>
-                                    <option value="development">
-                                        Development
-                                    </option>
-                                </select>
-                            </div>
                         </div>
 
                         <div className="px-6 py-4 flex items-center justify-between bg-muted/30 rounded-b-xl">
