@@ -8,7 +8,7 @@ export const useDashboardStats = () => {
     const query = useQuery<DashboardStats>({
         queryKey: ["dashboard", "stats"],
         queryFn: async () => {
-            const { data, error } = await api.GET("/dashboard/stats");
+            const { data, error } = await api.GET("/v1/dashboard/stats");
             if (error) throw error;
             return data as DashboardStats;
         },

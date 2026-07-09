@@ -16,10 +16,6 @@ class ServerData extends Data
 
         public string $host_name,
 
-        public ?int $ssh_port,
-
-        public ?string $ssh_username,
-
         public string $client_uuid,
 
         public string $client_name,
@@ -55,8 +51,6 @@ class ServerData extends Data
             server_name: $server->server_name,
             host_name: $server->host_name,
             external_ip: $server->external_ip,
-            ssh_port: $server->ssh_port,
-            ssh_username: $server->ssh_username,
             cpu_model: $server->cpu_model,
             cpu_cores: $server->cpu_cores,
             ram: $server->ram,

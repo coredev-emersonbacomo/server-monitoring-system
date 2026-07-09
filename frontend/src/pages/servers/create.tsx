@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
+import {
+    AlertTriangle,
+    ArrowLeft,
+    ArrowRight,
+    ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,7 +50,6 @@ export default function CreateServer() {
 
     const [serverName, setServerName] = useState("");
     const [environment, setEnvironment] = useState("production");
-    const [description, setDescription] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -71,15 +75,12 @@ export default function CreateServer() {
         setError("");
 
         const { data, error: apiError } = await api.POST(
-            "/clients/{clientUuid}/servers",
+            "/v1/clients/{clientUuid}/servers",
             {
                 params: { path: { clientUuid } },
                 body: {
                     server_name: serverName.trim(),
                     external_ip: "",
-                    ssh_port: 22,
-                    ssh_username: "",
-                    ssh_password: "",
                 },
             },
         );
@@ -87,7 +88,10 @@ export default function CreateServer() {
         setLoading(false);
 
         if (apiError) {
-            setError((apiError as { message?: string }).message ?? "Failed to create server. Please try again.");
+            setError(
+                (apiError as { message?: string }).message ??
+                    "Failed to create server. Please try again.",
+            );
             toast.error("Failed to create server.");
         } else {
             toast.success("Server created successfully!");
@@ -120,7 +124,9 @@ export default function CreateServer() {
                             Add a Server
                         </h1>
                         <p className="text-sm text-muted-foreground mt-1">
-                            Define your server metadata. Once created, you will be provided with an installation command to deploy the agent locally.
+                            Define your server metadata. Once created, you will
+                            be provided with an installation command to deploy
+                            the agent locally.
                         </p>
                     </div>
 
@@ -132,12 +138,13 @@ export default function CreateServer() {
                                         Server Details
                                     </p>
                                     <p className="text-xs text-muted-foreground mt-0.5">
-                                        Basic identifiers for server organization.
+                                        Basic identifiers for server
+                                        organization.
                                     </p>
                                 </div>
                                 <span className="flex items-center gap-1 text-[11px] text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-0.5 shrink-0">
                                     <ShieldCheck size={11} />
-                                    No SSH Required
+                                    Agent-based
                                 </span>
                             </div>
 
@@ -154,7 +161,9 @@ export default function CreateServer() {
                                         setServerName(e.target.value);
                                         setError("");
                                     }}
-                                    className={cn(error && "border-destructive")}
+                                    className={cn(
+                                        error && "border-destructive",
+                                    )}
                                 />
                             </Field>
 
@@ -164,12 +173,18 @@ export default function CreateServer() {
                                 </Label>
                                 <select
                                     value={environment}
-                                    onChange={(e) => setEnvironment(e.target.value)}
+                                    onChange={(e) =>
+                                        setEnvironment(e.target.value)
+                                    }
                                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    <option value="production">Production</option>
+                                    <option value="production">
+                                        Production
+                                    </option>
                                     <option value="staging">Staging</option>
-                                    <option value="development">Development</option>
+                                    <option value="development">
+                                        Development
+                                    </option>
                                 </select>
                             </div>
                         </div>
@@ -183,7 +198,9 @@ export default function CreateServer() {
                             </button>
                             <Button
                                 icon={<ArrowRight size={14} />}
-                                label={loading ? "Creating..." : "Create Server"}
+                                label={
+                                    loading ? "Creating..." : "Create Server"
+                                }
                                 onClick={handleSubmit}
                                 disabled={loading}
                             />

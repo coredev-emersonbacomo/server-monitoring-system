@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserCircle, Monitor, ChevronRight, Loader2, Settings as SettingsIcon, Activity } from "lucide-react";
+import { UserCircle, Monitor, ChevronRight, Loader2, Settings as SettingsIcon, Activity, GitBranch } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import PageLayout from "@/components/PageLayout";
@@ -60,7 +60,13 @@ function Settings() {
             description: "Configure CPU, RAM, and Storage thresholds for global server alerts.",
             icon: Activity,
             href: "/settings/thresholds",
-        }
+        },
+        {
+            title: "Alert Configs",
+            description: "Build visual alert configurations with conditions, delays, and notifications.",
+            icon: GitBranch,
+            href: "/settings/alerts",
+        },
     ];
 
     return (

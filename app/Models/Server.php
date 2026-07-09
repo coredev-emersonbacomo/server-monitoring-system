@@ -30,10 +30,7 @@ class Server extends Model
 
     protected $guarded = [];
 
-    protected $hidden = [
-        'ssh_password',
-        'ssh_username',
-    ];
+    protected $hidden = [];
 
     protected function casts(): array
     {

@@ -1,6 +1,7 @@
  <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
 use Tpetry\PostgresqlEnhanced\Schema\Blueprint;
 use Tpetry\PostgresqlEnhanced\Schema\Timescale\Actions\CreateColumnstorePolicy;
 use Tpetry\PostgresqlEnhanced\Schema\Timescale\Actions\CreateHypertable;
@@ -14,6 +15,8 @@ use Illuminate\Database\Schema\Blueprint as LaravelBlueprint;
 
 return new class extends Migration
 {
+    private bool $hasTimescale = false;
+
     public function up(): void
     {
          LaravelSchema::create('server_updates', function (LaravelBlueprint $table) {
@@ -23,7 +26,6 @@ return new class extends Migration
             $table->float('memory_usage');
             $table->float('disk_usage');
             $table->unsignedInteger('uptime');
-            // bigInteger, since a busy server can push these past 4GB/interval
             $table->unsignedBigInteger('network_rbytes');
             $table->unsignedBigInteger('network_tbytes');
             $table->timestampTz('created_at');
@@ -293,11 +295,11 @@ return new class extends Migration
 
     public function down(): void
     {
-        \DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_month');
-        \DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_week');
-        \DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_day');
-        \DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_hour');
-        \DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_minute');
+        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_month');
+        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_week');
+        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_day');
+        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_hour');
+        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_minute');
         LaravelSchema::dropIfExists('server_updates');
     } 
 }; 

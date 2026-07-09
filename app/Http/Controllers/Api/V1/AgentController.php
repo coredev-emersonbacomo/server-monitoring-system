@@ -21,7 +21,7 @@ class AgentController extends Controller
     public function provision(string $uuid, Request $request): JsonResponse
     {
         $server = Server::where('uuid', $uuid)->firstOrFail();
-        $user = auth()->user();
+        $user = $request->user();
 
         try {
             $result = $this->provisioningService->generateToken($server, $user);
@@ -37,7 +37,7 @@ class AgentController extends Controller
     public function regenerate(string $uuid, Request $request): JsonResponse
     {
         $server = Server::where('uuid', $uuid)->firstOrFail();
-        $user = auth()->user();
+        $user = $request->user();
 
         try {
             $result = $this->provisioningService->regenerateToken($server, $user);
@@ -77,6 +77,10 @@ class AgentController extends Controller
             'hostname' => 'nullable|string',
             'operating_system' => 'nullable|string',
             'architecture' => 'nullable|string',
+            'cpu.model' => 'nullable|string',
+            'cpu.cores' => 'nullable|integer',
+            'memory' => 'nullable|string',
+            'disk' => 'nullable|string',
         ]);
 
         $metadata = [
@@ -85,6 +89,12 @@ class AgentController extends Controller
             'hostname' => $validated['hostname'] ?? null,
             'operating_system' => $validated['operating_system'] ?? null,
             'architecture' => $validated['architecture'] ?? null,
+            'cpu' => [
+                'model' => $validated['cpu']['model'] ?? null,
+                'cores' => $validated['cpu']['cores'] ?? null,
+            ],
+            'memory' => $validated['memory'] ?? null,
+            'disk' => $validated['disk'] ?? null,
         ];
 
         $result = $this->provisioningService->register($validated['token'], $metadata);

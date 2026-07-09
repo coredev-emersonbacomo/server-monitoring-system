@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/activity-logs": {
+    "/v1/activity-logs": {
         parameters: {
             query?: never;
             header?: never;
@@ -14,6 +14,86 @@ export interface paths {
         get: operations["activityLog.index"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/servers/{uuid}/provision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["agent.provision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/servers/{uuid}/provision/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["agent.regenerate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/provision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["agent.bootstrap"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["agent.register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/agent/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["agent.heartbeat"];
         delete?: never;
         options?: never;
         head?: never;
@@ -37,7 +117,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/clients/{clientUuid}/servers": {
+    "/v1/clients/{clientUuid}/servers": {
         parameters: {
             query?: never;
             header?: never;
@@ -53,7 +133,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/clients": {
+    "/v1/clients": {
         parameters: {
             query?: never;
             header?: never;
@@ -69,7 +149,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/clients/{clientUuid}": {
+    "/v1/clients/{clientUuid}": {
         parameters: {
             query?: never;
             header?: never;
@@ -85,7 +165,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/clients/{clientUuid}/secops": {
+    "/v1/clients/{clientUuid}/secops": {
         parameters: {
             query?: never;
             header?: never;
@@ -101,7 +181,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/clients/{clientUuid}/secops/{userUuid}": {
+    "/v1/clients/{clientUuid}/secops/{userUuid}": {
         parameters: {
             query?: never;
             header?: never;
@@ -117,7 +197,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/dashboard/stats": {
+    "/v1/dashboard/stats": {
         parameters: {
             query?: never;
             header?: never;
@@ -133,7 +213,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/dashboard/usage": {
+    "/v1/dashboard/usage": {
         parameters: {
             query?: never;
             header?: never;
@@ -149,7 +229,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/dashboard/actions": {
+    "/v1/dashboard/actions": {
         parameters: {
             query?: never;
             header?: never;
@@ -165,7 +245,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/dashboard/actions/completed": {
+    "/v1/dashboard/actions/completed": {
         parameters: {
             query?: never;
             header?: never;
@@ -181,7 +261,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/dashboard/actions/{actionId}/claim": {
+    "/v1/dashboard/actions/{actionId}/claim": {
         parameters: {
             query?: never;
             header?: never;
@@ -197,7 +277,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/dashboard/actions/{actionId}/status": {
+    "/v1/dashboard/actions/{actionId}/status": {
         parameters: {
             query?: never;
             header?: never;
@@ -213,7 +293,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/global-alerts": {
+    "/v1/global-alerts": {
         parameters: {
             query?: never;
             header?: never;
@@ -229,7 +309,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/login": {
+    "/v1/login": {
         parameters: {
             query?: never;
             header?: never;
@@ -245,7 +325,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/refresh": {
+    "/v1/refresh": {
         parameters: {
             query?: never;
             header?: never;
@@ -261,7 +341,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/logout": {
+    "/v1/logout": {
         parameters: {
             query?: never;
             header?: never;
@@ -277,7 +357,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/logout-all": {
+    "/v1/logout-all": {
         parameters: {
             query?: never;
             header?: never;
@@ -293,7 +373,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/me": {
+    "/v1/me": {
         parameters: {
             query?: never;
             header?: never;
@@ -309,7 +389,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/servers": {
+    "/v1/node-config-node-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.nodeTypes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/node-configs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.index"];
+        put?: never;
+        post: operations["nodeConfig.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/node-configs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.show"];
+        put: operations["nodeConfig.update"];
+        post?: never;
+        delete: operations["nodeConfig.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/node-configs/{id}/toggle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["nodeConfig.toggle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/node-configs/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["nodeConfig.test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/node-configs/{id}/reset-state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["nodeConfig.resetState"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/servers": {
         parameters: {
             query?: never;
             header?: never;
@@ -325,7 +501,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/clients/{clientUuid}/servers/{serverUuid}": {
+    "/v1/clients/{clientUuid}/servers/{serverUuid}": {
         parameters: {
             query?: never;
             header?: never;
@@ -341,23 +517,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/clients/{clientUuid}/servers/uninstall": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["server.uninstallServer"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/servers/{serverUuid}": {
+    "/v1/servers/{serverUuid}": {
         parameters: {
             query?: never;
             header?: never;
@@ -373,39 +533,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/server/stats": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["server.ingestStats"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/server/specs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["server.updateServerSpecs"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/sessions": {
+    "/v1/sessions": {
         parameters: {
             query?: never;
             header?: never;
@@ -421,7 +549,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/sessions/{sessionUuid}": {
+    "/v1/sessions/{sessionUuid}": {
         parameters: {
             query?: never;
             header?: never;
@@ -437,7 +565,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/sessions/logout-all-others": {
+    "/v1/sessions/logout-all-others": {
         parameters: {
             query?: never;
             header?: never;
@@ -453,7 +581,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/sessions/{sessionUuid}/permanent": {
+    "/v1/sessions/{sessionUuid}/permanent": {
         parameters: {
             query?: never;
             header?: never;
@@ -469,7 +597,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/security-activity": {
+    "/v1/security-activity": {
         parameters: {
             query?: never;
             header?: never;
@@ -485,7 +613,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/sessions/active-count": {
+    "/v1/sessions/active-count": {
         parameters: {
             query?: never;
             header?: never;
@@ -501,7 +629,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/settings": {
+    "/v1/settings": {
         parameters: {
             query?: never;
             header?: never;
@@ -522,7 +650,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/upload-intents": {
+    "/v1/upload-intents": {
         parameters: {
             query?: never;
             header?: never;
@@ -538,7 +666,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/upload-intents/{uploadIntent}": {
+    "/v1/upload-intents/{uploadIntent}": {
         parameters: {
             query?: never;
             header?: never;
@@ -554,7 +682,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/users": {
+    "/v1/users": {
         parameters: {
             query?: never;
             header?: never;
@@ -570,7 +698,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/users/{user}": {
+    "/v1/users/{user}": {
         parameters: {
             query?: never;
             header?: never;
@@ -586,7 +714,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/users/{userUuid}/clients": {
+    "/v1/users/{userUuid}/clients": {
         parameters: {
             query?: never;
             header?: never;
@@ -602,7 +730,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/users/{userUuid}/clients/{clientUuid}": {
+    "/v1/users/{userUuid}/clients/{clientUuid}": {
         parameters: {
             query?: never;
             header?: never;
@@ -716,6 +844,24 @@ export interface components {
             /** Format: date-time */
             updated_at: string | null;
         };
+        /** NodeConfig */
+        NodeConfig: {
+            id: number;
+            name: string;
+            description: string | null;
+            config: unknown[];
+            enabled: boolean;
+            created_by: number | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
+        };
+        /** NodeConfigData */
+        NodeConfigData: {
+            nodes: string[];
+            edges: string[];
+        };
         /** SecopsUserData */
         SecopsUserData: {
             uuid: string;
@@ -739,10 +885,8 @@ export interface components {
         ServerData: {
             server_name: string;
             uuid: string;
-            external_ip: string;
+            external_ip?: string | null;
             host_name: string;
-            ssh_port?: number | null;
-            ssh_username?: string | null;
             client_uuid: string;
             client_name: string;
             created_at: string;
@@ -811,6 +955,18 @@ export interface components {
                 };
             };
         };
+        /** @description Not found */
+        ModelNotFoundException: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /** @description Error overview. */
+                    message: string;
+                };
+            };
+        };
         /** @description Validation error */
         ValidationException: {
             headers: {
@@ -824,18 +980,6 @@ export interface components {
                     errors: {
                         [key: string]: string[];
                     };
-                };
-            };
-        };
-        /** @description Not found */
-        ModelNotFoundException: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": {
-                    /** @description Error overview. */
-                    message: string;
                 };
             };
         };
@@ -877,6 +1021,260 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "agent.provision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        conflict: boolean;
+                        token: string;
+                        expires_at: string;
+                        linux_command: string;
+                        windows_command: string;
+                        token_expires_in: string;
+                    } | {
+                        conflict: boolean;
+                        expires_at: string;
+                        generated_at: string;
+                        remaining_seconds: number;
+                        token_expires_in: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        conflict: boolean;
+                        token: string;
+                        expires_at: string;
+                        linux_command: string;
+                        windows_command: string;
+                        token_expires_in: string;
+                    } | {
+                        conflict: boolean;
+                        expires_at: string;
+                        generated_at: string;
+                        remaining_seconds: number;
+                        token_expires_in: string;
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
+    "agent.regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        conflict: boolean;
+                        token: string;
+                        expires_at: string;
+                        linux_command: string;
+                        windows_command: string;
+                        token_expires_in: string;
+                    } | {
+                        conflict: boolean;
+                        expires_at: string;
+                        generated_at: string;
+                        remaining_seconds: number;
+                        token_expires_in: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
+    "agent.bootstrap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                    hostname?: string | null;
+                    platform?: string | null;
+                    architecture?: string | null;
+                    installer_version?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        download_url: string;
+                        expected_sha256: Record<string, never> | string;
+                        /** @constant */
+                        agent_version: "2.0";
+                        /** @constant */
+                        heartbeat_interval: 5;
+                        api_url: string;
+                        register_url: string;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "agent.register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                    agent_version?: string | null;
+                    capabilities?: string[] | null;
+                    hostname?: string | null;
+                    operating_system?: string | null;
+                    architecture?: string | null;
+                    memory?: string | null;
+                    disk?: string | null;
+                    cpu?: {
+                        model?: string | null;
+                        cores?: number | null;
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        identity: string;
+                        configuration: {
+                            /** @constant */
+                            heartbeat_interval: 5;
+                            /** @constant */
+                            metrics_interval: 5;
+                            /** @constant */
+                            port_scan_interval: 60;
+                            /** @constant */
+                            service_scan_interval: 60;
+                            /** @constant */
+                            process_scan_interval: 60;
+                        };
+                        /** @constant */
+                        heartbeat_interval: 5;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "agent.heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        heartbeat_interval: number;
+                        current_time: string;
+                        feature_flags: string[];
+                        configuration: unknown[];
+                        pending_commands: {
+                            id: string;
+                            type: string;
+                            payload: string;
+                        }[];
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Invalid or revoked agent identity.";
+                    };
+                };
+            };
         };
     };
     "broadcast.authenticate": {
@@ -935,13 +1333,6 @@ export interface operations {
                     server_name: string;
                     /** Format: ipv4 */
                     external_ip: string;
-                    ssh_port: number;
-                    ssh_username: string;
-                    ssh_password: string;
-                    host_name?: string | null;
-                    cpu_cores?: number | null;
-                    ram?: number | null;
-                    operating_system?: string | null;
                 };
             };
         };
@@ -972,7 +1363,11 @@ export interface operations {
     };
     "client.index": {
         parameters: {
-            query?: never;
+            query?: {
+                user_uuid?: string | null;
+                exclude_user_uuid?: string | null;
+                available_only?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1537,6 +1932,279 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
+    "nodeConfig.nodeTypes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        type: string;
+                        category: string;
+                        label: string;
+                        unlimitedInputs: string;
+                        settings: string;
+                    }[];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeConfig"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    description?: string | null;
+                    config: components["schemas"]["NodeConfigData"];
+                    enabled?: boolean;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeConfig"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Invalid node config";
+                        errors: unknown[];
+                    };
+                };
+            };
+        };
+    };
+    "nodeConfig.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    description?: string | null;
+                    config: components["schemas"]["NodeConfigData"];
+                    enabled?: boolean;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Invalid node config";
+                        errors: unknown[];
+                    };
+                };
+            };
+        };
+    };
+    "nodeConfig.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Node config deleted.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.toggle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    source_node_id: string;
+                    value: string;
+                    extra_state?: string[] | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        outputs: string;
+                        timers: {
+                            node_config_id: number;
+                            node_id: string;
+                            delay_ms: number;
+                            context: unknown[];
+                        }[];
+                        actions: {
+                            node_id: string;
+                            type: string;
+                            settings: string | string[];
+                            value: Record<string, never> | null;
+                        }[];
+                    } | {
+                        success: boolean;
+                        errors: unknown[];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "nodeConfig.resetState": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Node config state reset.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
     "server.listAll": {
         parameters: {
             query?: {
@@ -1600,9 +2268,6 @@ export interface operations {
                     server_name?: string | null;
                     host_name?: string | null;
                     external_ip?: string | null;
-                    ssh_port?: number | null;
-                    ssh_username?: string | null;
-                    ssh_password?: string | null;
                 };
             };
         };
@@ -1645,54 +2310,6 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "server.uninstallServer": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                clientUuid: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** Format: uuid */
-                    uuid: string;
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        status: boolean;
-                        log: {
-                            wget: string | boolean;
-                            uninstall: string | boolean;
-                        };
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
-            /** @description An error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @description Error overview. */
-                        message: string;
-                    };
-                };
-            };
-        };
-    };
     "server.showWithStats": {
         parameters: {
             query?: never;
@@ -1715,103 +2332,6 @@ export interface operations {
             };
             401: components["responses"]["AuthenticationException"];
             404: components["responses"]["ModelNotFoundException"];
-        };
-    };
-    "server.ingestStats": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    uuid: string;
-                    token: string;
-                    timestamp: number;
-                    "cpu.load1": number;
-                    "memory.percent": number;
-                    "disk.percent": number;
-                    uptime: number;
-                    "network.0.rx_bytes": number;
-                    "network.0.tx_bytes": number;
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        success: boolean;
-                        /** @constant */
-                        message: "Metrics recorded.";
-                    };
-                };
-            };
-            /** @description An error */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /**
-                         * @description Error overview.
-                         * @example Unauthorized or invalid server ID.
-                         */
-                        message: string;
-                    };
-                };
-            };
-        };
-    };
-    "server.updateServerSpecs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    uuid: string;
-                    token: string;
-                    "cpu.model": string;
-                    "cpu.cores": number;
-                    memory: string;
-                    disk: number;
-                    operating_system: string;
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        status: "success";
-                    };
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        status: "error";
-                    };
-                };
-            };
         };
     };
     "session.index": {

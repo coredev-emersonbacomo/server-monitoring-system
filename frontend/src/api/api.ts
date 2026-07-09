@@ -1,5 +1,5 @@
 import createClient from "openapi-fetch";
-import type { paths } from "./schema.d";
+import type { paths } from "./schema";
 import { getAccessToken, refreshAccessToken } from "./tokenManager";
 
 const api = createClient<paths>({

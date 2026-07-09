@@ -17,7 +17,9 @@ export const useActivityLogs = () => {
     return useQuery<ActivityLogData[]>({
         queryKey: ["activity-logs"],
         queryFn: async () => {
-            const { data, error } = await api.GET("/activity-logs" as any, { params: {} });
+            const { data, error } = await api.GET("/v1/activity-logs" as any, {
+                params: {},
+            });
             if (error) throw error;
             return data ?? [];
         },

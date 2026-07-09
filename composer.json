@@ -16,9 +16,9 @@
         "laravel/reverb": "^1.0",
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
-        "phpseclib/phpseclib": "^3.0",
         "pjadanowski/scramble-extras": "*",
-        "spatie/laravel-data": "^4.23"
+        "spatie/laravel-data": "^4.23",
+        "tpetry/laravel-postgresql-enhanced": "*"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.7",

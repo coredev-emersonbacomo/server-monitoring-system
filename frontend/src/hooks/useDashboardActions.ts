@@ -19,7 +19,7 @@ export const useDashboardActions = () => {
     return useQuery<ActionItem[]>({
         queryKey: ["dashboard", "actions"],
         queryFn: async () => {
-            const { data, error } = await api.GET("/dashboard/actions");
+            const { data, error } = await api.GET("/v1/dashboard/actions");
             if (error) throw error;
             return data as ActionItem[];
         },
@@ -32,7 +32,9 @@ export const useCompletedActions = () => {
     return useQuery<ActionItem[]>({
         queryKey: ["dashboard", "actions", "completed"],
         queryFn: async () => {
-            const { data, error } = await api.GET("/dashboard/actions/completed");
+            const { data, error } = await api.GET(
+                "/v1/dashboard/actions/completed",
+            );
             if (error) throw error;
             return data as ActionItem[];
         },
@@ -44,14 +46,19 @@ export const useClaimAction = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (actionId: number) => {
-            const { data, error } = await api.POST("/dashboard/actions/{actionId}/claim", {
-                params: { path: { actionId } },
-            });
+            const { data, error } = await api.POST(
+                "/v1/dashboard/actions/{actionId}/claim",
+                {
+                    params: { path: { actionId } },
+                },
+            );
             if (error) throw error;
             return data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["dashboard", "actions"] });
+            queryClient.invalidateQueries({
+                queryKey: ["dashboard", "actions"],
+            });
         },
     });
 };
@@ -59,17 +66,30 @@ export const useClaimAction = () => {
 export const useUpdateActionStatus = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: async ({ actionId, status }: { actionId: number; status: string }) => {
-            const { data, error } = await api.POST("/dashboard/actions/{actionId}/status", {
-                params: { path: { actionId } },
-                body: { status } as never,
-            });
+        mutationFn: async ({
+            actionId,
+            status,
+        }: {
+            actionId: number;
+            status: string;
+        }) => {
+            const { data, error } = await api.POST(
+                "/v1/dashboard/actions/{actionId}/status",
+                {
+                    params: { path: { actionId } },
+                    body: { status } as never,
+                },
+            );
             if (error) throw error;
             return data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["dashboard", "actions"] });
-            queryClient.invalidateQueries({ queryKey: ["dashboard", "actions", "completed"] });
+            queryClient.invalidateQueries({
+                queryKey: ["dashboard", "actions"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["dashboard", "actions", "completed"],
+            });
         },
     });
 };

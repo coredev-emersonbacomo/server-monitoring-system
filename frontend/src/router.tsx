@@ -18,6 +18,8 @@ import Profile from "./pages/settings/profile";
 import UserDetail from "./pages/users/user-detail";
 import SystemSettings from "./pages/settings/system";
 import AlertThresholds from "./pages/settings/thresholds";
+import NodeConfigsIndex from "./pages/node-config/index";
+import NodeConfigDetail from "./pages/node-config/node-config-detail";
 
 const router = createBrowserRouter([
     {
@@ -99,6 +101,14 @@ const router = createBrowserRouter([
                     {
                         path: "/settings/thresholds",
                         element: <AlertThresholds />,
+                    },
+                    {
+                        path: "/settings/alerts",
+                        element: <NodeConfigsIndex />,
+                    },
+                    {
+                        path: "/settings/alerts/:id",
+                        element: <NodeConfigDetail />,
                     },
                     {
                         path: "/profile",

@@ -138,14 +138,24 @@ class ProvisioningService
             'description' => 'Agent provisioning started.',
         ]);
 
-        // Get PHP agent hash
-        $agentPath = public_path('agents/php_agent/agent.txt');
+        // Select agent binary based on platform
+        $platform = $metadata['platform'] ?? 'linux';
+
+        if ($platform === 'windows') {
+            $agentPath = public_path('agents/cs_agent/MonitorAgent.exe');
+            $downloadUrl = url('/agents/cs_agent/MonitorAgent.exe');
+        } else {
+            $agentPath = public_path('agents/php_agent/agent.txt');
+            $downloadUrl = url('/agents/php_agent/agent.txt');
+        }
+
         $sha256 = file_exists($agentPath) ? hash_file('sha256', $agentPath) : '';
+        $agentVersion = $platform === 'windows' ? '2.0' : '2.0';
 
         return [
-            'download_url' => url('/agents/php_agent/agent.txt'),
+            'download_url' => $downloadUrl,
             'expected_sha256' => $sha256,
-            'agent_version' => '1.0',
+            'agent_version' => $agentVersion,
             'heartbeat_interval' => 5,
             'api_url' => url('/api/v1/agent/heartbeat'),
             'register_url' => url('/api/v1/register'),
@@ -171,11 +181,16 @@ class ProvisioningService
             ]);
 
             // Set Server Status
+            $cpuSpec = $metadata['cpu'] ?? [];
             $server->update([
                 'status' => ServerStatus::WaitingForFirstHeartbeat->value,
                 'operating_system' => $metadata['operating_system'] ?? $server->operating_system,
                 'architecture' => $metadata['architecture'] ?? $server->architecture,
                 'host_name' => $metadata['hostname'] ?? $server->host_name,
+                'cpu_model' => $cpuSpec['model'] ?? $server->cpu_model,
+                'cpu_cores' => $cpuSpec['cores'] ?? $server->cpu_cores,
+                'ram' => $metadata['memory'] ?? $server->ram,
+                'disk' => $metadata['disk'] ?? $server->disk,
             ]);
 
             // Create Agent

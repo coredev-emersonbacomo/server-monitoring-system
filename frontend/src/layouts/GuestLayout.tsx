@@ -1,16 +1,22 @@
-import { Navigate, Outlet } from "react-router-dom";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 export function GuestLayout() {
-  const { user, isLoading } = useJwtAuth();
+    const { user, isLoading } = useJwtAuth();
+    const location = useLocation();
 
-  if (isLoading) {
-    return <div className="flex min-h-screen items-center justify-center" />;
-  }
+    if (isLoading) {
+        return (
+            <div className="flex min-h-screen items-center justify-center" />
+        );
+    }
 
-  if (user) {
-    return <Navigate to="/" replace />;
-  }
+    if (user) {
+        const params = new URLSearchParams(location.search);
+        const returnTo = params.get("returnTo");
 
-  return <Outlet />;
+        return <Navigate to={returnTo ?? "/"} replace />;
+    }
+
+    return <Outlet />;
 }

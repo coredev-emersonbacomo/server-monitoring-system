@@ -1,0 +1,187 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Data\CreateServerData;
+use App\Data\ServerData;
+use App\Data\StatPointData;
+use App\Data\UpdateServerData;
+use App\Http\Controllers\Controller;
+use App\Models\Client;
+use App\Models\Server;
+use App\Models\ServerUpdate;
+use Dedoc\Scramble\Attributes\QueryParameter;
+use Illuminate\Http\Request;
+use Infrastructure\Api\ApiGenerator;
+use Infrastructure\Service\InstallerService;
+
+class ServerController extends Controller
+{
+    public function index(string $clientUuid)
+    {
+        $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
+        $servers = Server::where('client_id', $clientModel->id)->get();
+        return ServerData::collect($servers->map(fn(Server $s) => ServerData::fromModel($s)));
+    }
+
+    public function store(CreateServerData $data, string $clientUuid): ServerData
+    {
+        $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
+        $clientId = $clientModel->id;
+
+        try {
+            $server = Server::create([
+                'client_id'    => $clientId,
+                'server_name'  => $data->server_name,
+                'host_name'  => $data->host_name ?? $data->server_name,
+                'external_ip'  => $data->external_ip,
+                'api_key'      => ApiGenerator::GenerateApiKey(),
+            ]);
+
+            return ServerData::fromModel($server);
+
+        } catch (\RuntimeException $e) {
+            abort(500, 'Installation failed: ' . $e->getMessage());
+        }
+    }
+
+    public function show(string $clientUuid, string $serverUuid): ServerData
+    {
+        $serverModel = Server::where('uuid', $serverUuid)
+            ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
+            ->firstOrFail();
+
+        return ServerData::fromModel($serverModel);
+    }
+
+    public function update(UpdateServerData $data, string $clientUuid, string $serverUuid): ServerData
+    {
+        $serverModel = Server::where('uuid', $serverUuid)
+            ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
+            ->firstOrFail();
+
+        $updateData = $data->toArray();
+
+        if ($data->host_name !== null) {
+            $updateData['host_name'] = $data->host_name;
+        }
+        if ($data->external_ip !== null) {
+            $updateData['external_ip'] = $data->external_ip;
+        }
+        $serverModel->update($updateData);
+
+        return ServerData::fromModel($serverModel);
+    }
+
+    public function destroy(string $clientUuid, string $serverUuid)
+    {
+        $serverModel = Server::where('uuid', $serverUuid)
+            ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
+            ->firstOrFail();
+
+        $serverModel->delete();
+
+        return response()->json(['status' => 'success']);
+    }
+
+    #[QueryParameter('client_uuid', type: 'string', description: 'Filter servers by client UUID')]
+    public function listAll(Request $request)
+    {
+        $query = Server::with('client', 'latestUpdate');
+
+        if ($clientUuid = $request->query('client_uuid')) {
+            $client = Client::where('uuid', $clientUuid)->first();
+            if ($client) {
+                $query->where('client_id', $client->id);
+            }
+        }
+
+        $servers = $query->orderBy('created_at', 'desc')->get();
+
+        return ServerData::collect($servers->map(function (Server $server) {
+            return ServerData::from([
+                'uuid'             => $server->uuid,
+                'server_name'      => $server->server_name,
+                'host_name'        => $server->host_name,
+                'external_ip'      => $server->external_ip,
+                'client_uuid'      => $server->client->uuid,
+                'client_name'      => $server->client->name,
+                'created_at'       => $server->created_at->toIso8601String(),
+                'updated_at'       => $server->updated_at->toIso8601String(),
+                'cpu_cores'        => $server->cpu_cores,
+                'ram'              => $server->ram,
+                'disk'             => $server->disk,
+                'operating_system' => $server->operating_system,
+                'record_status'    => $server->record_status->value,
+                'status'           => $server->status,
+            ]);
+        }));
+    }
+
+    public function showWithStats(string $serverUuid): ServerData
+    {
+        $server = Server::where('uuid', $serverUuid)->first();
+        if (!$server) {
+            abort(404, 'Server not found.');
+        }
+
+        $updates = $server->updates()
+            ->orderBy('created_at')
+            ->limit(144)
+            ->get();
+
+        $stats = [];
+        $prev = null;
+        foreach ($updates as $row) {
+            $stats[] = StatPointData::from(self::computeStatPointPublic($row, $prev));
+            $prev = $row;
+        }
+
+        $client = $server->client;
+
+        return ServerData::from([
+            'uuid'             => $server->uuid,
+            'server_name'      => $server->server_name,
+            'host_name'        => $server->host_name,
+            'external_ip'      => $server->external_ip,
+            'created_at'       => $server->created_at->toIso8601String(),
+            'updated_at'       => $server->updated_at->toIso8601String(),
+            'cpu_cores'        => $server->cpu_cores ?? null,
+            'ram'              => $server->ram ?? null,
+            'disk'             => $server->disk ?? null,
+            'operating_system' => $server->operating_system ?? null,
+            'client_id'        => $server->client_id,
+            'client_uuid'      => $client?->uuid ?? '',
+            'client_name'      => $client?->name ?? 'Unknown',
+            'record_status'    => $server->record_status->value,
+            'status'           => $server->status,
+            'stats'            => $stats,
+        ]);
+    }
+
+    /** @internal Used by showWithStats and BroadcastServerStats */
+    public static function computeStatPointPublic(ServerUpdate $row, ?ServerUpdate $prev): array
+    {
+        $ts = $row->created_at->getPreciseTimestamp(3);
+
+        $netIn = 0;
+        $netOut = 0;
+        if ($prev) {
+            $prevTs = $prev->created_at->getPreciseTimestamp(3);
+            $dt = ($ts - $prevTs) / 1000;
+            if ($dt > 0) {
+                $netIn = (($row->netIn - $prev->netIn) / 1_000_000) / $dt;
+                $netOut = (($row->netOut - $prev->netOut) / 1_000_000) / $dt;
+            }
+        }
+
+        return [
+            'timestamp' => $ts,
+            'cpu'       => round((float) $row->cpu_usage, 1),
+            'memory'    => round((float) $row->memory_usage, 1),
+            'netIn'     => round($netIn, 2),
+            'netOut'    => round($netOut, 2),
+            'disk'      => round((float) $row->storage, 1),
+        ];
+    }
+}

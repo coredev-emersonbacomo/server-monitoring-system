@@ -16,12 +16,15 @@ use Illuminate\Support\Facades\Route;
 
 Broadcast::routes(['middleware' => [\App\Http\Middleware\JwtAuthenticate::class]]);
 
-Route::group([], base_path('routes/api/auth.php'));
-Route::group([], base_path('routes/api/servers.php'));
-Route::group([], base_path('routes/api/users.php'));
-Route::group([], base_path('routes/api/settings.php'));
-Route::group([], base_path('routes/api/clients.php'));
-Route::group([], base_path('routes/api/dashboard.php'));
-Route::group([], base_path('routes/api/uploads.php'));
-Route::group([], base_path('routes/api/activity-logs.php'));
-Route::group([], base_path('routes/api/v1.php'));
+Route::prefix('v1')->group(function () {
+    Route::group([], base_path('routes/api/v1/auth.php'));
+    Route::group([], base_path('routes/api/v1/servers.php'));
+    Route::group([], base_path('routes/api/v1/users.php'));
+    Route::group([], base_path('routes/api/v1/settings.php'));
+    Route::group([], base_path('routes/api/v1/clients.php'));
+    Route::group([], base_path('routes/api/v1/dashboard.php'));
+    Route::group([], base_path('routes/api/v1/uploads.php'));
+    Route::group([], base_path('routes/api/v1/activity-logs.php'));
+    Route::group([], base_path('routes/api/v1/agent.php'));
+    Route::group([], base_path('routes/api/v1/node-configs.php'));
+});
