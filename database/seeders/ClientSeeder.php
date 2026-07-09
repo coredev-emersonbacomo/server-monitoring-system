@@ -41,11 +41,8 @@ class ClientSeeder extends Seeder
             [
                 'uuid' => (string) Str::uuid7(),
                 'host_name' => 'Thinkpad',
-                'ssh_username' => 'timocheu',
-                'ssh_password' => 'testing',
                 'external_ip' => '127.0.0.1',
                 'api_key' => ApiGenerator::GenerateApiKey(),
-                'ssh_port' => 22,
             ]
         );
     }
