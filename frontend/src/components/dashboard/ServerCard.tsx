@@ -174,7 +174,7 @@ export const ServerCard = memo(function ServerCard({
                     queryKey: ["server", server.uuid],
                 });
             }
-        } catch (e) {
+        } catch {
             toast.error("An error occurred.");
         } finally {
             setGenerating(false);
@@ -391,13 +391,6 @@ export const ServerCard = memo(function ServerCard({
                                 icon: Server,
                                 label: "Name",
                                 value: server.server_name,
-                            },
-                            {
-                                icon: Network,
-                                label: "IP Address",
-                                value:
-                                    server.external_ip ||
-                                    "Dynamic / Agent Managed",
                             },
                             {
                                 icon: Cpu,

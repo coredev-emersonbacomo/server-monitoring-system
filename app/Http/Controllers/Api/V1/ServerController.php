@@ -34,7 +34,6 @@ class ServerController extends Controller
                 'client_id'    => $clientId,
                 'server_name'  => $data->server_name,
                 'host_name'  => $data->host_name ?? $data->server_name,
-                'external_ip'  => $data->external_ip,
                 'api_key'      => ApiGenerator::GenerateApiKey(),
             ]);
 
@@ -64,9 +63,6 @@ class ServerController extends Controller
 
         if ($data->host_name !== null) {
             $updateData['host_name'] = $data->host_name;
-        }
-        if ($data->external_ip !== null) {
-            $updateData['external_ip'] = $data->external_ip;
         }
         $serverModel->update($updateData);
 
@@ -103,7 +99,6 @@ class ServerController extends Controller
                 'uuid'             => $server->uuid,
                 'server_name'      => $server->server_name,
                 'host_name'        => $server->host_name,
-                'external_ip'      => $server->external_ip,
                 'client_uuid'      => $server->client->uuid,
                 'client_name'      => $server->client->name,
                 'created_at'       => $server->created_at->toIso8601String(),
@@ -143,7 +138,6 @@ class ServerController extends Controller
             'uuid'             => $server->uuid,
             'server_name'      => $server->server_name,
             'host_name'        => $server->host_name,
-            'external_ip'      => $server->external_ip,
             'created_at'       => $server->created_at->toIso8601String(),
             'updated_at'       => $server->updated_at->toIso8601String(),
             'cpu_cores'        => $server->cpu_cores ?? null,

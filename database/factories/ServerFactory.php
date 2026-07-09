@@ -21,7 +21,6 @@ class ServerFactory extends Factory
             'host_name' => fake()->word() . '-blade-' . fake()->randomDigitNotNull(),
             'operating_system' => fake()->randomElement(['Ubuntu 22.04 LTS', 'Windows Server 2022', 'Debian 12']),
             // Network details
-            'external_ip' => fake()->ipv4(),
             'cpu_model' => fake()->randomElement(['Intel Xeon E5-2670', 'AMD EPYC 7742', 'Intel Core i9-11900K']),
             'cpu_cores' => fake()->randomElement([2, 4, 8, 16]),
             'ram' => fake()->randomElement(['16GB', '32GB', '64GB']),

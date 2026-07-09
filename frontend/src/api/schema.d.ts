@@ -885,7 +885,6 @@ export interface components {
         ServerData: {
             server_name: string;
             uuid: string;
-            external_ip?: string | null;
             host_name: string;
             client_uuid: string;
             client_name: string;
@@ -1331,8 +1330,6 @@ export interface operations {
             content: {
                 "application/json": {
                     server_name: string;
-                    /** Format: ipv4 */
-                    external_ip: string;
                 };
             };
         };
@@ -2267,7 +2264,6 @@ export interface operations {
                 "application/json": {
                     server_name?: string | null;
                     host_name?: string | null;
-                    external_ip?: string | null;
                 };
             };
         };

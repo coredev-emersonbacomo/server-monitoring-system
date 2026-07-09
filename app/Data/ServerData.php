@@ -12,8 +12,6 @@ class ServerData extends Data
 
         public string $uuid,
 
-        public ?string $external_ip,
-
         public string $host_name,
 
         public string $client_uuid,
@@ -50,7 +48,6 @@ class ServerData extends Data
             client_name: $server->client->name,
             server_name: $server->server_name,
             host_name: $server->host_name,
-            external_ip: $server->external_ip,
             cpu_model: $server->cpu_model,
             cpu_cores: $server->cpu_cores,
             ram: $server->ram,

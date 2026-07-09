@@ -19,9 +19,21 @@ const STATUS_META: Record<
         bg: "bg-amber-500/10",
     },
     offline: { icon: WifiOff, color: "text-red-400", bg: "bg-red-500/10" },
-    pending_installation: { icon: AlertTriangle, color: "text-zinc-400", bg: "bg-zinc-500/10" },
-    waiting_for_installation: { icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10" },
-    waiting_for_first_heartbeat: { icon: WifiOff, color: "text-blue-400", bg: "bg-blue-500/10" },
+    pending_installation: {
+        icon: AlertTriangle,
+        color: "text-zinc-400",
+        bg: "bg-zinc-500/10",
+    },
+    waiting_for_installation: {
+        icon: AlertTriangle,
+        color: "text-amber-400",
+        bg: "bg-amber-500/10",
+    },
+    waiting_for_first_heartbeat: {
+        icon: WifiOff,
+        color: "text-blue-400",
+        bg: "bg-blue-500/10",
+    },
     archived: { icon: WifiOff, color: "text-slate-400", bg: "bg-slate-500/10" },
 };
 
@@ -184,30 +196,34 @@ export default function ServersIndex() {
                                         </p>
                                         <p className="text-xs text-muted-foreground truncate">
                                             {server.client_name}
-                                            {server.external_ip &&
-                                                ` · ${server.external_ip}`}
                                         </p>
                                     </div>
                                     <span
                                         className={cn(
-                                            "text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded text-center min-w-[60px]",
+                                            "text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded text-center min-w-15",
                                             server.status === "online" &&
                                                 "text-emerald-400 bg-emerald-500/10",
                                             server.status === "warning" &&
                                                 "text-amber-400 bg-amber-500/10",
                                             server.status === "offline" &&
                                                 "text-red-400 bg-red-500/10",
-                                            server.status === "pending_installation" &&
+                                            server.status ===
+                                                "pending_installation" &&
                                                 "text-zinc-400 bg-zinc-500/10",
-                                            server.status === "waiting_for_installation" &&
+                                            server.status ===
+                                                "waiting_for_installation" &&
                                                 "text-amber-400 bg-amber-500/10",
-                                            server.status === "waiting_for_first_heartbeat" &&
+                                            server.status ===
+                                                "waiting_for_first_heartbeat" &&
                                                 "text-blue-400 bg-blue-500/10",
                                             server.status === "archived" &&
                                                 "text-slate-400 bg-slate-500/10",
                                         )}
                                     >
-                                        {(server.status || "pending").replace(/_/g, " ")}
+                                        {(server.status || "pending").replace(
+                                            /_/g,
+                                            " ",
+                                        )}
                                     </span>
                                 </Link>
                             );
