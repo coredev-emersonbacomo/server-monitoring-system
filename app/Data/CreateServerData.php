@@ -15,8 +15,5 @@ class CreateServerData extends Data
     public function __construct(
         #[Required, StringType, Max(255)]
         public string $server_name,
-
-        #[Required, IPv4]
-        public string $external_ip,
     ) {}
 }

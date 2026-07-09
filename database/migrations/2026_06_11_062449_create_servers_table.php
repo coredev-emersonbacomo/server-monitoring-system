@@ -19,9 +19,6 @@ return new class extends Migration
 
             $table->string('host_name');
 
-            // Network details
-            $table->string('external_ip');
-
             // API Key
             $table->string('api_key');
 

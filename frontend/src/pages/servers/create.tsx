@@ -80,7 +80,6 @@ export default function CreateServer() {
                 params: { path: { clientUuid } },
                 body: {
                     server_name: serverName.trim(),
-                    external_ip: "",
                 },
             },
         );
