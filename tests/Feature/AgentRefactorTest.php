@@ -100,7 +100,7 @@ test('end-to-end agent provisioning, registration, and heartbeat flow', function
         ],
         'uptime' => 3600,
         'services' => [
-            ['name' => 'ssh', 'state' => 'running'],
+            ['name' => 'sshd', 'state' => 'running'],
         ],
         'open_db_ports' => [
             ['port' => 3306, 'protocol' => 'tcp', 'process' => 'mysqld'],

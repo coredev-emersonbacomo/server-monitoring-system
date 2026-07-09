@@ -1,5 +1,23 @@
 import { memo, useState } from "react";
-import { Wifi, WifiOff, AlertTriangle, Trash2, Cpu, MemoryStick, HardDrive, Monitor, Info, BarChart3, Bell, Server, Network, Terminal, Copy, Check, RefreshCw } from "lucide-react";
+import {
+    Wifi,
+    WifiOff,
+    AlertTriangle,
+    Trash2,
+    Cpu,
+    MemoryStick,
+    HardDrive,
+    Monitor,
+    Info,
+    BarChart3,
+    Bell,
+    Server,
+    Network,
+    Terminal,
+    Copy,
+    Check,
+    RefreshCw,
+} from "lucide-react";
 import { Tab } from "@/components/ui/tab";
 import { ServerStatChart } from "./ServerStatChart";
 import type { ServerData } from "@/types/models";
@@ -14,7 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useDeleteServer } from "@/hooks/useDeleteServer";
-import { getAccessToken } from "@/api/tokenManager";
+import api from "@/api/api";
 import { useQueryClient } from "@tanstack/react-query";
 
 const STATUS_CONFIG = {
@@ -106,7 +124,8 @@ interface ServerCardProps {
 export const ServerCard = memo(function ServerCard({
     server,
 }: ServerCardProps) {
-    const status = (server.status as keyof typeof STATUS_CONFIG) || "pending_installation";
+    const status =
+        (server.status as keyof typeof STATUS_CONFIG) || "pending_installation";
     const { icon: StatusIcon, label, color, bg } = STATUS_CONFIG[status];
 
     const queryClient = useQueryClient();
@@ -121,30 +140,39 @@ export const ServerCard = memo(function ServerCard({
         expires_at?: string;
     } | null>(null);
     const [generating, setGenerating] = useState(false);
-    const [copiedKey, setCopiedKey] = useState<"linux" | "windows" | null>(null);
+    const [copiedKey, setCopiedKey] = useState<"linux" | "windows" | null>(
+        null,
+    );
 
     const isConfirmed = confirmText.trim() === server.server_name;
 
     const generateProvisionToken = async () => {
         setGenerating(true);
         try {
-            const res = await fetch(`/api/v1/servers/${server.uuid}/provision`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    "Authorization": `Bearer ${getAccessToken()}`,
+            const { data, error } = await api.POST(
+                "/v1/servers/{uuid}/provision",
+                {
+                    params: { path: { uuid: server.uuid } },
                 },
-            });
-            const data = await res.json();
-            if (res.status === 201 || res.status === 200 || res.status === 409) {
-                setProvisionDetails(data);
-                if (res.status !== 409) {
-                    toast.success("Provision token generated successfully!");
-                    queryClient.invalidateQueries({ queryKey: ["server", server.uuid] });
+            );
+            if (error) {
+                if (error.response?.status === 409 && error.response?.data) {
+                    setProvisionDetails(
+                        error.response.data as {
+                            linux_command?: string;
+                            windows_command?: string;
+                            expires_at?: string;
+                        },
+                    );
+                } else {
+                    toast.error("Failed to generate provision token.");
                 }
-            } else {
-                toast.error(data.message || "Failed to generate provision token.");
+            } else if (data) {
+                setProvisionDetails(data);
+                toast.success("Provision token generated successfully!");
+                queryClient.invalidateQueries({
+                    queryKey: ["server", server.uuid],
+                });
             }
         } catch (e) {
             toast.error("An error occurred.");
@@ -156,21 +184,20 @@ export const ServerCard = memo(function ServerCard({
     const regenerateProvisionToken = async () => {
         setGenerating(true);
         try {
-            const res = await fetch(`/api/v1/servers/${server.uuid}/provision/regenerate`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    "Authorization": `Bearer ${getAccessToken()}`,
+            const { data, error } = await api.POST(
+                "/v1/servers/{uuid}/provision/regenerate",
+                {
+                    params: { path: { uuid: server.uuid } },
                 },
-            });
-            const data = await res.json();
-            if (res.ok || res.status === 201) {
+            );
+            if (error) {
+                toast.error("Failed to regenerate token.");
+            } else if (data) {
                 setProvisionDetails(data);
                 toast.success("Provision token regenerated!");
-                queryClient.invalidateQueries({ queryKey: ["server", server.uuid] });
-            } else {
-                toast.error(data.message || "Failed to regenerate token.");
+                queryClient.invalidateQueries({
+                    queryKey: ["server", server.uuid],
+                });
             }
         } catch (e) {
             toast.error("An error occurred.");
@@ -205,7 +232,8 @@ export const ServerCard = memo(function ServerCard({
         setConfirmText("");
     };
 
-    const isInstalled = status === "online" || status === "warning" || status === "offline";
+    const isInstalled =
+        status === "online" || status === "warning" || status === "offline";
 
     return (
         <div className="py-5 px-5">
@@ -242,21 +270,30 @@ export const ServerCard = memo(function ServerCard({
                     {status === "pending_installation" && !provisionDetails && (
                         <div className="space-y-4">
                             <p className="text-sm text-muted-foreground">
-                                To start monitoring this server, you must install the lightweight monitoring agent on the machine.
+                                To start monitoring this server, you must
+                                install the lightweight monitoring agent on the
+                                machine.
                             </p>
                             <Button
                                 variant="default"
-                                label={generating ? "Generating..." : "Generate Installation Command"}
+                                label={
+                                    generating
+                                        ? "Generating..."
+                                        : "Generate Installation Command"
+                                }
                                 onClick={generateProvisionToken}
                                 disabled={generating}
                             />
                         </div>
                     )}
 
-                    {(status === "waiting_for_installation" || status === "waiting_for_first_heartbeat" || provisionDetails) && (
+                    {(status === "waiting_for_installation" ||
+                        status === "waiting_for_first_heartbeat" ||
+                        provisionDetails) && (
                         <div className="space-y-5">
                             <p className="text-sm text-muted-foreground">
-                                Run the appropriate command directly on your server.
+                                Run the appropriate command directly on your
+                                server.
                             </p>
 
                             <div className="space-y-4">
@@ -266,14 +303,24 @@ export const ServerCard = memo(function ServerCard({
                                     </label>
                                     <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
                                         <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
-                                            {provisionDetails?.linux_command || `curl -fsSL ${window.location.origin}/install/linux | bash -s -- <token>`}
+                                            {provisionDetails?.linux_command ||
+                                                `curl -fsSL ${window.location.origin}/install/linux | bash -s -- <token>`}
                                         </span>
                                         {provisionDetails?.linux_command && (
                                             <button
-                                                onClick={() => copyToClipboard(provisionDetails.linux_command!, "linux")}
+                                                onClick={() =>
+                                                    copyToClipboard(
+                                                        provisionDetails.linux_command!,
+                                                        "linux",
+                                                    )
+                                                }
                                                 className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
                                             >
-                                                {copiedKey === "linux" ? <Check className="size-4 text-emerald-400" /> : <Copy className="size-4" />}
+                                                {copiedKey === "linux" ? (
+                                                    <Check className="size-4 text-emerald-400" />
+                                                ) : (
+                                                    <Copy className="size-4" />
+                                                )}
                                             </button>
                                         )}
                                     </div>
@@ -285,14 +332,24 @@ export const ServerCard = memo(function ServerCard({
                                     </label>
                                     <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
                                         <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
-                                            {provisionDetails?.windows_command || `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
+                                            {provisionDetails?.windows_command ||
+                                                `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
                                         </span>
                                         {provisionDetails?.windows_command && (
                                             <button
-                                                onClick={() => copyToClipboard(provisionDetails.windows_command!, "windows")}
+                                                onClick={() =>
+                                                    copyToClipboard(
+                                                        provisionDetails.windows_command!,
+                                                        "windows",
+                                                    )
+                                                }
                                                 className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
                                             >
-                                                {copiedKey === "windows" ? <Check className="size-4 text-emerald-400" /> : <Copy className="size-4" />}
+                                                {copiedKey === "windows" ? (
+                                                    <Check className="size-4 text-emerald-400" />
+                                                ) : (
+                                                    <Copy className="size-4" />
+                                                )}
                                             </button>
                                         )}
                                     </div>
@@ -303,7 +360,12 @@ export const ServerCard = memo(function ServerCard({
                                 <div>
                                     {provisionDetails?.expires_at && (
                                         <span>
-                                            Token expires at: <strong>{new Date(provisionDetails.expires_at).toLocaleString()}</strong>
+                                            Token expires at:{" "}
+                                            <strong>
+                                                {new Date(
+                                                    provisionDetails.expires_at,
+                                                ).toLocaleString()}
+                                            </strong>
                                         </span>
                                     )}
                                 </div>
@@ -333,7 +395,9 @@ export const ServerCard = memo(function ServerCard({
                             {
                                 icon: Network,
                                 label: "IP Address",
-                                value: server.external_ip || "Dynamic / Agent Managed",
+                                value:
+                                    server.external_ip ||
+                                    "Dynamic / Agent Managed",
                             },
                             {
                                 icon: Cpu,
@@ -341,23 +405,29 @@ export const ServerCard = memo(function ServerCard({
                                 value: server.cpu_model
                                     ? `${server.cpu_model} · ${server.cpu_cores ?? "?"} cores`
                                     : server.cpu_cores
-                                        ? `${server.cpu_cores} cores`
-                                        : "Waiting for Agent",
+                                      ? `${server.cpu_cores} cores`
+                                      : "Waiting for Agent",
                             },
                             {
                                 icon: MemoryStick,
                                 label: "Memory",
-                                value: server.ram ? `${server.ram} GB` : "Waiting for Agent",
+                                value: server.ram
+                                    ? `${server.ram} GB`
+                                    : "Waiting for Agent",
                             },
                             {
                                 icon: HardDrive,
                                 label: "Disk",
-                                value: server.disk ? `${server.disk} GB` : "Waiting for Agent",
+                                value: server.disk
+                                    ? `${server.disk} GB`
+                                    : "Waiting for Agent",
                             },
                             {
                                 icon: Monitor,
                                 label: "OS",
-                                value: server.operating_system ?? "Waiting for Agent",
+                                value:
+                                    server.operating_system ??
+                                    "Waiting for Agent",
                             },
                         ].map(({ icon: ItemIcon, label, value }) => (
                             <div
@@ -371,7 +441,7 @@ export const ServerCard = memo(function ServerCard({
                                     <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
                                         {label}
                                     </span>
-                                    <span className="text-sm font-semibold text-foreground break-words">
+                                    <span className="text-sm font-semibold text-foreground wrap-break-word">
                                         {value}
                                     </span>
                                 </div>
@@ -423,8 +493,7 @@ export const ServerCard = memo(function ServerCard({
                         <strong className="text-foreground">
                             {server.server_name}
                         </strong>{" "}
-                        and remove all collected metrics.
-                        This cannot be undone.
+                        and remove all collected metrics. This cannot be undone.
                     </p>
 
                     <div className="flex flex-col gap-2 pt-1">
@@ -454,7 +523,11 @@ export const ServerCard = memo(function ServerCard({
                         </DialogClose>
                         <Button
                             variant="danger"
-                            label={deleteServer.isPending ? "Deleting…" : "Delete server"}
+                            label={
+                                deleteServer.isPending
+                                    ? "Deleting…"
+                                    : "Delete server"
+                            }
                             disabled={!isConfirmed || deleteServer.isPending}
                             onClick={handleDelete}
                         />

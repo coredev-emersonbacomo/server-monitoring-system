@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Events\ServerStatsUpdated;
 use App\Models\Server;
-use App\Http\Controllers\ServerController;
+use App\Http\Controllers\Api\V1\ServerController;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

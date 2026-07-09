@@ -14,7 +14,9 @@
     "gpush": "scripts\\git\\git-push.bat",
     "pull": "git stash && git pull && git stash apply",
     "resetdb": "php artisan migrate:fresh --seed && php artisan actions:sync && npm run loadtestfactory",
-    "metricsmock": "php artisan server:update-metrics --daemon",
+    "compileagent:php": "php -l public/agents/php_agent/agent.txt && echo PHP agent syntax OK",
+    "compileagent:cs": "dotnet publish public/agents/cs_agent/MonitorAgent/MonitorAgent.csproj -c Release -o public/agents/cs_agent --self-contained true -r win-x64 -p:PublishSingleFile=true",
+    "compileagent": "npm run compileagent:php && npm run compileagent:cs",
     "loadtestfactory": "php artisan tinker --execute=\"\\App\\Models\\User::factory(25)->create(); \\App\\Models\\Client::factory(10)->create(); \\App\\Models\\Server::factory(100)->create();\""
   },
   "workspaces": [

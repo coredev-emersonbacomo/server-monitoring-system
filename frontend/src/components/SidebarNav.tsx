@@ -26,7 +26,6 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const { logout, user } = useAuthContext();
-    const handleLogout = () => logout();
 
     const [popoverProfileOpen, setPopoverProfileOpen] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
@@ -131,7 +130,9 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                                                 )}
                                             />
                                         }
-                                        <label className="cursor-pointer">{link.name}</label>
+                                        <label className="cursor-pointer">
+                                            {link.name}
+                                        </label>
                                     </div>
                                 </Link>
                             </TooltipTrigger>
@@ -190,7 +191,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                         className="cursor-pointer"
                         label="Logout"
                         variant={"danger"}
-                        onClick={handleLogout}
+                        onClick={logout}
                     />
                 </PopoverContent>
             </Popover>
@@ -230,9 +231,9 @@ const ProfileBar = ({
             onClick={
                 asNavigation
                     ? () => {
-                        navigate("/profile");
-                        setPopoverOpen?.(false);
-                    }
+                          navigate("/profile");
+                          setPopoverOpen?.(false);
+                      }
                     : undefined
             }
             className={twMerge(
@@ -240,7 +241,7 @@ const ProfileBar = ({
                 isCollapsed ? "w-sidebar-button-collapsed" : "w-sidebar-button",
                 "text-muted-foreground hover:bg-sidebar-hover",
                 asNavigation &&
-                "cursor-pointer rounded-lg py-2 hover:bg-foreground/2 hover:ring-transparent",
+                    "cursor-pointer rounded-lg py-2 hover:bg-foreground/2 hover:ring-transparent",
             )}
         >
             <div className="flex items-center gap-sidebar-section-gap p-[calc(var(--spacing-sidebar-item-padding)-0.25rem)] w-sidebar-button">

@@ -12,8 +12,8 @@ readonly AGENT_FILE="$APP_DIR/agent.php"
 readonly CONFIG_FILE="$APP_DIR/config.json"
 readonly SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 readonly LOG_FILE="/var/log/${SERVICE_NAME}-install.log"
-readonly API_URL="$APP_URL/api/server/stats"
-readonly SPECS_URL="$APP_URL/api/server/specs"
+readonly API_URL="$APP_URL/api/v1/agent/heartbeat"
+readonly SPECS_URL="$APP_URL/api/v1/register"
 
 # ─── Logging ─────────────────────────────────────────────────
 log()  { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]  $*" | tee -a "$LOG_FILE"; }

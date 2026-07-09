@@ -1,13 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
 
-export const useClients = (params?: { exclude_user_uuid?: string; user_uuid?: string; available_only?: boolean }) => {
+export const useClients = (params?: {
+    exclude_user_uuid?: string;
+    user_uuid?: string;
+    available_only?: boolean;
+}) => {
     return useQuery({
         queryKey: ["clients", params],
         queryFn: async () => {
-            const { data, error } = await api.GET("/clients", {
+            const { data, error } = await api.GET("/v1/clients", {
                 params: {
-                    query: params as any,
+                    query: params,
                 },
             });
             if (error) throw error;
@@ -20,7 +24,7 @@ export const useClient = (clientUuid: string) => {
     return useQuery({
         queryKey: ["clients", clientUuid],
         queryFn: async () => {
-            const { data, error } = await api.GET("/clients/{clientUuid}", {
+            const { data, error } = await api.GET("/v1/clients/{clientUuid}", {
                 params: { path: { clientUuid } },
             });
             if (error) throw error;
@@ -35,7 +39,7 @@ export const useCreateClient = () => {
 
     return useMutation({
         mutationFn: async (formData: FormData) => {
-            const { data, error } = await api.POST("/clients", {
+            const { data, error } = await api.POST("/v1/clients", {
                 body: formData as never,
             });
             if (error) throw error;
@@ -52,7 +56,7 @@ export const useUpdateClient = (clientUuid: string) => {
 
     return useMutation({
         mutationFn: async (formData: FormData) => {
-            const { data, error } = await api.PUT("/clients/{clientUuid}", {
+            const { data, error } = await api.PUT("/v1/clients/{clientUuid}", {
                 params: { path: { clientUuid } },
                 body: formData as never,
             });
@@ -73,7 +77,7 @@ export const useClientServers = (clientUuid: string) => {
         queryKey: ["clients", clientUuid, "servers"],
         queryFn: async () => {
             const { data, error } = await api.GET(
-                "/clients/{clientUuid}/servers",
+                "/v1/clients/{clientUuid}/servers",
                 {
                     params: { path: { clientUuid } },
                 },
@@ -90,7 +94,7 @@ export const useDeleteClient = () => {
 
     return useMutation({
         mutationFn: async (clientUuid: string) => {
-            const { error } = await api.DELETE("/clients/{clientUuid}", {
+            const { error } = await api.DELETE("/v1/clients/{clientUuid}", {
                 params: { path: { clientUuid } },
             });
             if (error) throw error;
@@ -106,7 +110,7 @@ export const useClientSecops = (clientUuid: string) => {
         queryKey: ["clients", clientUuid, "secops"],
         queryFn: async () => {
             const { data, error } = await api.GET(
-                "/clients/{clientUuid}/secops",
+                "/v1/clients/{clientUuid}/secops",
                 {
                     params: { path: { clientUuid } },
                 },
@@ -124,7 +128,7 @@ export const useAddClientSecop = (clientUuid: string) => {
     return useMutation({
         mutationFn: async (userUuid: string) => {
             const { data, error } = await api.POST(
-                "/clients/{clientUuid}/secops",
+                "/v1/clients/{clientUuid}/secops",
                 {
                     params: { path: { clientUuid } },
                     body: { user_uuid: userUuid },
@@ -150,7 +154,7 @@ export const useRemoveClientSecop = (clientUuid: string) => {
     return useMutation({
         mutationFn: async (userUuid: string) => {
             const { error } = await api.DELETE(
-                "/clients/{clientUuid}/secops/{userUuid}",
+                "/v1/clients/{clientUuid}/secops/{userUuid}",
                 {
                     params: { path: { clientUuid, userUuid } },
                 },

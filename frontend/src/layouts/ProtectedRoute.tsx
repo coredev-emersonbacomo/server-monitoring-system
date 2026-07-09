@@ -14,9 +14,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import TopBarNav from "@/components/TopBarNav";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { Toaster } from "sonner";
+import { useOutletLayout } from "@/hooks/useOutletLayout";
 
 export function ProtectedRoute() {
-    const { user, isLoading } = useJwtAuth();
+    const { user, isLoading, logoutReason } = useJwtAuth();
+    const { isFullScreen } = useOutletLayout();
     const location = useLocation();
 
     const sidebarLinks: SidebarNavLink[] = [
@@ -45,9 +47,15 @@ export function ProtectedRoute() {
     }
 
     if (!user) {
+        if (logoutReason === "manual") {
+            return <Navigate to="/login" replace />;
+        }
+
         return (
             <Navigate
-                to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}
+                to={`/login?returnTo=${encodeURIComponent(
+                    location.pathname + location.search + location.hash,
+                )}`}
                 replace
             />
         );
@@ -56,14 +64,25 @@ export function ProtectedRoute() {
     return (
         <TooltipProvider>
             <BreadcrumbProvider>
-                <div className="flex">
+                <div
+                    className={
+                        isFullScreen ? "flex h-screen overflow-hidden" : "flex"
+                    }
+                >
                     <SidebarNav links={sidebarLinks} />
-                    <main className="flex-1 flex flex-col px-8 py-8 sm:px-10 lg:px-12 gap-5 min-h-screen">
-                        <TopBarNav />
-                        <div className="flex-1 flex flex-col">
+
+                    {isFullScreen ? (
+                        <main className="flex-1 flex flex-col min-h-0">
                             <Outlet />
-                        </div>
-                    </main>
+                        </main>
+                    ) : (
+                        <main className="flex-1 flex flex-col px-8 py-8 sm:px-10 lg:px-12 gap-5 min-h-screen">
+                            <TopBarNav />
+                            <div className="flex-1 flex flex-col">
+                                <Outlet />
+                            </div>
+                        </main>
+                    )}
                 </div>
             </BreadcrumbProvider>
             <Toaster richColors position="top-right" />

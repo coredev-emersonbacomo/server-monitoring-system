@@ -13,7 +13,7 @@ export const useDeleteServer = () => {
             serverUuid: string;
         }) => {
             const { error } = await api.DELETE(
-                "/clients/{clientUuid}/servers/{serverUuid}",
+                "/v1/clients/{clientUuid}/servers/{serverUuid}",
                 {
                     params: { path: { clientUuid, serverUuid } },
                 },

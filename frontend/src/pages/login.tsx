@@ -1,13 +1,9 @@
 import { useState, type SubmitEvent } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, Server, Eye, EyeOff } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 
 export default function Login() {
-    const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
     const { login, isLoggingIn } = useJwtAuth();
-
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -28,10 +24,7 @@ export default function Login() {
         setErrors({});
 
         try {
-            await login(
-                { email, password, remember },
-                searchParams.get("returnTo") ?? undefined,
-            );
+            await login({ email, password, remember });
         } catch (err: unknown) {
             if (err && typeof err === "object" && "response" in err) {
                 const axiosErr = err as {
@@ -143,7 +136,9 @@ export default function Login() {
                             id="remember"
                             type="checkbox"
                             checked={remember}
-                            onChange={(e) => handleRememberChange(e.target.checked)}
+                            onChange={(e) =>
+                                handleRememberChange(e.target.checked)
+                            }
                             disabled={isPending}
                             className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                         />

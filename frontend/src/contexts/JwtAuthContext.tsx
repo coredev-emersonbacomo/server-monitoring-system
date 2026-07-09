@@ -8,7 +8,6 @@ import {
 } from "react";
 import { setAccessToken, refreshAccessToken } from "@/api/tokenManager";
 import api from "@/api/api";
-import { useNavigate } from "react-router-dom";
 import type {
     AuthUserData,
     LoginRequest,
@@ -20,9 +19,10 @@ interface JwtAuthContextType {
     user: AuthUserData | null;
     isLoading: boolean;
     isAuthenticated: boolean;
-    login: (credentials: LoginRequest, returnTo?: string) => Promise<void>;
+    login: (credentials: LoginRequest) => Promise<void>;
     logout: () => Promise<void>;
     logoutAll: () => Promise<void>;
+    logoutReason: "manual" | "expired" | null;
     isLoggingIn: boolean;
     isLoggingOut: boolean;
     refreshUser: () => Promise<void>;
@@ -52,9 +52,10 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     const [securityActivity, setSecurityActivity] = useState<
         AuthAuditLogResource[]
     >([]);
+    const [logoutReason, setLogoutReason] =
+        useState<JwtAuthContextType["logoutReason"]>(null);
     const [securityActivityLoading, setSecurityActivityLoading] =
         useState(false);
-    const navigate = useNavigate();
     const mountedRef = useRef(true);
 
     const handleForceLogout = useCallback(() => {
@@ -62,8 +63,8 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setSessions([]);
         setSecurityActivity([]);
-        navigate("/login", { replace: true });
-    }, [navigate]);
+        setLogoutReason("expired");
+    }, []);
 
     useEffect(() => {
         const handler = () => handleForceLogout();
@@ -73,7 +74,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
 
     const refreshUser = useCallback(async () => {
         try {
-            const response = await api.GET("/me");
+            const response = await api.GET("/v1/me");
             if (mountedRef.current) {
                 const userData = response.data as AuthUserData;
                 setUser(userData);
@@ -125,10 +126,10 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
         };
     }, [refreshUser]);
 
-    const login = useCallback(async (credentials: LoginRequest, returnTo?: string) => {
+    const login = useCallback(async (credentials: LoginRequest) => {
         setIsLoggingIn(true);
         try {
-            const response = await api.POST("/login", {
+            const response = await api.POST("/v1/login", {
                 body: {
                     email: credentials.email,
                     password: credentials.password,
@@ -136,15 +137,15 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
                 },
             });
 
-            const { access_token } = response.data as { access_token: string };
+            const { access_token } = response.data as {
+                access_token: string;
+            };
             setAccessToken(access_token);
 
-            const meResponse = await api.GET("/me");
+            const meResponse = await api.GET("/v1/me");
             if (mountedRef.current) {
                 setUser(meResponse.data as AuthUserData);
             }
-
-            navigate(returnTo || "/");
         } catch (error) {
             setAccessToken(null);
             throw error;
@@ -153,48 +154,50 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
                 setIsLoggingIn(false);
             }
         }
-    }, [navigate]);
+    }, []);
 
     const logout = useCallback(async () => {
         setIsLoggingOut(true);
+
         try {
-            await api.POST("/logout");
+            await api.POST("/v1/logout");
         } catch {
-            // Proceed anyway
+            // ignore
         } finally {
+            setLogoutReason("manual");
             setAccessToken(null);
             setUser(null);
             setSessions([]);
             setSecurityActivity([]);
+
             if (mountedRef.current) {
                 setIsLoggingOut(false);
             }
-            navigate("/login", { replace: true });
         }
-    }, [navigate]);
+    }, []);
 
     const logoutAll = useCallback(async () => {
         setIsLoggingOut(true);
         try {
-            await api.POST("/logout-all");
+            await api.POST("/v1/logout-all");
         } catch {
             // Proceed anyway
         } finally {
             setAccessToken(null);
+            setLogoutReason("manual");
             setUser(null);
             setSessions([]);
             setSecurityActivity([]);
             if (mountedRef.current) {
                 setIsLoggingOut(false);
             }
-            navigate("/login", { replace: true });
         }
-    }, [navigate]);
+    }, []);
 
     const fetchSessions = useCallback(async () => {
         setSessionsLoading(true);
         try {
-            const response = await api.GET("/sessions");
+            const response = await api.GET("/v1/sessions");
             if (mountedRef.current) {
                 setSessions(response.data?.data ?? []);
             }
@@ -210,7 +213,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const revokeSession = useCallback(async (sessionUuid: string) => {
-        await api.DELETE("/sessions/{sessionUuid}", {
+        await api.DELETE("/v1/sessions/{sessionUuid}", {
             params: { path: { sessionUuid } },
         });
         setSessions((prev) =>
@@ -223,7 +226,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const revokeAllOtherSessions = useCallback(async () => {
-        await api.POST("/sessions/logout-all-others");
+        await api.POST("/v1/sessions/logout-all-others");
         setSessions((prev) =>
             prev.map((s) =>
                 s.current_session
@@ -234,7 +237,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const permanentDeleteSession = useCallback(async (sessionUuid: string) => {
-        await api.DELETE("/sessions/{sessionUuid}/permanent", {
+        await api.DELETE("/v1/sessions/{sessionUuid}/permanent", {
             params: { path: { sessionUuid } },
         });
         setSessions((prev) =>
@@ -245,7 +248,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     const fetchSecurityActivity = useCallback(async () => {
         setSecurityActivityLoading(true);
         try {
-            const response = await api.GET("/security-activity");
+            const response = await api.GET("/v1/security-activity");
             if (mountedRef.current) {
                 setSecurityActivity(response.data?.data ?? []);
             }
@@ -269,6 +272,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
                 login,
                 logout,
                 logoutAll,
+                logoutReason,
                 isLoggingIn,
                 isLoggingOut,
                 refreshUser,

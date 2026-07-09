@@ -29,7 +29,7 @@ export function useDashboardUsage(metric: MetricKey, unit: TimeUnit = "hour") {
             }
 
             const res = await fetch(
-                `/api/dashboard/usage?${params.toString()}`,
+                `/api/v1/dashboard/usage?${params.toString()}`,
                 { credentials: "include", headers },
             );
             if (!res.ok) {

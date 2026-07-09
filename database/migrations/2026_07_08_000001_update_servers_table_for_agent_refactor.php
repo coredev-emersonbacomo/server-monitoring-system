@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('servers', function (Blueprint $table) {
-            // Make existing SSH / key fields nullable
+            // Make existing fields nullable
             $table->string('external_ip')->nullable()->change();
             $table->string('api_key')->nullable()->change();
 

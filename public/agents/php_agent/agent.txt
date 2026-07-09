@@ -1,19 +1,18 @@
 <?php
 
 /**
- * Server monitoring agent
- * - Sends specs (CPU/RAM/disk/OS) + open database ports to specs_url every
- *   time the script starts (systemd restart / reboot / manual restart),
- *   since hardware may have changed
- * - Then loops every 5 seconds sending live stats + open db ports to api_url
- * - All HTTP sends go through sendWithRetry(), which retries until the
- *   internet connection comes back if curl_exec() fails
+ * Server monitoring agent (v2 - Heartbeat protocol)
+ *
+ * Protocol:
+ * 1. Read bootstrap.json (written by installer)
+ * 2. Register via POST /api/v1/register using the provision token
+ * 3. Loop: collect metrics, send heartbeat via POST /api/v1/agent/heartbeat
+ *    with Bearer token auth
+ * 4. Handle pending commands from heartbeat response
  */
 
-$config = json_decode(
-    file_get_contents(__DIR__ . '/bootstrap.json'),
-    true
-);
+$bootstrapPath = __DIR__ . '/bootstrap.json';
+$config = json_decode(file_get_contents($bootstrapPath), true);
 
 if (!$config) {
     fwrite(STDERR, "Failed to read bootstrap.json\n");
@@ -24,10 +23,6 @@ if (!$config) {
 // Networking helpers
 // -----------------------------------------------------------------------
 
-/**
- * Quick check that we actually have internet/DNS, used to decide whether
- * a curl failure was "no internet" (keep retrying) vs a real HTTP error.
- */
 function hasInternet(): bool
 {
     $ch = curl_init('https://1.1.1.1');
@@ -39,22 +34,14 @@ function hasInternet(): bool
     ]);
     curl_exec($ch);
     $ok = curl_errno($ch) === 0;
+    curl_close($ch);
     return $ok;
 }
 
-/**
- * POST $payload (array) to $url as JSON.
- * Retries forever on curl-level failures (network down), with backoff,
- * waiting for the internet to come back. Returns the decoded response
- * (or null) once it actually goes through, or false if it gave up due
- * to repeated non-network (HTTP-level) failures.
- *
- * @param int $maxAttempts  Safety cap on retries (0 = retry forever)
- */
 function sendWithRetry(string $url, array $payload, array $extraHeaders = [], int $maxAttempts = 0)
 {
     $attempt = 0;
-    $delay = 2; // seconds, grows with backoff
+    $delay = 2;
     $maxDelay = 60;
 
     while (true) {
@@ -77,27 +64,28 @@ function sendWithRetry(string $url, array $payload, array $extraHeaders = [], in
         $response = curl_exec($ch);
         $curlError = curl_errno($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
 
         if ($curlError === 0 && $httpCode >= 200 && $httpCode < 300) {
             return json_decode($response, true);
         }
 
-        // Distinguish "no internet / can't reach host" from a real HTTP error
         $networkIssue = $curlError !== 0;
 
         if ($networkIssue) {
             fwrite(STDERR, "[attempt $attempt] curl error: " . curl_strerror($curlError) . " — waiting for internet...\n");
 
-            // Wait until internet is actually back before retrying, checking periodically
             while (!hasInternet()) {
                 sleep(5);
             }
-            // internet is back, retry immediately (no extra backoff needed)
             continue;
         }
 
-        // Got a response but a bad HTTP status — log and back off, don't loop forever
         fwrite(STDERR, "[attempt $attempt] HTTP $httpCode from $url\n");
+        $body = json_decode($response ?? '', true);
+        if (isset($body['message'])) {
+            fwrite(STDERR, "  Response: {$body['message']}\n");
+        }
 
         if ($maxAttempts > 0 && $attempt >= $maxAttempts) {
             return false;
@@ -130,50 +118,38 @@ function memorySpec()
     $memInfo = file_get_contents('/proc/meminfo');
     preg_match('/MemTotal:\s+(\d+)/', $memInfo, $matches);
     $totalRamGB = round((($matches[1] ?? 0) / 1024 / 1024), 2);
-
     return $totalRamGB . ' GB';
 }
 
 function diskSpec()
 {
     $totalGB = round(disk_total_space('/') / (1024 ** 3), 2);
-
     return $totalGB . ' GB';
 }
 
 function osSpec()
 {
-    // 1. Get the kernel details (uname -s gives just the kernel name like "Linux")
     $distro = 'Unknown Linux';
 
-    // 2. Read /etc/os-release safely without relying on parse_ini_file
     if (is_readable('/etc/os-release')) {
         $lines = file('/etc/os-release', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         foreach ($lines as $line) {
-            // Look for the PRETTY_NAME row
             if (str_starts_with($line, 'PRETTY_NAME=')) {
-                // Extract everything inside the quotes
                 $distro = str_replace(['PRETTY_NAME=', '"'], '', $line);
                 break;
             }
         }
-    }
-    // 3. Fallback: If os-release failed but lsb_release command exists
-    elseif (shell_exec('command -v lsb_release')) {
+    } elseif (shell_exec('command -v lsb_release')) {
         $distro = trim(shell_exec('lsb_release -ds') ?? '');
     }
 
-    return trim($distro); // e.g., "Ubuntu 22.04.3 LTS" or "Ubuntu Linux" ];
+    return trim($distro);
 }
 
 // -----------------------------------------------------------------------
-// Open ports — filtered to database services only
+// Open ports — database services only
 // -----------------------------------------------------------------------
 
-/**
- * Process names (as they show up in `ss`/`ps`) that we consider "databases"
- * for the purpose of reporting open ports. Adjust to taste.
- */
 const DB_PROCESS_NAMES = [
     'mysqld',
     'mariadbd',
@@ -185,17 +161,12 @@ const DB_PROCESS_NAMES = [
     'memcached',
     'cassandra',
     'rabbitmq-server',
-    'beam.smp', // rabbitmq runs on the erlang VM
+    'beam.smp',
     'influxd',
     'clickhouse-server',
     'elasticsearch',
 ];
 
-/**
- * Common default ports for the same set of databases, used as a fallback
- * for cases where the process name can't be resolved (e.g. running
- * without root, or inside a container/namespace ss can't see into).
- */
 const DB_DEFAULT_PORTS = [
     3306 => 'mysql/mariadb',
     5432 => 'postgresql',
@@ -209,20 +180,11 @@ const DB_DEFAULT_PORTS = [
     9200 => 'elasticsearch',
 ];
 
-/**
- * Returns only the open TCP listening ports that belong to database
- * daemons (mysql, postgres, redis, mongo, etc), filtering out unrelated
- * system/daemon ports (ssh, http, dns, ...).
- *
- * Each entry: ['address' => '127.0.0.1', 'port' => 3306, 'process' => 'mysqld']
- */
 function openDatabasePorts(): array
 {
-    // `ss -tlnp` needs root (or CAP_NET_ADMIN) to show the owning process;
-    // run as root via cron/systemd for the `process` field to be populated.
     $output = shell_exec('ss -tlnp 2>/dev/null');
     if (!$output) {
-        $output = shell_exec('netstat -tlnp 2>/dev/null'); // fallback
+        $output = shell_exec('netstat -tlnp 2>/dev/null');
     }
     if (!$output) {
         return [];
@@ -231,12 +193,10 @@ function openDatabasePorts(): array
     $results = [];
 
     foreach (explode("\n", trim($output)) as $line) {
-        // skip header lines
         if (stripos($line, 'State') !== false || trim($line) === '') {
             continue;
         }
 
-        // Local address column looks like 127.0.0.1:3306 or [::]:5432 or *:6379
         if (!preg_match('/(\S+):(\d+)\s+\S+\s+(.*)$/', $line, $m)) {
             continue;
         }
@@ -245,12 +205,10 @@ function openDatabasePorts(): array
         $port = (int) $m[2];
         $tail = $m[3];
 
-        // process name appears inside the tail like: users:(("mysqld",pid=1234,fd=23))
         $process = null;
         if (preg_match('/\(\("([^"]+)"/', $tail, $pm)) {
             $process = $pm[1];
         } elseif (preg_match('/(\d+)\/([^\s]+)/', $tail, $pm)) {
-            // netstat-style "1234/mysqld"
             $process = $pm[2];
         }
 
@@ -258,17 +216,45 @@ function openDatabasePorts(): array
         $isDbPort = isset(DB_DEFAULT_PORTS[$port]);
 
         if (!$isDbProcess && !$isDbPort) {
-            continue; // not a database -> filter it out (ssh, nginx, dns, etc)
+            continue;
         }
 
         $results[] = [
-            'address' => $address,
+            'address' => $address === '0.0.0.0' ? '0.0.0.0' : $address,
             'port' => $port,
+            'protocol' => 'tcp',
             'process' => $process ?? (DB_DEFAULT_PORTS[$port] ?? 'unknown'),
+            'state' => 'listening',
         ];
     }
 
     return $results;
+}
+
+// -----------------------------------------------------------------------
+// Services (systemd units)
+// -----------------------------------------------------------------------
+
+function listServices(): array
+{
+    $output = shell_exec('systemctl list-units --type=service --no-pager --no-legend 2>/dev/null');
+    if (!$output) {
+        return [];
+    }
+
+    $services = [];
+    foreach (explode("\n", trim($output)) as $line) {
+        if (!preg_match('/^(\S+)\s+\S+\s+\S+\s+(\S+)/', $line, $m)) {
+            continue;
+        }
+        $services[] = [
+            'identifier' => $m[1],
+            'name' => $m[1],
+            'state' => $m[2],
+        ];
+    }
+
+    return $services;
 }
 
 // -----------------------------------------------------------------------
@@ -327,7 +313,6 @@ function uptime(): float
 function networkStats(): array
 {
     $data = file_get_contents('/proc/net/dev');
-    // Matches the interface name (starting with eth/en) and extracts rx (group 2) and tx (group 3)
     preg_match_all('/^\s*(eth\w*|en\w*):\s*(\d+)(?:\s+\d+){6}\s+(\d+)/m', $data, $matches, PREG_SET_ORDER);
 
     return array_map(fn($m) => [
@@ -340,31 +325,34 @@ function networkStats(): array
 function topProcesses(): array
 {
     $output = shell_exec('ps -eo pid,comm,%cpu,%mem --sort=-%cpu | head -6');
-    return explode("\n", trim($output));
+    $lines = explode("\n", trim($output));
+    $header = array_shift($lines);
+    $result = [];
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '') continue;
+        $parts = preg_split('/\s+/', $line);
+        if (count($parts) >= 4 && is_numeric($parts[0])) {
+            $result[] = [
+                'pid' => (int) $parts[0],
+                'name' => $parts[1],
+                'cpu' => (double) $parts[2],
+                'memory' => (double) $parts[3],
+            ];
+        }
+    }
+    return $result;
 }
 
 // -----------------------------------------------------------------------
-// Payload builders
+// Build heartbeat payload
 // -----------------------------------------------------------------------
 
-function buildInitialPayload(array $config): array
+function buildHeartbeatPayload(array $config, string $identityToken): array
 {
     return [
-        'uuid' => $config['uuid'],
-        'token' => $config['token'],
-        'operating_system' => osSpec(),
-        'cpu' => cpuSpec(),
-        'memory' => memorySpec(),
-        'disk' => diskSpec(),
-        /* 'open_db_ports' => openDatabasePorts(), */
-    ];
-}
-
-function buildMonitorPayload(array $config): array
-{
-    return [
-        'uuid' => $config['uuid'],
-        'token' => $config['token'],
+        'agent_version' => $config['agent_version'] ?? '2.0',
+        'configuration_version' => $config['_configuration_version'] ?? 1,
         'timestamp' => time(),
         'hostname' => gethostname(),
         'cpu' => cpuUsage(),
@@ -374,6 +362,7 @@ function buildMonitorPayload(array $config): array
         'network' => networkStats(),
         'top_processes' => topProcesses(),
         'open_db_ports' => openDatabasePorts(),
+        'services' => listServices(),
     ];
 }
 
@@ -381,28 +370,105 @@ function buildMonitorPayload(array $config): array
 // Main
 // -----------------------------------------------------------------------
 
-// Send the initial specs/ports payload only once (tracked via state file),
-// so restarts of the agent don't keep re-sending it every time.
-// Specs are sent every time this script starts (systemd restart, reboot,
-// manual restart, etc) since hardware may have changed (RAM/disk upgrade,
-// CPU change, etc). No "only send once" tracking anymore.
-$specsUrl = $config['specs_url'];
-echo "Sending server specs...\n";
+echo "Agent v2 starting...\n";
+echo "Registering with server...\n";
 
-$payload = buildInitialPayload($config);
-print_r($payload);
+$registerPayload = [
+    'token' => $config['token'],
+    'agent_version' => $config['agent_version'] ?? '2.0',
+    'hostname' => $config['hostname'] ?? gethostname(),
+    'operating_system' => osSpec(),
+    'architecture' => php_uname('m'),
+    'cpu' => cpuSpec(),
+    'memory' => memorySpec(),
+    'disk' => diskSpec(),
+    'capabilities' => ['metrics.cpu', 'metrics.memory', 'metrics.disk', 'metrics.network', 'metrics.processes', 'ports.scan'],
+];
 
-sendWithRetry($specsUrl, $payload);
-echo "Specs payload sent.\n";
+$registerResult = sendWithRetry($config['register_url'], $registerPayload, [], 5);
 
-// Stats interval is hardcoded — keep it tight so port/stat changes show up fast.
-const STATS_INTERVAL_SECONDS = 5;
+if (!$registerResult || !isset($registerResult['identity'])) {
+    fwrite(STDERR, "Registration failed. Check your provision token.\n");
+    exit(1);
+}
+
+$identityToken = $registerResult['identity'];
+echo "Registered successfully. Identity token obtained.\n";
+
+$heartbeatInterval = $registerResult['heartbeat_interval'] ?? ($config['heartbeat_interval'] ?? 5);
+
+if (isset($registerResult['configuration'])) {
+    $config['_configuration_version'] = $registerResult['configuration']['version'] ?? 1;
+}
+
+echo "Starting heartbeat loop (interval: {$heartbeatInterval}s)...\n";
 
 while (true) {
-    $payload = buildMonitorPayload($config);
-    print_r($payload);
+    $payload = buildHeartbeatPayload($config, $identityToken);
 
-    sendWithRetry($config['api_url'], $payload);
+    $response = sendWithRetry(
+        $config['api_url'],
+        $payload,
+        ['Authorization: Bearer ' . $identityToken]
+    );
 
-    sleep(STATS_INTERVAL_SECONDS);
+    if ($response) {
+        if (isset($response['heartbeat_interval'])) {
+            $heartbeatInterval = (int) $response['heartbeat_interval'];
+        }
+
+        if (isset($response['configuration'])) {
+            $config['_configuration_version'] = $response['configuration']['version']
+                ?? $config['_configuration_version'];
+            echo "Configuration updated to version {$config['_configuration_version']}\n";
+        }
+
+        if (!empty($response['pending_commands'])) {
+            $completedCommands = [];
+            foreach ($response['pending_commands'] as $cmd) {
+                echo "Executing command: {$cmd['type']} (id: {$cmd['id']})\n";
+                $result = executeCommand($cmd);
+                $completedCommands[] = $result;
+            }
+            if (!empty($completedCommands)) {
+                $payload = array_merge(buildHeartbeatPayload($config, $identityToken), [
+                    'completed_commands' => $completedCommands,
+                ]);
+                sendWithRetry(
+                    $config['api_url'],
+                    $payload,
+                    ['Authorization: Bearer ' . $identityToken]
+                );
+            }
+        }
+    }
+
+    sleep($heartbeatInterval);
+}
+
+function executeCommand(array $command): array
+{
+    $result = [
+        'command_id' => $command['id'],
+        'status' => 'completed',
+        'output' => '',
+        'error' => null,
+        'execution_time_ms' => 0,
+    ];
+
+    $start = microtime(true);
+
+    if ($command['type'] === 'shell') {
+        $cmdStr = $command['payload']['command'] ?? '';
+        if ($cmdStr) {
+            $output = shell_exec($cmdStr . ' 2>&1');
+            $result['output'] = trim($output ?? '');
+        }
+    } elseif ($command['type'] === 'update_config') {
+        $result['output'] = 'Configuration update acknowledged';
+    }
+
+    $result['execution_time_ms'] = (int) ((microtime(true) - $start) * 1000);
+
+    return $result;
 }
