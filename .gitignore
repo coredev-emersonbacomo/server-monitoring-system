@@ -29,3 +29,10 @@ Homestead.yaml
 Thumbs.db
 
 scripts/git/*
+
+# .NET build outputs
+**/bin/
+**/obj/
+
+# Published agent binary
+public/agents/cs_agent/MonitorAgent.exe
