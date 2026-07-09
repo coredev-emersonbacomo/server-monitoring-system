@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Data\CreateServerData;
 use App\Data\ServerData;
+use App\Data\ServerDataRequest;
 use App\Data\ServerUpdatesData;
 use App\Data\StatPointData;
 use App\Data\UpdateServerData;
 use App\Data\UpdateServerSpecsData;
-use App\Events\ServerStatsUpdated;
+use App\Enums\TimeUnits;
+use Carbon\Carbon;
 use App\Jobs\BroadcastServerStats;
 use App\Models\Client;
 use App\Models\Server;
@@ -17,10 +19,13 @@ use App\Enums\ServerStatus;
 use Illuminate\Http\JsonResponse;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Infrastructure\Api\ApiGenerator;
 use Infrastructure\Service\InstallerService;
+use Throwable;
 
 class ServerController extends Controller
 {
@@ -36,19 +41,20 @@ class ServerController extends Controller
         $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
         $clientId = $clientModel->id;
 
-        $server = Server::create([
-            'client_id'    => $clientId,
-            'server_name'  => $data->server_name,
-            'host_name'  => $data->host_name ?? $data->server_name,
-            'external_ip'  => $data->external_ip,
-            'ssh_port'     => $data->ssh_port,
-            'ssh_username' => $data->ssh_username ? Crypt::encryptString($data->ssh_username) : null,
-            'ssh_password' => $data->ssh_password ? Crypt::encryptString($data->ssh_password) : null,
-            'api_key'      => ApiGenerator::GenerateApiKey(),
-            'status'       => ServerStatus::PendingInstallation->value,
-        ]);
+        try {
+            $server = Server::create([
+                'client_id'    => $clientId,
+                'server_name'  => $data->server_name,
+                'host_name'  => $data->host_name ?? $data->server_name,
+                'external_ip'  => $data->external_ip,
+                'api_key'      => ApiGenerator::GenerateApiKey(),
+            ]);
 
-        return ServerData::fromModel($server);
+            return ServerData::fromModel($server);
+
+        } catch (\RuntimeException $e) {
+            abort(500, 'Installation failed: ' . $e->getMessage());
+        }
     }
 
     public function show(string $clientUuid, string $serverUuid): ServerData
@@ -208,7 +214,7 @@ class ServerController extends Controller
         return self::computeStatPoint($row, $prev);
     }
 
-    private static function computeStatPoint(ServerUpdate $row, ?ServerUpdate $prev): array
+    private static function computeStatPoint($row, ?ServerUpdate $prev): array
     {
         $ts = $row->created_at->getPreciseTimestamp(3);
 
@@ -218,8 +224,8 @@ class ServerController extends Controller
             $prevTs = $prev->created_at->getPreciseTimestamp(3);
             $dt = ($ts - $prevTs) / 1000;
             if ($dt > 0) {
-                $netIn = (($row->network_rbytes - $prev->network_rbytes) / 1_000_000) / $dt;
-                $netOut = (($row->network_tbytes - $prev->network_tbytes) / 1_000_000) / $dt;
+                $netIn = (($row->netIn - $prev->netIn) / 1_000_000) / $dt;
+                $netOut = (($row->netOut - $prev->netOut) / 1_000_000) / $dt;
             }
         }
 
@@ -233,61 +239,77 @@ class ServerController extends Controller
         ];
     }
 
-    public function uninstallServer(Request $request): array
+    public function updateServerSpecs(UpdateServerSpecsData $data): JsonResponse
     {
-        $validated = $request->validate([
-            'uuid' => ['required', 'uuid'],
-        ]);
+        try {
+            $updated = Server::where('uuid', $data->uuid)
+                ->where('api_key', $data->token)
+                ->update([
+                    'cpu_model'        => $data->cpu_model,
+                    'cpu_cores'        => $data->cpu_cores,
+                    'ram'              => $data->ram,
+                    'operating_system' => $data->operating_system,
+                    'disk'             => $data->disk,
+                ]);
 
-        $server = Server::where('uuid', $validated['uuid'])
-            ->firstOrFail([
-                'external_ip',
-                'port',
-                'ssh_username',
-                'ssh_password',
-                'api_key'
+            if ($updated === 0) {
+                // Check isolating factors independently to verify inputs
+                $uuidExists   = Server::where('uuid', $data->uuid)->exists();
+                $tokenExists  = Server::where('api_key', $data->token)->exists();
+
+                // Check if the data sent is simply identical to what is already in the database
+                $isAlreadyIdentical = Server::where('uuid', $data->uuid)
+                    ->where('api_key', $data->token)
+                    ->where('cpu_model', $data->cpu_model)
+                    ->where('cpu_cores', $data->cpu_cores)
+                    ->where('ram', $data->ram)
+                    ->where('operating_system', $data->operating_system)
+                    ->exists();
+
+                Log::warning("Server specs update skipped or failed.", [
+                    'input_uuid'       => $data->uuid,
+                    'input_token_mask' => substr($data->token, 0, 6) . '...',
+                    'diagnostics' => [
+                        'uuid_exists_in_db'      => $uuidExists ? 'YES' : 'NO',
+                        'token_exists_anywhere'  => $tokenExists ? 'YES' : 'NO',
+                        'data_already_identical' => $isAlreadyIdentical ? 'YES' : 'NO',
+                        'likely_cause'           => match (true) {
+                            $isAlreadyIdentical => 'The update payload is identical to existing DB data. Postgres did not change anything.',
+                            !$uuidExists        => 'The provided UUID cannot be found in the servers table.',
+                            !$tokenExists       => 'The API token does not exist for any record.',
+                            default             => 'The UUID exists, but the accompanying API token is mismatched/invalid for this specific server.'
+                        }
+                    ]
+                ]);
+
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => $isAlreadyIdentical ? 'No changes detected.' : 'Server credentials mismatch or record not found.'
+                ], 404);
+            }
+
+            return response()->json(['status' => 'success'], 200);
+        } catch (Throwable $e) {
+            Log::error("System error caught during server specs update execution", [
+                'error_message' => $e->getMessage(),
+                'trace'         => $e->getTraceAsString()
             ]);
 
-        try {
-            $log = DB::transaction(function () use ($server) {
-                $installer = new InstallerService(
-                    sshHost: $server->sshHost,
-                    sshPort: $server->sshPort,
-                    sshUser: Crypt::decryptString($server->ssh_username),
-                    sshPassword: Crypt::decryptString($server->ssh_password),
-                    serverUUID: (string) $server->uuid,
-                    apiToken: $server->apiToken,
-                );
-
-                $log = $installer->uninstall();
-
-                return $log;
-            });
-
-            return [
-                'status' => true,
-                'log'    => $log,
-            ];
-        } catch (\RuntimeException $e) {
-            abort(500, 'Uninstall failed: ' . $e->getMessage());
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Internal query or database server error.'
+            ], 500);
         }
     }
 
-    public function updateServerSpecs(UpdateServerSpecsData $data): JsonResponse
+    public function getData(int $serverId, string $tableUnit, Carbon $subTime): Collection
     {
-        $updated = Server::where('uuid', $data->uuid)
-            ->where('api_key', $data->token)
-            ->update([
-                'cpu_model'        => $data->cpu_model,
-                'cpu_cores'        => $data->cpu_cores,
-                'ram'              => $data->ram,
-                'operating_system' => $data->operating_system,
-            ]);
+        $row = DB::table($tableUnit)
+            ->select(['timestamp', 'cpu', 'memory', 'disk', 'netin', 'netout'])
+            ->where('server_id', $serverId)
+            ->where('timestamp', '>=', $subTime)
+            ->get();
 
-        if ($updated === 0) {
-            return response()->json(['status'  => 'error',], 404);
-        }
-
-        return response()->json(['status' => 'success'], 200);
+        return $row;
     }
 }
