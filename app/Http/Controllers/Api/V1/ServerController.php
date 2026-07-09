@@ -134,22 +134,37 @@ class ServerController extends Controller
 
         $client = $server->client;
 
+        $activeDetails = null;
+        if (in_array($server->status, ['pending_installation', 'waiting_for_installation'])) {
+            $activeToken = $server->activeProvisionToken;
+            if ($activeToken && !$activeToken->isExpired()) {
+                $token = $activeToken->token;
+                $activeDetails = [
+                    'token' => $token,
+                    'expires_at' => $activeToken->expires_at->copy()->utc()->toIso8601String(),
+                    'linux_command' => 'curl -fsSL ' . url('/install/linux') . ' | bash -s -- ' . $token,
+                    'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$token=\'' . $token . '\'; irm ' . url('/install/windows.ps1') . ' | iex"',
+                ];
+            }
+        }
+
         return ServerData::from([
-            'uuid'             => $server->uuid,
-            'server_name'      => $server->server_name,
-            'host_name'        => $server->host_name,
-            'created_at'       => $server->created_at->toIso8601String(),
-            'updated_at'       => $server->updated_at->toIso8601String(),
-            'cpu_cores'        => $server->cpu_cores ?? null,
-            'ram'              => $server->ram ?? null,
-            'disk'             => $server->disk ?? null,
-            'operating_system' => $server->operating_system ?? null,
-            'client_id'        => $server->client_id,
-            'client_uuid'      => $client?->uuid ?? '',
-            'client_name'      => $client?->name ?? 'Unknown',
-            'record_status'    => $server->record_status->value,
-            'status'           => $server->status,
-            'stats'            => $stats,
+            'uuid'                   => $server->uuid,
+            'server_name'            => $server->server_name,
+            'host_name'              => $server->host_name,
+            'created_at'             => $server->created_at->toIso8601String(),
+            'updated_at'             => $server->updated_at->toIso8601String(),
+            'cpu_cores'              => $server->cpu_cores ?? null,
+            'ram'                    => $server->ram ?? null,
+            'disk'                   => $server->disk ?? null,
+            'operating_system'       => $server->operating_system ?? null,
+            'client_id'              => $server->client_id,
+            'client_uuid'            => $client?->uuid ?? '',
+            'client_name'            => $client?->name ?? 'Unknown',
+            'record_status'          => $server->record_status->value,
+            'status'                 => $server->status,
+            'stats'                  => $stats,
+            'activeProvisionDetails' => $activeDetails,
         ]);
     }
 

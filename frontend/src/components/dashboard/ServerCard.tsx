@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import {
     Wifi,
     WifiOff,
@@ -135,40 +135,66 @@ export const ServerCard = memo(function ServerCard({
     const deleteServer = useDeleteServer();
 
     const [provisionDetails, setProvisionDetails] = useState<{
-        linux_command?: string;
-        windows_command?: string;
-        expires_at?: string;
-    } | null>(null);
+        linux_command: string;
+        windows_command: string;
+        expires_at: string;
+    } | null>((server.activeProvisionDetails as any) ?? null);
     const [generating, setGenerating] = useState(false);
     const [copiedKey, setCopiedKey] = useState<"linux" | "windows" | null>(
         null,
     );
+    const [timeLeft, setTimeLeft] = useState<string>("");
+
+    useEffect(() => {
+        setProvisionDetails(server.activeProvisionDetails ?? null);
+    }, [server.activeProvisionDetails]);
+
+    useEffect(() => {
+        if (!provisionDetails?.expires_at) {
+            setTimeLeft("");
+            return;
+        }
+
+        const updateCountdown = () => {
+            const expires = new Date(provisionDetails.expires_at!).getTime();
+            const now = new Date().getTime();
+            const diff = expires - now;
+
+            if (diff <= 0) {
+                setTimeLeft("Expired");
+                return;
+            }
+
+            const minutes = Math.floor(diff / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+
+            setTimeLeft(`(${minutes}m ${seconds}s remaining)`);
+        };
+
+        updateCountdown();
+        const intervalId = setInterval(updateCountdown, 1000);
+        return () => clearInterval(intervalId);
+    }, [provisionDetails?.expires_at]);
 
     const isConfirmed = confirmText.trim() === server.server_name;
 
     const generateProvisionToken = async () => {
         setGenerating(true);
         try {
-            const { data, error } = await api.POST(
+            const { data, error, response } = await api.POST(
                 "/v1/servers/{uuid}/provision",
                 {
                     params: { path: { uuid: server.uuid } },
                 },
             );
             if (error) {
-                if (error.response?.status === 409 && error.response?.data) {
-                    setProvisionDetails(
-                        error.response.data as {
-                            linux_command?: string;
-                            windows_command?: string;
-                            expires_at?: string;
-                        },
-                    );
+                if (response?.status === 409) {
+                    setProvisionDetails(error as any);
                 } else {
                     toast.error("Failed to generate provision token.");
                 }
             } else if (data) {
-                setProvisionDetails(data);
+                setProvisionDetails(data as any);
                 toast.success("Provision token generated successfully!");
                 queryClient.invalidateQueries({
                     queryKey: ["server", server.uuid],
@@ -193,7 +219,7 @@ export const ServerCard = memo(function ServerCard({
             if (error) {
                 toast.error("Failed to regenerate token.");
             } else if (data) {
-                setProvisionDetails(data);
+                setProvisionDetails(data as any);
                 toast.success("Provision token regenerated!");
                 queryClient.invalidateQueries({
                     queryKey: ["server", server.uuid],
@@ -290,95 +316,96 @@ export const ServerCard = memo(function ServerCard({
                     {(status === "waiting_for_installation" ||
                         status === "waiting_for_first_heartbeat" ||
                         provisionDetails) && (
-                        <div className="space-y-5">
-                            <p className="text-sm text-muted-foreground">
-                                Run the appropriate command directly on your
-                                server.
-                            </p>
+                            <div className="space-y-5">
+                                <p className="text-sm text-muted-foreground">
+                                    Run the appropriate command directly on your
+                                    server.
+                                </p>
 
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                        Linux (cURL + bash)
-                                    </label>
-                                    <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
-                                        <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
-                                            {provisionDetails?.linux_command ||
-                                                `curl -fsSL ${window.location.origin}/install/linux | bash -s -- <token>`}
-                                        </span>
-                                        {provisionDetails?.linux_command && (
-                                            <button
-                                                onClick={() =>
-                                                    copyToClipboard(
-                                                        provisionDetails.linux_command!,
-                                                        "linux",
-                                                    )
-                                                }
-                                                className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                            >
-                                                {copiedKey === "linux" ? (
-                                                    <Check className="size-4 text-emerald-400" />
-                                                ) : (
-                                                    <Copy className="size-4" />
-                                                )}
-                                            </button>
-                                        )}
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                            Linux (cURL + bash)
+                                        </label>
+                                        <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
+                                            <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
+                                                {provisionDetails?.linux_command ||
+                                                    `curl -fsSL ${window.location.origin}/install/linux | bash -s -- <token>`}
+                                            </span>
+                                            {provisionDetails?.linux_command && (
+                                                <button
+                                                    onClick={() =>
+                                                        copyToClipboard(
+                                                            provisionDetails.linux_command!,
+                                                            "linux",
+                                                        )
+                                                    }
+                                                    className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                >
+                                                    {copiedKey === "linux" ? (
+                                                        <Check className="size-4 text-emerald-400" />
+                                                    ) : (
+                                                        <Copy className="size-4" />
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                            Windows (PowerShell)
+                                        </label>
+                                        <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
+                                            <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
+                                                {provisionDetails?.windows_command ||
+                                                    `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
+                                            </span>
+                                            {provisionDetails?.windows_command && (
+                                                <button
+                                                    onClick={() =>
+                                                        copyToClipboard(
+                                                            provisionDetails.windows_command!,
+                                                            "windows",
+                                                        )
+                                                    }
+                                                    className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                >
+                                                    {copiedKey === "windows" ? (
+                                                        <Check className="size-4 text-emerald-400" />
+                                                    ) : (
+                                                        <Copy className="size-4" />
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                        Windows (PowerShell)
-                                    </label>
-                                    <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
-                                        <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
-                                            {provisionDetails?.windows_command ||
-                                                `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
-                                        </span>
-                                        {provisionDetails?.windows_command && (
-                                            <button
-                                                onClick={() =>
-                                                    copyToClipboard(
-                                                        provisionDetails.windows_command!,
-                                                        "windows",
-                                                    )
-                                                }
-                                                className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                            >
-                                                {copiedKey === "windows" ? (
-                                                    <Check className="size-4 text-emerald-400" />
-                                                ) : (
-                                                    <Copy className="size-4" />
-                                                )}
-                                            </button>
+                                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/40 text-xs text-muted-foreground">
+                                    <div>
+                                        {provisionDetails?.expires_at && (
+                                            <span>
+                                                Token expires at:{" "}
+                                                <strong>
+                                                    {new Date(
+                                                        provisionDetails.expires_at,
+                                                    ).toLocaleString()}
+                                                </strong>{" "}
+                                                <span className="text-amber-500 font-mono ml-1.5">{timeLeft}</span>
+                                            </span>
                                         )}
                                     </div>
+                                    <button
+                                        onClick={regenerateProvisionToken}
+                                        className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-medium cursor-pointer"
+                                    >
+                                        <RefreshCw size={12} />
+                                        Regenerate Token
+                                    </button>
                                 </div>
                             </div>
-
-                            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/40 text-xs text-muted-foreground">
-                                <div>
-                                    {provisionDetails?.expires_at && (
-                                        <span>
-                                            Token expires at:{" "}
-                                            <strong>
-                                                {new Date(
-                                                    provisionDetails.expires_at,
-                                                ).toLocaleString()}
-                                            </strong>
-                                        </span>
-                                    )}
-                                </div>
-                                <button
-                                    onClick={regenerateProvisionToken}
-                                    className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-medium cursor-pointer"
-                                >
-                                    <RefreshCw size={12} />
-                                    Regenerate Token
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                        )}
                 </div>
             )}
 
@@ -398,8 +425,8 @@ export const ServerCard = memo(function ServerCard({
                                 value: server.cpu_model
                                     ? `${server.cpu_model} · ${server.cpu_cores ?? "?"} cores`
                                     : server.cpu_cores
-                                      ? `${server.cpu_cores} cores`
-                                      : "Waiting for Agent",
+                                        ? `${server.cpu_cores} cores`
+                                        : "Waiting for Agent",
                             },
                             {
                                 icon: MemoryStick,
