@@ -19,6 +19,10 @@ const STATUS_META: Record<
         bg: "bg-amber-500/10",
     },
     offline: { icon: WifiOff, color: "text-red-400", bg: "bg-red-500/10" },
+    pending_installation: { icon: AlertTriangle, color: "text-zinc-400", bg: "bg-zinc-500/10" },
+    waiting_for_installation: { icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/10" },
+    waiting_for_first_heartbeat: { icon: WifiOff, color: "text-blue-400", bg: "bg-blue-500/10" },
+    archived: { icon: WifiOff, color: "text-slate-400", bg: "bg-slate-500/10" },
 };
 
 export default function ServersIndex() {
@@ -97,14 +101,6 @@ export default function ServersIndex() {
                             value: "online",
                             count: counts.online,
                             icon: <Wifi className="size-3 text-emerald-400" />,
-                        },
-                        {
-                            label: "Warning",
-                            value: "warning",
-                            count: counts.warning,
-                            icon: (
-                                <AlertTriangle className="size-3 text-amber-400" />
-                            ),
                         },
                         {
                             label: "Offline",
@@ -194,16 +190,24 @@ export default function ServersIndex() {
                                     </div>
                                     <span
                                         className={cn(
-                                            "text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded",
+                                            "text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded text-center min-w-[60px]",
                                             server.status === "online" &&
                                                 "text-emerald-400 bg-emerald-500/10",
                                             server.status === "warning" &&
                                                 "text-amber-400 bg-amber-500/10",
                                             server.status === "offline" &&
                                                 "text-red-400 bg-red-500/10",
+                                            server.status === "pending_installation" &&
+                                                "text-zinc-400 bg-zinc-500/10",
+                                            server.status === "waiting_for_installation" &&
+                                                "text-amber-400 bg-amber-500/10",
+                                            server.status === "waiting_for_first_heartbeat" &&
+                                                "text-blue-400 bg-blue-500/10",
+                                            server.status === "archived" &&
+                                                "text-slate-400 bg-slate-500/10",
                                         )}
                                     >
-                                        {server.status}
+                                        {(server.status || "pending").replace(/_/g, " ")}
                                     </span>
                                 </Link>
                             );

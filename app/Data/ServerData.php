@@ -12,7 +12,7 @@ class ServerData extends Data
 
         public string $uuid,
 
-        public string $external_ip,
+        public ?string $external_ip,
 
         public string $host_name,
         
@@ -62,7 +62,8 @@ class ServerData extends Data
             ram: $server->ram,
             disk: $server->disk,
             operating_system: $server->operating_system,
-            record_status: $server->record_status->value,
+            record_status: $server->record_status?->value ?? 'active',
+            status: $server->status,
             created_at: $server->created_at->toIso8601String(),
             updated_at: $server->updated_at->toIso8601String(),
         );

@@ -1,11 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
 
-export const useClients = () => {
+export const useClients = (params?: { exclude_user_uuid?: string; user_uuid?: string; available_only?: boolean }) => {
     return useQuery({
-        queryKey: ["clients"],
+        queryKey: ["clients", params],
         queryFn: async () => {
-            const { data, error } = await api.GET("/clients");
+            const { data, error } = await api.GET("/clients", {
+                params: {
+                    query: params as any,
+                },
+            });
             if (error) throw error;
             return data;
         },

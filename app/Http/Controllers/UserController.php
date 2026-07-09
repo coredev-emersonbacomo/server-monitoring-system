@@ -228,6 +228,16 @@ class UserController extends Controller
             return response()->json(['error' => 'Client already assigned to this user'], 409);
         }
 
+        $limit = (int) \App\Models\Setting::get('secop_limit_per_client', 2);
+        if ($client->secopclients()->count() >= $limit) {
+            return response()->json([
+                'message' => "The client has reached the maximum limit of {$limit} SecOps.",
+                'errors' => [
+                    'client_uuid' => ["The client has reached the maximum limit of {$limit} SecOps."]
+                ]
+            ], 422);
+        }
+
         $user->clients()->attach($client->id, [
             'uuid' => \Illuminate\Support\Str::uuid()->toString(),
             'record_status' => 'active',

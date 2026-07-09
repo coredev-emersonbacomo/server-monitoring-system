@@ -37,7 +37,6 @@ class DashboardController extends Controller
 
             match ($health) {
                 ServerHealth::Online  => $onlineCount++,
-                ServerHealth::Warning => $warningCount++,
                 ServerHealth::Offline => $offlineCount++,
             };
 

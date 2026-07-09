@@ -16,17 +16,17 @@ class CreateServerData extends Data
         #[Required, StringType, Max(255)]
         public string $server_name,
 
-        #[Required, IPv4]
-        public string $external_ip,
+        #[IPv4]
+        public ?string $external_ip = null,
 
-        #[Required, Numeric, Between(1, 65535)]
-        public int $ssh_port,
+        #[Numeric, Between(1, 65535)]
+        public ?int $ssh_port = null,
 
-        #[Required, StringType]
-        public string $ssh_username,
+        #[StringType]
+        public ?string $ssh_username = null,
 
-        #[Required, StringType]
-        public string $ssh_password,
+        #[StringType]
+        public ?string $ssh_password = null,
 
         public ?string $host_name = null,
 

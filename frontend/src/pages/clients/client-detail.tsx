@@ -83,7 +83,7 @@ export default function ClientDetail() {
     const { data: settings } = useSettings();
     const secopLimit = Math.max(
         1,
-        parseInt(settings?.secop_limit_per_client ?? "5", 10) || 5,
+        parseInt(settings?.secop_limit_per_client ?? "2", 10) || 2,
     );
 
     // ── Mutations ──────────────────────────────────────────────────────────────

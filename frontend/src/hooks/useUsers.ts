@@ -120,6 +120,9 @@ export const useAddUserClient = (userUuid: string) => {
             queryClient.invalidateQueries({
                 queryKey: ["users", userUuid],
             });
+            queryClient.invalidateQueries({
+                queryKey: ["clients"],
+            });
         },
     });
 };
@@ -143,6 +146,9 @@ export const useRemoveUserClient = (userUuid: string) => {
             });
             queryClient.invalidateQueries({
                 queryKey: ["users", userUuid],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["clients"],
             });
         },
     });

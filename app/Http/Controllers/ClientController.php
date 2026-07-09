@@ -27,7 +27,28 @@ class ClientController extends Controller
     /** @return ClientData[] */
     public function index(): array
     {
-        $clients = Client::withCount('servers')->orderBy('created_at', 'desc')->get();
+        $query = Client::withCount(['servers', 'secopclients']);
+
+        if (request()->has('user_uuid')) {
+            $userUuid = request()->query('user_uuid');
+            $query->whereHas('secopclients', function ($q) use ($userUuid) {
+                $q->where('users.uuid', $userUuid);
+            });
+        }
+
+        if (request()->has('exclude_user_uuid')) {
+            $excludeUserUuid = request()->query('exclude_user_uuid');
+            $query->whereDoesntHave('secopclients', function ($q) use ($excludeUserUuid) {
+                $q->where('users.uuid', $excludeUserUuid);
+            });
+        }
+
+        if (request()->boolean('available_only')) {
+            $limit = (int) \App\Models\Setting::get('secop_limit_per_client', 2);
+            $query->has('secopclients', '<', $limit);
+        }
+
+        $clients = $query->orderBy('created_at', 'desc')->get();
 
         return $clients->map(fn(Client $client) => ClientData::fromModel($client))->toArray();
     }
@@ -235,6 +256,16 @@ class ClientController extends Controller
 
         if ($client->secopclients()->where('user_id', $user->id)->exists()) {
             return response()->json(['error' => 'User already assigned to this client'], 409);
+        }
+
+        $limit = (int) \App\Models\Setting::get('secop_limit_per_client', 2);
+        if ($client->secopclients()->count() >= $limit) {
+            return response()->json([
+                'message' => "The client has reached the maximum limit of {$limit} SecOps.",
+                'errors' => [
+                    'user_uuid' => ["The client has reached the maximum limit of {$limit} SecOps."]
+                ]
+            ], 422);
         }
 
         $client->secopclients()->attach($user->id, [

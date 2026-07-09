@@ -83,6 +83,7 @@ export function useServerSocket(
         if (!serverUuid) return;
 
         const echo = getEcho();
+        const channelName = `server.${serverUuid}`;
 
         const onConnected = () => {
             console.info("[WS] Connected to Reverb");
@@ -101,21 +102,27 @@ export function useServerSocket(
             onStatusRef.current("connected");
         }
 
-        const channel = `server.${serverUuid}`;
-
-        echo.private(channel).listen(
-            ".ServerStatsUpdated",
-            (e: {
-                t: number;
-                c: number;
-                m: number;
-                i: number;
-                o: number;
-                d: number;
-            }) => {
-                globalMetrics.push(serverUuid, e);
-            },
-        );
+        echo.private(channelName)
+            .listen(
+                ".ServerStatsUpdated",
+                (e: {
+                    t: number;
+                    c: number;
+                    m: number;
+                    i: number;
+                    o: number;
+                    d: number;
+                }) => {
+                    globalMetrics.push(serverUuid, e);
+                },
+            )
+            .listen(".ProvisionTokenGenerated", () => {
+                // Handled by the caller's queryClient.invalidateQueries(...) instead —
+                // no full reload needed.
+            })
+            .listen(".RegistrationCompleted", () => {
+                window.location.reload();
+            });
 
         return () => {
             echo.connector.pusher.connection.unbind("connected", onConnected);
@@ -123,7 +130,7 @@ export function useServerSocket(
                 "disconnected",
                 onDisconnected,
             );
-            echo.leaveChannel(channel);
+            echo.leaveChannel(channelName);
         };
     }, [serverUuid]);
 }

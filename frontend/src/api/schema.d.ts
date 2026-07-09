@@ -671,6 +671,7 @@ export interface components {
             contact_number: string;
             banner_image_url: string;
             servers_count: number;
+            secops_count: number;
             created_at: string;
             updated_at: string;
         };
@@ -1163,6 +1164,21 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         error: "User already assigned to this client";
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        errors: {
+                            user_uuid: [
+                                string
+                            ];
+                        };
                     };
                 };
             };
@@ -2311,6 +2327,21 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         error: "Client already assigned to this user";
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        errors: {
+                            client_uuid: [
+                                string
+                            ];
+                        };
                     };
                 };
             };

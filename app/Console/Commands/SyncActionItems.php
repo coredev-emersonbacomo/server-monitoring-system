@@ -68,16 +68,6 @@ class SyncActionItems extends Command
                     'client_name' => $server->client->name,
                     'server_name' => $server->server_name,
                 ];
-            } elseif ($health === ServerHealth::Warning) {
-                $issues[] = [
-                    'action_type' => 'server_warning',
-                    'severity' => 'warning',
-                    'message' => "{$server->server_name} has not reported in",
-                    'server_id' => $server->id,
-                    'client_id' => $server->client_id,
-                    'client_name' => $server->client->name,
-                    'server_name' => $server->server_name,
-                ];
             }
         }
 

@@ -86,3 +86,27 @@ test('admin can remove a client from a user', function () {
         'user_id' => $this->secop->id,
     ]);
 });
+
+test('assigning client to user rejects if client exceeds secops limit', function () {
+    \App\Models\Setting::set('secop_limit_per_client', '1');
+
+    $secopTwo = User::factory()->create();
+    $token = loginAsUser($this->admin);
+
+    // Assign the first SecOp user
+    $this->withHeaders([
+        'Authorization' => 'Bearer ' . $token,
+    ])->postJson("/api/users/{$this->secop->uuid}/clients", [
+        'client_uuid' => $this->client->uuid,
+    ])->assertStatus(201);
+
+    // Assigning the second SecOp user to same client should fail (limit is 1)
+    $response = $this->withHeaders([
+        'Authorization' => 'Bearer ' . $token,
+    ])->postJson("/api/users/{$secopTwo->uuid}/clients", [
+        'client_uuid' => $this->client->uuid,
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['client_uuid']);
+});

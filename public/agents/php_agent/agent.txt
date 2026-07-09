@@ -11,12 +11,12 @@
  */
 
 $config = json_decode(
-    file_get_contents(__DIR__ . '/config.json'),
+    file_get_contents(__DIR__ . '/bootstrap.json'),
     true
 );
 
 if (!$config) {
-    fwrite(STDERR, "Failed to read config.json\n");
+    fwrite(STDERR, "Failed to read bootstrap.json\n");
     exit(1);
 }
 

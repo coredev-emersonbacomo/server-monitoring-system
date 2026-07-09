@@ -72,25 +72,28 @@ test('non-admin cannot update settings', function () {
 
     $response->assertStatus(403);
 });
-
 test('admin can assign secops to a client within limit', function () {
     $secopTwo = User::factory()->create();
     $token = loginAs($this->admin);
 
     $response = $this->withHeaders([
         'Authorization' => 'Bearer ' . $token,
-    ])->postJson("/api/clients/{$this->client->id}/secops", [
-        'secop_ids' => [$this->secop->id, $secopTwo->id],
+    ])->postJson("/api/clients/{$this->client->uuid}/secops", [
+        'user_uuid' => $this->secop->uuid,
     ]);
+    $response->assertStatus(201);
 
-    $response->assertStatus(200)
-        ->assertJsonPath('secops.0.id', $this->secop->id)
-        ->assertJsonPath('secops.1.id', $secopTwo->id);
+    $responseTwo = $this->withHeaders([
+        'Authorization' => 'Bearer ' . $token,
+    ])->postJson("/api/clients/{$this->client->uuid}/secops", [
+        'user_uuid' => $secopTwo->uuid,
+    ]);
+    $responseTwo->assertStatus(201);
 
     $this->assertDatabaseHas('sec_op_clients', [
         'client_id' => $this->client->id,
         'user_id' => $this->secop->id,
-        'status' => 'active',
+        'record_status' => 'active',
     ]);
 });
 
@@ -99,24 +102,41 @@ test('assign secops rejects assignments above configured limit', function () {
     $secopThree = User::factory()->create();
     $token = loginAs($this->admin);
 
+    // Assign up to the limit (2)
+    $this->withHeaders([
+        'Authorization' => 'Bearer ' . $token,
+    ])->postJson("/api/clients/{$this->client->uuid}/secops", [
+        'user_uuid' => $this->secop->uuid,
+    ])->assertStatus(201);
+
+    $this->withHeaders([
+        'Authorization' => 'Bearer ' . $token,
+    ])->postJson("/api/clients/{$this->client->uuid}/secops", [
+        'user_uuid' => $secopTwo->uuid,
+    ])->assertStatus(201);
+
+    // Try assigning a third one (limit is 2)
     $response = $this->withHeaders([
         'Authorization' => 'Bearer ' . $token,
-    ])->postJson("/api/clients/{$this->client->id}/secops", [
-        'secop_ids' => [$this->secop->id, $secopTwo->id, $secopThree->id],
+    ])->postJson("/api/clients/{$this->client->uuid}/secops", [
+        'user_uuid' => $secopThree->uuid,
     ]);
 
     $response->assertStatus(422)
-        ->assertJsonValidationErrors(['secop_ids']);
+        ->assertJsonValidationErrors(['user_uuid']);
 });
 
-test('client show includes assigned secops', function () {
-    $this->client->secopclients()->attach($this->secop->id, ['status' => 'active']);
+test('client secops endpoint returns assigned secops', function () {
+    $this->client->secopclients()->attach($this->secop->id, [
+        'uuid' => Str::uuid()->toString(),
+        'record_status' => 'active'
+    ]);
     $token = loginAs($this->admin);
 
     $response = $this->withHeaders([
         'Authorization' => 'Bearer ' . $token,
-    ])->getJson("/api/clients/{$this->client->id}");
+    ])->getJson("/api/clients/{$this->client->uuid}/secops");
 
     $response->assertStatus(200)
-        ->assertJsonPath('secops.0.id', $this->secop->id);
+        ->assertJsonPath('0.uuid', $this->secop->uuid);
 });

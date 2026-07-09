@@ -17,6 +17,11 @@ const STATUS_META = {
         bg: "bg-amber-500/10",
     },
     offline: { icon: WifiOff, color: "text-red-400", bg: "bg-red-500/10" },
+    unknown: {
+        icon: AlertTriangle,
+        color: "text-muted-foreground",
+        bg: "bg-muted/40",
+    },
 } as const;
 
 export default function ServerLayout() {
@@ -75,7 +80,9 @@ export default function ServerLayout() {
                     ) : (
                         filtered?.map((server) => {
                             const isActive = server.uuid === uuid;
-                            const meta = STATUS_META[server.status];
+                            const meta =
+                                STATUS_META[server.status] ??
+                                STATUS_META.unknown;
                             const Icon = meta.icon;
                             return (
                                 <button
