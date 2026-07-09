@@ -85,7 +85,7 @@ class ProvisioningService
             'token' => $rawToken,
             'expires_at' => $expiresAt->toIso8601String(),
             'linux_command' => 'curl -fsSL ' . url('/install/linux') . ' | bash -s -- ' . $rawToken,
-            'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "$token=\'' . $rawToken . '\'; irm ' . url('/install/windows.ps1') . ' | iex"',
+            'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$token=\'' . $rawToken . '\'; irm ' . url('/install/windows.ps1') . ' | iex"',
             'token_expires_in' => $expiresAt->timestamp,
         ];
     }
