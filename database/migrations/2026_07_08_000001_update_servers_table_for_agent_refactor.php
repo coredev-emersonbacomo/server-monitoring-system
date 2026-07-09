@@ -14,9 +14,6 @@ return new class extends Migration
         Schema::table('servers', function (Blueprint $table) {
             // Make existing SSH / key fields nullable
             $table->string('external_ip')->nullable()->change();
-            $table->string('ssh_username')->nullable()->change();
-            $table->text('ssh_password')->nullable()->change();
-            $table->integer('ssh_port')->nullable()->change();
             $table->string('api_key')->nullable()->change();
 
             // Add new fields
@@ -35,9 +32,6 @@ return new class extends Migration
     {
         Schema::table('servers', function (Blueprint $table) {
             $table->string('external_ip')->nullable(false)->change();
-            $table->string('ssh_username')->nullable(false)->change();
-            $table->text('ssh_password')->nullable(false)->change();
-            $table->integer('ssh_port')->nullable(false)->change();
             $table->string('api_key')->nullable(false)->change();
 
             $table->dropColumn(['description', 'environment', 'status', 'architecture', 'archived_at']);
