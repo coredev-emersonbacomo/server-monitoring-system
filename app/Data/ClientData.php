@@ -16,6 +16,7 @@ class ClientData extends Data
         public string $contact_number,
         public string $banner_image_url,
         public int $servers_count,
+        public int $secops_count,
         public string $created_at,
         public string $updated_at,
     ) {}
@@ -31,6 +32,7 @@ class ClientData extends Data
             contact_number: $client->contact_number,
             banner_image_url: $client->banner_image_url ?? '',
             servers_count: $client->servers_count,
+            secops_count: $client->secopclients_count ?? $client->secopclients()->count(),
             created_at: $client->created_at->toIso8601String(),
             updated_at: $client->updated_at->toIso8601String(),
         );

@@ -1,5 +1,5 @@
 import { memo, useState } from "react";
-import { Wifi, WifiOff, AlertTriangle, Trash2, Cpu, MemoryStick, HardDrive, Monitor, Info, BarChart3, Bell, Server, Network } from "lucide-react";
+import { Wifi, WifiOff, AlertTriangle, Trash2, Cpu, MemoryStick, HardDrive, Monitor, Info, BarChart3, Bell, Server, Network, Terminal, Copy, Check, RefreshCw } from "lucide-react";
 import { Tab } from "@/components/ui/tab";
 import { ServerStatChart } from "./ServerStatChart";
 import type { ServerData } from "@/types/models";
@@ -13,8 +13,9 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import type { components } from "@/api/schema.d";
 import { useDeleteServer } from "@/hooks/useDeleteServer";
+import { getAccessToken } from "@/api/tokenManager";
+import { useQueryClient } from "@tanstack/react-query";
 
 const STATUS_CONFIG = {
     online: {
@@ -34,6 +35,30 @@ const STATUS_CONFIG = {
         icon: WifiOff,
         color: "text-red-400",
         bg: "bg-red-500/10 border-red-500/20",
+    },
+    pending_installation: {
+        label: "Pending Installation",
+        icon: AlertTriangle,
+        color: "text-zinc-400",
+        bg: "bg-zinc-500/10 border-zinc-500/20",
+    },
+    waiting_for_installation: {
+        label: "Waiting for Installation",
+        icon: AlertTriangle,
+        color: "text-amber-400",
+        bg: "bg-amber-500/10 border-amber-500/20",
+    },
+    waiting_for_first_heartbeat: {
+        label: "Waiting for Heartbeat",
+        icon: WifiOff,
+        color: "text-blue-400",
+        bg: "bg-blue-500/10 border-blue-500/20",
+    },
+    archived: {
+        label: "Archived",
+        icon: WifiOff,
+        color: "text-slate-400",
+        bg: "bg-slate-500/10 border-slate-500/20",
     },
 } as const;
 
@@ -81,14 +106,85 @@ interface ServerCardProps {
 export const ServerCard = memo(function ServerCard({
     server,
 }: ServerCardProps) {
-    const status = "online";
+    const status = (server.status as keyof typeof STATUS_CONFIG) || "pending_installation";
     const { icon: StatusIcon, label, color, bg } = STATUS_CONFIG[status];
+
+    const queryClient = useQueryClient();
 
     const [showDelete, setShowDelete] = useState(false);
     const [confirmText, setConfirmText] = useState("");
     const deleteServer = useDeleteServer();
 
+    const [provisionDetails, setProvisionDetails] = useState<{
+        linux_command?: string;
+        windows_command?: string;
+        expires_at?: string;
+    } | null>(null);
+    const [generating, setGenerating] = useState(false);
+    const [copiedKey, setCopiedKey] = useState<"linux" | "windows" | null>(null);
+
     const isConfirmed = confirmText.trim() === server.server_name;
+
+    const generateProvisionToken = async () => {
+        setGenerating(true);
+        try {
+            const res = await fetch(`/api/v1/servers/${server.uuid}/provision`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "Authorization": `Bearer ${getAccessToken()}`,
+                },
+            });
+            const data = await res.json();
+            if (res.status === 201 || res.status === 200 || res.status === 409) {
+                setProvisionDetails(data);
+                if (res.status !== 409) {
+                    toast.success("Provision token generated successfully!");
+                    queryClient.invalidateQueries({ queryKey: ["server", server.uuid] });
+                }
+            } else {
+                toast.error(data.message || "Failed to generate provision token.");
+            }
+        } catch (e) {
+            toast.error("An error occurred.");
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const regenerateProvisionToken = async () => {
+        setGenerating(true);
+        try {
+            const res = await fetch(`/api/v1/servers/${server.uuid}/provision/regenerate`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "Authorization": `Bearer ${getAccessToken()}`,
+                },
+            });
+            const data = await res.json();
+            if (res.ok || res.status === 201) {
+                setProvisionDetails(data);
+                toast.success("Provision token regenerated!");
+                queryClient.invalidateQueries({ queryKey: ["server", server.uuid] });
+            } else {
+                toast.error(data.message || "Failed to regenerate token.");
+            }
+        } catch (e) {
+            toast.error("An error occurred.");
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const copyToClipboard = (text: string, type: "linux" | "windows") => {
+        navigator.clipboard.writeText(text);
+        setCopiedKey(type);
+        toast.success("Command copied to clipboard!");
+        setTimeout(() => setCopiedKey(null), 2000);
+    };
 
     const handleDelete = async () => {
         if (!isConfirmed || !server.client_uuid) return;
@@ -108,6 +204,9 @@ export const ServerCard = memo(function ServerCard({
         setShowDelete(false);
         setConfirmText("");
     };
+
+    const isInstalled = status === "online" || status === "warning" || status === "offline";
+
     return (
         <div className="py-5 px-5">
             {/* Server header */}
@@ -132,11 +231,99 @@ export const ServerCard = memo(function ServerCard({
                 </div>
             </div>
 
+            {/* Installation wizard if not installed */}
+            {!isInstalled && (
+                <div className="mb-6 p-5 rounded-xl border border-border bg-card/50 backdrop-blur-sm shadow-lg">
+                    <div className="flex items-center gap-2.5 mb-4 text-foreground font-semibold">
+                        <Terminal className="size-5 text-primary" />
+                        <h2>Agent Installation Guide</h2>
+                    </div>
+
+                    {status === "pending_installation" && !provisionDetails && (
+                        <div className="space-y-4">
+                            <p className="text-sm text-muted-foreground">
+                                To start monitoring this server, you must install the lightweight monitoring agent on the machine.
+                            </p>
+                            <Button
+                                variant="default"
+                                label={generating ? "Generating..." : "Generate Installation Command"}
+                                onClick={generateProvisionToken}
+                                disabled={generating}
+                            />
+                        </div>
+                    )}
+
+                    {(status === "waiting_for_installation" || status === "waiting_for_first_heartbeat" || provisionDetails) && (
+                        <div className="space-y-5">
+                            <p className="text-sm text-muted-foreground">
+                                Run the appropriate command directly on your server.
+                            </p>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                        Linux (cURL + bash)
+                                    </label>
+                                    <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
+                                        <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
+                                            {provisionDetails?.linux_command || `curl -fsSL ${window.location.origin}/install/linux | bash -s -- <token>`}
+                                        </span>
+                                        {provisionDetails?.linux_command && (
+                                            <button
+                                                onClick={() => copyToClipboard(provisionDetails.linux_command!, "linux")}
+                                                className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                            >
+                                                {copiedKey === "linux" ? <Check className="size-4 text-emerald-400" /> : <Copy className="size-4" />}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                        Windows (PowerShell)
+                                    </label>
+                                    <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
+                                        <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
+                                            {provisionDetails?.windows_command || `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
+                                        </span>
+                                        {provisionDetails?.windows_command && (
+                                            <button
+                                                onClick={() => copyToClipboard(provisionDetails.windows_command!, "windows")}
+                                                className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                            >
+                                                {copiedKey === "windows" ? <Check className="size-4 text-emerald-400" /> : <Copy className="size-4" />}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/40 text-xs text-muted-foreground">
+                                <div>
+                                    {provisionDetails?.expires_at && (
+                                        <span>
+                                            Token expires at: <strong>{new Date(provisionDetails.expires_at).toLocaleString()}</strong>
+                                        </span>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={regenerateProvisionToken}
+                                    className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-medium cursor-pointer"
+                                >
+                                    <RefreshCw size={12} />
+                                    Regenerate Token
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Tabs: Info / Metrics / Alerts */}
             <Tab syncUrl={false}>
                 <Tab.Item icon={Info} title="Info">
                     <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
-
                         {[
                             {
                                 icon: Server,
@@ -146,29 +333,31 @@ export const ServerCard = memo(function ServerCard({
                             {
                                 icon: Network,
                                 label: "IP Address",
-                                value: server.external_ip,
+                                value: server.external_ip || "Dynamic / Agent Managed",
                             },
                             {
                                 icon: Cpu,
                                 label: "CPU",
                                 value: server.cpu_model
                                     ? `${server.cpu_model} · ${server.cpu_cores ?? "?"} cores`
-                                    : `${server.cpu_cores ?? "?"} cores`,
+                                    : server.cpu_cores
+                                        ? `${server.cpu_cores} cores`
+                                        : "Waiting for Agent",
                             },
                             {
                                 icon: MemoryStick,
                                 label: "Memory",
-                                value: `${server.ram ?? "?"} GB`,
+                                value: server.ram ? `${server.ram} GB` : "Waiting for Agent",
                             },
                             {
                                 icon: HardDrive,
                                 label: "Disk",
-                                value: `${server.disk ?? "?"} GB`,
+                                value: server.disk ? `${server.disk} GB` : "Waiting for Agent",
                             },
                             {
                                 icon: Monitor,
                                 label: "OS",
-                                value: server.operating_system ?? "Unknown",
+                                value: server.operating_system ?? "Waiting for Agent",
                             },
                         ].map(({ icon: ItemIcon, label, value }) => (
                             <div
@@ -190,21 +379,23 @@ export const ServerCard = memo(function ServerCard({
                         ))}
                     </div>
                 </Tab.Item>
-                <Tab.Item icon={BarChart3} title="Metrics">
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
-                        {CHARTS.map((cfg) => (
-                            <ServerStatChart
-                                key={cfg.dataKey}
-                                title={cfg.title}
-                                data={server.stats}
-                                dataKey={cfg.dataKey}
-                                color={cfg.color}
-                                unit={cfg.unit}
-                                yDomain={cfg.yDomain}
-                            />
-                        ))}
-                    </div>
-                </Tab.Item>
+                {isInstalled && (
+                    <Tab.Item icon={BarChart3} title="Metrics">
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
+                            {CHARTS.map((cfg) => (
+                                <ServerStatChart
+                                    key={cfg.dataKey}
+                                    title={cfg.title}
+                                    data={server.stats}
+                                    dataKey={cfg.dataKey}
+                                    color={cfg.color}
+                                    unit={cfg.unit}
+                                    yDomain={cfg.yDomain}
+                                />
+                            ))}
+                        </div>
+                    </Tab.Item>
+                )}
 
                 <Tab.Item icon={Bell} title="Alerts">
                     <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2 bg-card border border-t-0 border-border/60 rounded-b-lg">
@@ -232,7 +423,7 @@ export const ServerCard = memo(function ServerCard({
                         <strong className="text-foreground">
                             {server.server_name}
                         </strong>{" "}
-                        ({server.external_ip}) and remove all collected metrics.
+                        and remove all collected metrics.
                         This cannot be undone.
                     </p>
 
@@ -272,4 +463,4 @@ export const ServerCard = memo(function ServerCard({
             </Dialog>
         </div>
     );
-}); 
+});

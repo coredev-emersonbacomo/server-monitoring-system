@@ -13,6 +13,7 @@ use App\Jobs\BroadcastServerStats;
 use App\Models\Client;
 use App\Models\Server;
 use App\Models\ServerUpdate;
+use App\Enums\ServerStatus;
 use Illuminate\Http\JsonResponse;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\Request;
@@ -35,38 +36,19 @@ class ServerController extends Controller
         $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
         $clientId = $clientModel->id;
 
-        try {
-            $result = DB::transaction(function () use ($data, $clientId) {
+        $server = Server::create([
+            'client_id'    => $clientId,
+            'server_name'  => $data->server_name,
+            'host_name'  => $data->host_name ?? $data->server_name,
+            'external_ip'  => $data->external_ip,
+            'ssh_port'     => $data->ssh_port,
+            'ssh_username' => $data->ssh_username ? Crypt::encryptString($data->ssh_username) : null,
+            'ssh_password' => $data->ssh_password ? Crypt::encryptString($data->ssh_password) : null,
+            'api_key'      => ApiGenerator::GenerateApiKey(),
+            'status'       => ServerStatus::PendingInstallation->value,
+        ]);
 
-                $server = Server::create([
-                    'client_id'    => $clientId,
-                    'server_name'  => $data->server_name,
-                    'host_name'  => $data->host_name ?? $data->server_name,
-                    'external_ip'  => $data->external_ip,
-                    'ssh_port'     => $data->ssh_port,
-                    'ssh_username' => Crypt::encryptString($data->ssh_username),
-                    'ssh_password' => Crypt::encryptString($data->ssh_password),
-                    'api_key'      => ApiGenerator::GenerateApiKey(),
-                ]);
-
-                $installer = new InstallerService(
-                    sshHost: $server->external_ip,
-                    sshPort: $server->ssh_port,
-                    sshUser: $data->ssh_username,
-                    sshPassword: $data->ssh_password,
-                    serverUUID: $server->uuid,
-                    apiToken: $server->api_key,
-                );
-
-                $installer->install();
-
-                return $server;
-            });
-
-            return ServerData::fromModel($result);
-        } catch (\RuntimeException $e) {
-            abort(500, 'Installation failed: ' . $e->getMessage());
-        }
+        return ServerData::fromModel($server);
     }
 
     public function show(string $clientUuid, string $serverUuid): ServerData
@@ -121,9 +103,6 @@ class ServerController extends Controller
     #[QueryParameter('client_uuid', type: 'string', description: 'Filter servers by client UUID')]
     public function listAll(Request $request)
     {
-        $onlineThreshold  = now()->subMinutes(5);
-        $warningThreshold = now()->subMinutes(15);
-
         $query = Server::with('client', 'latestUpdate');
 
         if ($clientUuid = $request->query('client_uuid')) {
@@ -135,10 +114,7 @@ class ServerController extends Controller
 
         $servers = $query->orderBy('created_at', 'desc')->get();
 
-        return ServerData::collect($servers->map(function (Server $server) use ($onlineThreshold, $warningThreshold) {
-            $lastSeen = $server->latestUpdate?->created_at;
-            $health = Server::computeHealth($lastSeen, $onlineThreshold, $warningThreshold);
-
+        return ServerData::collect($servers->map(function (Server $server) {
             return ServerData::from([
                 'uuid'             => $server->uuid,
                 'server_name'      => $server->server_name,
@@ -153,7 +129,7 @@ class ServerController extends Controller
                 'disk'             => $server->disk,
                 'operating_system' => $server->operating_system,
                 'record_status'    => $server->record_status->value,
-                'status'           => $health->value,
+                'status'           => $server->status,
             ]);
         }));
     }
@@ -196,6 +172,7 @@ class ServerController extends Controller
             'client_uuid'      => $client?->uuid ?? '',
             'client_name'      => $client?->name ?? 'Unknown',
             'record_status'    => $server->record_status->value,
+            'status'           => $server->status,
             'stats'            => $stats,
         ]);
     }

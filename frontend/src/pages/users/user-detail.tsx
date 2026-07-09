@@ -210,7 +210,7 @@ export default function UserDetail() {
     // ── Data fetching ──────────────────────────────────────────────────────────
     const { data: user, isLoading, isError } = useUser(uuid);
     const { data: userClients = [], isLoading: clientsLoading } = useUserClients(uuid);
-    const { data: allClients = [] } = useClients();
+    const { data: allClients = [] } = useClients({ exclude_user_uuid: uuid, available_only: true });
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createUser = useCreateUser();

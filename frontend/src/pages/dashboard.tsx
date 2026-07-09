@@ -217,11 +217,6 @@ export default function Dashboard() {
                   color: STATUS_COLORS.online,
               },
               {
-                  name: "Warning",
-                  value: stats.warning_count,
-                  color: STATUS_COLORS.warning,
-              },
-              {
                   name: "Offline",
                   value: stats.offline_count,
                   color: STATUS_COLORS.offline,
