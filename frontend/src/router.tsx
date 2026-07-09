@@ -6,7 +6,7 @@ import { GuestLayout } from "./layouts/GuestLayout";
 import Clients from "./pages/clients/index";
 import UsersIndex from "./pages/users/index";
 import ClientDetail from "./pages/clients/client-detail";
-import ActivityLogs from "./pages/activity-logs";
+import LogsPage from "./pages/logs";
 import ServerLayout from "./layouts/ServerLayout";
 import ServerDetail from "./pages/servers/server-detail";
 import CreateServer from "./pages/servers/create";
@@ -18,7 +18,6 @@ import Profile from "./pages/settings/profile";
 import UserDetail from "./pages/users/user-detail";
 import SystemSettings from "./pages/settings/system";
 import AlertThresholds from "./pages/settings/thresholds";
-import ServerLogs from "./pages/server-logs";
 
 const router = createBrowserRouter([
     {
@@ -82,12 +81,8 @@ const router = createBrowserRouter([
                         element: <UserDetail />,
                     },
                     {
-                        path: "/activity-logs",
-                        element: <ActivityLogs />,
-                    },
-                    {
-                        path: "/server-logs",
-                        element: <ServerLogs />,
+                        path: "/logs",
+                        element: <LogsPage />,
                     },
                     {
                         path: "/settings",
