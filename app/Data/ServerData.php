@@ -38,10 +38,27 @@ class ServerData extends Data
 
         /** @var StatPointData[] */
         public array $stats = [],
+
+        /** @var array{token: string, expires_at: string, linux_command: string, windows_command: string}|null */
+        public ?array $activeProvisionDetails = null,
     ) {}
 
     public static function fromModel(Server $server): self
     {
+        $activeDetails = null;
+        if (in_array($server->status, ['pending_installation', 'waiting_for_installation'])) {
+            $activeToken = $server->activeProvisionToken;
+            if ($activeToken && !$activeToken->isExpired()) {
+                $token = $activeToken->token;
+                $activeDetails = [
+                    'token' => $token,
+                    'expires_at' => $activeToken->expires_at->copy()->utc()->toIso8601String(),
+                    'linux_command' => 'curl -fsSL ' . url('/install/linux') . ' | bash -s -- ' . $token,
+                    'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$token=\'' . $token . '\'; irm ' . url('/install/windows.ps1') . ' | iex"',
+                ];
+            }
+        }
+
         return new self(
             uuid: $server->uuid,
             client_uuid: $server->client->uuid,
@@ -57,6 +74,7 @@ class ServerData extends Data
             status: $server->status,
             created_at: $server->created_at->toIso8601String(),
             updated_at: $server->updated_at->toIso8601String(),
+            activeProvisionDetails: $activeDetails,
         );
     }
 }
