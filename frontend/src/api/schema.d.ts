@@ -898,6 +898,12 @@ export interface components {
             operating_system?: string | null;
             status?: string | null;
             stats?: components["schemas"]["StatPointData"][];
+            activeProvisionDetails?: {
+                token: string;
+                expires_at: string;
+                linux_command: string;
+                windows_command: string;
+            } | null;
         };
         /** StatPointData */
         StatPointData: {
@@ -1044,13 +1050,11 @@ export interface operations {
                         expires_at: string;
                         linux_command: string;
                         windows_command: string;
-                        token_expires_in: string;
                     } | {
                         conflict: boolean;
                         expires_at: string;
                         generated_at: string;
                         remaining_seconds: number;
-                        token_expires_in: string;
                     };
                 };
             };
@@ -1066,13 +1070,11 @@ export interface operations {
                         expires_at: string;
                         linux_command: string;
                         windows_command: string;
-                        token_expires_in: string;
                     } | {
                         conflict: boolean;
                         expires_at: string;
                         generated_at: string;
                         remaining_seconds: number;
-                        token_expires_in: string;
                     };
                 };
             };
@@ -1110,13 +1112,11 @@ export interface operations {
                         expires_at: string;
                         linux_command: string;
                         windows_command: string;
-                        token_expires_in: string;
                     } | {
                         conflict: boolean;
                         expires_at: string;
                         generated_at: string;
                         remaining_seconds: number;
-                        token_expires_in: string;
                     };
                 };
             };
@@ -1360,11 +1360,7 @@ export interface operations {
     };
     "client.index": {
         parameters: {
-            query?: {
-                user_uuid?: string | null;
-                exclude_user_uuid?: string | null;
-                available_only?: boolean;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -1391,7 +1387,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": {
+                "application/json": {
                     name: string;
                     location: string;
                     /** @description Must be unique in `clients`. */
