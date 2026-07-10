@@ -3,6 +3,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/csv"
 	"fmt"
 	"math"
 	"os"
@@ -336,6 +338,23 @@ func (m *metricsCollector) GetOpenDatabasePorts() []PortInfo {
 		return nil
 	}
 
+	// Build a map of PID to Process Name using tasklist (extremely fast, ~50ms once)
+	pidMap := make(map[int]string)
+	if tasklistOut, err := exec.Command("tasklist", "/FO", "CSV", "/NH").Output(); err == nil {
+		reader := csv.NewReader(bytes.NewReader(tasklistOut))
+		if records, err := reader.ReadAll(); err == nil {
+			for _, record := range records {
+				if len(record) >= 2 {
+					name := record[0]
+					pidStr := record[1]
+					if pid, err := strconv.Atoi(pidStr); err == nil {
+						pidMap[pid] = name
+					}
+				}
+			}
+		}
+	}
+
 	procPorts := make(map[int]string)
 	dbProcRe := regexp.MustCompile(`(?i)mysqld|mariadbd|mariadb|postgres|postmaster|mongod|redis-server|memcached|cassandra|rabbitmq-server|influxd|clickhouse-server|elasticsearch`)
 
@@ -393,21 +412,10 @@ func (m *metricsCollector) GetOpenDatabasePorts() []PortInfo {
 		process := ""
 		if len(fields) >= 5 {
 			pid, _ := strconv.Atoi(fields[4])
-			out2, err := exec.Command("powershell", "-Command",
-				fmt.Sprintf("Get-Process -Id %d -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProcessName", pid)).Output()
-			if err == nil {
-				process = strings.TrimSpace(string(out2))
-			}
-			_ = out2
+			process = pidMap[pid]
 		}
 
-		isDbPort := false
-		if _, ok := dbPortNames[port]; ok {
-			isDbPort = true
-		}
-		isDbProcess := dbProcRe.MatchString(process)
-
-		if !isDbPort && !isDbProcess {
+		if addr == "127.0.0.1" || addr == "[::1]" || addr == "::1" || addr == "localhost" {
 			continue
 		}
 
@@ -433,48 +441,7 @@ func (m *metricsCollector) GetOpenDatabasePorts() []PortInfo {
 	return result
 }
 
-func (m *metricsCollector) GetServices() []ServiceInfo {
-	out, err := exec.Command("powershell", "-Command",
-		"Get-Service | Select-Object Name,Status | ConvertTo-Json").Output()
-	if err != nil {
-		return nil
-	}
 
-	var result []ServiceInfo
-	lines := strings.Split(string(out), "\n")
-	inObj := false
-	var current ServiceInfo
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "{" {
-			inObj = true
-			current = ServiceInfo{}
-			continue
-		}
-		if line == "}" || line == "}," {
-			inObj = false
-			if current.Identifier != "" {
-				result = append(result, current)
-			}
-			continue
-		}
-		if !inObj || !strings.Contains(line, ":") {
-			continue
-		}
-		parts := strings.SplitN(line, ":", 2)
-		key := strings.Trim(strings.TrimSpace(parts[0]), "\"")
-		val := strings.Trim(strings.TrimSpace(parts[1]), "\",")
-		switch key {
-		case "Name":
-			current.Identifier = val
-			current.Name = val
-		case "Status":
-			current.State = strings.ToLower(val)
-		}
-	}
-	return result
-}
 
 func (m *metricsCollector) GetCPUSpec() *CPUSpec           { return getCPUSpec() }
 func (m *metricsCollector) GetMemorySpec() string          { return getMemorySpec() }

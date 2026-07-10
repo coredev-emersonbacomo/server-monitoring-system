@@ -288,17 +288,10 @@ func getOpenDatabasePorts() []PortInfo {
 			process = procM[1]
 		}
 
-		isDbPort := false
-		if _, ok := dbPortSet[port]; ok {
-			isDbPort = true
-		}
-		isDbProcess := dbProcRe.MatchString(process)
-
-		if !isDbPort && !isDbProcess {
+		addr := localAddr[:colonIdx]
+		if addr == "127.0.0.1" || addr == "[::1]" || addr == "::1" || addr == "localhost" {
 			continue
 		}
-
-		addr := localAddr[:colonIdx]
 		if addr == "0.0.0.0" || addr == "*" || addr == "::" {
 			addr = "0.0.0.0"
 		}
@@ -321,28 +314,6 @@ func getOpenDatabasePorts() []PortInfo {
 	return result
 }
 
-func getServices() []ServiceInfo {
-	out, err := exec.Command("systemctl", "list-units", "--type=service", "--no-pager", "--no-legend").Output()
-	if err != nil {
-		return nil
-	}
-
-	var result []ServiceInfo
-	re := regexp.MustCompile(`^(\S+)\s+\S+\s+\S+\s+(\S+)`)
-	for _, line := range strings.Split(string(out), "\n") {
-		m := re.FindStringSubmatch(line)
-		if m == nil {
-			continue
-		}
-		result = append(result, ServiceInfo{
-			Identifier: m[1],
-			Name:       m[1],
-			State:      m[2],
-		})
-	}
-	return result
-}
-
 type metricsCollector struct{}
 
 func newMetricsCollector() *metricsCollector { return &metricsCollector{} }
@@ -360,4 +331,3 @@ func (m *metricsCollector) GetUptime() float64             { return getUptime() 
 func (m *metricsCollector) GetNetworkStats() []NetworkMetrics { return getNetworkStats() }
 func (m *metricsCollector) GetTopProcesses() []ProcessInfo { return getTopProcesses() }
 func (m *metricsCollector) GetOpenDatabasePorts() []PortInfo { return getOpenDatabasePorts() }
-func (m *metricsCollector) GetServices() []ServiceInfo     { return getServices() }

@@ -195,6 +195,28 @@ class HeartbeatService
             ]));
         }
 
+        // Calculate total network bytes from nested interfaces if present
+        $networkRx = 0;
+        $networkTx = 0;
+        if (isset($payload['network']) && is_array($payload['network'])) {
+            foreach ($payload['network'] as $net) {
+                $networkRx += $net['rx_bytes'] ?? 0;
+                $networkTx += $net['tx_bytes'] ?? 0;
+            }
+        }
+
+        // Populate server_updates table for compatibility with dashboard/historical charts
+        \App\Models\ServerUpdate::create([
+            'server_id' => $agent->server->id,
+            'cpu_usage' => (double) ($payload['cpu']['load1'] ?? 0.0),
+            'memory_usage' => (double) ($payload['memory']['percent'] ?? 0.0),
+            'storage' => (double) ($payload['disk']['percent'] ?? 0.0),
+            'uptime' => (int) ($payload['uptime'] ?? 0),
+            'network_rbytes' => $networkRx,
+            'network_tbytes' => $networkTx,
+            'created_at' => $recordedAt,
+        ]);
+
         // Broadcast stats for UI compatibility (similar to existing server/stats ingest)
         $uiStats = [
             'timestamp' => now()->timestamp,
@@ -255,18 +277,18 @@ class HeartbeatService
             );
         }
 
-        // Clean up ports not in current payload
-        $query = Port::where('agent_id', $agent->id);
-        if (count($portsList) > 0) {
-            $query->where(function ($q) use ($portsList) {
-                foreach ($portsList as $p) {
-                    $q->orWhere(function ($sub) use ($p) {
-                        $sub->where('port', $p['port'])->where('protocol', $p['proto']);
-                    });
-                }
-            });
-        } else {
-            $query->delete();
+        // Mark ports not in the current payload as closed instead of deleting them
+        $activeKeys = [];
+        foreach ($portsList as $p) {
+            $activeKeys[] = "{$p['proto']}:{$p['port']}";
+        }
+
+        $allPorts = Port::where('agent_id', $agent->id)->get();
+        foreach ($allPorts as $dbPort) {
+            $key = "{$dbPort->protocol}:{$dbPort->port}";
+            if (!in_array($key, $activeKeys)) {
+                $dbPort->update(['state' => 'closed']);
+            }
         }
     }
 

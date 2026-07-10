@@ -45,7 +45,6 @@ type HeartbeatRequest struct {
 	Network             []NetworkMetrics  `json:"network"`
 	TopProcesses        []ProcessInfo     `json:"top_processes"`
 	OpenDbPorts         []PortInfo        `json:"open_db_ports"`
-	Services            []ServiceInfo     `json:"services"`
 	CompletedCommands   []CommandResult   `json:"completed_commands,omitempty"`
 }
 
@@ -90,11 +89,6 @@ type PortInfo struct {
 	State    string `json:"state"`
 }
 
-type ServiceInfo struct {
-	Identifier string `json:"identifier"`
-	Name       string `json:"name"`
-	State      string `json:"state"`
-}
 
 type HeartbeatResponse struct {
 	HeartbeatInterval int                    `json:"heartbeat_interval"`

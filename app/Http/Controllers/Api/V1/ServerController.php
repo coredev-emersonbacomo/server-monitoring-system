@@ -149,7 +149,7 @@ class ServerController extends Controller
                     'token' => $token,
                     'expires_at' => $activeToken->expires_at->copy()->utc()->toIso8601String(),
                     'linux_command' => 'curl -fsSL ' . url('/install/linux') . ' | bash -s -- ' . $token,
-                    'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$token=\'' . $token . '\'; irm ' . url('/install/windows.ps1') . ' | iex"',
+                    'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/install/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl `$APP_URL"',
                 ];
             }
         }
@@ -172,6 +172,8 @@ class ServerController extends Controller
             'status'                 => $server->status,
             'stats'                  => $stats,
             'activeProvisionDetails' => $activeDetails,
+            'ports'                  => $server->agent?->ports->map(fn($p) => ['port' => $p->port, 'protocol' => $p->protocol, 'state' => $p->state, 'process' => $p->process_name])->toArray(),
+            'processes'              => $server->agent?->processes()->orderByDesc('cpu')->get()->map(fn($pr) => ['pid' => $pr->pid, 'name' => $pr->name, 'cpu' => $pr->cpu, 'memory' => $pr->memory])->toArray(),
         ]);
     }
 
@@ -201,15 +203,10 @@ class ServerController extends Controller
         ];
     }
 
-    public function updateServerInfo(string $serverUuid, ServerDataRequest $request): JsonResponse
+    public function destroyPort(int $id)
     {
-        $server = Server::where('uuid', $serverUuid)->firstOrFail();
-
-        $server->update([
-            'server_name' => $request->server_name,
-            'description' => $request->description,
-        ]);
-
-        return response()->json(['status' => 'success', 'message' => 'Server information updated successfully.']);
+        $port = \App\Models\Port::findOrFail($id);
+        $port->delete();
+        return response()->json(['status' => 'success']);
     }
 }

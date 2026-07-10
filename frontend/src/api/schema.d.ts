@@ -933,6 +933,19 @@ export interface components {
                 linux_command: string;
                 windows_command: string;
             } | null;
+            ports?: {
+                id: number;
+                port: number;
+                protocol: string;
+                state: string;
+                process: string | null;
+            }[] | null;
+            processes?: {
+                pid: number;
+                name: string;
+                cpu: number | null;
+                memory: number | null;
+            }[] | null;
         };
         /** StatPointData */
         StatPointData: {
