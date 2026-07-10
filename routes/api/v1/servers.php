@@ -15,6 +15,7 @@ Route::middleware('auth:jwt')->group(function () {
     });
 
     Route::get('/servers/{uuid}', [ServerController::class, 'showWithStats']);
+    Route::delete('/ports/{id}', [ServerController::class, 'destroyPort']);
 });
 
 Route::get('/server/{serverId}/minute', [ServerController::class, 'dailyUsage']);

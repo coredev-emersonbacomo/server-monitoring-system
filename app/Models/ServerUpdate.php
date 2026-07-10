@@ -7,6 +7,8 @@ use App\Models\Server;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
+
 class ServerUpdate extends Model
 {
     use HasFactory;
@@ -23,5 +25,13 @@ class ServerUpdate extends Model
     public function server(): BelongsTo
     {
         return $this->belongsTo(Server::class, 'server_id');
+    }
+
+    protected function storage(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value, $attributes) => $attributes['disk_usage'] ?? null,
+            set: fn ($value) => ['disk_usage' => $value],
+        );
     }
 }

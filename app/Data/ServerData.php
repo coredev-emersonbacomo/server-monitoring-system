@@ -43,6 +43,12 @@ class ServerData extends Data
 
         /** @var array{token: string, expires_at: string, linux_command: string, windows_command: string}|null */
         public ?array $activeProvisionDetails = null,
+
+        /** @var array{port: int, protocol: string, state: string, process: string|null}[]|null */
+        public ?array $ports = null,
+
+        /** @var array{pid: int, name: string, cpu: float|null, memory: float|null}[]|null */
+        public ?array $processes = null,
     ) {}
 
     public static function fromModel(Server $server): self
@@ -56,10 +62,26 @@ class ServerData extends Data
                     'token' => $token,
                     'expires_at' => $activeToken->expires_at->copy()->utc()->toIso8601String(),
                     'linux_command' => 'curl -fsSL ' . url('/install/linux') . ' | bash -s -- ' . $token,
-                    'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$token=\'' . $token . '\'; irm ' . url('/install/windows.ps1') . ' | iex"',
+                    'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/install/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl `$APP_URL"',
                 ];
             }
         }
+
+        $agent = $server->agent;
+
+        $ports = $agent ? $agent->ports->map(fn($p) => [
+            'port' => $p->port,
+            'protocol' => $p->protocol,
+            'state' => $p->state,
+            'process' => $p->process_name,
+        ])->toArray() : null;
+
+        $processes = $agent ? $agent->processes()->orderByDesc('cpu')->get()->map(fn($pr) => [
+            'pid' => $pr->pid,
+            'name' => $pr->name,
+            'cpu' => $pr->cpu,
+            'memory' => $pr->memory,
+        ])->toArray() : null;
 
         return new self(
             uuid: $server->uuid,
@@ -78,6 +100,8 @@ class ServerData extends Data
             created_at: $server->created_at->toIso8601String(),
             updated_at: $server->updated_at->toIso8601String(),
             activeProvisionDetails: $activeDetails,
+            ports: $ports,
+            processes: $processes,
         );
     }
 }

@@ -39,6 +39,7 @@ class ProvisioningService
                 'expires_at' => $activeToken->expires_at->copy()->utc()->toIso8601String(),
                 'generated_at' => $activeToken->created_at->copy()->utc()->toIso8601String(),
                 'remaining_seconds' => now()->diffInSeconds($activeToken->expires_at, false),
+                'token_expires_in' => $activeToken->expires_at->copy()->utc()->timestamp,
             ];
         }
 
@@ -83,7 +84,8 @@ class ProvisioningService
             'token' => $rawToken,
             'expires_at' => $expiresAt->toIso8601String(),
             'linux_command' => 'curl -fsSL ' . url('/install/linux') . ' | bash -s -- ' . $rawToken,
-            'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$token=\'' . $rawToken . '\'; irm ' . url('/install/windows.ps1') . ' | iex"',
+            'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/install/windows.ps1))) -ProvisionToken \'' . $rawToken . '\' -AppUrl `$APP_URL"',
+            'token_expires_in' => $expiresAt->timestamp,
         ];
     }
 

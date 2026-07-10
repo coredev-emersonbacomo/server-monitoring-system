@@ -19,7 +19,11 @@ import {
     RefreshCw,
     ArrowLeft,
     Loader2,
+    Link2,
+    Pencil,
+    X,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useServer } from "@/hooks/useServer";
 import {
     useServerSocket,
@@ -199,6 +203,18 @@ export default function ServerDetail() {
     );
     const [timeLeft, setTimeLeft] = useState<string>("");
 
+    const [isEditingInfo, setIsEditingInfo] = useState(false);
+    const [editName, setEditName] = useState("");
+    const [editDescription, setEditDescription] = useState("");
+    const [savingInfo, setSavingInfo] = useState(false);
+
+    useEffect(() => {
+        if (initial) {
+            setEditName(initial.name);
+            setEditDescription(initial.description ?? "");
+        }
+    }, [initial]);
+
     useEffect(() => {
         setProvisionDetails(initial?.activeProvisionDetails ?? null);
     }, [initial?.activeProvisionDetails]);
@@ -306,6 +322,76 @@ export default function ServerDetail() {
             setShowDelete(false);
         } catch {
             toast.error("Failed to delete server. Please try again.");
+        }
+    };
+
+    const handleDeletePort = async (portId: number) => {
+        if (!initial) return;
+        if (!confirm("Are you sure you want to delete this tracked port?")) return;
+        try {
+            await api.DELETE("/v1/ports/{id}" as any, {
+                params: { path: { id: portId } },
+            } as any);
+            toast.success("Tracked port deleted successfully!");
+            queryClient.invalidateQueries({
+                queryKey: ["server", initial.uuid],
+            });
+        } catch {
+            toast.error("Failed to delete port.");
+        }
+    };
+
+    const startEditInfo = () => {
+        if (!initial) return;
+        setEditName(initial.name);
+        setEditDescription(initial.description ?? "");
+        setIsEditingInfo(true);
+    };
+
+    const cancelEditInfo = () => {
+        setIsEditingInfo(false);
+    };
+
+    const saveInfo = async () => {
+        if (!initial) return;
+        if (!editName.trim()) {
+            toast.error("Server name is required.");
+            return;
+        }
+        if (!initial.client_uuid) {
+            toast.error("Missing client reference for this server.");
+            return;
+        }
+        setSavingInfo(true);
+        try {
+            const { error } = await api.PATCH(
+                "/v1/clients/{clientUuid}/servers/{serverUuid}",
+                {
+                    params: {
+                        path: {
+                            clientUuid: initial.client_uuid,
+                            serverUuid: initial.uuid,
+                        },
+                    },
+                    body: {
+                        name: editName.trim(),
+                        description: editDescription.trim() || undefined,
+                    },
+                },
+            );
+            if (error) {
+                toast.error("Failed to update server info.");
+            } else {
+                toast.success("Server info updated.");
+                setIsEditingInfo(false);
+                queryClient.invalidateQueries({
+                    queryKey: ["server", initial.uuid],
+                });
+            }
+        } catch {
+            toast.error("An error occurred.");
+        } finally {
+            setSavingInfo(false);
         }
     };
 
@@ -509,21 +595,86 @@ export default function ServerDetail() {
 
                         <Tab>
                             <Tab.Item icon={Info} title="Info">
-                                <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
+                                <div className="flex flex-col gap-1 p-4 pb-0 bg-card border border-t-0 border-b-0 border-border/60">
+                                    {isEditingInfo ? (
+                                        <div className="flex flex-col gap-3">
+                                            <div>
+                                                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                                    Server name
+                                                </label>
+                                                <Input
+                                                    value={editName}
+                                                    onChange={(e) => setEditName(e.target.value)}
+                                                    className="text-sm"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                                    Description
+                                                </label>
+                                                <textarea
+                                                    value={editDescription}
+                                                    onChange={(e) =>
+                                                        setEditDescription(e.target.value)
+                                                    }
+                                                    rows={2}
+                                                    maxLength={255}
+                                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    label={savingInfo ? "Saving…" : "Save"}
+                                                    onClick={saveInfo}
+                                                    disabled={savingInfo}
+                                                />
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    icon={<X size={13} />}
+                                                    label="Cancel"
+                                                    onClick={cancelEditInfo}
+                                                    disabled={savingInfo}
+                                                />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <h3 className="text-2xl font-semibold text-foreground">
+                                                    {server.name}
+                                                </h3>
+                                                {server.description && (
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {server.description}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={startEditInfo}
+                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border bg-transparent hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0 cursor-pointer"
+                                                title="Edit name and description"
+                                            >
+                                                <Pencil size={13} />
+                                                Edit
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
                                     {[
                                         {
-                                            icon: Server,
-                                            label: "Name",
-                                            value: server.name,
+                                            icon: Cpu,
+                                            label: "CPU Model",
+                                            value: server.cpu_model ?? "Unknown",
+                                            span: true,
                                         },
                                         {
                                             icon: Cpu,
-                                            label: "CPU",
-                                            value: server.cpu_model
-                                                ? `${server.cpu_model} · ${server.cpu_cores ?? "?"} cores`
-                                                : server.cpu_cores
-                                                  ? `${server.cpu_cores} cores`
-                                                  : "Waiting for Agent",
+                                            label: "CPU Cores",
+                                            value: `${server.cpu_cores ?? "?"} cores`,
                                         },
                                         {
                                             icon: MemoryStick,
@@ -547,10 +698,13 @@ export default function ServerDetail() {
                                                 "Waiting for Agent",
                                         },
                                     ].map(
-                                        ({ icon: ItemIcon, label, value }) => (
+                                        ({ icon: ItemIcon, label, value, span }) => (
                                             <div
                                                 key={label}
-                                                className="group flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all"
+                                                className={cn(
+                                                    "group flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all",
+                                                    span && "sm:col-span-2",
+                                                )}
                                             >
                                                 <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
                                                     <ItemIcon size={17} />
@@ -570,18 +724,106 @@ export default function ServerDetail() {
                             </Tab.Item>
                             {isInstalled && (
                                 <Tab.Item icon={BarChart3} title="Metrics">
-                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
-                                        {CHARTS.map((cfg) => (
-                                            <ServerStatChart
-                                                key={cfg.dataKey}
-                                                title={cfg.title}
-                                                data={server.stats}
-                                                dataKey={cfg.dataKey}
-                                                color={cfg.color}
-                                                unit={cfg.unit}
-                                                yDomain={cfg.yDomain}
-                                            />
-                                        ))}
+                                    <div className="flex flex-col gap-6 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
+                                        {/* Ports and Processes */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                            {/* Processes */}
+                                            <div className="bg-card/50 border border-border/50 rounded-xl p-4 shadow-sm">
+                                                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                                                    <Cpu size={16} className="text-primary" /> Top Processes
+                                                </h3>
+                                                {server?.processes && server.processes.length > 0 ? (
+                                                    <div className="overflow-x-auto">
+                                                        <table className="w-full text-left text-xs">
+                                                            <thead>
+                                                                <tr className="text-muted-foreground border-b border-border/30">
+                                                                    <th className="pb-2 font-medium">PID</th>
+                                                                    <th className="pb-2 font-medium">Name</th>
+                                                                    <th className="pb-2 font-medium text-right">CPU</th>
+                                                                    <th className="pb-2 font-medium text-right">RAM</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-border/20">
+                                                                {server.processes.map((p) => (
+                                                                    <tr key={p.pid} className="hover:bg-muted/10">
+                                                                        <td className="py-2 text-muted-foreground">{p.pid}</td>
+                                                                        <td className="py-2 font-medium text-foreground max-w-[120px] truncate" title={p.name}>{p.name}</td>
+                                                                        <td className="py-2 text-right text-foreground">{p.cpu !== null ? `${p.cpu.toFixed(1)}%` : "-"}</td>
+                                                                        <td className="py-2 text-right text-foreground">{p.memory !== null ? `${p.memory.toFixed(1)} MB` : "-"}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-xs text-muted-foreground py-4 text-center">No processes reported.</p>
+                                                )}
+                                            </div>
+
+                                            {/* Open Ports */}
+                                            <div className="bg-card/50 border border-border/50 rounded-xl p-4 shadow-sm">
+                                                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                                                    <Link2 size={16} className="text-primary" /> Exposed Ports
+                                                </h3>
+                                                {server?.ports && server.ports.length > 0 ? (
+                                                    <div className="overflow-x-auto">
+                                                        <table className="w-full text-left text-xs">
+                                                            <thead>
+                                                                <tr className="text-muted-foreground border-b border-border/30">
+                                                                    <th className="pb-2 font-medium">Port</th>
+                                                                    <th className="pb-2 font-medium">Proto</th>
+                                                                    <th className="pb-2 font-medium">Process</th>
+                                                                    <th className="pb-2 font-medium text-right">State</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-border/20">
+                                                                {server.ports.map((p, idx) => (
+                                                                    <tr key={idx} className="hover:bg-muted/10">
+                                                                        <td className="py-2 font-semibold text-foreground">{p.port}</td>
+                                                                        <td className="py-2 text-muted-foreground uppercase">{p.protocol}</td>
+                                                                        <td className="py-2 text-foreground font-medium">{p.process || "unknown"}</td>
+                                                                        <td className="py-2 text-right flex items-center justify-end gap-1.5">
+                                                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                                                                                p.state === 'listening' 
+                                                                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                                                                                    : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
+                                                                            }`}>
+                                                                                {p.state}
+                                                                            </span>
+                                                                            {p.id && (
+                                                                                <button
+                                                                                    onClick={() => handleDeletePort(p.id)}
+                                                                                    className="p-1 rounded text-red-500/80 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                                                                                    title="Delete tracked port"
+                                                                                >
+                                                                                    <Trash2 size={12} />
+                                                                                </button>
+                                                                            )}
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-xs text-muted-foreground py-4 text-center">No open exposed ports.</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-6 pt-6 border-t border-border/60">
+                                            {CHARTS.map((cfg) => (
+                                                <ServerStatChart
+                                                    key={cfg.dataKey}
+                                                    title={cfg.title}
+                                                    data={server?.stats || []}
+                                                    dataKey={cfg.dataKey}
+                                                    color={cfg.color}
+                                                    unit={cfg.unit}
+                                                    yDomain={cfg.yDomain}
+                                                />
+                                            ))}
+                                        </div>
                                     </div>
                                 </Tab.Item>
                             )}

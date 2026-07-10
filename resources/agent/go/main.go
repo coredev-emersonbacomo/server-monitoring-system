@@ -74,7 +74,6 @@ func main() {
 			Network:             metrics.GetNetworkStats(),
 			TopProcesses:        metrics.GetTopProcesses(),
 			OpenDbPorts:         metrics.GetOpenDatabasePorts(),
-			Services:            metrics.GetServices(),
 		}
 
 		if response, err := client.sendHeartbeat(config.ApiURL, identityToken, payload); err != nil {
