@@ -100,14 +100,14 @@ class BroadcastDashboardUsage implements ShouldQueue
 
             $series[] = [
                 'server_uuid' => $server->uuid,
-                'server_name' => $server->server_name,
+                'server_name' => $server->name,
                 'client_name' => $server->client->name,
                 'points'      => $points,
             ];
 
             $top[] = [
                 'server_uuid' => $server->uuid,
-                'server_name' => $server->server_name,
+                'server_name' => $server->name,
                 'client_name' => $server->client->name,
                 'value'       => round((float) $server->latestUpdate->{$column}, 1),
             ];

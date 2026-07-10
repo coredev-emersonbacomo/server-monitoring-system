@@ -31,8 +31,9 @@ class ServerController extends Controller
         try {
             $server = Server::create([
                 'client_id'    => $clientId,
-                'server_name'  => $data->server_name,
-                'host_name'  => $data->host_name ?? $data->server_name,
+                'name'         => $data->name,
+                'description' => $data->description,
+                'host_name'    => $data->host_name ?? $data->name,
                 'api_key'      => ApiGenerator::GenerateApiKey(),
             ]);
 
@@ -60,9 +61,14 @@ class ServerController extends Controller
 
         $updateData = $data->toArray();
 
-        if ($data->host_name !== null) {
-            $updateData['host_name'] = $data->host_name;
+        if ($data->server_name !== null) {
+            $updateData['server_name'] = $data->server_name;
         }
+
+        if ($data->description !== null) {
+            $updateData['description'] = $data->description;
+        }
+
         $serverModel->update($updateData);
 
         return ServerData::fromModel($serverModel);
@@ -96,18 +102,19 @@ class ServerController extends Controller
         return ServerData::collect($servers->map(function (Server $server) {
             return ServerData::from([
                 'uuid'             => $server->uuid,
-                'server_name'      => $server->server_name,
+                'name'             => $server->name,
                 'host_name'        => $server->host_name,
                 'client_uuid'      => $server->client->uuid,
                 'client_name'      => $server->client->name,
                 'created_at'       => $server->created_at->toIso8601String(),
                 'updated_at'       => $server->updated_at->toIso8601String(),
                 'cpu_cores'        => $server->cpu_cores,
+                'description' => $server->description,
                 'ram'              => $server->ram,
                 'disk'             => $server->disk,
                 'operating_system' => $server->operating_system,
-                'record_status'    => $server->record_status->value,
-                'status'           => $server->status,
+                'record_status' => $server->record_status->value,
+                'status' => $server->status,
             ]);
         }));
     }
@@ -149,7 +156,8 @@ class ServerController extends Controller
 
         return ServerData::from([
             'uuid'                   => $server->uuid,
-            'server_name'            => $server->server_name,
+            'name'                  => $server->name,
+            'description' => $server->description,
             'host_name'              => $server->host_name,
             'created_at'             => $server->created_at->toIso8601String(),
             'updated_at'             => $server->updated_at->toIso8601String(),
@@ -185,11 +193,23 @@ class ServerController extends Controller
 
         return [
             'timestamp' => $ts,
-            'cpu'       => round((float) $row->cpu_usage, 1),
-            'memory'    => round((float) $row->memory_usage, 1),
-            'netIn'     => round($netIn, 2),
-            'netOut'    => round($netOut, 2),
-            'disk'      => round((float) $row->storage, 1),
+            'cpu' => round((float) $row->cpu_usage, 1),
+            'memory' => round((float) $row->memory_usage, 1),
+            'netIn' => round($netIn, 2),
+            'netOut' => round($netOut, 2),
+            'disk' => round((float) $row->storage, 1),
         ];
+    }
+
+    public function updateServerInfo(string $serverUuid, ServerDataRequest $request): JsonResponse
+    {
+        $server = Server::where('uuid', $serverUuid)->firstOrFail();
+
+        $server->update([
+            'server_name' => $request->server_name,
+            'description' => $request->description,
+        ]);
+
+        return response()->json(['status' => 'success', 'message' => 'Server information updated successfully.']);
     }
 }

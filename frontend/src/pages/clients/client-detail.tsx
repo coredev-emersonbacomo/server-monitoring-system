@@ -11,6 +11,9 @@ import {
     Loader2,
     Info,
     Shield,
+    MapPin,
+    Mail,
+    Phone
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -31,6 +34,7 @@ import { Tab } from "@/components/ui/tab";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FloatingInput } from "@/components/ui/floatingInput";
 import { Label } from "@/components/ui/label";
 import {
     Dialog,
@@ -169,8 +173,8 @@ export default function ClientDetail() {
 
     const set =
         (key: keyof typeof form) =>
-        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-            setForm((f) => ({ ...f, [key]: e.target.value }));
+            (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+                setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const schema = z.object({
@@ -328,7 +332,7 @@ export default function ClientDetail() {
     const isSaving = createClient.isPending || updateClient.isPending;
     const bannerInputId = "banner-upload";
     const filteredServers = servers.filter((s) => {
-        const matchSearch = s.server_name
+        const matchSearch = s.name
             .toLowerCase()
             .includes(serverSearch.toLowerCase());
         return matchSearch;
@@ -363,14 +367,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                          backgroundImage: `url(${bannerPreview})`,
-                                          backgroundSize: "cover",
-                                          backgroundPosition: "center",
-                                      }
+                                        backgroundImage: `url(${bannerPreview})`,
+                                        backgroundSize: "cover",
+                                        backgroundPosition: "center",
+                                    }
                                     : {
-                                          background:
-                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                      }
+                                        background:
+                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                    }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -378,9 +382,34 @@ export default function ClientDetail() {
                     </div>
 
                     <div className="relative z-10 px-6 sm:px-8 lg:px-10 pt-6 pb-20">
-                        {/* ── Top bar: back + actions ── */}
-                        <div className="flex items-center justify-end mb-6">
-                            <div className="flex items-center gap-2">
+                        {/* ── Name + actions ── */}
+                        <div className="flex items-start justify-between gap-4 mb-6">
+                            <div className="flex-1 min-w-0">
+                                {showEdit ? (
+                                    <div>
+                                        <Label className="text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-1">
+                                            Name
+                                        </Label>
+                                        <input
+                                            value={form.name}
+                                            onChange={set("name")}
+                                            placeholder="Client name"
+                                            className="w-full text-2xl sm:text-3xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
+                                        />
+                                        {errors.name && (
+                                            <p className="text-xs text-destructive mt-1">
+                                                {errors.name}
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                                        {client?.name ?? "Client"}
+                                    </h1>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
                                 {/* Upload — always accessible */}
                                 {showEdit && (
                                     <>
@@ -402,7 +431,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                            defaultBanner,
+                                                        defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -453,35 +482,9 @@ export default function ClientDetail() {
                                         size="sm"
                                         label="Cancel"
                                         onClick={() => navigate("/clients")}
-                                />
+                                    />
                                 )}
                             </div>
-                        </div>
-
-                        {/* ── Name ── */}
-                        <div className="flex-1 min-w-0">
-                            {showEdit ? (
-                                <div>
-                                    <Label className="text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-1">
-                                        Name
-                                    </Label>
-                                    <input
-                                        value={form.name}
-                                        onChange={set("name")}
-                                        placeholder="Client name"
-                                        className="w-full text-2xl sm:text-3xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
-                                    />
-                                    {errors.name && (
-                                        <p className="text-xs text-destructive mt-1">
-                                            {errors.name}
-                                        </p>
-                                    )}
-                                </div>
-                            ) : (
-                                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-                                    {client?.name ?? "Client"}
-                                </h1>
-                            )}
                         </div>
 
                         {/* ── Description (always in banner) ── */}
@@ -500,7 +503,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none break-all",
                                             errors.description &&
-                                                "border-destructive",
+                                            "border-destructive",
                                         )}
                                     />
                                 </div>
@@ -533,30 +536,30 @@ export default function ClientDetail() {
                                             description="Core details about this client account."
                                         />
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <Field
-                                                label="Location"
-                                                required
-                                                error={errors.location}
-                                                isEdit={showEdit}
-                                            >
-                                                {showEdit ? (
-                                                    <Input
-                                                        placeholder="New York, USA"
+                                            {showEdit ? (
+                                                <div>
+                                                    <FloatingInput
+                                                        label="Location"
+                                                        labelBg="bg-card"
                                                         value={form.location}
-                                                        onChange={set(
-                                                            "location",
-                                                        )}
+                                                        onChange={set("location")}
                                                         className={cn(
-                                                            errors.location &&
-                                                                "border-destructive",
+                                                            errors.location && "border-destructive",
                                                         )}
                                                     />
-                                                ) : (
-                                                    <p className="text-sm text-foreground py-1">
+                                                    {errors.location && (
+                                                        <p className="text-xs text-destructive mt-1">
+                                                            {errors.location}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <Field label="Location" icon={MapPin} required isEdit={showEdit}>
+                                                    <p className="text-base font-semibold text-foreground py-1">
                                                         {client?.location}
                                                     </p>
-                                                )}
-                                            </Field>
+                                                </Field>
+                                            )}
                                         </div>
                                     </section>
 
@@ -569,69 +572,62 @@ export default function ClientDetail() {
                                             description="How to reach this client."
                                         />
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <Field
-                                                label="Email Address"
-                                                required
-                                                error={errors.email}
-                                                isEdit={showEdit}
-                                            >
-                                                {showEdit ? (
-                                                    <Input
+                                            {showEdit ? (
+                                                <div>
+                                                    <FloatingInput
                                                         type="email"
-                                                        placeholder="contact@acme.com"
+                                                        label="Email Address"
+                                                        labelBg="bg-card"
                                                         value={form.email}
                                                         onChange={set("email")}
-                                                        className={cn(
-                                                            errors.email &&
-                                                                "border-destructive",
-                                                        )}
+                                                        className={cn(errors.email && "border-destructive")}
                                                     />
-                                                ) : (
-                                                    <p className="text-sm text-foreground py-1">
+                                                    {errors.email && (
+                                                        <p className="text-xs text-destructive mt-1">
+                                                            {errors.email}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <Field label="Email Address" icon={Mail} required isEdit={showEdit}>
+                                                    <p className="text-base font-semibold text-foreground ">
                                                         {client?.email}
                                                     </p>
-                                                )}
-                                            </Field>
-                                            <Field
-                                                label="Contact Number"
-                                                required
-                                                error={errors.contact_number}
-                                                isEdit={showEdit}
-                                            >
-                                                {showEdit ? (
-                                                    <Input
-                                                        placeholder="e.g. 09123456789"
-                                                        value={
-                                                            form.contact_number
-                                                        }
+                                                </Field>
+                                            )}
+
+                                            {showEdit ? (
+                                                <div>
+                                                    <FloatingInput
+                                                        label="Contact Number"
+                                                        labelBg="bg-card"
+                                                        value={form.contact_number}
                                                         onChange={(e) => {
-                                                            set(
-                                                                "contact_number",
-                                                            )({
+                                                            set("contact_number")({
                                                                 ...e,
                                                                 target: {
                                                                     ...e.target,
-                                                                    value: formatPhoneNumber(
-                                                                        e.target
-                                                                            .value,
-                                                                    ),
+                                                                    value: formatPhoneNumber(e.target.value),
                                                                 },
                                                             });
                                                         }}
                                                         className={cn(
-                                                            errors.contact_number &&
-                                                                "border-destructive",
+                                                            errors.contact_number && "border-destructive",
                                                         )}
                                                     />
-                                                ) : (
-                                                    <p className="text-sm text-foreground py-1">
-                                                        {formatPhoneNumber(
-                                                            client?.contact_number ||
-                                                                "",
-                                                        )}
+                                                    {errors.contact_number && (
+                                                        <p className="text-xs text-destructive mt-1">
+                                                            {errors.contact_number}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <Field label="Contact Number" icon={Phone} required isEdit={showEdit}>
+                                                    <p className="text-base font-semibold text-foreground">
+                                                        {formatPhoneNumber(client?.contact_number || "")}
                                                     </p>
-                                                )}
-                                            </Field>
+                                                </Field>
+                                            )}
                                         </div>
                                     </section>
 
@@ -648,8 +644,8 @@ export default function ClientDetail() {
                                                         isSaving
                                                             ? "Saving…"
                                                             : mode === "create"
-                                                              ? "Create Client"
-                                                              : "Save Changes"
+                                                                ? "Create Client"
+                                                                : "Save Changes"
                                                     }
                                                 />
                                             </div>
@@ -704,7 +700,7 @@ export default function ClientDetail() {
                                                         key={secop.uuid}
                                                         className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"
                                                     >
-                                                                                        <div
+                                                        <div
                                                             className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
                                                             onClick={() =>
                                                                 navigate(
@@ -840,8 +836,8 @@ export default function ClientDetail() {
                                                         ? "All"
                                                         : serverFilter ===
                                                             "online"
-                                                          ? "Online"
-                                                          : "Offline"}
+                                                            ? "Online"
+                                                            : "Offline"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -868,9 +864,9 @@ export default function ClientDetail() {
                                                         onClick={() =>
                                                             setServerFilter(
                                                                 opt.value as
-                                                                    | "all"
-                                                                    | "online"
-                                                                    | "offline",
+                                                                | "all"
+                                                                | "online"
+                                                                | "offline",
                                                             )
                                                         }
                                                         className={cn(
@@ -1113,7 +1109,7 @@ export default function ClientDetail() {
                         </div>
                     </DialogContent>
                 </Dialog>
-            </div>
+            </div >
         </>
     );
 }

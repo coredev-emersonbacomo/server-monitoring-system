@@ -10,7 +10,7 @@ Route::middleware('auth:jwt')->group(function () {
         Route::get('/servers', [ServerController::class, 'index']);
         Route::post('/servers', [ServerController::class, 'store']);
         Route::get('/servers/{serverUuid}', [ServerController::class, 'show']);
-        Route::put('/servers/{serverUuid}', [ServerController::class, 'update']);
+        Route::patch('/servers/{serverUuid}', [ServerController::class, 'update']);
         Route::delete('/servers/{serverUuid}', [ServerController::class, 'destroy']);
     });
 

@@ -5,6 +5,7 @@ namespace App\NodeConfig\Controllers;
 use App\NodeConfig\Data\NodeConfigRequestData;
 use App\NodeConfig\Engine\NodeRegistry;
 use App\NodeConfig\Engine\NodeConfigEngine;
+use App\NodeConfig\Engine\NodeConfigCompiler;
 use App\NodeConfig\Jobs\EvaluateNodeConfig;
 use App\NodeConfig\Models\NodeConfig;
 use App\NodeConfig\Models\NodeConfigState;
@@ -133,5 +134,80 @@ class NodeConfigController extends Controller
     {
         NodeConfigState::where('node_config_id', $id)->delete();
         return response()->json(['message' => 'Node config state reset.']);
+    }
+
+    public function findBySlug(string $slug): JsonResponse
+    {
+        $config = NodeConfig::where('slug', $slug)->first();
+
+        if (!$config) {
+            return response()->json([
+                'nodes' => [],
+                'edges' => [],
+                'name' => '',
+                'slug' => $slug,
+                'enabled' => true,
+            ]);
+        }
+
+        return response()->json($config);
+    }
+
+    public function upsertBySlug(string $slug, Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'config' => ['required', 'array'],
+            'config.nodes' => ['required', 'array'],
+            'config.edges' => ['required', 'array'],
+            'enabled' => ['nullable', 'boolean'],
+        ]);
+
+        $validator = new NodeConfigValidator();
+        if (!$validator->validate($data['config'])) {
+            return response()->json([
+                'message' => 'Invalid node config',
+                'errors' => $validator->getErrors(),
+            ], 422);
+        }
+
+        $compiler = new NodeConfigCompiler();
+        $compiledConfig = $compiler->compile($data['config']);
+
+        $config = NodeConfig::where('slug', $slug)->first();
+
+        if ($config) {
+            $config->update([
+                'name' => $data['name'],
+                'config' => $data['config'],
+                'compiled_config' => $compiledConfig,
+                'enabled' => $data['enabled'] ?? $config->enabled,
+            ]);
+        } else {
+            $config = NodeConfig::create([
+                'slug' => $slug,
+                'name' => $data['name'],
+                'config' => $data['config'],
+                'compiled_config' => $compiledConfig,
+                'enabled' => $data['enabled'] ?? true,
+                'created_by' => Auth::id(),
+            ]);
+        }
+
+        return response()->json($config);
+    }
+
+    public function preview(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'config' => ['required', 'array'],
+            'config.nodes' => ['required', 'array'],
+            'config.edges' => ['required', 'array'],
+        ]);
+
+        $compiler = new NodeConfigCompiler();
+        $compiled = $compiler->compile($data['config']);
+
+        return response()->json($compiled);
     }
 }

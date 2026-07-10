@@ -17,7 +17,7 @@ test('end-to-end agent provisioning, registration, and heartbeat flow', function
     $client = Client::factory()->create();
     $server = Server::create([
         'client_id' => $client->id,
-        'server_name' => 'Web App Production',
+        'name' => 'Web App Production',
         'host_name' => 'webapp-prod',
         'status' => ServerStatus::PendingInstallation->value,
     ]);

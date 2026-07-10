@@ -14,4 +14,8 @@ Route::middleware('auth:jwt')->group(function () {
     Route::post('/node-configs/{id}/toggle', [NodeConfigController::class, 'toggle']);
     Route::post('/node-configs/{id}/test', [NodeConfigController::class, 'test']);
     Route::post('/node-configs/{id}/reset-state', [NodeConfigController::class, 'resetState']);
+
+    Route::get('/node-configs/by-slug/{slug}', [NodeConfigController::class, 'findBySlug']);
+    Route::put('/node-configs/by-slug/{slug}', [NodeConfigController::class, 'upsertBySlug']);
+    Route::post('/node-configs/preview', [NodeConfigController::class, 'preview']);
 });

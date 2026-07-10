@@ -40,7 +40,7 @@ class DashboardController extends Controller
                 $latestUpdates->push((object) [
                     'server_id'   => $server->id,
                     'server_uuid' => $server->uuid,
-                    'server_name' => $server->server_name,
+                    'server_name' => $server->name,
                     'client_name' => $server->client->name,
                     'cpu_usage'   => $server->latestUpdate->cpu_usage,
                     'memory_usage' => $server->latestUpdate->memory_usage,
@@ -307,7 +307,7 @@ class DashboardController extends Controller
 
             $series[] = [
                 'server_uuid' => $server->uuid,
-                'server_name' => $server->server_name,
+                    'server_name' => $server->name,
                 'client_name' => $server->client->name,
                 'points'      => $points,
             ];
@@ -315,7 +315,7 @@ class DashboardController extends Controller
             $latestValue = (float) $server->latestUpdate->{$column};
             $top[] = [
                 'server_uuid' => $server->uuid,
-                'server_name' => $server->server_name,
+                    'server_name' => $server->name,
                 'client_name' => $server->client->name,
                 'value'       => round($latestValue, 1),
             ];

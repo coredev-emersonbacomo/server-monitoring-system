@@ -16,6 +16,7 @@ class NodeConfig extends Model
     {
         return [
             'config' => 'array',
+            'compiled_config' => 'array',
             'enabled' => 'boolean',
         ];
     }

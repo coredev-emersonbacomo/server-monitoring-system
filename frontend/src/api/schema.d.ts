@@ -485,6 +485,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/node-configs/by-slug/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.findBySlug"];
+        put: operations["nodeConfig.upsertBySlug"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/node-configs/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["nodeConfig.preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/servers": {
         parameters: {
             query?: never;
@@ -638,10 +670,7 @@ export interface paths {
         };
         /** Return all settings as a key-value map */
         get: operations["setting.index"];
-        /**
-         * Bulk-update settings for authenticated users.
-         *     Accepts: { "secop_limit_per_client": "3", ... }
-         */
+        /** Bulk-update settings for authenticated users */
         put: operations["setting.update"];
         post?: never;
         delete?: never;
@@ -809,23 +838,22 @@ export interface components {
             total_clients: number;
             total_servers: number;
             online_count: number;
-            warning_count: number;
             offline_count: number;
             top_usage_cpu: {
                 server_uuid: string;
-                server_name: string;
+                name: string;
                 client_name: string;
                 value: number;
             }[];
             top_usage_memory: {
                 server_uuid: string;
-                server_name: string;
+                name: string;
                 client_name: string;
                 value: number;
             }[];
             top_usage_disk: {
                 server_uuid: string;
-                server_name: string;
+                name: string;
                 client_name: string;
                 value: number;
             }[];
@@ -883,7 +911,8 @@ export interface components {
         };
         /** ServerData */
         ServerData: {
-            server_name: string;
+            name: string;
+            description?: string | null;
             uuid: string;
             host_name: string;
             client_uuid: string;
@@ -891,10 +920,10 @@ export interface components {
             created_at: string;
             updated_at: string;
             record_status: string;
+            cpu_model?: string | null;
             cpu_cores?: number | null;
             ram?: string | null;
             disk?: string | null;
-            cpu_model?: string | null;
             operating_system?: string | null;
             status?: string | null;
             stats?: components["schemas"]["StatPointData"][];
@@ -929,7 +958,11 @@ export interface components {
          * UploadPurpose
          * @enum {string}
          */
-        UploadPurpose: "profile_picture" | "client_banner" | "attachment" | "document";
+        UploadPurpose:
+            | "profile_picture"
+            | "client_banner"
+            | "attachment"
+            | "document";
         /** UserData */
         UserData: {
             uuid: string;
@@ -1044,18 +1077,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        conflict: boolean;
-                        token: string;
-                        expires_at: string;
-                        linux_command: string;
-                        windows_command: string;
-                    } | {
-                        conflict: boolean;
-                        expires_at: string;
-                        generated_at: string;
-                        remaining_seconds: number;
-                    };
+                    "application/json":
+                        | {
+                              conflict: boolean;
+                              token: string;
+                              expires_at: string;
+                              linux_command: string;
+                              windows_command: string;
+                          }
+                        | {
+                              conflict: boolean;
+                              expires_at: string;
+                              generated_at: string;
+                              remaining_seconds: number;
+                          };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -1064,18 +1099,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        conflict: boolean;
-                        token: string;
-                        expires_at: string;
-                        linux_command: string;
-                        windows_command: string;
-                    } | {
-                        conflict: boolean;
-                        expires_at: string;
-                        generated_at: string;
-                        remaining_seconds: number;
-                    };
+                    "application/json":
+                        | {
+                              conflict: boolean;
+                              token: string;
+                              expires_at: string;
+                              linux_command: string;
+                              windows_command: string;
+                          }
+                        | {
+                              conflict: boolean;
+                              expires_at: string;
+                              generated_at: string;
+                              remaining_seconds: number;
+                          };
                 };
             };
             422: {
@@ -1106,18 +1143,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        conflict: boolean;
-                        token: string;
-                        expires_at: string;
-                        linux_command: string;
-                        windows_command: string;
-                    } | {
-                        conflict: boolean;
-                        expires_at: string;
-                        generated_at: string;
-                        remaining_seconds: number;
-                    };
+                    "application/json":
+                        | {
+                              conflict: boolean;
+                              token: string;
+                              expires_at: string;
+                              linux_command: string;
+                              windows_command: string;
+                          }
+                        | {
+                              conflict: boolean;
+                              expires_at: string;
+                              generated_at: string;
+                              remaining_seconds: number;
+                          };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -1329,7 +1368,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    server_name: string;
+                    name: string;
+                    description?: string | null;
                 };
             };
         };
@@ -1360,7 +1400,11 @@ export interface operations {
     };
     "client.index": {
         parameters: {
-            query?: never;
+            query?: {
+                user_uuid?: string | null;
+                exclude_user_uuid?: string | null;
+                available_only?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1387,7 +1431,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
+                "multipart/form-data": {
                     name: string;
                     location: string;
                     /** @description Must be unique in `clients`. */
@@ -1563,9 +1607,7 @@ export interface operations {
                     "application/json": {
                         message: string;
                         errors: {
-                            user_uuid: [
-                                string
-                            ];
+                            user_uuid: [string];
                         };
                     };
                 };
@@ -1644,32 +1686,34 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        unit: string;
-                        metric: string;
-                        series: {
-                            server_uuid: string;
-                            server_name: string;
-                            client_name: string;
-                            points: {
-                                timestamp: string;
-                                value: string | null;
-                            }[];
-                        }[];
-                        top: {
-                            server_uuid: string;
-                            server_name: string;
-                            client_name: string;
-                            value: number;
-                        }[];
-                        nextCursor: null;
-                    } | {
-                        unit: string;
-                        metric: string;
-                        series: string[];
-                        top: string[];
-                        nextCursor: null;
-                    };
+                    "application/json":
+                        | {
+                              unit: string;
+                              metric: string;
+                              series: {
+                                  server_uuid: string;
+                                  server_name: string;
+                                  client_name: string;
+                                  points: {
+                                      timestamp: string;
+                                      value: string | null;
+                                  }[];
+                              }[];
+                              top: {
+                                  server_uuid: string;
+                                  server_name: string;
+                                  client_name: string;
+                                  value: number;
+                              }[];
+                              nextCursor: null;
+                          }
+                        | {
+                              unit: string;
+                              metric: string;
+                              series: string[];
+                              top: string[];
+                              nextCursor: null;
+                          };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2148,25 +2192,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        success: boolean;
-                        outputs: string;
-                        timers: {
-                            node_config_id: number;
-                            node_id: string;
-                            delay_ms: number;
-                            context: unknown[];
-                        }[];
-                        actions: {
-                            node_id: string;
-                            type: string;
-                            settings: string | string[];
-                            value: Record<string, never> | null;
-                        }[];
-                    } | {
-                        success: boolean;
-                        errors: unknown[];
-                    };
+                    "application/json":
+                        | {
+                              success: boolean;
+                              outputs: string;
+                              timers: {
+                                  node_config_id: number;
+                                  node_id: string;
+                                  delay_ms: number;
+                                  context: unknown[];
+                              }[];
+                              actions: {
+                                  node_id: string;
+                                  type: string;
+                                  settings: string | string[];
+                                  value: Record<string, never> | null;
+                              }[];
+                          }
+                        | {
+                              success: boolean;
+                              errors: unknown[];
+                          };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2196,6 +2242,122 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.findBySlug": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json":
+                        | (components["schemas"]["NodeConfig"] | null)
+                        | {
+                              nodes: string[];
+                              edges: string[];
+                              name: string;
+                              slug: string;
+                              enabled: boolean;
+                          };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.upsertBySlug": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    enabled?: boolean | null;
+                    config: {
+                        nodes: string[];
+                        edges: string[];
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeConfig"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "nodeConfig.preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    config: {
+                        nodes: string[];
+                        edges: string[];
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json":
+                        | {
+                              rules: ({
+                                  metrics: unknown[];
+                                  conditions: {
+                                      operator: string | "greater_than";
+                                      threshold: string | null;
+                                      min: string | null;
+                                      max: string;
+                                  }[];
+                                  logic: string | "and";
+                                  timing: {
+                                      type: string;
+                                      duration_seconds: number;
+                                      interval_seconds: number;
+                                      max_repeats: number | null;
+                                  };
+                                  actions: [unknown[]];
+                              } | null)[];
+                          }
+                        | {
+                              rules: string[];
+                          };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "server.listAll": {
@@ -2258,8 +2420,9 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
-                    server_name?: string | null;
+                    name?: string | null;
                     host_name?: string | null;
+                    description?: string | null;
                 };
             };
         };
@@ -2436,13 +2599,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Session must be revoked before permanent deletion.";
-                    } | {
-                        /** @constant */
-                        message: "Cannot delete current session.";
-                    };
+                    "application/json":
+                        | {
+                              /** @constant */
+                              message: "Session must be revoked before permanent deletion.";
+                          }
+                        | {
+                              /** @constant */
+                              message: "Cannot delete current session.";
+                          };
                 };
             };
         };
@@ -2537,6 +2702,17 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Forbidden.";
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Heartbeat interval must be greater than or equal to the offline threshold.";
                     };
                 };
             };
@@ -2850,9 +3026,7 @@ export interface operations {
                     "application/json": {
                         message: string;
                         errors: {
-                            client_uuid: [
-                                string
-                            ];
+                            client_uuid: [string];
                         };
                     };
                 };

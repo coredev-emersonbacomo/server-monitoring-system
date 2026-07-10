@@ -16,6 +16,8 @@ import {
     Copy,
     Check,
     RefreshCw,
+    Pencil,
+    X
 } from "lucide-react";
 import { Tab } from "@/components/ui/tab";
 import { ServerStatChart } from "./ServerStatChart";
@@ -30,6 +32,8 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import type { components } from "@/api/schema.d";
 import { useDeleteServer } from "@/hooks/useDeleteServer";
 import api from "@/api/api";
 import { useQueryClient } from "@tanstack/react-query";
@@ -133,6 +137,12 @@ export const ServerCard = memo(function ServerCard({
     const [confirmText, setConfirmText] = useState("");
     const deleteServer = useDeleteServer();
 
+    const [isEditingInfo, setIsEditingInfo] = useState(false);
+    const [editName, setEditName] = useState(server.server_name);
+    const [editDescription, setEditDescription] = useState(
+        server.description ?? "",
+    );
+    const [savingInfo, setSavingInfo] = useState(false);
     const [provisionDetails, setProvisionDetails] = useState<{
         linux_command: string;
         windows_command: string;
@@ -257,6 +267,57 @@ export const ServerCard = memo(function ServerCard({
         setConfirmText("");
     };
 
+    const startEditInfo = () => {
+        setEditName(server.server_name);
+        setEditDescription(server.description ?? "");
+        setIsEditingInfo(true);
+    };
+
+    const cancelEditInfo = () => {
+        setIsEditingInfo(false);
+    };
+
+    const saveInfo = async () => {
+        if (!editName.trim()) {
+            toast.error("Server name is required.");
+            return;
+        }
+        if (!server.client_uuid) {
+            toast.error("Missing client reference for this server.");
+            return;
+        }
+        setSavingInfo(true);
+        try {
+            const { error } = await api.PATCH(
+                "/v1/clients/{clientUuid}/servers/{serverUuid}",
+                {
+                    params: {
+                        path: {
+                            clientUuid: server.client_uuid,
+                            serverUuid: server.uuid,
+                        },
+                    },
+                    body: {
+                        server_name: editName.trim(),
+                        description: editDescription.trim() || undefined,
+                    },
+                },
+            );
+            if (error) {
+                toast.error("Failed to update server info.");
+            } else {
+                toast.success("Server info updated.");
+                setIsEditingInfo(false);
+                queryClient.invalidateQueries({
+                    queryKey: ["server", server.uuid],
+                });
+            }
+        } catch {
+            toast.error("An error occurred.");
+        } finally {
+            setSavingInfo(false);
+        }
+    };
     const isInstalled =
         status === "online" || status === "warning" || status === "offline";
 
@@ -411,21 +472,86 @@ export const ServerCard = memo(function ServerCard({
             {/* Tabs: Info / Metrics / Alerts */}
             <Tab syncUrl={false}>
                 <Tab.Item icon={Info} title="Info">
-                    <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
+                    <div className="flex flex-col gap-1 p-4 pb-0 bg-card border border-t-0 border-b-0 border-border/60">
+                        {isEditingInfo ? (
+                            <div className="flex flex-col gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                        Server name
+                                    </label>
+                                    <Input
+                                        value={editName}
+                                        onChange={(e) => setEditName(e.target.value)}
+                                        className="text-sm"
+                                        autoFocus
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                        Description
+                                    </label>
+                                    <textarea
+                                        value={editDescription}
+                                        onChange={(e) =>
+                                            setEditDescription(e.target.value)
+                                        }
+                                        rows={2}
+                                        maxLength={255}
+                                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        size="sm"
+                                        label={savingInfo ? "Saving…" : "Save"}
+                                        onClick={saveInfo}
+                                        disabled={savingInfo}
+                                    />
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        icon={<X size={13} />}
+                                        label="Cancel"
+                                        onClick={cancelEditInfo}
+                                        disabled={savingInfo}
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <h3 className="text-2xl font-semibold text-foreground">
+                                        {server.server_name}
+                                    </h3>
+                                    {server.description && (
+                                        <p className="text-sm text-muted-foreground">
+                                            {server.description}
+                                        </p>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={startEditInfo}
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border bg-transparent hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0 cursor-pointer"
+                                    title="Edit name and description"
+                                >
+                                    <Pencil size={13} />
+                                    Edit
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
                         {[
                             {
-                                icon: Server,
-                                label: "Name",
-                                value: server.server_name,
+                                icon: Cpu,
+                                label: "CPU Model",
+                                value: server.cpu_model ?? "Unknown",
+                                span: true,
                             },
                             {
                                 icon: Cpu,
-                                label: "CPU",
-                                value: server.cpu_model
-                                    ? `${server.cpu_model} · ${server.cpu_cores ?? "?"} cores`
-                                    : server.cpu_cores
-                                        ? `${server.cpu_cores} cores`
-                                        : "Waiting for Agent",
+                                label: "CPU Cores",
+                                value: `${server.cpu_cores ?? "?"} cores`,
                             },
                             {
                                 icon: MemoryStick,
@@ -448,10 +574,13 @@ export const ServerCard = memo(function ServerCard({
                                     server.operating_system ??
                                     "Waiting for Agent",
                             },
-                        ].map(({ icon: ItemIcon, label, value }) => (
+                        ].map(({ icon: ItemIcon, label, value, span }) => (
                             <div
                                 key={label}
-                                className="group flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all"
+                                className={cn(
+                                    "group flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all",
+                                    span && "sm:col-span-2",
+                                )}
                             >
                                 <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
                                     <ItemIcon size={17} />
