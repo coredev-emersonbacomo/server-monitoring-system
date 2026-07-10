@@ -10,6 +10,8 @@ class ServerData extends Data
     public function __construct(
         public string $server_name,
 
+        public string $description,
+
         public string $uuid,
 
         public string $host_name,
@@ -61,6 +63,7 @@ class ServerData extends Data
 
         return new self(
             uuid: $server->uuid,
+            description: $server->description,
             client_uuid: $server->client->uuid,
             client_name: $server->client->name,
             server_name: $server->server_name,
