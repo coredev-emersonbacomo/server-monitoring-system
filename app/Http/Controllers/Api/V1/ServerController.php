@@ -31,8 +31,8 @@ class ServerController extends Controller
         try {
             $server = Server::create([
                 'client_id'    => $clientId,
-                'server_name'  => $data->server_name,
-                'host_name'  => $data->host_name ?? $data->server_name,
+                'name'         => $data->name,
+                'host_name'    => $data->host_name ?? $data->name,
                 'api_key'      => ApiGenerator::GenerateApiKey(),
             ]);
 
@@ -96,7 +96,7 @@ class ServerController extends Controller
         return ServerData::collect($servers->map(function (Server $server) {
             return ServerData::from([
                 'uuid'             => $server->uuid,
-                'server_name'      => $server->server_name,
+                'name'             => $server->name,
                 'host_name'        => $server->host_name,
                 'client_uuid'      => $server->client->uuid,
                 'client_name'      => $server->client->name,
@@ -149,7 +149,7 @@ class ServerController extends Controller
 
         return ServerData::from([
             'uuid'                   => $server->uuid,
-            'server_name'            => $server->server_name,
+            'name'                  => $server->name,
             'host_name'              => $server->host_name,
             'created_at'             => $server->created_at->toIso8601String(),
             'updated_at'             => $server->updated_at->toIso8601String(),

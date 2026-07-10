@@ -62,7 +62,6 @@ export const TimeNode = memo(({ id, data, type }: NodeProps) => {
                             onChange={(e) => handleIntervalChange(e.target.value)}
                             onClick={(e) => e.stopPropagation()}
                             className="flex-1 text-xs font-mono text-foreground bg-emerald-500/5 border border-emerald-400/20 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-400/50"
-                            placeholder="MM:DD:HH:MM:SS"
                         />
                     </div>
                     <div className="flex items-center gap-2 ml-5">
@@ -73,7 +72,6 @@ export const TimeNode = memo(({ id, data, type }: NodeProps) => {
                             onChange={(e) => handleMaxRepeatsChange(e.target.value)}
                             onClick={(e) => e.stopPropagation()}
                             className="flex-1 text-xs font-mono text-foreground bg-emerald-500/5 border border-emerald-400/20 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-400/50"
-                            placeholder="0 = inf"
                         />
                     </div>
                 </div>
@@ -86,7 +84,6 @@ export const TimeNode = memo(({ id, data, type }: NodeProps) => {
                         onChange={(e) => handleDurationChange(e.target.value)}
                         onClick={(e) => e.stopPropagation()}
                         className="flex-1 text-xs font-mono text-foreground bg-emerald-500/5 border border-emerald-400/20 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-400/50"
-                        placeholder="MM:DD:HH:MM:SS"
                     />
                 </div>
             )}

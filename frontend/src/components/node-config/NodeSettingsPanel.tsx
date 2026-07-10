@@ -37,7 +37,7 @@ export function NodeSettingsPanel({ node, nodeTypeDef, onUpdate, onDelete, onClo
         const channelSettings: Record<string, string[]> = {
             email: ['channel', 'subject', 'message'],
             sms: ['channel', 'message'],
-            discord: ['channel', 'webhook_url', 'message'],
+            discord: ['channel', 'bot_token', 'channel_id', 'role_id', 'message'],
         };
         const allowed = channelSettings[channelKey] || channelSettings.email;
         return all.filter((s) => allowed.includes(s.key));

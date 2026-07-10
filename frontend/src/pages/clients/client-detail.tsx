@@ -328,7 +328,7 @@ export default function ClientDetail() {
     const isSaving = createClient.isPending || updateClient.isPending;
     const bannerInputId = "banner-upload";
     const filteredServers = servers.filter((s) => {
-        const matchSearch = s.server_name
+        const matchSearch = s.name
             .toLowerCase()
             .includes(serverSearch.toLowerCase());
         return matchSearch;

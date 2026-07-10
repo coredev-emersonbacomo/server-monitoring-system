@@ -33,21 +33,25 @@ import { NodeSettingsPanel } from "./NodeSettingsPanel";
 import { NodeConfigToolbar } from "./NodeConfigToolbar";
 import { getInputType, getOutputType } from "./nodes/socketTypes";
 import type {
-    NodeConfig,
     NodeConfigGraph,
     NodeTypeDefinition,
 } from "@/types/node-config";
 import {
     useNodeTypes,
-    useUpdateConfig,
-    useCreateConfig,
-    useTestConfig,
-    useResetConfigState,
+    useConfigByKey,
+    useUpsertConfigByKey,
+    usePreviewConfig,
 } from "@/hooks/node-config/useNodeConfigs";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useOutletFullScreen } from "@/hooks/useOutletLayout";
 import { useTheme } from "@/hooks/useTheme";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 let nodeIdCounter = 0;
 const generateId = () => `node_${++nodeIdCounter}_${Date.now()}`;
@@ -58,7 +62,7 @@ function convertToFlowNodes(
     config: NodeConfigGraph,
     definitions: NodeTypeDefinition[],
 ): Node[] {
-    return (config.nodes || []).map((n) => ({
+    return (config?.nodes || []).map((n) => ({
         id: n.id,
         type: n.type,
         position: n.position,
@@ -73,7 +77,7 @@ function convertToFlowNodes(
 }
 
 function convertToFlowEdges(config: NodeConfigGraph): Edge[] {
-    return (config.edges || []).map((e) => ({
+    return (config?.edges || []).map((e) => ({
         id: e.id,
         source: e.source,
         target: e.target,
@@ -81,6 +85,7 @@ function convertToFlowEdges(config: NodeConfigGraph): Edge[] {
         targetHandle: e.targetHandle,
         type: "smoothstep",
         animated: true,
+        style: { stroke: "hsl(var(--muted-foreground) / 0.35)", strokeWidth: 1.5 },
     }));
 }
 
@@ -103,33 +108,38 @@ function convertFromFlow(nodes: Node[], edges: Edge[]): NodeConfigGraph {
 }
 
 interface NodeConfigEditorProps {
-    config?: NodeConfig;
-    onSaveComplete?: () => void;
+    configKey: string;
+    defaultName?: string;
 }
 
 export function NodeConfigEditor({
-    config,
-    onSaveComplete,
+    configKey,
+    defaultName = "Untitled Config",
 }: NodeConfigEditorProps) {
     const { data: definitions = [], isLoading: defsLoading } = useNodeTypes();
-    const updateMutation = useUpdateConfig();
-    const createMutation = useCreateConfig();
-    const testMutation = useTestConfig();
-    const resetMutation = useResetConfigState();
+    const { data: savedConfig, isLoading: configLoading } =
+        useConfigByKey(configKey);
+    const upsertMutation = useUpsertConfigByKey();
+    const previewMutation = usePreviewConfig();
     useOutletFullScreen(true);
     const { theme } = useTheme();
 
-    const [name, setName] = useState(config?.name || "Untitled Config");
-    const [enabled, setEnabled] = useState(config?.enabled ?? true);
+    const [name, setName] = useState(defaultName);
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+    const [hydrated, setHydrated] = useState(false);
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [compiledPreview, setCompiledPreview] = useState<unknown>(null);
 
     const initialNodes = useMemo(
-        () => (config ? convertToFlowNodes(config.config, definitions) : []),
-        [config, definitions],
+        () =>
+            savedConfig
+                ? convertToFlowNodes(savedConfig.config, definitions)
+                : [],
+        [savedConfig, definitions],
     );
     const initialEdges = useMemo(
-        () => (config ? convertToFlowEdges(config.config) : []),
-        [config],
+        () => (savedConfig ? convertToFlowEdges(savedConfig.config) : []),
+        [savedConfig],
     );
 
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -137,13 +147,20 @@ export function NodeConfigEditor({
     const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
 
     useEffect(() => {
-        if (config) {
-            setName(config.name);
-            setEnabled(config.enabled);
-            setNodes(convertToFlowNodes(config.config, definitions));
-            setEdges(convertToFlowEdges(config.config));
+        if (savedConfig && !hydrated) {
+            setName(savedConfig.name || defaultName);
+            setNodes(convertToFlowNodes(savedConfig.config, definitions));
+            setEdges(convertToFlowEdges(savedConfig.config));
+            setHydrated(true);
         }
-    }, [config, definitions, setNodes, setEdges]);
+    }, [
+        savedConfig,
+        definitions,
+        hydrated,
+        defaultName,
+        setNodes,
+        setEdges,
+    ]);
 
     const onConnect: OnConnect = useCallback(
         (connection: Connection) => {
@@ -159,6 +176,7 @@ export function NodeConfigEditor({
                         id: edgeIdCounter(),
                         type: "smoothstep",
                         animated: true,
+                        style: { stroke: "hsl(var(--muted-foreground) / 0.35)", strokeWidth: 1.5 },
                     },
                     eds,
                 ),
@@ -173,11 +191,17 @@ export function NodeConfigEditor({
             const target = edgeOrConnection.target;
             const sourceHandle = edgeOrConnection.sourceHandle;
             const targetHandle = edgeOrConnection.targetHandle;
-            if (!source || !target || !sourceHandle || !targetHandle) return false;
-            const sourceDef = getOutputType(nodes.find(n => n.id === source)?.type || '');
-            const targetDef = getInputType(nodes.find(n => n.id === target)?.type || '', targetHandle);
+            if (!source || !target || !sourceHandle || !targetHandle)
+                return false;
+            const sourceDef = getOutputType(
+                nodes.find((n) => n.id === source)?.type || "",
+            );
+            const targetDef = getInputType(
+                nodes.find((n) => n.id === target)?.type || "",
+                targetHandle,
+            );
             if (!sourceDef || !targetDef) return false;
-            if (targetDef.type === 'any') return true;
+            if (targetDef.type === "any") return true;
             return sourceDef.type === targetDef.type;
         },
         [nodes],
@@ -214,7 +238,9 @@ export function NodeConfigEditor({
         (nodeId: string) => {
             setNodes((nds) => nds.filter((n) => n.id !== nodeId));
             setEdges((eds) =>
-                eds.filter((e) => e.source !== nodeId && e.target !== nodeId),
+                eds.filter(
+                    (e) => e.source !== nodeId && e.target !== nodeId,
+                ),
             );
             setSelectedNode((prev) => (prev?.id === nodeId ? null : prev));
         },
@@ -224,13 +250,15 @@ export function NodeConfigEditor({
     const onDrop = useCallback(
         (event: DragEvent<HTMLDivElement>) => {
             event.preventDefault();
-            const type = event.dataTransfer.getData("application/reactflow");
+            const type =
+                event.dataTransfer.getData("application/reactflow");
             if (!type || !reactFlowInstance.current) return;
 
-            const position = reactFlowInstance.current.screenToFlowPosition({
-                x: event.clientX,
-                y: event.clientY,
-            });
+            const position =
+                reactFlowInstance.current.screenToFlowPosition({
+                    x: event.clientX,
+                    y: event.clientY,
+                });
 
             const defaults = getNodeDefaults(type, definitions);
             const newNode: Node = {
@@ -269,107 +297,38 @@ export function NodeConfigEditor({
 
     const selectedNodeDef = useMemo(() => {
         if (!selectedNode) return null;
-        return definitions.find((d) => d.type === selectedNode.type) || null;
+        return (
+            definitions.find((d) => d.type === selectedNode.type) || null
+        );
     }, [selectedNode, definitions]);
 
     const handleSave = useCallback(async () => {
         const graph = convertFromFlow(nodes, edges);
         try {
-            if (config?.id) {
-                await updateMutation.mutateAsync({
-                    id: config.id,
-                    data: { name, config: graph, enabled },
-                });
-            } else {
-                await createMutation.mutateAsync({
-                    name,
-                    config: graph,
-                    enabled,
-                });
-            }
+            await upsertMutation.mutateAsync({
+                slug: configKey,
+                data: { name, config: graph },
+            });
             toast.success("Config saved");
-            onSaveComplete?.();
         } catch {
             toast.error("Failed to save config");
         }
-    }, [
-        nodes,
-        edges,
-        name,
-        enabled,
-        config,
-        updateMutation,
-        createMutation,
-        onSaveComplete,
-    ]);
+    }, [nodes, edges, name, configKey, upsertMutation]);
 
-    const handleToggle = useCallback(async () => {
-        if (!config?.id) return;
+    const handlePreview = useCallback(async () => {
+        const graph = convertFromFlow(nodes, edges);
         try {
-            const result = await updateMutation.mutateAsync({
-                id: config.id,
-                data: {
-                    name,
-                    config: convertFromFlow(nodes, edges),
-                    enabled: !enabled,
-                },
+            const result = await previewMutation.mutateAsync({
+                config: graph,
             });
-            setEnabled(result.enabled);
-            toast.success(
-                result.enabled ? "Config enabled" : "Config disabled",
-            );
+            setCompiledPreview(result);
+            setPreviewOpen(true);
         } catch {
-            toast.error("Failed to toggle config");
+            toast.error("Failed to compile config");
         }
-    }, [config, updateMutation, name, nodes, edges, enabled]);
+    }, [nodes, edges, previewMutation]);
 
-    const handleTest = useCallback(async () => {
-        if (!config?.id) return;
-        const sourceNodes = nodes.filter((n) => {
-            const def = definitions.find((d) => d.type === n.type);
-            return def?.category === "metric";
-        });
-        if (sourceNodes.length === 0) {
-            toast.error("No source nodes to test from");
-            return;
-        }
-        const sourceNode = sourceNodes[0];
-        try {
-            const result = await testMutation.mutateAsync({
-                id: config.id,
-                sourceNodeId: sourceNode.id,
-                value: 90,
-                extraState: {},
-            });
-            const data = result as {
-                success: boolean;
-                outputs?: Record<string, unknown>;
-                actions?: Array<unknown>;
-            };
-            const actionCount = data.actions?.length || 0;
-            if (data.success) {
-                toast.success(
-                    `Test passed. ${actionCount} action(s) would fire.`,
-                );
-            } else {
-                toast.error("Test completed with issues");
-            }
-        } catch {
-            toast.error("Test execution failed");
-        }
-    }, [config, nodes, definitions, testMutation]);
-
-    const handleReset = useCallback(async () => {
-        if (!config?.id) return;
-        try {
-            await resetMutation.mutateAsync(config.id);
-            toast.success("Node state reset");
-        } catch {
-            toast.error("Failed to reset state");
-        }
-    }, [config, resetMutation]);
-
-    if (defsLoading) {
+    if (defsLoading || configLoading) {
         return (
             <div className="flex-1 flex items-center justify-center">
                 <Loader2
@@ -384,13 +343,10 @@ export function NodeConfigEditor({
         <div className="flex-1 flex flex-col min-h-0">
             <NodeConfigToolbar
                 name={name}
-                enabled={enabled}
-                isSaving={updateMutation.isPending || createMutation.isPending}
+                isSaving={upsertMutation.isPending}
                 onNameChange={setName}
                 onSave={handleSave}
-                onToggle={handleToggle}
-                onTest={handleTest}
-                onReset={handleReset}
+                onPreview={handlePreview}
             />
             <div className="flex flex-1 min-h-0">
                 <NodePalette
@@ -453,6 +409,21 @@ export function NodeConfigEditor({
                     onClose={() => setSelectedNode(null)}
                 />
             </div>
+
+            <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+                <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle>Compiled Config</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-auto">
+                        <pre className="text-xs font-mono text-foreground bg-background border border-border/40 rounded-lg p-4 whitespace-pre-wrap">
+                            {compiledPreview
+                                ? JSON.stringify(compiledPreview, null, 2)
+                                : "No preview available"}
+                        </pre>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

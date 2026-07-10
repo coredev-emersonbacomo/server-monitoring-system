@@ -48,7 +48,7 @@ export default function ServersIndex() {
 
     const sortOptions = [
         { label: "Created At", value: "created_at" },
-        { label: "Server Name", value: "server_name" },
+        { label: "Server Name", value: "name" },
         { label: "Record Status", value: "record_status" },
     ];
     const currentSortLabel =
@@ -67,8 +67,8 @@ export default function ServersIndex() {
         return result.sort((a, b) => {
             const cmp = (() => {
                 switch (sortField) {
-                    case "server_name":
-                        return a.server_name.localeCompare(b.server_name);
+                    case "name":
+                        return a.name.localeCompare(b.name);
                     case "record_status":
                         return a.record_status.localeCompare(b.record_status);
                     default:
@@ -192,7 +192,7 @@ export default function ServersIndex() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-foreground truncate">
-                                            {server.server_name}
+                                            {server.name}
                                         </p>
                                         <p className="text-xs text-muted-foreground truncate">
                                             {server.client_name}

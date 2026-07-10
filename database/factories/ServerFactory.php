@@ -17,7 +17,7 @@ class ServerFactory extends Factory
         return [
             //'user_id' => fn () => User::inRandomOrder()->first()?->id ?? User::factory(),
             'client_id' => Client::inRandomOrder()->first()?->id ?? Client::factory(),
-            'server_name' => fake()->domainWord() . '-prod',
+            'name' => fake()->domainWord() . '-prod',
             'host_name' => fake()->word() . '-blade-' . fake()->randomDigitNotNull(),
             'operating_system' => fake()->randomElement(['Ubuntu 22.04 LTS', 'Windows Server 2022', 'Debian 12']),
             // Network details

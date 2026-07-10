@@ -96,6 +96,40 @@ async function fetchNodeTypes(): Promise<NodeTypeDefinition[]> {
     return res.data as unknown as NodeTypeDefinition[];
 }
 
+async function fetchConfigBySlug(slug: string): Promise<NodeConfig> {
+    const res = await api.GET("/v1/node-configs/by-slug/{slug}", {
+        params: { path: { slug } },
+    });
+    if (res.error) throw new Error("Failed to fetch node config");
+    return res.data as unknown as NodeConfig;
+}
+
+async function upsertConfigBySlug(
+    slug: string,
+    data: {
+        name: string;
+        config: NodeConfigGraph;
+        enabled?: boolean;
+    },
+): Promise<NodeConfig> {
+    const res = await api.PUT("/v1/node-configs/by-slug/{slug}", {
+        params: { path: { slug } },
+        body: data as never,
+    });
+    if (res.error) throw new Error("Failed to save node config");
+    return res.data as unknown as NodeConfig;
+}
+
+async function previewConfig(
+    config: NodeConfigGraph,
+): Promise<unknown> {
+    const res = await api.POST("/v1/node-configs/preview", {
+        body: { config } as never,
+    });
+    if (res.error) throw new Error("Failed to compile config");
+    return res.data;
+}
+
 export function useConfigs() {
     return useQuery({
         queryKey: ["node-configs"],
@@ -192,5 +226,42 @@ export function useResetConfigState() {
         mutationFn: resetConfigState,
         onSuccess: () =>
             queryClient.invalidateQueries({ queryKey: ["node-config"] }),
+    });
+}
+
+export function useConfigByKey(slug: string | null) {
+    return useQuery({
+        queryKey: ["node-config-by-slug", slug],
+        queryFn: () => fetchConfigBySlug(slug!),
+        enabled: slug !== null,
+    });
+}
+
+export function useUpsertConfigByKey() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({
+            slug,
+            data,
+        }: {
+            slug: string;
+            data: {
+                name: string;
+                config: NodeConfigGraph;
+                enabled?: boolean;
+            };
+        }) => upsertConfigBySlug(slug, data),
+        onSuccess: (_result, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["node-config-by-slug", variables.slug],
+            });
+        },
+    });
+}
+
+export function usePreviewConfig() {
+    return useMutation({
+        mutationFn: ({ config }: { config: NodeConfigGraph }) =>
+            previewConfig(config),
     });
 }

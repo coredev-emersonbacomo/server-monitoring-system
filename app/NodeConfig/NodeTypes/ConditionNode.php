@@ -11,15 +11,15 @@ class ConditionNode extends BaseNode
     public function getSettingDefinitions(): array
     {
         return [
-            ['key' => 'operator', 'label' => 'Operator', 'type' => 'select', 'required' => true, 'options' => [
+            ['key' => 'operator', 'label' => 'Operator', 'type' => 'select', 'required' => true, 'default' => 'greater_than', 'options' => [
                 'greater_than' => 'Greater Than (> )',
                 'less_than' => 'Less Than (< )',
                 'equal' => 'Equal (=)',
                 'between' => 'Between',
             ]],
-            ['key' => 'threshold', 'label' => 'Threshold', 'type' => 'number', 'required' => true],
-            ['key' => 'min', 'label' => 'Min', 'type' => 'number', 'required' => true],
-            ['key' => 'max', 'label' => 'Max', 'type' => 'number', 'required' => true],
+            ['key' => 'threshold', 'label' => 'Threshold', 'type' => 'number', 'required' => true, 'default' => 0],
+            ['key' => 'min', 'label' => 'Min', 'type' => 'number', 'required' => true, 'default' => 0],
+            ['key' => 'max', 'label' => 'Max', 'type' => 'number', 'required' => true, 'default' => 0],
         ];
     }
 
