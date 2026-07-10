@@ -172,7 +172,7 @@ export default function ServersIndex() {
                 ) : (
                     <div className="space-y-2">
                         {filtered.map((server) => {
-                            const meta = STATUS_META[server.status];
+                            const meta = STATUS_META[server.status ?? "offline"] ?? STATUS_META.offline;
                             const Icon = meta.icon;
                             return (
                                 <Link
