@@ -11,7 +11,7 @@ class MetricNode extends BaseNode
     public function getSettingDefinitions(): array
     {
         return [
-            ['key' => 'metric_type', 'label' => 'Metric', 'type' => 'select', 'required' => true, 'options' => [
+            ['key' => 'metric_type', 'label' => 'Metric', 'type' => 'select', 'required' => true, 'default' => 'cpu_usage', 'options' => [
                 'cpu_usage' => 'CPU Usage',
                 'memory_usage' => 'Memory Usage',
                 'disk_usage' => 'Disk Usage',

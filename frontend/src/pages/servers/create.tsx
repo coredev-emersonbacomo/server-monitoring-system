@@ -9,11 +9,11 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FloatingInput } from "@/components/ui/floatingInput";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import api from "@/api/api";
-
 function Field({
     label,
     required,
@@ -21,7 +21,7 @@ function Field({
     hint,
     children,
 }: {
-    label: string;
+    label?: string;
     required?: boolean;
     error?: string;
     hint?: string;
@@ -29,10 +29,14 @@ function Field({
 }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground/80">
-                {label}
-                {required && <span className="text-destructive ml-0.5">*</span>}
-            </Label>
+            {label && (
+                <Label className="text-xs font-medium text-foreground/80">
+                    {label}
+                    {required && (
+                        <span className="text-destructive ml-0.5">*</span>
+                    )}
+                </Label>
+            )}
             {children}
             {hint && !error && (
                 <p className="text-[11px] text-muted-foreground">{hint}</p>
@@ -49,6 +53,8 @@ export default function CreateServer() {
     const { setTrail } = useBreadcrumb();
 
     const [serverName, setServerName] = useState("");
+    const [serverDescription, setServerDescription] = useState("");
+    const [descFocused, setDescFocused] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -78,7 +84,8 @@ export default function CreateServer() {
             {
                 params: { path: { clientUuid } },
                 body: {
-                    server_name: serverName.trim(),
+                    name: serverName.trim(),
+                    description: serverDescription.trim() || "",
                 },
             },
         );
@@ -146,14 +153,10 @@ export default function CreateServer() {
                                 </span>
                             </div>
 
-                            <Field
-                                label="Server name"
-                                required
-                                error={error}
-                                hint="e.g. prod-web-01"
-                            >
-                                <Input
-                                    placeholder="prod-web-01"
+                            <div>
+                                <FloatingInput
+                                    label="Server name"
+                                    labelBg="bg-card"
                                     value={serverName}
                                     onChange={(e) => {
                                         setServerName(e.target.value);
@@ -162,6 +165,27 @@ export default function CreateServer() {
                                     className={cn(
                                         error && "border-destructive",
                                     )}
+                                />
+                                {error && (
+                                    <p className="text-[11px] text-destructive mt-1.5">
+                                        {error}
+                                    </p>
+                                )}
+                            </div>
+
+                            <Field
+                                label="Description"
+                                hint="Optional notes about this server's role or purpose."
+                            >
+                                <textarea
+                                    placeholder="e.g. Primary production web server"
+                                    value={serverDescription}
+                                    onChange={(e) =>
+                                        setServerDescription(e.target.value)
+                                    }
+                                    rows={3}
+                                    maxLength={255}
+                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                                 />
                             </Field>
                         </div>

@@ -56,11 +56,11 @@ class SyncActionItems extends Command
                 $issues[] = [
                     'action_type' => 'server_offline',
                     'severity' => 'critical',
-                    'message' => "{$server->server_name} is offline",
+                    'message' => "{$server->name} is offline",
                     'server_id' => $server->id,
                     'client_id' => $server->client_id,
                     'client_name' => $server->client->name,
-                    'server_name' => $server->server_name,
+                    'server_name' => $server->name,
                 ];
             }
         }

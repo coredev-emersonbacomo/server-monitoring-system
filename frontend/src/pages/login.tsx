@@ -1,6 +1,8 @@
 import { useState, type SubmitEvent } from "react";
 import { Loader2, Server, Eye, EyeOff } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
+import { FloatingInput } from "@/components/ui/floatingInput";
+import { cn } from "@/lib/utils";
 
 export default function Login() {
     const { login, isLoggingIn } = useJwtAuth();
@@ -63,49 +65,39 @@ export default function Login() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label
-                            htmlFor="email"
-                            className="block text-sm font-medium text-foreground mb-1.5"
-                        >
-                            Email or Username
-                        </label>
-                        <input
+                        <FloatingInput
                             id="email"
+                            label="Email or Username"
                             type="text"
                             autoComplete="username"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
                             disabled={isPending}
-                            className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+                            className={cn(errors.email && "border-destructive")}
                         />
                         {errors.email?.map((e) => (
-                            <p
-                                key={e}
-                                className="text-xs text-destructive mt-1"
-                            >
+                            <p key={e} className="text-xs text-destructive mt-1">
                                 {e}
                             </p>
                         ))}
                     </div>
 
                     <div>
-                        <label
-                            htmlFor="password"
-                            className="block text-sm font-medium text-foreground mb-1.5"
-                        >
-                            Password
-                        </label>
                         <div className="relative">
-                            <input
+                            <FloatingInput
                                 id="password"
+                                label="Password"
                                 type={showPassword ? "text" : "password"}
                                 autoComplete="current-password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                                 disabled={isPending}
-                                className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 pr-9 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+                                className={cn(
+                                    "pr-9",
+                                    errors.password && "border-destructive",
+                                )}
                             />
                             <button
                                 type="button"
@@ -122,10 +114,7 @@ export default function Login() {
                             </button>
                         </div>
                         {errors.password?.map((e) => (
-                            <p
-                                key={e}
-                                className="text-xs text-destructive mt-1"
-                            >
+                            <p key={e} className="text-xs text-destructive mt-1">
                                 {e}
                             </p>
                         ))}
@@ -156,9 +145,7 @@ export default function Login() {
                         disabled={isPending}
                         className="w-full h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium shadow hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
                     >
-                        {isPending && (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                        )}
+                        {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                         Sign in
                     </button>
                 </form>

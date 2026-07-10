@@ -21,6 +21,7 @@ export interface NodeConfigGraph {
 export interface NodeConfig {
     id: number;
     name: string;
+    slug: string | null;
     description: string | null;
     config: NodeConfigGraph;
     enabled: boolean;

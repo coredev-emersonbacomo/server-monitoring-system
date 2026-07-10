@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FloatingInput } from "@/components/ui/floatingInput";
 import { Label } from "@/components/ui/label";
 import {
     Dialog,
@@ -84,7 +85,7 @@ function Field({
 }) {
     return (
         <div className="flex flex-col gap-1">
-            <Label>
+            <Label className="text-muted-foreground font-normal">
                 {label}
                 {required && isEdit && (
                     <span className="text-destructive ml-0.5">*</span>
@@ -709,16 +710,12 @@ export default function UserDetail() {
                                             description="Core identity details for this account."
                                         />
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <Field
-                                                label="Email Address"
-                                                required
-                                                error={errors.email}
-                                                isEdit={showEdit}
-                                            >
-                                                {showEdit ? (
-                                                    <Input
+                                            {showEdit ? (
+                                                <div>
+                                                    <FloatingInput
                                                         type="email"
-                                                        placeholder="ruby@devify.com"
+                                                        label="Email Address"
+                                                        labelBg="bg-card"
                                                         value={form.email}
                                                         onChange={set("email")}
                                                         className={cn(
@@ -726,26 +723,25 @@ export default function UserDetail() {
                                                             "border-destructive",
                                                         )}
                                                     />
-                                                ) : (
-                                                    <p className="text-sm text-foreground py-1">
+                                                    {errors.email && (
+                                                        <p className="text-xs text-destructive mt-1">
+                                                            {errors.email}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <Field label="Email Address" required isEdit={showEdit}>
+                                                    <p className="text-base font-semibold text-foreground py-1">
                                                         {user?.email}
                                                     </p>
-                                                )}
-                                            </Field>
-                                            <Field
-                                                label="Username"
-                                                required
-                                                hint={
-                                                    showEdit
-                                                        ? "Letters, numbers, and dots only"
-                                                        : undefined
-                                                }
-                                                error={errors.username}
-                                                isEdit={showEdit}
-                                            >
-                                                {showEdit ? (
-                                                    <Input
-                                                        placeholder="ruby.arnold"
+                                                </Field>
+                                            )}
+
+                                            {showEdit ? (
+                                                <div>
+                                                    <FloatingInput
+                                                        label="Username"
+                                                        labelBg="bg-card"
                                                         value={form.username}
                                                         onChange={set("username")}
                                                         className={cn(
@@ -753,100 +749,86 @@ export default function UserDetail() {
                                                             "border-destructive",
                                                         )}
                                                     />
-                                                ) : (
-                                                    <p className="text-sm text-foreground py-1">
+                                                    <p className="text-[11px] text-muted-foreground mt-1">
+                                                        Letters, numbers, and dots only
+                                                    </p>
+                                                    {errors.username && (
+                                                        <p className="text-xs text-destructive mt-1">
+                                                            {errors.username}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <Field label="Username" required isEdit={showEdit}>
+                                                    <p className="text-base font-semibold text-foreground py-1">
                                                         @{user?.username}
                                                     </p>
-                                                )}
-                                            </Field>
-                                            <Field
-                                                label="Phone Number"
-                                                required
-                                                error={errors.phone_number}
-                                                isEdit={showEdit}
-                                            >
-                                                {showEdit ? (
-                                                    <div className="flex flex-col gap-1">
-                                                        <Input
-                                                            placeholder="e.g. 09123456789"
-                                                            value={form.phone_number}
-                                                            onChange={(e) => {
-                                                                // Strip non-digits, hard cap at 11
-                                                                const digits =
-                                                                    e.target.value
-                                                                        .replace(
-                                                                            /\D/g,
-                                                                            "",
-                                                                        )
-                                                                        .slice(0, 11);
-                                                                setForm((f) => ({
-                                                                    ...f,
-                                                                    phone_number:
-                                                                        digits,
-                                                                }));
+                                                </Field>
+                                            )}
 
-                                                                // Live validation
-                                                                if (
-                                                                    digits.length === 0
-                                                                ) {
-                                                                    setErrors(
-                                                                        (prev) => ({
-                                                                            ...prev,
-                                                                            phone_number:
-                                                                                "Phone number is required",
-                                                                        }),
-                                                                    );
-                                                                } else if (
-                                                                    !digits.startsWith(
-                                                                        "09",
-                                                                    )
-                                                                ) {
-                                                                    setErrors(
-                                                                        (prev) => ({
-                                                                            ...prev,
-                                                                            phone_number:
-                                                                                "Must start with 09",
-                                                                        }),
-                                                                    );
-                                                                } else if (
-                                                                    digits.length < 11
-                                                                ) {
-                                                                    setErrors(
-                                                                        (prev) => ({
-                                                                            ...prev,
-                                                                            phone_number: `${11 - digits.length} more digit${11 - digits.length !== 1 ? "s" : ""} needed`,
-                                                                        }),
-                                                                    );
-                                                                } else {
-                                                                    // Valid — clear error
-                                                                    setErrors(
-                                                                        (prev) => {
-                                                                            const n = {
-                                                                                ...prev,
-                                                                            };
-                                                                            delete n.phone_number;
-                                                                            return n;
-                                                                        },
-                                                                    );
-                                                                }
-                                                            }}
-                                                            maxLength={11}
-                                                            className={cn(
-                                                                errors.phone_number &&
-                                                                "border-destructive",
-                                                            )}
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-sm text-foreground py-1">
+                                            {showEdit ? (
+                                                <div className="flex flex-col gap-1">
+                                                    <FloatingInput
+                                                        label="Phone Number"
+                                                        labelBg="bg-card"
+                                                        value={form.phone_number}
+                                                        onChange={(e) => {
+                                                            // Strip non-digits, hard cap at 11
+                                                            const digits = e.target.value
+                                                                .replace(/\D/g, "")
+                                                                .slice(0, 11);
+                                                            setForm((f) => ({
+                                                                ...f,
+                                                                phone_number: digits,
+                                                            }));
+
+                                                            // Live validation
+                                                            if (digits.length === 0) {
+                                                                setErrors((prev) => ({
+                                                                    ...prev,
+                                                                    phone_number:
+                                                                        "Phone number is required",
+                                                                }));
+                                                            } else if (!digits.startsWith("09")) {
+                                                                setErrors((prev) => ({
+                                                                    ...prev,
+                                                                    phone_number: "Must start with 09",
+                                                                }));
+                                                            } else if (digits.length < 11) {
+                                                                setErrors((prev) => ({
+                                                                    ...prev,
+                                                                    phone_number: `${11 - digits.length} more digit${11 - digits.length !== 1 ? "s" : ""} needed`,
+                                                                }));
+                                                            } else {
+                                                                // Valid — clear error
+                                                                setErrors((prev) => {
+                                                                    const n = { ...prev };
+                                                                    delete n.phone_number;
+                                                                    return n;
+                                                                });
+                                                            }
+                                                        }}
+                                                        maxLength={11}
+                                                        className={cn(
+                                                            errors.phone_number &&
+                                                            "border-destructive",
+                                                        )}
+                                                    />
+                                                    {errors.phone_number && (
+                                                        <p className="text-xs text-destructive mt-1">
+                                                            {errors.phone_number}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <Field label="Phone Number" required isEdit={showEdit}>
+                                                    <p className="text-base font-semibold text-foreground py-1">
                                                         {user?.phone_number
-                                                            ? formatPhoneNumber(
-                                                                user.phone_number,
-                                                            )
+                                                            ? formatPhoneNumber(user.phone_number)
                                                             : "—"}
                                                     </p>
-                                                )}
-                                            </Field>
+                                                </Field>
+                                            )}
                                         </div>
                                     </section>
 
@@ -868,158 +850,110 @@ export default function UserDetail() {
                                                     }
                                                 />
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <Field
-                                                        label={
-                                                            isCreate
-                                                                ? "Password"
-                                                                : "New password"
-                                                        }
-                                                        required={isCreate}
-                                                        error={errors.password}
-                                                    >
-                                                        <div className="flex flex-col gap-1.5">
-                                                            <Input
-                                                                type="password"
-                                                                placeholder={
-                                                                    isCreate
-                                                                        ? "Min. 8 characters"
-                                                                        : "New password"
-                                                                }
-                                                                value={form.password}
-                                                                onChange={(e) => {
-                                                                    const value =
-                                                                        e.target.value;
-                                                                    setForm((f) => ({
-                                                                        ...f,
-                                                                        password: value,
-                                                                    }));
-
-                                                                    // Live validation
-                                                                    setErrors(
-                                                                        (prev) => {
-                                                                            const next =
-                                                                            {
-                                                                                ...prev,
-                                                                            };
-
-                                                                            if (
-                                                                                !value
-                                                                            ) {
-                                                                                if (
-                                                                                    isCreate
-                                                                                )
-                                                                                    next.password =
-                                                                                        "Password is required";
-                                                                                else
-                                                                                    delete next.password;
-                                                                            } else {
-                                                                                const checks =
-                                                                                {
-                                                                                    length:
-                                                                                        value.length >=
-                                                                                        8,
-                                                                                    upper: /[A-Z]/.test(
-                                                                                        value,
-                                                                                    ),
-                                                                                    number: /[0-9]/.test(
-                                                                                        value,
-                                                                                    ),
-                                                                                    symbol: /[^A-Za-z0-9]/.test(
-                                                                                        value,
-                                                                                    ),
-                                                                                };
-                                                                                const failed =
-                                                                                    !checks.length
-                                                                                        ? "Must be at least 8 characters"
-                                                                                        : !checks.upper
-                                                                                            ? "Must include an uppercase letter"
-                                                                                            : !checks.number
-                                                                                                ? "Must include a number"
-                                                                                                : !checks.symbol
-                                                                                                    ? "Must include a symbol (!@#$...)"
-                                                                                                    : null;
-
-                                                                                if (
-                                                                                    failed
-                                                                                )
-                                                                                    next.password =
-                                                                                        failed;
-                                                                                else
-                                                                                    delete next.password;
-                                                                            }
-
-                                                                            // Re-check confirm field whenever password changes
-                                                                            if (
-                                                                                form.password_confirmation
-                                                                            ) {
-                                                                                if (
-                                                                                    form.password_confirmation !==
-                                                                                    value
-                                                                                ) {
-                                                                                    next.password_confirmation =
-                                                                                        "Passwords do not match";
-                                                                                } else {
-                                                                                    delete next.password_confirmation;
-                                                                                }
-                                                                            }
-
-                                                                            return next;
-                                                                        },
-                                                                    );
-                                                                }}
-                                                                className={cn(
-                                                                    errors.password &&
-                                                                    "border-destructive",
-                                                                )}
-                                                            />
-
-                                                            {/* Strength meter */}
-                                                            {form.password && (
-                                                                <PasswordStrength
-                                                                    password={
-                                                                        form.password
-                                                                    }
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    </Field>
-
-                                                    <Field
-                                                        label="Confirm password"
-                                                        required={isCreate}
-                                                        error={
-                                                            errors.password_confirmation
-                                                        }
-                                                    >
-                                                        <Input
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <FloatingInput
                                                             type="password"
-                                                            placeholder="Repeat password"
-                                                            value={
-                                                                form.password_confirmation
+                                                            label={
+                                                                isCreate
+                                                                    ? "Password"
+                                                                    : "New password"
                                                             }
+                                                            labelBg="bg-card"
+                                                            value={form.password}
                                                             onChange={(e) => {
-                                                                const value =
-                                                                    e.target.value;
+                                                                const value = e.target.value;
                                                                 setForm((f) => ({
                                                                     ...f,
-                                                                    password_confirmation:
-                                                                        value,
+                                                                    password: value,
+                                                                }));
+
+                                                                // Live validation
+                                                                setErrors((prev) => {
+                                                                    const next = { ...prev };
+
+                                                                    if (!value) {
+                                                                        if (isCreate)
+                                                                            next.password =
+                                                                                "Password is required";
+                                                                        else delete next.password;
+                                                                    } else {
+                                                                        const checks = {
+                                                                            length: value.length >= 8,
+                                                                            upper: /[A-Z]/.test(value),
+                                                                            number: /[0-9]/.test(value),
+                                                                            symbol: /[^A-Za-z0-9]/.test(value),
+                                                                        };
+                                                                        const failed = !checks.length
+                                                                            ? "Must be at least 8 characters"
+                                                                            : !checks.upper
+                                                                                ? "Must include an uppercase letter"
+                                                                                : !checks.number
+                                                                                    ? "Must include a number"
+                                                                                    : !checks.symbol
+                                                                                        ? "Must include a symbol (!@#$...)"
+                                                                                        : null;
+
+                                                                        if (failed) next.password = failed;
+                                                                        else delete next.password;
+                                                                    }
+
+                                                                    // Re-check confirm field whenever password changes
+                                                                    if (form.password_confirmation) {
+                                                                        if (
+                                                                            form.password_confirmation !==
+                                                                            value
+                                                                        ) {
+                                                                            next.password_confirmation =
+                                                                                "Passwords do not match";
+                                                                        } else {
+                                                                            delete next.password_confirmation;
+                                                                        }
+                                                                    }
+
+                                                                    return next;
+                                                                });
+                                                            }}
+                                                            className={cn(
+                                                                errors.password &&
+                                                                "border-destructive",
+                                                            )}
+                                                        />
+
+                                                        {/* Strength meter */}
+                                                        {form.password && (
+                                                            <PasswordStrength
+                                                                password={form.password}
+                                                            />
+                                                        )}
+                                                        {errors.password && (
+                                                            <p className="text-xs text-destructive">
+                                                                {errors.password}
+                                                            </p>
+                                                        )}
+                                                    </div>
+
+                                                    <div>
+                                                        <FloatingInput
+                                                            type="password"
+                                                            label="Confirm password"
+                                                            labelBg="bg-card"
+                                                            value={form.password_confirmation}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value;
+                                                                setForm((f) => ({
+                                                                    ...f,
+                                                                    password_confirmation: value,
                                                                 }));
 
                                                                 setErrors((prev) => {
-                                                                    const next = {
-                                                                        ...prev,
-                                                                    };
+                                                                    const next = { ...prev };
                                                                     if (!value) {
                                                                         if (isCreate)
                                                                             next.password_confirmation =
                                                                                 "Please confirm your password";
                                                                         else
                                                                             delete next.password_confirmation;
-                                                                    } else if (
-                                                                        value !==
-                                                                        form.password
-                                                                    ) {
+                                                                    } else if (value !== form.password) {
                                                                         next.password_confirmation =
                                                                             "Passwords do not match";
                                                                     } else {
@@ -1038,7 +972,12 @@ export default function UserDetail() {
                                                                 "border-emerald-500",
                                                             )}
                                                         />
-                                                    </Field>
+                                                        {errors.password_confirmation && (
+                                                            <p className="text-xs text-destructive mt-1">
+                                                                {errors.password_confirmation}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </section>
                                         </>
@@ -1306,7 +1245,7 @@ export default function UserDetail() {
                         </div>
                     </DialogContent>
                 </Dialog>
-            </div>
+            </div >
         </>
     );
 }

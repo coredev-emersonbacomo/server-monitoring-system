@@ -3,6 +3,7 @@ import { type NodeProps, Position, useReactFlow, useEdges } from "@xyflow/react"
 import { Plus, GitBranch, Minus, type LucideIcon } from "lucide-react";
 import { getInputType, getOutputType } from './socketTypes';
 import { SocketHandle } from './socket-components';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 const OPERATIONS: Record<string, { icon: LucideIcon; label: string }> = {
     and: { icon: Plus, label: "AND" },
@@ -40,16 +41,16 @@ export const LogicNode = memo(({ id, data, type }: NodeProps) => {
                 <div className="p-1.5 rounded-lg bg-violet-500/10">
                     <Icon size={14} className="text-violet-400" />
                 </div>
-                <select
-                    value={operation}
-                    onChange={(e) => handleChange(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex-1 text-xs font-semibold text-foreground bg-violet-500/10 border border-violet-400/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-violet-400/50 cursor-pointer"
-                >
-                    {Object.entries(OPERATIONS).map(([val, o]) => (
-                        <option key={val} value={val}>{o.label}</option>
-                    ))}
-                </select>
+                <Select value={operation} onValueChange={handleChange}>
+                    <SelectTrigger className="flex-1 h-7 text-xs font-semibold" onClick={(e) => e.stopPropagation()}>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {Object.entries(OPERATIONS).map(([val, o]) => (
+                            <SelectItem key={val} value={val}>{o.label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
 
             <div className="flex items-center pl-3 pr-3 py-2.5">

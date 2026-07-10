@@ -171,7 +171,7 @@ class SimulateMetricsUpdate extends Command
                     'created_at' => now(),
                 ]);
 
-                $this->line("  [{$server->server_name}] Created update #{$update->created_at->getPreciseTimestamp(3)}");
+                $this->line("  [{$server->name}] Created update #{$update->created_at->getPreciseTimestamp(3)}");
 
                 $result = ServerStatsUpdated::dispatchSync(
                     $server->uuid,
@@ -186,12 +186,12 @@ class SimulateMetricsUpdate extends Command
                 );
 
                 if ($result) {
-                    $this->line("  [{$server->server_name}] Broadcast ServerStatsUpdated");
+                    $this->line("  [{$server->name}] Broadcast ServerStatsUpdated");
                 } else {
-                    $this->line("  [{$server->server_name}] Skipped broadcast (values unchanged)");
+                    $this->line("  [{$server->name}] Skipped broadcast (values unchanged)");
                 }
             } catch (\Throwable $e) {
-                $this->error("  [{$server->server_name}] Error: " . $e->getMessage());
+                $this->error("  [{$server->name}] Error: " . $e->getMessage());
             }
         }
     }
