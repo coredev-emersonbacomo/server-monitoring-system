@@ -39,16 +39,14 @@ class ProvisioningService
                 'expires_at' => $activeToken->expires_at->copy()->utc()->toIso8601String(),
                 'generated_at' => $activeToken->created_at->copy()->utc()->toIso8601String(),
                 'remaining_seconds' => now()->diffInSeconds($activeToken->expires_at, false),
-                'token_expires_in' => $activeToken->expires_at->copy()->utc()->timestamp,
             ];
         }
 
         // Generate new token
         $rawToken = Str::random(64);
-        $tokenHash = hash('sha256', $rawToken);
         $expiresAt = Carbon::now('UTC')->addMinutes(30);
 
-        $token = DB::transaction(function () use ($server, $tokenHash, $expiresAt, $user) {
+        $token = DB::transaction(function () use ($server, $rawToken, $expiresAt, $user) {
             // Revoke any previous active tokens
             ProvisionToken::where('server_id', $server->id)
                 ->where('status', 'active')
@@ -59,7 +57,7 @@ class ProvisioningService
 
             return ProvisionToken::create([
                 'server_id' => $server->id,
-                'token_hash' => $tokenHash,
+                'token' => $rawToken,
                 'status' => 'active',
                 'expires_at' => $expiresAt,
                 'created_by' => $user?->id,
@@ -86,7 +84,6 @@ class ProvisioningService
             'expires_at' => $expiresAt->toIso8601String(),
             'linux_command' => 'curl -fsSL ' . url('/install/linux') . ' | bash -s -- ' . $rawToken,
             'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$token=\'' . $rawToken . '\'; irm ' . url('/install/windows.ps1') . ' | iex"',
-            'token_expires_in' => $expiresAt->timestamp,
         ];
     }
 
@@ -112,8 +109,7 @@ class ProvisioningService
 
     public function bootstrap(string $rawToken, array $metadata): array
     {
-        $tokenHash = hash('sha256', $rawToken);
-        $token = ProvisionToken::where('token_hash', $tokenHash)->first();
+        $token = ProvisionToken::where('token', $rawToken)->first();
 
         if (!$token || !$token->isValid()) {
             abort(410, 'Provision token is invalid, expired, or has already been used.');
@@ -164,8 +160,7 @@ class ProvisioningService
 
     public function register(string $rawToken, array $metadata): array
     {
-        $tokenHash = hash('sha256', $rawToken);
-        $token = ProvisionToken::where('token_hash', $tokenHash)->first();
+        $token = ProvisionToken::where('token', $rawToken)->first();
 
         if (!$token || $token->status !== 'active') {
             abort(410, 'Provision token is invalid or has already been used.');
