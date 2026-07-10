@@ -1,18 +1,15 @@
-import { Play, Save, RotateCw, ToggleLeft, ToggleRight, Loader2 } from 'lucide-react';
+import { Save, Eye, Loader2 } from 'lucide-react';
 
 interface NodeConfigToolbarProps {
     name: string;
-    enabled: boolean;
     isSaving: boolean;
     onNameChange: (name: string) => void;
     onSave: () => void;
-    onToggle: () => void;
-    onTest: () => void;
-    onReset: () => void;
+    onPreview: () => void;
 }
 
 export function NodeConfigToolbar({
-    name, enabled, isSaving, onNameChange, onSave, onToggle, onTest, onReset,
+    name, isSaving, onNameChange, onSave, onPreview,
 }: NodeConfigToolbarProps) {
     return (
         <div className="flex items-center gap-3 px-4 py-2 border-b border-border/40 bg-card">
@@ -26,28 +23,12 @@ export function NodeConfigToolbar({
             />
             <div className="flex items-center gap-1.5">
                 <button
-                    onClick={onToggle}
+                    onClick={onPreview}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg hover:bg-accent transition-colors"
-                    title={enabled ? 'Disable config' : 'Enable config'}
+                    title="Preview compiled config"
                 >
-                    {enabled ? <ToggleRight size={16} className="text-emerald-400" /> : <ToggleLeft size={16} className="text-muted-foreground" />}
-                    <span className="text-xs text-muted-foreground">{enabled ? 'Enabled' : 'Disabled'}</span>
-                </button>
-                <button
-                    onClick={onReset}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg hover:bg-accent transition-colors"
-                    title="Reset node state"
-                >
-                    <RotateCw size={14} className="text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Reset</span>
-                </button>
-                <button
-                    onClick={onTest}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg hover:bg-accent transition-colors"
-                    title="Test config"
-                >
-                    <Play size={14} className="text-amber-400" />
-                    <span className="text-xs text-muted-foreground">Test</span>
+                    <Eye size={14} className="text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Preview</span>
                 </button>
                 <button
                     onClick={onSave}

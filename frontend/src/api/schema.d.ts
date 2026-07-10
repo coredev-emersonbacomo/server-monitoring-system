@@ -485,6 +485,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/node-configs/by-slug/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.findBySlug"];
+        put: operations["nodeConfig.upsertBySlug"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/node-configs/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["nodeConfig.preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/servers": {
         parameters: {
             query?: never;
@@ -638,10 +670,7 @@ export interface paths {
         };
         /** Return all settings as a key-value map */
         get: operations["setting.index"];
-        /**
-         * Bulk-update settings for authenticated users.
-         *     Accepts: { "secop_limit_per_client": "3", ... }
-         */
+        /** Bulk-update settings for authenticated users */
         put: operations["setting.update"];
         post?: never;
         delete?: never;
@@ -809,23 +838,22 @@ export interface components {
             total_clients: number;
             total_servers: number;
             online_count: number;
-            warning_count: number;
             offline_count: number;
             top_usage_cpu: {
                 server_uuid: string;
-                server_name: string;
+                name: string;
                 client_name: string;
                 value: number;
             }[];
             top_usage_memory: {
                 server_uuid: string;
-                server_name: string;
+                name: string;
                 client_name: string;
                 value: number;
             }[];
             top_usage_disk: {
                 server_uuid: string;
-                server_name: string;
+                name: string;
                 client_name: string;
                 value: number;
             }[];
@@ -883,7 +911,7 @@ export interface components {
         };
         /** ServerData */
         ServerData: {
-            server_name: string;
+            name: string;
             uuid: string;
             host_name: string;
             client_uuid: string;
@@ -1329,7 +1357,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    server_name: string;
+                    name: string;
                 };
             };
         };
@@ -1360,7 +1388,11 @@ export interface operations {
     };
     "client.index": {
         parameters: {
-            query?: never;
+            query?: {
+                user_uuid?: string | null;
+                exclude_user_uuid?: string | null;
+                available_only?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1387,7 +1419,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
+                "multipart/form-data": {
                     name: string;
                     location: string;
                     /** @description Must be unique in `clients`. */
@@ -2198,6 +2230,120 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
+    "nodeConfig.findBySlug": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": (components["schemas"]["NodeConfig"] | null) | {
+                        nodes: string[];
+                        edges: string[];
+                        name: string;
+                        slug: string;
+                        enabled: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.upsertBySlug": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    enabled?: boolean | null;
+                    config: {
+                        nodes: string[];
+                        edges: string[];
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeConfig"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "nodeConfig.preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    config: {
+                        nodes: string[];
+                        edges: string[];
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        rules: ({
+                            metrics: unknown[];
+                            conditions: {
+                                operator: string | "greater_than";
+                                threshold: string | null;
+                                min: string | null;
+                                max: string;
+                            }[];
+                            logic: string | "and";
+                            timing: {
+                                type: string;
+                                duration_seconds: number;
+                                interval_seconds: number;
+                                max_repeats: number | null;
+                            };
+                            actions: [
+                                unknown[]
+                            ];
+                        } | null)[];
+                    } | {
+                        rules: string[];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "server.listAll": {
         parameters: {
             query?: {
@@ -2258,7 +2404,7 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
-                    server_name?: string | null;
+                    name?: string | null;
                     host_name?: string | null;
                 };
             };
@@ -2537,6 +2683,17 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Forbidden.";
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Heartbeat interval must be greater than or equal to the offline threshold.";
                     };
                 };
             };

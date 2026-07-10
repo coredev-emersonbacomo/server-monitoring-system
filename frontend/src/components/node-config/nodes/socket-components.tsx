@@ -8,9 +8,10 @@ interface SocketHandleProps {
     id: string;
     def?: HandleTypeDef;
     color?: string;
+    elongated?: boolean;
 }
 
-export function SocketHandle({ type, position, id, def, color }: SocketHandleProps) {
+export function SocketHandle({ type, position, id, def, color, elongated }: SocketHandleProps) {
     const bg = color ?? (def ? TYPE_COLORS[def.type] : '#9ca3af');
 
     return (
@@ -20,7 +21,10 @@ export function SocketHandle({ type, position, id, def, color }: SocketHandlePro
                     type={type}
                     position={position}
                     id={id}
-                    className="!w-3 !h-3 !border-2 !border-card"
+                    className={elongated
+                        ? "!w-3 !h-6 !border-2 !border-card !rounded-md"
+                        : "!w-3 !h-3 !border-2 !border-card"
+                    }
                     style={{ backgroundColor: bg }}
                 />
             </TooltipTrigger>
@@ -30,6 +34,7 @@ export function SocketHandle({ type, position, id, def, color }: SocketHandlePro
                     <span className="font-semibold">{def?.label ?? id}</span>
                     <span className="text-muted-foreground">—</span>
                     <span>{def?.type ?? 'unknown'}</span>
+                    {elongated && <span className="text-muted-foreground">· multi</span>}
                 </div>
             </TooltipContent>
         </Tooltip>

@@ -11,7 +11,7 @@ class LogicNode extends BaseNode
     public function getSettingDefinitions(): array
     {
         return [
-            ['key' => 'operation', 'label' => 'Operation', 'type' => 'select', 'required' => true, 'options' => [
+            ['key' => 'operation', 'label' => 'Operation', 'type' => 'select', 'required' => true, 'default' => 'and', 'options' => [
                 'and' => 'AND',
                 'or' => 'OR',
                 'not' => 'NOT',

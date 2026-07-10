@@ -36,7 +36,7 @@ class ClientSeeder extends Seeder
 
         $client->servers()->updateOrCreate(
             [
-                'server_name' => 'server-1',
+                'name' => 'server-1',
             ],
             [
                 'uuid' => (string) Str::uuid7(),

@@ -4,6 +4,7 @@ import { GitCompare } from 'lucide-react';
 import { getInputType, getOutputType } from './socketTypes';
 import { SocketHandle } from './socket-components';
 import { useBlurNumber } from './useBlurNumber';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 const OPERATORS: Record<string, string> = {
     greater_than: 'Greater Than',
@@ -15,6 +16,11 @@ const OPERATORS: Record<string, string> = {
 function useIsHandleConnected(nodeId: string, handleId: string): boolean {
     const edges = useEdges();
     return edges.some(e => e.target === nodeId && e.targetHandle === handleId);
+}
+
+function useMultiInputCount(nodeId: string, handleId: string): number {
+    const edges = useEdges();
+    return edges.filter(e => e.target === nodeId && e.targetHandle === handleId).length;
 }
 
 export const ConditionNode = memo(({ id, data, type }: NodeProps) => {
@@ -32,6 +38,8 @@ export const ConditionNode = memo(({ id, data, type }: NodeProps) => {
     const bConnected = useIsHandleConnected(id, 'input-b');
     const minConnected = useIsHandleConnected(id, 'input-min');
     const maxConnected = useIsHandleConnected(id, 'input-max');
+    const aCount = useMultiInputCount(id, 'input-a');
+    const bCount = useMultiInputCount(id, 'input-b');
 
     const handleOperatorChange = useCallback((v: string) => {
         updateNodeData(id, { operator: v });
@@ -53,11 +61,18 @@ export const ConditionNode = memo(({ id, data, type }: NodeProps) => {
                     <GitCompare size={14} className="text-amber-400" />
                 </div>
                 <span className="text-xs font-semibold text-foreground">Compare</span>
+                {aCount > 1 && (
+                    <span className="ml-auto text-[10px] font-mono text-amber-400/70 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                        {aCount}× metrics
+                    </span>
+                )}
             </div>
 
-            <div className="relative flex items-center min-h-[28px] pl-3 pr-3">
-                <SocketHandle type="target" position={Position.Left} id="input-a" def={inputADef} />
-                <span className="text-[10px] font-medium text-muted-foreground ml-5 shrink-0">{inputADef?.label || 'A'}</span>
+            <div className="relative flex items-center overflow-hidden min-h-[32px] pl-3 pr-3 py-1">
+                <SocketHandle type="target" position={Position.Left} id="input-a" def={inputADef} elongated />
+                <span className="text-[10px] font-medium text-muted-foreground ml-5 shrink-0">
+                    {aCount > 0 ? `${inputADef?.label || 'A'} (${aCount})` : (inputADef?.label || 'A')}
+                </span>
                 {!aConnected && (
                     <input
                         type="number"
@@ -65,22 +80,22 @@ export const ConditionNode = memo(({ id, data, type }: NodeProps) => {
                         onChange={valueA.onChange}
                         onBlur={valueA.onBlur}
                         onClick={(e) => e.stopPropagation()}
-                        className="ml-2 flex-1 text-xs font-mono text-foreground bg-amber-500/5 border border-amber-400/20 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400/50"
+                        className="ml-1.5 min-w-0 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                 )}
             </div>
 
             <div className="px-3 py-1">
-                <select
-                    value={operator}
-                    onChange={(e) => handleOperatorChange(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full text-xs font-semibold text-foreground bg-amber-500/10 border border-amber-400/30 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400/50 cursor-pointer text-center"
-                >
-                    {Object.entries(OPERATORS).map(([val, label]) => (
-                        <option key={val} value={val}>{label}</option>
-                    ))}
-                </select>
+                <Select value={operator} onValueChange={handleOperatorChange}>
+                    <SelectTrigger className="h-7 text-xs font-semibold" onClick={(e) => e.stopPropagation()}>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {Object.entries(OPERATORS).map(([val, label]) => (
+                            <SelectItem key={val} value={val}>{label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
 
             {isBetween ? (
@@ -95,7 +110,7 @@ export const ConditionNode = memo(({ id, data, type }: NodeProps) => {
                                 onChange={min.onChange}
                                 onBlur={min.onBlur}
                                 onClick={(e) => e.stopPropagation()}
-                                className="ml-2 flex-1 text-xs font-mono text-foreground bg-amber-500/5 border border-amber-400/20 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400/50"
+                                className="ml-2 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
                             />
                         )}
                     </div>
@@ -109,15 +124,17 @@ export const ConditionNode = memo(({ id, data, type }: NodeProps) => {
                                 onChange={maxVal.onChange}
                                 onBlur={maxVal.onBlur}
                                 onClick={(e) => e.stopPropagation()}
-                                className="ml-2 flex-1 text-xs font-mono text-foreground bg-amber-500/5 border border-amber-400/20 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400/50"
+                                className="ml-2 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
                             />
                         )}
                     </div>
                 </div>
             ) : (
-                <div className="relative flex items-center min-h-[28px] pl-3 pr-3 pb-2.5">
-                    <SocketHandle type="target" position={Position.Left} id="input-b" def={inputBDef} />
-                    <span className="text-[10px] font-medium text-muted-foreground ml-5 shrink-0">{inputBDef?.label || 'B'}</span>
+                <div className="relative flex items-center overflow-hidden min-h-[32px] pl-3 pr-3 pb-2.5">
+                    <SocketHandle type="target" position={Position.Left} id="input-b" def={inputBDef} elongated />
+                    <span className="text-[10px] font-medium text-muted-foreground ml-5 shrink-0">
+                        {bCount > 0 ? `${inputBDef?.label || 'B'} (${bCount})` : (inputBDef?.label || 'B')}
+                    </span>
                     {!bConnected && (
                         <input
                             type="number"
@@ -125,7 +142,7 @@ export const ConditionNode = memo(({ id, data, type }: NodeProps) => {
                             onChange={threshold.onChange}
                             onBlur={threshold.onBlur}
                             onClick={(e) => e.stopPropagation()}
-                            className="ml-2 flex-1 text-xs font-mono text-foreground bg-amber-500/5 border border-amber-400/20 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400/50"
+                            className="ml-1.5 min-w-0 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
                         />
                     )}
                 </div>

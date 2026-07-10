@@ -8,7 +8,7 @@ use Spatie\LaravelData\Data;
 class ServerData extends Data
 {
     public function __construct(
-        public string $server_name,
+        public string $name,
 
         public string $uuid,
 
@@ -63,7 +63,7 @@ class ServerData extends Data
             uuid: $server->uuid,
             client_uuid: $server->client->uuid,
             client_name: $server->client->name,
-            server_name: $server->server_name,
+            name: $server->name,
             host_name: $server->host_name,
             cpu_model: $server->cpu_model,
             cpu_cores: $server->cpu_cores,

@@ -20,7 +20,7 @@ export default function ServerCard({ server }: { server: ServerData }) {
 
             <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                    {server.server_name}
+                    {server.name}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {server.host_name}

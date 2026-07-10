@@ -35,7 +35,7 @@ export default function ServerLayout() {
 
     const filtered = servers?.filter((s) =>
         s.client_uuid === servers?.find((x) => x.uuid === uuid)?.client_uuid &&
-        s.server_name.toLowerCase().includes(search.toLowerCase())
+        s.name.toLowerCase().includes(search.toLowerCase())
     );
 
     return (
@@ -110,7 +110,7 @@ export default function ServerLayout() {
                                                     : "text-muted-foreground",
                                             )}
                                         >
-                                            {server.server_name}
+                                            {server.name}
                                         </p>
                                         <p className="text-[11px] text-muted-foreground/70 truncate">
                                             {server.client_name}
