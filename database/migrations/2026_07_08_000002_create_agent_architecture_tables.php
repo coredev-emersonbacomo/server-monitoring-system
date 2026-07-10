@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('provision_tokens', function (Blueprint $table) {
             $table->id();
             $table->foreignId('server_id')->constrained()->onDelete('cascade');
-            $table->string('token_hash')->unique();
+            $table->string('token')->unique();
             $table->string('status')->default('active'); // active, used, revoked, expired
             $table->timestamp('expires_at');
             $table->timestamp('used_at')->nullable();
@@ -22,7 +22,7 @@ return new class extends Migration
             $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
 
-            $table->index('token_hash');
+            $table->index('token');
         });
 
         Schema::create('agent_installations', function (Blueprint $table) {
