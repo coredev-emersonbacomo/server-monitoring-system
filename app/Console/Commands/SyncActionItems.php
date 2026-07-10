@@ -31,9 +31,6 @@ class SyncActionItems extends Command
 
     private function detectIssues(): array
     {
-        $onlineThreshold  = now()->subMinutes(5);
-        $warningThreshold = now()->subMinutes(15);
-
         $servers = Server::with('client', 'latestUpdate')->get();
 
         $issues = [];
@@ -55,10 +52,7 @@ class SyncActionItems extends Command
         }
 
         foreach ($servers as $server) {
-            $lastSeen = $server->latestUpdate?->created_at;
-            $health = Server::computeHealth($lastSeen, $onlineThreshold, $warningThreshold);
-
-            if ($health === ServerHealth::Offline) {
+            if ($server->health === ServerHealth::Offline) {
                 $issues[] = [
                     'action_type' => 'server_offline',
                     'severity' => 'critical',

@@ -1,19 +1,26 @@
 #!/bin/bash
 set -euo pipefail
 
-APP_URL=$1
+# ─── Usage ────────────────────────────────────────────────────
+if [[ "$#" -lt 1 ]]; then
+    echo "Usage: $0 <provision_token> [app_url]"
+    echo ""
+    echo "  provision_token   Token from the monitoring server"
+    echo "  app_url           Server URL (default: http://127.0.0.1:8000)"
+    exit 1
+fi
+
+TOKEN="$1"
+APP_URL="${2:-http://127.0.0.1:8000}"
 
 # ─── Constants ───────────────────────────────────────────────
 readonly APP_DIR="/opt/monitor-agent"
 readonly SERVICE_NAME="monitor-agent"
-# Change upon production
-readonly AGENT_URL="$APP_URL/agents/php_agent/agent.txt"
-readonly AGENT_FILE="$APP_DIR/agent.php"
-readonly CONFIG_FILE="$APP_DIR/config.json"
+readonly AGENT_FILE="$APP_DIR/agent"
+readonly BOOTSTRAP_FILE="$APP_DIR/bootstrap.json"
 readonly SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 readonly LOG_FILE="/var/log/${SERVICE_NAME}-install.log"
-readonly API_URL="$APP_URL/api/v1/agent/heartbeat"
-readonly SPECS_URL="$APP_URL/api/v1/register"
+readonly PROVISION_URL="$APP_URL/api/v1/provision"
 
 # ─── Logging ─────────────────────────────────────────────────
 log()  { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]  $*" | tee -a "$LOG_FILE"; }
@@ -25,27 +32,8 @@ if [[ $EUID -ne 0 ]]; then
     fail "This script must be run as root."
 fi
 
-# ─── Argument validation ──────────────────────────────────────
-if [[ "$#" -ne 3 ]]; then
-    fail "Usage: $0  <app_url> <server_uuid> <api_key>"
-fi
-
-# Credentials
-SERVER_UUID="$2"
-API_KEY="$3"
-
-# Validate server_id is alphanumeric
-if [[ ! "$SERVER_ID" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-    fail "Invalid server_id. Only alphanumeric characters, hyphens, and underscores allowed."
-fi
-
-# Validate api_key length
-if [[ ${#API_KEY} -lt 16 ]]; then
-    fail "API key too short. Must be at least 16 characters."
-fi
-
 # ─── Check dependencies ───────────────────────────────────────
-for cmd in wget php systemctl; do
+for cmd in curl systemctl; do
     if ! command -v "$cmd" &>/dev/null; then
         fail "Required command not found: $cmd"
     fi
@@ -53,47 +41,59 @@ done
 
 log "Starting monitor-agent installation..."
 
-exit 1
+# ─── Contact Provision Endpoint ───────────────────────────────
+log "Contacting provision endpoint..."
+PROVISION_RESPONSE=$(curl -fsSL -X POST \
+  -H "Content-Type: application/json" \
+  -d "{\"token\":\"$TOKEN\",\"hostname\":\"$(hostname)\",\"platform\":\"linux\",\"architecture\":\"$(uname -m)\",\"installer_version\":\"2.0\"}" \
+  "$PROVISION_URL") || fail "Failed to contact provision API or token invalid."
+
+DOWNLOAD_URL=$(echo "$PROVISION_RESPONSE" | python3 -c 'import sys, json; print(json.load(sys.stdin).get("download_url", ""))')
+EXPECTED_SHA256=$(echo "$PROVISION_RESPONSE" | python3 -c 'import sys, json; print(json.load(sys.stdin).get("expected_sha256", ""))')
+API_URL=$(echo "$PROVISION_RESPONSE" | python3 -c 'import sys, json; print(json.load(sys.stdin).get("api_url", ""))')
+REGISTER_URL=$(echo "$PROVISION_RESPONSE" | python3 -c 'import sys, json; print(json.load(sys.stdin).get("register_url", ""))')
+HEARTBEAT_INTERVAL=$(echo "$PROVISION_RESPONSE" | python3 -c 'import sys, json; print(json.load(sys.stdin).get("heartbeat_interval", "5"))')
+AGENT_VERSION=$(echo "$PROVISION_RESPONSE" | python3 -c 'import sys, json; print(json.load(sys.stdin).get("agent_version", "2.0"))')
+
+if [[ -z "$DOWNLOAD_URL" ]] || [[ -z "$API_URL" ]]; then
+    fail "Invalid bootstrap configuration returned by server."
+fi
 
 # ─── Prepare directory ────────────────────────────────────────
 mkdir -p "$APP_DIR"
 chmod 750 "$APP_DIR"
 
 # ─── Download agent ───────────────────────────────────────────
-log "Downloading agent from $AGENT_URL..."
+log "Downloading agent from $DOWNLOAD_URL..."
+curl -fsSL -o "$AGENT_FILE.tmp" "$DOWNLOAD_URL" || fail "Failed to download agent."
 
-wget \
-    --quiet \
-    --tries=3 \
-    --timeout=30 \
-    --https-only \
-    -O "$AGENT_FILE.tmp" \
-    "$AGENT_URL" || fail "Failed to download agent."
-
-# Basic sanity check — make sure it's a PHP file, not an error page
-if ! grep -q '<?php' "$AGENT_FILE.tmp"; then
-    rm -f "$AGENT_FILE.tmp"
-    fail "Downloaded file does not appear to be a valid PHP file."
+if [[ -n "$EXPECTED_SHA256" ]]; then
+    log "Verifying checksum..."
+    ACTUAL_SHA256=$(sha256sum "$AGENT_FILE.tmp" | awk '{print $1}')
+    if [[ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]]; then
+        rm -f "$AGENT_FILE.tmp"
+        fail "Checksum verification failed! Expected $EXPECTED_SHA256, got $ACTUAL_SHA256"
+    fi
+    log "Checksum verified."
 fi
 
 mv "$AGENT_FILE.tmp" "$AGENT_FILE"
-chmod 640 "$AGENT_FILE"
+chmod 750 "$AGENT_FILE"
 log "Agent downloaded successfully."
 
-# ─── Write config ─────────────────────────────────────────────
-log "Writing config..."
-
-cat > "$CONFIG_FILE" << EOF
+# ─── Write bootstrap config ───────────────────────────────────
+log "Writing bootstrap configuration..."
+cat > "$BOOTSTRAP_FILE" << EOF
 {
-    "uuid": $(printf '%s' "$SERVER_UUID" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'),
-    "token":     $(printf '%s' "$API_KEY"   | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'),
-    "api_url":   $(printf '%s' "$API_URL"   | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'),
-    "specs_url": $(printf '%s' "$SPECS_URL"   | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'),
+    "token": "$TOKEN",
+    "api_url": "$API_URL",
+    "register_url": "$REGISTER_URL",
+    "heartbeat_interval": $HEARTBEAT_INTERVAL,
+    "hostname": "$(hostname)",
+    "agent_version": "$AGENT_VERSION"
 }
 EOF
-
-chmod 600 "$CONFIG_FILE"
-log "Config written."
+chmod 600 "$BOOTSTRAP_FILE"
 
 # ─── Create dedicated service user ───────────────────────────
 if ! id "monitor" &>/dev/null; then
@@ -110,16 +110,15 @@ chown -R monitor:monitor "$APP_DIR"
 
 # ─── Create systemd service ───────────────────────────────────
 log "Creating systemd service..."
-
 cat > "$SERVICE_FILE" << EOF
 [Unit]
-Description=PHP Monitoring Agent
+Description=Monitoring Agent
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/php ${AGENT_FILE}
+ExecStart=${AGENT_FILE}
 WorkingDirectory=${APP_DIR}
 Restart=on-failure
 RestartSec=5
@@ -147,12 +146,10 @@ chmod 644 "$SERVICE_FILE"
 
 # ─── Enable and start ─────────────────────────────────────────
 log "Enabling and starting service..."
-
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME"
 systemctl start  "$SERVICE_NAME"
 
-# Give it a moment then verify it actually started
 sleep 2
 if systemctl is-active --quiet "$SERVICE_NAME"; then
     log "Service is running."

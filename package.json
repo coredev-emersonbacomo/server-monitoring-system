@@ -14,9 +14,8 @@
     "gpush": "scripts\\git\\git-push.bat",
     "pull": "git stash && git pull && git stash apply",
     "resetdb": "php artisan migrate:fresh --seed && php artisan actions:sync && npm run loadtestfactory",
-    "compileagent:php": "php -l public/agents/php_agent/agent.txt && echo PHP agent syntax OK",
-    "compileagent:cs": "dotnet publish public/agents/cs_agent/MonitorAgent/MonitorAgent.csproj -c Release -o public/agents/cs_agent --self-contained true -r win-x64 -p:PublishSingleFile=true",
-    "compileagent": "npm run compileagent:php && npm run compileagent:cs",
+    "compileagent:go": "powershell -ExecutionPolicy Bypass -File scripts/build-agent.ps1",
+    "compileagent": "npm run compileagent:go",
     "loadtestfactory": "php artisan tinker --execute=\"\\App\\Models\\User::factory(25)->create(); \\App\\Models\\Client::factory(10)->create(); \\App\\Models\\Server::factory(100)->create();\""
   },
   "workspaces": [
@@ -24,6 +23,7 @@
   ],
   "devDependencies": {
     "concurrently": "^9.0.1",
+    "cross-env": "^10.1.0",
     "laravel-vite-plugin": "^3.1",
     "vite": "^8.0.0"
   },

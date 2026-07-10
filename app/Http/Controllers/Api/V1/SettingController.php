@@ -19,7 +19,6 @@ class SettingController extends Controller
 
     /**
      * Bulk-update settings for authenticated users.
-     * Accepts: { "secop_limit_per_client": "3", ... }
      */
     public function update(): JsonResponse
     {
@@ -31,7 +30,17 @@ class SettingController extends Controller
 
         $data = request()->validate([
             'secop_limit_per_client' => ['sometimes', 'integer', 'min:1', 'max:50'],
+            'heartbeat_interval'     => ['sometimes', 'integer', 'min:1', 'max:60'],
+            'offline_threshold'      => ['sometimes', 'integer', 'min:1', 'max:60'],
         ]);
+
+        if (isset($data['heartbeat_interval']) && isset($data['offline_threshold'])) {
+            if ($data['heartbeat_interval'] < $data['offline_threshold']) {
+                return response()->json([
+                    'message' => 'Heartbeat interval must be greater than or equal to the offline threshold.',
+                ], 422);
+            }
+        }
 
         foreach ($data as $key => $value) {
             Setting::set($key, (string) $value);

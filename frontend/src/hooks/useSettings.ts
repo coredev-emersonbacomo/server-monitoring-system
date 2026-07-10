@@ -3,10 +3,14 @@ import jwtClient from "@/api/jwtClient";
 
 export interface SystemSettings {
     secop_limit_per_client: string;
+    heartbeat_interval: string;
+    offline_threshold: string;
 }
 
 const normalizeSettings = (data: Partial<SystemSettings> | Record<string, unknown> | null | undefined): SystemSettings => ({
     secop_limit_per_client: String(data?.secop_limit_per_client ?? data?.["secop_limit_per_client"] ?? "2"),
+    heartbeat_interval: String(data?.heartbeat_interval ?? data?.["heartbeat_interval"] ?? "5"),
+    offline_threshold: String(data?.offline_threshold ?? data?.["offline_threshold"] ?? "5"),
 });
 
 export const useSettings = () =>

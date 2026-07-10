@@ -16,5 +16,15 @@ class SettingSeeder extends Seeder
             ['key' => 'secop_limit_per_client'],
             ['value' => '2', 'updated_at' => now(), 'created_at' => now()]
         );
+
+        DB::table('settings')->updateOrInsert(
+            ['key' => 'heartbeat_interval'],
+            ['value' => '5', 'updated_at' => now(), 'created_at' => now()]
+        );
+
+        DB::table('settings')->updateOrInsert(
+            ['key' => 'offline_threshold'],
+            ['value' => '5', 'updated_at' => now(), 'created_at' => now()]
+        );
     }
 }
