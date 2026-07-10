@@ -10,7 +10,7 @@ class ServerData extends Data
     public function __construct(
         public string $server_name,
 
-        public string $description,
+        public ?string $description,
 
         public string $uuid,
 
@@ -25,14 +25,14 @@ class ServerData extends Data
         public string $updated_at,
 
         public string $record_status,
+        
+        public ?string $cpu_model = null,
 
         public ?int $cpu_cores = null,
 
         public ?string $ram = null,
 
         public ?string $disk = null,
-
-        public ?string $cpu_model = null,
 
         public ?string $operating_system = null,
 

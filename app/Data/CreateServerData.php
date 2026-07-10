@@ -15,6 +15,6 @@ class CreateServerData extends Data
     public function __construct(
         #[Required, StringType, Max(255)]
         public string $server_name,
-        public string $description,
+        public ?string $description,
     ) {}
 }
