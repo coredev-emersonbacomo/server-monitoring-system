@@ -10,7 +10,6 @@ import {
     Gauge,
     RefreshCw,
     ShieldX,
-    TimerOff,
     UserX,
     CheckCircle2,
     Circle,
@@ -91,7 +90,6 @@ function ActionCardSkeleton() {
 const ACTION_ICONS: Record<ActionItem["action_type"], typeof ShieldX> = {
     no_secops: UserX,
     server_offline: ShieldX,
-    server_warning: TimerOff,
 };
 
 const SEVERITY_BORDER: Record<ActionItem["severity"], string> = {

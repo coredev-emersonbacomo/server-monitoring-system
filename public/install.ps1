@@ -1,11 +1,14 @@
 param(
     [Parameter(Mandatory=$true)]
-    [string]$ProvisionToken
+    [string]$ProvisionToken,
+
+    [Parameter(Mandatory=$false)]
+    [string]$AppUrl = "http://127.0.0.1:8000"
 )
 
-$appUrl = "{{APP_URL}}"
-$bootstrapUrl = "$appUrl/api/v1/provision"
+$bootstrapUrl = "$AppUrl/api/v1/provision"
 $appDir = "C:\Program Files\MonitorAgent"
+$agentFile = "$appDir\MonitorAgent.exe"
 $logFile = "$env:TEMP\monitor-agent-install.log"
 
 function Log($msg) {
@@ -21,9 +24,8 @@ function Fail($msg) {
     exit 1
 }
 
-Log "Starting C# MonitorAgent installation..."
+Log "Starting MonitorAgent installation..."
 
-# Step 1: Bootstrap with server
 Log "Contacting provision endpoint..."
 $body = @{
     token = $ProvisionToken
@@ -50,14 +52,11 @@ if (-not $apiUrl -or -not $registerUrl) {
     Fail "Invalid bootstrap configuration returned by server."
 }
 
-# Step 2: Create directory
 if (-not (Test-Path $appDir)) {
     New-Item -ItemType Directory -Path $appDir -Force | Out-Null
 }
 
-# Step 3: Download agent binary
-$agentFile = "$appDir\MonitorAgent.exe"
-Log "Downloading C# agent binary from $downloadUrl..."
+Log "Downloading agent binary from $downloadUrl..."
 try {
     Invoke-WebRequest -Uri $downloadUrl -OutFile "$agentFile.tmp" -UseBasicParsing
 } catch {
@@ -76,7 +75,6 @@ if ($expectedSha256) {
 
 Move-Item "$agentFile.tmp" $agentFile -Force
 
-# Step 4: Write bootstrap config
 $bootstrapJson = @{
     token = $ProvisionToken
     api_url = $apiUrl
@@ -89,7 +87,6 @@ $bootstrapJson = @{
 Set-Content -Path "$appDir\bootstrap.json" -Value $bootstrapJson -Force
 Log "Bootstrap configuration written."
 
-# Step 5: Create Windows scheduled task for resilience
 $taskName = "MonitorAgent"
 $action = New-ScheduledTaskAction -Execute $agentFile
 $trigger = New-ScheduledTaskTrigger -AtStartup

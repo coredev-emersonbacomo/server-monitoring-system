@@ -1,26 +1,44 @@
-$appUrl = "{{APP_URL}}"
-$bootstrapUrl = "$appUrl/api/v1/provision"
+param(
+    [Parameter(Mandatory=$true)]
+    [string]$ProvisionToken,
 
-Write-Host "Starting monitor-agent installation bootstrap on Windows..."
+    [Parameter(Mandatory=$false)]
+    [string]$AppUrl = "http://127.0.0.1:8000"
+)
 
-if (-not $token) {
-    Write-Error "No provisioning token found. Make sure `$token is set before running this script."
+$bootstrapUrl = "$AppUrl/api/v1/provision"
+$appDir = "C:\Program Files\MonitorAgent"
+$agentFile = "$appDir\MonitorAgent.exe"
+$logFile = "$env:TEMP\monitor-agent-install.log"
+
+function Log($msg) {
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    "$timestamp [INFO] $msg" | Out-File -FilePath $logFile -Append
+    Write-Host $msg
+}
+
+function Fail($msg) {
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    "$timestamp [ERROR] $msg" | Out-File -FilePath $logFile -Append
+    Write-Error $msg
     exit 1
 }
 
+Log "Starting MonitorAgent installation..."
+
+Log "Contacting provision endpoint..."
 $body = @{
-    token = $token
+    token = $ProvisionToken
     hostname = [System.Net.Dns]::GetHostName()
     platform = "windows"
     architecture = $env:PROCESSOR_ARCHITECTURE
-    installer_version = "1.0"
+    installer_version = "2.0"
 } | ConvertTo-Json
 
 try {
     $response = Invoke-RestMethod -Uri $bootstrapUrl -Method Post -Body $body -ContentType "application/json"
 } catch {
-    Write-Error "Failed to contact provision API or token invalid: $_"
-    exit 1
+    Fail "Failed to contact provision API or token invalid: $_"
 }
 
 $downloadUrl = $response.download_url
@@ -30,29 +48,35 @@ $registerUrl = $response.register_url
 $heartbeatInterval = $response.heartbeat_interval
 $agentVersion = $response.agent_version
 
-$appDir = "C:\Program Files\MonitorAgent"
-if (-not (Test-Path $appDir)) {
-    New-Item -ItemType Directory -Path $appDir | Out-Null
+if (-not $apiUrl -or -not $registerUrl) {
+    Fail "Invalid bootstrap configuration returned by server."
 }
 
-$agentFile = "$appDir\agent.php"
-Write-Host "Downloading agent binary/script from $downloadUrl..."
-Invoke-WebRequest -Uri $downloadUrl -OutFile "$agentFile.tmp" -UseBasicParsing
+if (-not (Test-Path $appDir)) {
+    New-Item -ItemType Directory -Path $appDir -Force | Out-Null
+}
+
+Log "Downloading agent binary from $downloadUrl..."
+try {
+    Invoke-WebRequest -Uri $downloadUrl -OutFile "$agentFile.tmp" -UseBasicParsing
+} catch {
+    Fail "Failed to download agent: $_"
+}
 
 if ($expectedSha256) {
-    Write-Host "Verifying checksum..."
+    Log "Verifying checksum..."
     $actualHash = (Get-FileHash "$agentFile.tmp" -Algorithm SHA256).Hash.ToLower()
     if ($actualHash -ne $expectedSha256.ToLower()) {
         Remove-Item "$agentFile.tmp" -Force
-        Write-Error "Checksum verification failed! Expected $expectedSha256, got $actualHash"
-        exit 1
+        Fail "Checksum verification failed! Expected $expectedSha256, got $actualHash"
     }
+    Log "Checksum verified."
 }
 
 Move-Item "$agentFile.tmp" $agentFile -Force
 
 $bootstrapJson = @{
-    token = $token
+    token = $ProvisionToken
     api_url = $apiUrl
     register_url = $registerUrl
     heartbeat_interval = $heartbeatInterval
@@ -60,8 +84,22 @@ $bootstrapJson = @{
     agent_version = $agentVersion
 } | ConvertTo-Json
 
-Set-Content -Path "$appDir\bootstrap.json" -Value $bootstrapJson
+Set-Content -Path "$appDir\bootstrap.json" -Value $bootstrapJson -Force
+Log "Bootstrap configuration written."
 
-Write-Host "Bootstrap config written. Registering as Windows Service..."
+$taskName = "MonitorAgent"
+$action = New-ScheduledTaskAction -Execute $agentFile
+$trigger = New-ScheduledTaskTrigger -AtStartup
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 5 -RestartInterval (New-TimeSpan -Minutes 1)
+$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
 
-Write-Host "Installation complete. Please run the agent using: php `"$agentFile`""
+try {
+    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force
+    Start-ScheduledTask -TaskName $taskName
+    Log "Scheduled task '$taskName' created and started."
+} catch {
+    Log "Warning: Could not create scheduled task: $_"
+    Log "You can manually run the agent: $agentFile"
+}
+
+Log "Installation complete. Agent is running as scheduled task '$taskName'."

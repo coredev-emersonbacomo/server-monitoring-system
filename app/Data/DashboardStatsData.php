@@ -11,7 +11,6 @@ class DashboardStatsData extends Data
         public int $total_clients,
         public int $total_servers,
         public int $online_count,
-        public int $warning_count,
         public int $offline_count,
         /** @var array<int, array{server_uuid: string, server_name: string, client_name: string, value: float}> */
         public array $top_usage_cpu,

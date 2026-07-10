@@ -23,18 +23,13 @@ class DashboardController extends Controller
         $servers = Server::with('client', 'latestUpdate')->get();
         $totalServers = $servers->count();
 
-        $onlineThreshold  = now()->subMinutes(5);
-        $warningThreshold = now()->subMinutes(15);
-
         $onlineCount = 0;
-        $warningCount = 0;
         $offlineCount = 0;
 
         $latestUpdates = collect();
 
         foreach ($servers as $server) {
-            $lastSeen = $server->latestUpdate?->created_at;
-            $health = Server::computeHealth($lastSeen, $onlineThreshold, $warningThreshold);
+            $health = $server->health;
 
             match ($health) {
                 ServerHealth::Online  => $onlineCount++,
@@ -74,7 +69,6 @@ class DashboardController extends Controller
             total_clients:    $totalClients,
             total_servers:    $totalServers,
             online_count:     $onlineCount,
-            warning_count:    $warningCount,
             offline_count:    $offlineCount,
             top_usage_cpu:    $buildRanking('cpu_usage'),
             top_usage_memory: $buildRanking('memory_usage'),

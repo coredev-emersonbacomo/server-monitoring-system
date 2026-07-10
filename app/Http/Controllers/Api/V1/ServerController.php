@@ -13,7 +13,6 @@ use App\Models\ServerUpdate;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\Request;
 use Infrastructure\Api\ApiGenerator;
-use Infrastructure\Service\InstallerService;
 
 class ServerController extends Controller
 {

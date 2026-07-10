@@ -12,7 +12,6 @@ import {
     BarChart3,
     Bell,
     Server,
-    Network,
     Terminal,
     Copy,
     Check,
@@ -199,7 +198,7 @@ export const ServerCard = memo(function ServerCard({
                     queryKey: ["server", server.uuid],
                 });
             }
-        } catch (e) {
+        } catch {
             toast.error("An error occurred.");
         } finally {
             setGenerating(false);

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Carbon\Carbon;
 use App\Enums\RecordStatus;
 use App\Enums\ServerHealth;
@@ -81,12 +82,22 @@ class Server extends Model
         return $this->hasOne(ServerUpdate::class, 'server_id')->latestOfMany('created_at');
     }
 
-    public static function computeHealth(?Carbon $lastSeen, Carbon $onlineThreshold, Carbon $warningThreshold): ServerHealth
+    public static function computeHealth(?Carbon $lastSeen, int $offlineThresholdMinutes = 5): ServerHealth
     {
-        if ($lastSeen === null || $lastSeen->lessThan($warningThreshold)) {
+        if ($lastSeen === null || $lastSeen->lessThan(now()->subMinutes($offlineThresholdMinutes))) {
             return ServerHealth::Offline;
         }
 
         return ServerHealth::Online;
+    }
+
+    protected function health(): Attribute
+    {
+        return Attribute::get(function () {
+            $lastSeen = $this->latestUpdate?->created_at;
+            $threshold = (int) Setting::get('offline_threshold', '5');
+
+            return self::computeHealth($lastSeen, $threshold);
+        });
     }
 }

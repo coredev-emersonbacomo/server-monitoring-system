@@ -3,7 +3,7 @@ import api from "@/api/api";
 
 export interface ActionItem {
     id: number;
-    action_type: "no_secops" | "server_offline" | "server_warning";
+    action_type: "no_secops" | "server_offline";
     message: string;
     severity: "critical" | "warning" | "info";
     server_uuid: string | null;

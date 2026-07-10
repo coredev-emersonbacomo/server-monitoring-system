@@ -142,15 +142,15 @@ class ProvisioningService
         $platform = $metadata['platform'] ?? 'linux';
 
         if ($platform === 'windows') {
-            $agentPath = public_path('agents/cs_agent/MonitorAgent.exe');
-            $downloadUrl = url('/agents/cs_agent/MonitorAgent.exe');
+            $agentPath = public_path('MonitorAgent.exe');
+            $downloadUrl = url('/MonitorAgent.exe');
         } else {
-            $agentPath = public_path('agents/php_agent/agent.txt');
-            $downloadUrl = url('/agents/php_agent/agent.txt');
+            $agentPath = public_path('agent');
+            $downloadUrl = url('/agent');
         }
 
         $sha256 = file_exists($agentPath) ? hash_file('sha256', $agentPath) : '';
-        $agentVersion = $platform === 'windows' ? '2.0' : '2.0';
+        $agentVersion = '2.0';
 
         return [
             'download_url' => $downloadUrl,
