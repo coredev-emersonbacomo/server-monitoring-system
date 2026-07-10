@@ -16,6 +16,7 @@ return new class extends Migration
             $table->uuid('uuid')->unique();
             $table->foreignId('client_id')->constrained()->onDelete('cascade');
             $table->string('server_name');
+            $table->text('description');
 
             $table->string('host_name');
 

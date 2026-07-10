@@ -32,6 +32,7 @@ class ServerController extends Controller
             $server = Server::create([
                 'client_id'    => $clientId,
                 'server_name'  => $data->server_name,
+                'description'  => $data->description,
                 'host_name'  => $data->host_name ?? $data->server_name,
                 'api_key'      => ApiGenerator::GenerateApiKey(),
             ]);
@@ -63,6 +64,11 @@ class ServerController extends Controller
         if ($data->host_name !== null) {
             $updateData['host_name'] = $data->host_name;
         }
+
+        if ($data->description !== null) {
+            $updateData['description'] = $data->host_name;
+        }
+
         $serverModel->update($updateData);
 
         return ServerData::fromModel($serverModel);
@@ -103,6 +109,7 @@ class ServerController extends Controller
                 'created_at'       => $server->created_at->toIso8601String(),
                 'updated_at'       => $server->updated_at->toIso8601String(),
                 'cpu_cores'        => $server->cpu_cores,
+                'description'      => $server->description,
                 'ram'              => $server->ram,
                 'disk'             => $server->disk,
                 'operating_system' => $server->operating_system,
@@ -150,6 +157,7 @@ class ServerController extends Controller
         return ServerData::from([
             'uuid'                   => $server->uuid,
             'server_name'            => $server->server_name,
+            'description'            => $server->description,
             'host_name'              => $server->host_name,
             'created_at'             => $server->created_at->toIso8601String(),
             'updated_at'             => $server->updated_at->toIso8601String(),
