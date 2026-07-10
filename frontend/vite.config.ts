@@ -22,11 +22,11 @@ export default defineConfig({
         // allowedHosts: ["chip-colt-fretted.ngrok-free.dev"],
         proxy: {
             "/api": {
-                target: "http://server-monitoring-system.test",
+                target: "http://127.0.0.1:8000",
                 changeOrigin: true,
             },
             "/sanctum": {
-                target: "http://server-monitoring-system.test",
+                target: "http://127.0.0.1:8000",
                 changeOrigin: true,
             },
         },

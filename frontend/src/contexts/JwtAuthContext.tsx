@@ -10,8 +10,8 @@ import { setAccessToken, refreshAccessToken } from "@/api/tokenManager";
 import api from "@/api/api";
 import type {
     AuthUserData,
-    LoginRequest,
-    AuthAuditLogResource,
+    JwtAuthLoginPayload,
+    SecurityActivityData,
     SessionResource,
 } from "@/types/models";
 
@@ -19,7 +19,7 @@ interface JwtAuthContextType {
     user: AuthUserData | null;
     isLoading: boolean;
     isAuthenticated: boolean;
-    login: (credentials: LoginRequest) => Promise<void>;
+    login: (credentials: JwtAuthLoginPayload) => Promise<void>;
     logout: () => Promise<void>;
     logoutAll: () => Promise<void>;
     logoutReason: "manual" | "expired" | null;
@@ -32,7 +32,7 @@ interface JwtAuthContextType {
     revokeSession: (sessionUuid: string) => Promise<void>;
     revokeAllOtherSessions: () => Promise<void>;
     permanentDeleteSession: (sessionUuid: string) => Promise<void>;
-    securityActivity: AuthAuditLogResource[];
+    securityActivity: SecurityActivityData[];
     securityActivityLoading: boolean;
     fetchSecurityActivity: () => Promise<void>;
 }
@@ -50,7 +50,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     const [sessions, setSessions] = useState<SessionResource[]>([]);
     const [sessionsLoading, setSessionsLoading] = useState(false);
     const [securityActivity, setSecurityActivity] = useState<
-        AuthAuditLogResource[]
+        SecurityActivityData[]
     >([]);
     const [logoutReason, setLogoutReason] =
         useState<JwtAuthContextType["logoutReason"]>(null);
@@ -126,7 +126,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
         };
     }, [refreshUser]);
 
-    const login = useCallback(async (credentials: LoginRequest) => {
+    const login = useCallback(async (credentials: JwtAuthLoginPayload) => {
         setIsLoggingIn(true);
         try {
             const response = await api.POST("/v1/login", {

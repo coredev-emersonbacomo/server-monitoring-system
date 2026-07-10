@@ -638,10 +638,7 @@ export interface paths {
         };
         /** Return all settings as a key-value map */
         get: operations["setting.index"];
-        /**
-         * Bulk-update settings for authenticated users.
-         *     Accepts: { "secop_limit_per_client": "3", ... }
-         */
+        /** Bulk-update settings for authenticated users */
         put: operations["setting.update"];
         post?: never;
         delete?: never;
@@ -809,7 +806,6 @@ export interface components {
             total_clients: number;
             total_servers: number;
             online_count: number;
-            warning_count: number;
             offline_count: number;
             top_usage_cpu: {
                 server_uuid: string;
@@ -884,6 +880,7 @@ export interface components {
         /** ServerData */
         ServerData: {
             server_name: string;
+            description?: string | null;
             uuid: string;
             host_name: string;
             client_uuid: string;
@@ -891,10 +888,10 @@ export interface components {
             created_at: string;
             updated_at: string;
             record_status: string;
+            cpu_model?: string | null;
             cpu_cores?: number | null;
             ram?: string | null;
             disk?: string | null;
-            cpu_model?: string | null;
             operating_system?: string | null;
             status?: string | null;
             stats?: components["schemas"]["StatPointData"][];
@@ -1330,6 +1327,7 @@ export interface operations {
             content: {
                 "application/json": {
                     server_name: string;
+                    description?: string | null;
                 };
             };
         };
@@ -1360,7 +1358,11 @@ export interface operations {
     };
     "client.index": {
         parameters: {
-            query?: never;
+            query?: {
+                user_uuid?: string | null;
+                exclude_user_uuid?: string | null;
+                available_only?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1387,7 +1389,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
+                "multipart/form-data": {
                     name: string;
                     location: string;
                     /** @description Must be unique in `clients`. */
@@ -2260,6 +2262,7 @@ export interface operations {
                 "application/json": {
                     server_name?: string | null;
                     host_name?: string | null;
+                    description?: string | null;
                 };
             };
         };
@@ -2537,6 +2540,17 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Forbidden.";
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Heartbeat interval must be greater than or equal to the offline threshold.";
                     };
                 };
             };
