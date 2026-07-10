@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
-class DiscordAlertService
+use Illuminate\Support\Facades\Mail;
+
+class NotificationService
 {
     /**
      * Send an alert to a Discord text channel.
@@ -12,7 +14,7 @@ class DiscordAlertService
      * @param string $message The message content
      * @param string $channelId The Channel ID to send the message to
      */
-    public static function sendAlert(string $tokenId, string $roleId, string $message, string $channelId)
+    public function sendDiscordAlert(string $tokenId, string $roleId, string $message, string $channelId)
     {
         $discord = new \Discord\Discord([
             'token' => $tokenId,
@@ -35,5 +37,25 @@ class DiscordAlertService
         });
 
         $discord->run();
+    }
+
+    /**
+     * Send an email alert.
+     *
+     * @param array|string $receivers The email address(es) to send to.
+     * @param string $message The message content to send.
+     */
+    public function sendEmailAlert(array|string $receivers, string $message)
+    {
+        // Convert single receiver to array to support multiple easily
+        $receivers = is_array($receivers) ? $receivers : func_get_args()[0] ?? [$receivers];
+        if (is_string($receivers)) {
+            $receivers = [$receivers];
+        }
+
+        Mail::raw($message, function ($mail) use ($receivers) {
+            $mail->to($receivers)
+                 ->subject('System Notification');
+        });
     }
 }
