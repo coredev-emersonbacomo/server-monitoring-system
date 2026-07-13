@@ -12,9 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('servers', function (Blueprint $table) {
-            // Make existing fields nullable
-            $table->string('api_key')->nullable()->change();
-
             // Add new fields
             $table->string('environment')->nullable();
             $table->string('status')->default('pending_installation');
@@ -29,8 +26,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('servers', function (Blueprint $table) {
-            $table->string('api_key')->nullable(false)->change();
-
             $table->dropColumn(['environment', 'status', 'architecture', 'archived_at']);
         });
     }

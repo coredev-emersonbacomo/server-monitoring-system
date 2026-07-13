@@ -82,7 +82,7 @@ class SimulateMetricsUpdate extends Command
                         'Accept' => 'application/json',
                     ], json_encode([
                         'uuid' => $server->uuid,
-                        'token' => $server->api_key,
+                        'token' => 'simulated',
                         'timestamp' => time(),
                         'cpu' => ['load1' => $this->randInRange($r['cpu'])],
                         'memory' => ['percent' => $this->randInRange($r['memory'])],

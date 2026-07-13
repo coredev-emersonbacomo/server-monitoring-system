@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Infrastructure\Api\ApiGenerator;
 use App\Models\Client;
 use App\Models\Server;
 use App\Models\User;
@@ -41,7 +40,6 @@ class ClientSeeder extends Seeder
             [
                 'uuid' => (string) Str::uuid7(),
                 'host_name' => 'Thinkpad',
-                'api_key' => ApiGenerator::GenerateApiKey(),
             ]
         );
     }

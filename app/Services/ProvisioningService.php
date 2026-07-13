@@ -76,6 +76,19 @@ class ProvisioningService
             'performed_by' => $user?->id,
         ]);
 
+        \App\Models\CustomActivityLog::create([
+            'logable_type' => Server::class,
+            'logable_id' => (string) $server->uuid,
+            'user_id' => $user?->id,
+            'user' => $user ? "{$user->first_name} {$user->last_name}" : 'System',
+            'action' => 'Generate Installation Command',
+            'details' => [
+                'message' => "Generated installation command for server: {$server->name}",
+                'server_name' => $server->name,
+                'token_expires_at' => $expiresAt->toIso8601String(),
+            ],
+        ]);
+
         // Broadcast event
         event(new ProvisionTokenGenerated($server->uuid, $expiresAt->toIso8601String()));
 
