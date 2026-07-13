@@ -20,9 +20,6 @@ return new class extends Migration
 
             $table->string('host_name');
 
-            // API Key
-            $table->string('api_key');
-
             $table->string('cpu_model')->nullable();
             $table->integer('cpu_cores')->nullable();
             $table->string('ram')->nullable();

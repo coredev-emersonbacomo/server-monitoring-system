@@ -6,7 +6,6 @@ use App\Models\Client;
 use App\Models\Server;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Infrastructure\Api\ApiGenerator;
 
 class ServerFactory extends Factory
 {
@@ -26,8 +25,6 @@ class ServerFactory extends Factory
             'cpu_cores' => fake()->randomElement([2, 4, 8, 16]),
             'ram' => fake()->randomElement(['16GB', '32GB', '64GB']),
             'disk' => fake()->randomElement(['256GB', '512GB', '1TB']),
-
-            'api_key' => ApiGenerator::GenerateApiKey()
         ];
     }
 }

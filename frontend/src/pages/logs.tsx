@@ -123,210 +123,247 @@ function LogDetailModal({
                     {/* Details Payload Parsing */}
                     {log.details
                         ? (() => {
-                              let parsed: Record<string, any> | null = null;
-                              try {
-                                  const obj = JSON.parse(log.details);
-                                  if (obj && typeof obj === "object") {
-                                      parsed = obj;
-                                  }
-                              } catch {
-                                  // not valid json, will fallback below
-                              }
+                            let parsed: Record<string, any> | null = null;
+                            try {
+                                const obj = JSON.parse(log.details);
+                                if (obj && typeof obj === "object") {
+                                    parsed = obj;
+                                }
+                            } catch {
+                                // not valid json, will fallback below
+                            }
 
-                              if (!parsed) {
-                                  return (
-                                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50">
-                                          {log.details}
-                                      </p>
-                                  );
-                              }
+                            if (!parsed) {
+                                return (
+                                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50">
+                                        {log.details}
+                                    </p>
+                                );
+                            }
 
-                              // Extract special keys (supporting before/after and old/new aliases)
-                              const {
-                                  message,
-                                  old,
-                                  new: newVals,
-                                  before,
-                                  after,
-                                  ...rest
-                              } = parsed;
+                            // Extract special keys (supporting before/after and old/new aliases)
+                            const {
+                                message,
+                                old,
+                                new: newVals,
+                                before,
+                                after,
+                                ...rest
+                            } = parsed;
 
-                              const beforeData = before ?? old;
-                              const afterData = after ?? newVals;
-                              const hasDiff =
-                                  beforeData !== undefined ||
-                                  afterData !== undefined;
-                              const hasRest = Object.keys(rest).length > 0;
+                            const beforeData = before ?? old;
+                            const afterData = after ?? newVals;
+                            const hasDiff =
+                                beforeData !== undefined ||
+                                afterData !== undefined;
+                            const hasRest = Object.keys(rest).length > 0;
 
-                              const isObject = (val: any) =>
-                                  val &&
-                                  typeof val === "object" &&
-                                  !Array.isArray(val);
+                            const isObject = (val: any) =>
+                                val &&
+                                typeof val === "object" &&
+                                !Array.isArray(val);
 
-                              const formatVal = (val: any) => {
-                                  if (val === undefined || val === null) {
-                                      return (
-                                          <span className="text-muted-foreground/45">
-                                              —
-                                          </span>
-                                      );
-                                  }
-                                  if (typeof val === "object") {
-                                      return JSON.stringify(val, null, 2);
-                                  }
-                                  if (typeof val === "boolean") {
-                                      return val ? "true" : "false";
-                                  }
-                                  return String(val);
-                              };
+                            const formatVal = (val: any) => {
+                                if (val === undefined || val === null) {
+                                    return (
+                                        <span className="text-muted-foreground/45">
+                                            —
+                                        </span>
+                                    );
+                                }
+                                if (typeof val === "object") {
+                                    return JSON.stringify(val, null, 2);
+                                }
+                                if (typeof val === "boolean") {
+                                    return val ? "true" : "false";
+                                }
+                                return String(val);
+                            };
 
-                              // Collect all unique keys for diff comparison
-                              const diffKeys = new Set<string>();
-                              if (isObject(beforeData))
-                                  Object.keys(beforeData).forEach((k) =>
-                                      diffKeys.add(k),
-                                  );
-                              if (isObject(afterData))
-                                  Object.keys(afterData).forEach((k) =>
-                                      diffKeys.add(k),
-                                  );
-                              const keyList = Array.from(diffKeys);
+                            // Collect all unique keys for diff comparison
+                            const diffKeys = new Set<string>();
+                            if (isObject(beforeData))
+                                Object.keys(beforeData).forEach((k) =>
+                                    diffKeys.add(k),
+                                );
+                            if (isObject(afterData))
+                                Object.keys(afterData).forEach((k) =>
+                                    diffKeys.add(k),
+                                );
+                            const keyList = Array.from(diffKeys);
+                            const isCreateAction = log.action.toLowerCase().includes("create");
 
-                              return (
-                                  <div className="flex flex-col gap-4">
-                                      {message && (
-                                          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3.5">
-                                              <p className="text-sm font-medium text-foreground">
-                                                  {message}
-                                              </p>
-                                          </div>
-                                      )}
+                            return (
+                                <div className="flex flex-col gap-4">
+                                    {message && (
+                                        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3.5">
+                                            <p className="text-sm font-medium text-foreground">
+                                                {message}
+                                            </p>
+                                        </div>
+                                    )}
 
-                                      {hasDiff && (
-                                          <div className="flex flex-col gap-2">
-                                              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                                                  Changes
-                                              </p>
+                                    {isCreateAction && hasRest && (
+                                        <div className="flex flex-col gap-2">
+                                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                                Details
+                                            </p>
+                                            <div className="border border-border rounded-lg overflow-hidden bg-card/50">
+                                                <table className="w-full text-xs text-left">
+                                                    <thead>
+                                                        <tr className="border-b border-border bg-muted/40 font-semibold text-muted-foreground">
+                                                            <th className="px-3 py-2 w-1/2">
+                                                                Field
+                                                            </th>
+                                                            <th className="px-3 py-2 w-1/2">
+                                                                Value
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-border font-mono">
+                                                        {Object.entries(rest).map(
+                                                            ([key, val]) => (
+                                                                <tr key={key}>
+                                                                    <td className="px-3 py-2 font-medium text-foreground break-all">
+                                                                        {key}
+                                                                    </td>
+                                                                    <td className="px-3 py-2 text-emerald-500/90 whitespace-pre-wrap break-all">
+                                                                        {formatVal(val)}
+                                                                    </td>
+                                                                </tr>
+                                                            )
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
 
-                                              {keyList.length === 0 ? (
-                                                  // Fallback for flat comparisons (primitives instead of nested objects)
-                                                  <div className="border border-border rounded-lg overflow-hidden bg-card/50">
-                                                      <table className="w-full text-xs text-left table-fixed">
-                                                          <thead>
-                                                              <tr className="border-b border-border bg-muted/40 font-semibold text-muted-foreground">
-                                                                  <th className="px-3 py-2 w-1/2">
-                                                                      Before
-                                                                  </th>
-                                                                  <th className="px-3 py-2 w-1/2">
-                                                                      After
-                                                                  </th>
-                                                              </tr>
-                                                          </thead>
-                                                          <tbody className="divide-y divide-border font-mono">
-                                                              <tr>
-                                                                  <td className="px-3 py-2 text-red-500/90 whitespace-pre-wrap break-all">
-                                                                      {formatVal(
-                                                                          beforeData,
-                                                                      )}
-                                                                  </td>
-                                                                  <td className="px-3 py-2 text-emerald-500/90 whitespace-pre-wrap break-all">
-                                                                      {formatVal(
-                                                                          afterData,
-                                                                      )}
-                                                                  </td>
-                                                              </tr>
-                                                          </tbody>
-                                                      </table>
-                                                  </div>
-                                              ) : (
-                                                  // Rich side-by-side key comparison table
-                                                  <div className="border border-border rounded-lg overflow-hidden bg-card/50">
-                                                      <table className="w-full text-xs text-left">
-                                                          <thead>
-                                                              <tr className="border-b border-border bg-muted/40 font-semibold text-muted-foreground">
-                                                                  <th className="px-3 py-2 w-1/3">
-                                                                      Field
-                                                                  </th>
-                                                                  <th className="px-3 py-2 w-1/3">
-                                                                      Before
-                                                                  </th>
-                                                                  <th className="px-3 py-2 w-1/3">
-                                                                      After
-                                                                  </th>
-                                                              </tr>
-                                                          </thead>
-                                                          <tbody className="divide-y divide-border font-mono">
-                                                              {keyList.map(
-                                                                  (key) => {
-                                                                      const bVal =
-                                                                          beforeData?.[
-                                                                              key
-                                                                          ];
-                                                                      const aVal =
-                                                                          afterData?.[
-                                                                              key
-                                                                          ];
-                                                                      const isChanged =
-                                                                          JSON.stringify(
-                                                                              bVal,
-                                                                          ) !==
-                                                                          JSON.stringify(
-                                                                              aVal,
-                                                                          );
+                                    {hasDiff && (
+                                        <div className="flex flex-col gap-2">
+                                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                                Changes
+                                            </p>
 
-                                                                      return (
-                                                                          <tr
-                                                                              key={
-                                                                                  key
-                                                                              }
-                                                                              className={cn(
-                                                                                  isChanged &&
-                                                                                      "bg-muted/10",
-                                                                              )}
-                                                                          >
-                                                                              <td className="px-3 py-2 font-medium text-foreground break-all">
-                                                                                  {
-                                                                                      key
-                                                                                  }
-                                                                              </td>
-                                                                              <td className="px-3 py-2 text-red-500/90 whitespace-pre-wrap break-all">
-                                                                                  {formatVal(
-                                                                                      bVal,
-                                                                                  )}
-                                                                              </td>
-                                                                              <td className="px-3 py-2 text-emerald-500/90 whitespace-pre-wrap break-all">
-                                                                                  {formatVal(
-                                                                                      aVal,
-                                                                                  )}
-                                                                              </td>
-                                                                          </tr>
-                                                                      );
-                                                                  },
-                                                              )}
-                                                          </tbody>
-                                                      </table>
-                                                  </div>
-                                              )}
-                                          </div>
-                                      )}
+                                            {keyList.length === 0 ? (
+                                                // Fallback for flat comparisons (primitives instead of nested objects)
+                                                <div className="border border-border rounded-lg overflow-hidden bg-card/50">
+                                                    <table className="w-full text-xs text-left table-fixed">
+                                                        <thead>
+                                                            <tr className="border-b border-border bg-muted/40 font-semibold text-muted-foreground">
+                                                                <th className="px-3 py-2 w-1/2">
+                                                                    Before
+                                                                </th>
+                                                                <th className="px-3 py-2 w-1/2">
+                                                                    After
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-border font-mono">
+                                                            <tr>
+                                                                <td className="px-3 py-2 text-red-500/90 whitespace-pre-wrap break-all">
+                                                                    {formatVal(
+                                                                        beforeData,
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-emerald-500/90 whitespace-pre-wrap break-all">
+                                                                    {formatVal(
+                                                                        afterData,
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ) : (
+                                                // Rich side-by-side key comparison table
+                                                <div className="border border-border rounded-lg overflow-hidden bg-card/50">
+                                                    <table className="w-full text-xs text-left">
+                                                        <thead>
+                                                            <tr className="border-b border-border bg-muted/40 font-semibold text-muted-foreground">
+                                                                <th className="px-3 py-2 w-1/3">
+                                                                    Field
+                                                                </th>
+                                                                <th className="px-3 py-2 w-1/3">
+                                                                    Before
+                                                                </th>
+                                                                <th className="px-3 py-2 w-1/3">
+                                                                    After
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-border font-mono">
+                                                            {keyList.map(
+                                                                (key) => {
+                                                                    const bVal =
+                                                                        beforeData?.[
+                                                                        key
+                                                                        ];
+                                                                    const aVal =
+                                                                        afterData?.[
+                                                                        key
+                                                                        ];
+                                                                    const isChanged =
+                                                                        JSON.stringify(
+                                                                            bVal,
+                                                                        ) !==
+                                                                        JSON.stringify(
+                                                                            aVal,
+                                                                        );
 
-                                      {hasRest && (
-                                          <div className="bg-muted/30 border border-border/60 rounded-lg p-3 overflow-auto">
-                                              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                                                  Payload Updates
-                                              </p>
-                                              <pre className="text-xs text-muted-foreground font-mono">
-                                                  {JSON.stringify(
-                                                      rest,
-                                                      null,
-                                                      2,
-                                                  )}
-                                              </pre>
-                                          </div>
-                                      )}
-                                  </div>
-                              );
-                          })()
+                                                                    return (
+                                                                        <tr
+                                                                            key={
+                                                                                key
+                                                                            }
+                                                                            className={cn(
+                                                                                isChanged &&
+                                                                                "bg-muted/10",
+                                                                            )}
+                                                                        >
+                                                                            <td className="px-3 py-2 font-medium text-foreground break-all">
+                                                                                {
+                                                                                    key
+                                                                                }
+                                                                            </td>
+                                                                            <td className="px-3 py-2 text-red-500/90 whitespace-pre-wrap break-all">
+                                                                                {formatVal(
+                                                                                    bVal,
+                                                                                )}
+                                                                            </td>
+                                                                            <td className="px-3 py-2 text-emerald-500/90 whitespace-pre-wrap break-all">
+                                                                                {formatVal(
+                                                                                    aVal,
+                                                                                )}
+                                                                            </td>
+                                                                        </tr>
+                                                                    );
+                                                                },
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {hasRest && !isCreateAction && (
+                                        <div className="bg-muted/30 border border-border/60 rounded-lg p-3 overflow-auto">
+                                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                                                Payload Updates
+                                            </p>
+                                            <pre className="text-xs text-muted-foreground font-mono">
+                                                {JSON.stringify(
+                                                    rest,
+                                                    null,
+                                                    2,
+                                                )}
+                                            </pre>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()
                         : null}
 
                     <div className="h-px bg-border" />
@@ -410,7 +447,7 @@ export default function LogsPage() {
 
             <main className="py-6 w-full flex-1 min-h-0">
                 <Tab>
-                    <Tab.Item icon={Terminal} title="Activity Logs">
+                    <Tab.Item icon={Terminal} title="Activity">
                         <div className="rounded-b-xl border border-border/60 bg-card overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
@@ -521,9 +558,9 @@ export default function LogsPage() {
                         </div>
                     </Tab.Item>
 
-                    <Tab.Item icon={FileText} title="System Logs">
+                    <Tab.Item icon={FileText} title="Server Health">
                         <div className="rounded-b-xl border border-border/60 bg-card p-12 text-center text-sm text-muted-foreground">
-                            System logs feature coming soon.
+                            Server Health feature coming soon.
                         </div>
                     </Tab.Item>
                 </Tab>
