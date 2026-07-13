@@ -8,12 +8,14 @@ type ServerVarKey = `server.${keyof ServerData & string}`;
 type ClientVarKey = `server.client.${keyof ClientData & string}`;
 type MetricVarKey = `metric.${keyof StatPointData & string}`;
 
-type TemplateVariableKey = ServerVarKey | ClientVarKey | MetricVarKey;
+type TemplateVariableKey = ServerVarKey | ClientVarKey | MetricVarKey | RuntimeVarKey;
+
+type RuntimeVarKey = 'runtime.metricName' | 'runtime.sustainValue';
 
 export interface TemplateVariable {
     key: TemplateVariableKey;
     label: string;
-    group: 'server' | 'client' | 'metric';
+    group: 'server' | 'client' | 'metric' | 'runtime';
     description: string;
 }
 
@@ -51,6 +53,8 @@ const LABELS: Record<TemplateVariableKey, { label: string; group: TemplateVariab
     'metric.netIn'                  : { label: 'NetIn', group: 'metric', description: 'NetIn (StatPointData)' },
     'metric.netOut'                 : { label: 'NetOut', group: 'metric', description: 'NetOut (StatPointData)' },
     'metric.disk'                   : { label: 'Disk', group: 'metric', description: 'Disk (StatPointData)' },
+    'runtime.metricName'            : { label: 'Metric Name', group: 'runtime', description: 'Human-readable metric name (e.g. CPU Usage)' },
+    'runtime.sustainValue'          : { label: 'Sustain Value', group: 'runtime', description: 'Duration that triggered the alert (e.g. 10 minutes)' },
 };
 
 export const TEMPLATE_VARIABLES: TemplateVariable[] = (Object.entries(LABELS) as [TemplateVariableKey, typeof LABELS[TemplateVariableKey]][]).map(

@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -54,7 +53,6 @@ export default function CreateServer() {
 
     const [serverName, setServerName] = useState("");
     const [serverDescription, setServerDescription] = useState("");
-    const [descFocused, setDescFocused] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
