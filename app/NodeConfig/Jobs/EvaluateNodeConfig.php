@@ -56,10 +56,32 @@ class EvaluateNodeConfig implements ShouldQueue
 
     private function dispatchAction(array $action): void
     {
+        $settings = $action['settings'];
+        $context = $action['upstream_context'] ?? [];
+
+        $templateVars = [
+            'runtime.metricName' => $context['metric_name'] ?? 'Unknown Metric',
+            'runtime.sustainValue' => $context['sustain_value'] ?? '',
+        ];
+
+        $subject = $this->resolveTemplates($settings['subject'] ?? 'Alert triggered', $templateVars);
+        $message = $this->resolveTemplates($settings['message'] ?? 'An alert condition was triggered.', $templateVars);
+
         \Illuminate\Support\Facades\Log::info('Node config action triggered', [
             'type' => $action['type'],
             'node_id' => $action['node_id'],
-            'settings' => $action['settings'],
+            'channel' => $settings['channel'] ?? 'email',
+            'subject' => $subject,
+            'message' => $message,
+            'upstream_context' => $context,
         ]);
+    }
+
+    private function resolveTemplates(string $text, array $vars): string
+    {
+        return preg_replace_callback('/\{([^}]+)\}/', function ($matches) use ($vars) {
+            $key = $matches[1];
+            return $vars[$key] ?? $matches[0];
+        }, $text);
     }
 }

@@ -19,7 +19,7 @@ import {
     addEdge,
     Background,
     Controls,
-    MiniMap,
+    // MiniMap,
     BackgroundVariant,
     SelectionMode,
     type ReactFlowInstance,
@@ -32,10 +32,7 @@ import { NodePalette, getNodeDefaults } from "./NodePalette";
 import { NodeSettingsPanel } from "./NodeSettingsPanel";
 import { NodeConfigToolbar } from "./NodeConfigToolbar";
 import { getInputType, getOutputType } from "./nodes/socketTypes";
-import type {
-    NodeConfigGraph,
-    NodeTypeDefinition,
-} from "@/types/node-config";
+import type { NodeConfigGraph, NodeTypeDefinition } from "@/types/node-config";
 import {
     useNodeTypes,
     useConfigByKey,
@@ -85,7 +82,7 @@ function convertToFlowEdges(config: NodeConfigGraph): Edge[] {
         targetHandle: e.targetHandle,
         type: "smoothstep",
         animated: true,
-        style: { stroke: "hsl(var(--muted-foreground) / 0.35)", strokeWidth: 1.5 },
+        style: { stroke: "hsl(215 20% 55% / 0.6)", strokeWidth: 2 },
     }));
 }
 
@@ -153,14 +150,7 @@ export function NodeConfigEditor({
             setEdges(convertToFlowEdges(savedConfig.config));
             setHydrated(true);
         }
-    }, [
-        savedConfig,
-        definitions,
-        hydrated,
-        defaultName,
-        setNodes,
-        setEdges,
-    ]);
+    }, [savedConfig, definitions, hydrated, defaultName, setNodes, setEdges]);
 
     const onConnect: OnConnect = useCallback(
         (connection: Connection) => {
@@ -176,7 +166,10 @@ export function NodeConfigEditor({
                         id: edgeIdCounter(),
                         type: "smoothstep",
                         animated: true,
-                        style: { stroke: "hsl(var(--muted-foreground) / 0.35)", strokeWidth: 1.5 },
+                        style: {
+                            stroke: "hsl(215 20% 55% / 0.45)",
+                            strokeWidth: 1.5,
+                        },
                     },
                     eds,
                 ),
@@ -238,9 +231,7 @@ export function NodeConfigEditor({
         (nodeId: string) => {
             setNodes((nds) => nds.filter((n) => n.id !== nodeId));
             setEdges((eds) =>
-                eds.filter(
-                    (e) => e.source !== nodeId && e.target !== nodeId,
-                ),
+                eds.filter((e) => e.source !== nodeId && e.target !== nodeId),
             );
             setSelectedNode((prev) => (prev?.id === nodeId ? null : prev));
         },
@@ -250,15 +241,13 @@ export function NodeConfigEditor({
     const onDrop = useCallback(
         (event: DragEvent<HTMLDivElement>) => {
             event.preventDefault();
-            const type =
-                event.dataTransfer.getData("application/reactflow");
+            const type = event.dataTransfer.getData("application/reactflow");
             if (!type || !reactFlowInstance.current) return;
 
-            const position =
-                reactFlowInstance.current.screenToFlowPosition({
-                    x: event.clientX,
-                    y: event.clientY,
-                });
+            const position = reactFlowInstance.current.screenToFlowPosition({
+                x: event.clientX,
+                y: event.clientY,
+            });
 
             const defaults = getNodeDefaults(type, definitions);
             const newNode: Node = {
@@ -297,9 +286,7 @@ export function NodeConfigEditor({
 
     const selectedNodeDef = useMemo(() => {
         if (!selectedNode) return null;
-        return (
-            definitions.find((d) => d.type === selectedNode.type) || null
-        );
+        return definitions.find((d) => d.type === selectedNode.type) || null;
     }, [selectedNode, definitions]);
 
     const handleSave = useCallback(async () => {
@@ -383,31 +370,51 @@ export function NodeConfigEditor({
                             className="bg-background"
                         />
                         <Controls className="bg-card border border-border/40 rounded-lg" />
-                        <MiniMap
-                            nodeColor={(node) => {
-                                const cat = definitions.find(
-                                    (d) => d.type === node.type,
-                                )?.category;
-                                const colors: Record<string, string> = {
-                                    metric: "#3b82f6",
-                                    condition: "#f59e0b",
-                                    logic: "#8b5cf6",
-                                    time: "#10b981",
-                                    action: "#ef4444",
-                                };
-                                return colors[cat || ""] || "#6b7280";
+                        {/* <div
+                            style={{
+                                position: 'absolute',
+                                bottom: 16,
+                                right: 16,
+                                zIndex: 10,
+                                width: 200,
+                                height: 120,
+                                background: 'hsl(var(--card))',
+                                border: '1px solid hsl(var(--border))',
+                                borderRadius: '0.5rem',
+                                overflow: 'hidden',
                             }}
-                            className="bg-card border border-border/40 rounded-lg"
-                        />
+                        >
+                            <MiniMap
+                                nodeColor={(node) => {
+                                    const cat = definitions.find(
+                                        (d) => d.type === node.type,
+                                    )?.category;
+                                    const colors: Record<string, string> = {
+                                        metric: "#3b82f6",
+                                        condition: "#f59e0b",
+                                        logic: "#8b5cf6",
+                                        time: "#10b981",
+                                        action: "#ef4444",
+                                    };
+                                    return colors[cat || ""] || "#6b7280";
+                                }}
+                                maskColor="hsl(var(--background) / 0.6)"
+                                pannable
+                                zoomable
+                                style={{ width: '100%', height: '100%', background: 'transparent' }}
+                            />
+                        </div> */}
                     </ReactFlow>
+                    <div className={`absolute top-4 right-4 z-10 transition-opacity duration-200 ${selectedNode ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                        <NodeSettingsPanel
+                            node={selectedNode}
+                            nodeTypeDef={selectedNodeDef}
+                            onUpdate={updateNodeSettings}
+                            onDelete={deleteNode}
+                            onClose={() => setSelectedNode(null)}
+                        />
+                    </div>
                 </div>
-                <NodeSettingsPanel
-                    node={selectedNode}
-                    nodeTypeDef={selectedNodeDef}
-                    onUpdate={updateNodeSettings}
-                    onDelete={deleteNode}
-                    onClose={() => setSelectedNode(null)}
-                />
             </div>
 
             <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>

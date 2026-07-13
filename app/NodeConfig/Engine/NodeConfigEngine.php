@@ -15,6 +15,15 @@ class NodeConfigEngine
     private NodeRegistry $registry;
     private NodeConfigValidator $validator;
 
+    private const METRIC_NAMES = [
+        'cpu_usage' => 'CPU Usage',
+        'memory_usage' => 'Memory Usage',
+        'disk_usage' => 'Disk Usage',
+        'network_usage' => 'Network Usage',
+        'server_status' => 'Server Status',
+        'heartbeat_age' => 'Heartbeat Age',
+    ];
+
     public function __construct(NodeRegistry $registry)
     {
         $this->registry = $registry;
@@ -126,11 +135,13 @@ class NodeConfigEngine
 
             // Collect actions
             if ($handler->getCategory() === 'action' && $result->shouldPropagate && $result->value) {
+                $upstreamContext = $this->resolveUpstreamContext($nodeId, $edgeList, $nodeMap, $outputs);
                 $actions[] = [
                     'node_id' => $nodeId,
                     'type' => $handler->getType(),
                     'settings' => $node['settings'] ?? [],
                     'value' => $result->value,
+                    'upstream_context' => $upstreamContext,
                 ];
             }
         }
@@ -257,11 +268,13 @@ class NodeConfigEngine
             }
 
             if ($currentHandler->getCategory() === 'action' && $currentResult->shouldPropagate && $currentResult->value) {
+                $upstreamContext = $this->resolveUpstreamContext($currentId, $edgeList, $nodeMap, $outputs);
                 $downstreamActions[] = [
                     'node_id' => $currentId,
                     'type' => $currentHandler->getType(),
                     'settings' => $currentNode['settings'] ?? [],
                     'value' => $currentResult->value,
+                    'upstream_context' => $upstreamContext,
                 ];
             }
         }
@@ -273,5 +286,68 @@ class NodeConfigEngine
             'timers' => $downstreamTimers,
             'actions' => $downstreamActions,
         ];
+    }
+
+    /**
+     * Walk backward from an action node to collect metric names and sustain durations.
+     */
+    private function resolveUpstreamContext(string $actionNodeId, array $edgeList, array $nodeMap, array $outputs): array
+    {
+        $metricNames = [];
+        $sustainDurations = [];
+        $visited = [];
+        $queue = [$actionNodeId];
+
+        while (!empty($queue)) {
+            $currentId = array_shift($queue);
+            if (isset($visited[$currentId])) continue;
+            $visited[$currentId] = true;
+
+            $upstreamIds = $edgeList[$currentId] ?? [];
+            foreach ($upstreamIds as $upstreamId) {
+                $node = $nodeMap[$upstreamId] ?? null;
+                if (!$node) continue;
+
+                $type = $node['type'] ?? '';
+                $settings = $node['settings'] ?? [];
+
+                if (in_array($type, ['metric', 'cpu_usage', 'memory_usage', 'disk_usage', 'network_usage', 'server_status', 'heartbeat_age'])) {
+                    $metricType = $settings['metric_type'] ?? $type;
+                    $name = self::METRIC_NAMES[$metricType] ?? $metricType;
+                    if (!in_array($name, $metricNames)) {
+                        $metricNames[] = $name;
+                    }
+                }
+
+                if ($type === 'sustained') {
+                    $durationStr = $settings['duration'] ?? '00:00:05:00:00';
+                    $seconds = static::parseDurationToSeconds($durationStr);
+                    $formatted = $this->formatDuration($seconds);
+                    if (!in_array($formatted, $sustainDurations)) {
+                        $sustainDurations[] = $formatted;
+                    }
+                }
+
+                $queue[] = $upstreamId;
+            }
+        }
+
+        return [
+            'metric_name' => implode(', ', $metricNames) ?: 'Unknown Metric',
+            'sustain_value' => implode(', ', $sustainDurations) ?: null,
+        ];
+    }
+
+    private function formatDuration(int $seconds): string
+    {
+        if ($seconds < 60) return $seconds . ' second' . ($seconds !== 1 ? 's' : '');
+        if ($seconds < 3600) {
+            $m = intdiv($seconds, 60);
+            return $m . ' minute' . ($m !== 1 ? 's' : '');
+        }
+        $h = intdiv($seconds, 3600);
+        $m = intdiv($seconds % 3600, 60);
+        if ($m > 0) return $h . ' hour' . ($h !== 1 ? 's' : '') . ' ' . $m . ' minute' . ($m !== 1 ? 's' : '');
+        return $h . ' hour' . ($h !== 1 ? 's' : '');
     }
 }
