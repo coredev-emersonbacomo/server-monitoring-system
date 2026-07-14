@@ -1,4 +1,4 @@
-export type SocketDataType = 'number' | 'boolean' | 'any';
+export type SocketDataType = 'number' | 'boolean' | 'any' | 'event';
 
 export interface HandleTypeDef {
     type: SocketDataType;
@@ -9,15 +9,17 @@ export const TYPE_COLORS: Record<SocketDataType, string> = {
     number: '#60a5fa',
     boolean: '#34d399',
     any: '#9ca3af',
+    event: '#f59e0b',
 };
 
 export const OUTPUT_TYPES: Record<string, HandleTypeDef> = {
     metric: { type: 'number', label: 'Value' },
     condition: { type: 'boolean', label: 'Result' },
     logic: { type: 'boolean', label: 'Result' },
-    delay: { type: 'boolean', label: 'Out' },
+    check_after: { type: 'boolean', label: 'Out' },
     sustained: { type: 'boolean', label: 'Out' },
     repeat: { type: 'boolean', label: 'Out' },
+    notification: { type: 'event', label: 'Out' },
 };
 
 export const INPUT_TYPES: Record<string, Record<string, HandleTypeDef>> = {
@@ -30,14 +32,14 @@ export const INPUT_TYPES: Record<string, Record<string, HandleTypeDef>> = {
     logic: {
         input: { type: 'boolean', label: 'Input' },
     },
-    delay: {
+    check_after: {
         input: { type: 'any', label: 'In' },
     },
     sustained: {
         input: { type: 'any', label: 'In' },
     },
     repeat: {
-        input: { type: 'any', label: 'In' },
+        input: { type: 'event', label: 'In' },
     },
     notification: {
         input: { type: 'boolean', label: 'Trigger' },

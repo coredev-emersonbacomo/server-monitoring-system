@@ -61,17 +61,20 @@ class NodeConfigEngine
         foreach ($edges as $edge) {
             $source = $edge['source'];
             $target = $edge['target'];
+            $sourceHandle = $edge['sourceHandle'] ?? 'output';
             if (!isset($edgeList[$target])) {
                 $edgeList[$target] = [];
             }
-            $edgeList[$target][] = $source;
+            $edgeList[$target][] = ['source' => $source, 'sourceHandle' => $sourceHandle];
         }
+
+        $conditionContexts = $this->buildConditionContexts($edges, $nodeMap);
+        $repeatContexts = $this->buildRepeatContexts($edges, $nodeMap);
 
         $outputs = [];
         $timers = [];
         $actions = [];
 
-        // Load persisted state
         $persistedStates = NodeConfigState::where('node_config_id', $config->id)
             ->get()
             ->keyBy('node_id');
@@ -86,44 +89,51 @@ class NodeConfigEngine
                 continue;
             }
 
-            // Gather input values from upstream outputs
             $inputValues = [];
-            $upstreamNodes = $edgeList[$nodeId] ?? [];
-            foreach ($upstreamNodes as $upstreamId) {
-                if (isset($outputs[$upstreamId])) {
+            $upstreamEdges = $edgeList[$nodeId] ?? [];
+            foreach ($upstreamEdges as $edgeInfo) {
+                $upstreamId = $edgeInfo['source'];
+                $sourceHandle = $edgeInfo['sourceHandle'];
+                if (isset($outputs[$upstreamId][$sourceHandle])) {
+                    $inputValues[] = $outputs[$upstreamId][$sourceHandle];
+                } elseif (isset($outputs[$upstreamId])) {
                     $inputValues[] = $outputs[$upstreamId];
                 } else {
                     $inputValues[] = null;
                 }
             }
 
-            // Build state from persisted + current
             $currentState = [];
             if (isset($persistedStates[$nodeId])) {
                 $currentState = $persistedStates[$nodeId]->context ?? [];
             }
 
-            // Inject trigger data for source nodes
             if ($nodeId === $sourceNodeId) {
                 $currentState['metric_value'] = $value;
             }
             $currentState = array_merge($currentState, $extraState);
 
-            // Evaluate
-            $result = $handler->evaluate($inputValues, $node['settings'] ?? [], $currentState);
-
-            // Store output
-            if ($result->shouldPropagate) {
-                $outputs[$nodeId] = $result->value;
+            if ($node['type'] === 'sustained' && isset($conditionContexts[$nodeId])) {
+                $currentState = array_merge($currentState, $conditionContexts[$nodeId]);
             }
 
-            // Persist state
+            if ($node['type'] === 'repeat' && isset($repeatContexts[$nodeId])) {
+                $currentState = array_merge($currentState, $repeatContexts[$nodeId]);
+            }
+
+            $result = $handler->evaluate($inputValues, $node['settings'] ?? [], $currentState);
+
+            if (!empty($result->outputs)) {
+                $outputs[$nodeId] = $result->outputs;
+            } elseif ($result->shouldPropagate) {
+                $outputs[$nodeId] = ['output' => $result->value];
+            }
+
             NodeConfigState::updateOrCreate(
                 ['node_config_id' => $config->id, 'node_id' => $nodeId],
                 ['output_value' => $result->shouldPropagate ? ['value' => $result->value] : null, 'context' => $result->state],
             );
 
-            // Collect timers
             if ($result->timer !== null) {
                 $timers[] = [
                     'node_config_id' => $config->id,
@@ -133,9 +143,9 @@ class NodeConfigEngine
                 ];
             }
 
-            // Collect actions
             if ($handler->getCategory() === 'action' && $result->shouldPropagate && $result->value) {
                 $upstreamContext = $this->resolveUpstreamContext($nodeId, $edgeList, $nodeMap, $outputs);
+                $upstreamContext = array_merge($upstreamContext, $extraState);
                 $actions[] = [
                     'node_id' => $nodeId,
                     'type' => $handler->getType(),
@@ -172,7 +182,6 @@ class NodeConfigEngine
             return ['success' => false, 'error' => "Unknown node type for $nodeId"];
         }
 
-        // Load persisted state
         $persisted = NodeConfigState::where('node_config_id', $config->id)
             ->where('node_id', $nodeId)
             ->first();
@@ -182,17 +191,78 @@ class NodeConfigEngine
 
         $result = $handler->evaluate([], $nodeMap[$nodeId]['settings'] ?? [], $state);
 
-        // Persist new state
+        $outputVal = !empty($result->outputs) ? $result->value : ($result->shouldPropagate ? $result->value : null);
         NodeConfigState::updateOrCreate(
             ['node_config_id' => $config->id, 'node_id' => $nodeId],
-            ['output_value' => $result->shouldPropagate ? ['value' => $result->value] : null, 'context' => $result->state],
+            ['output_value' => $outputVal !== null ? ['value' => $outputVal] : null, 'context' => $result->state],
         );
 
-        if (!$result->shouldPropagate) {
+        if (!$result->shouldPropagate && empty($result->outputs)) {
             return ['success' => true, 'propagated' => false];
         }
 
-        // Propagate to downstream nodes
+        $hasSustainedAncestor = $state['has_sustained_ancestor'] ?? false;
+        $accumulatedExtra = (int) ($result->state['accumulated_extra_seconds'] ?? 0);
+
+        if ($hasSustainedAncestor && $result->shouldPropagate && $accumulatedExtra > 0) {
+            return $this->retriggerFromSource($config, $nodeMap, $edges, $accumulatedExtra, $context);
+        }
+
+        return $this->processDownstream($config, $nodeId, $result, $nodeMap, $edges, $context);
+    }
+
+    /**
+     * Re-trigger evaluation from the metric source with accumulated sustain time.
+     */
+    private function retriggerFromSource(
+        NodeConfig $config,
+        array $nodeMap,
+        array $edges,
+        int $accumulatedExtraSeconds,
+        array $context,
+    ): array {
+        $sourceNodeId = null;
+        foreach ($nodeMap as $node) {
+            if (($node['type'] ?? '') === 'metric') {
+                $sourceNodeId = $node['id'];
+                break;
+            }
+        }
+
+        if (!$sourceNodeId) {
+            return ['success' => true, 'propagated' => false];
+        }
+
+        $metricValue = $context['metric_value'] ?? null;
+        if ($metricValue === null) {
+            $persisted = NodeConfigState::where('node_config_id', $config->id)
+                ->where('node_id', $sourceNodeId)
+                ->first();
+            $metricValue = $persisted?->output_value['value'] ?? null;
+        }
+
+        if ($metricValue === null) {
+            return ['success' => true, 'propagated' => false];
+        }
+
+        $extraState = array_merge($context, [
+            'extra_sustain_seconds' => $accumulatedExtraSeconds,
+        ]);
+
+        return $this->trigger($config, $sourceNodeId, $metricValue, $extraState);
+    }
+
+    /**
+     * Process downstream nodes from a timer node.
+     */
+    private function processDownstream(
+        NodeConfig $config,
+        string $nodeId,
+        NodeResult $result,
+        array $nodeMap,
+        array $edges,
+        array $context,
+    ): array {
         $downstreamIds = [];
         foreach ($edges as $edge) {
             if ($edge['source'] === $nodeId) {
@@ -200,34 +270,33 @@ class NodeConfigEngine
             }
         }
 
-        // Re-trigger from this node downstream
-        $downstreamOutputs = [];
-        $downstreamTimers = [];
-        $downstreamActions = [];
-        $order = $this->validator->topologicalSort($nodes, $edges);
-
-        // Find position of this node in order
+        $order = $this->validator->topologicalSort($nodeMap ? array_values($nodeMap) : [], $edges);
         $startIndex = array_search($nodeId, $order);
         if ($startIndex === false) {
             return ['success' => true, 'propagated' => false];
         }
 
         $downstreamOrder = array_slice($order, $startIndex + 1);
-        $outputs = [$nodeId => $result->value];
+        $outputs = [$nodeId => ['output' => $result->value]];
         $edgeList = [];
         foreach ($edges as $edge) {
             $source = $edge['source'];
             $target = $edge['target'];
+            $sourceHandle = $edge['sourceHandle'] ?? 'output';
             if (!isset($edgeList[$target])) {
                 $edgeList[$target] = [];
             }
-            $edgeList[$target][] = $source;
+            $edgeList[$target][] = ['source' => $source, 'sourceHandle' => $sourceHandle];
         }
 
-        // Load all persisted states for downstream
         $allPersisted = NodeConfigState::where('node_config_id', $config->id)
             ->get()
             ->keyBy('node_id');
+
+        $conditionContexts = $this->buildConditionContexts($edges, $nodeMap);
+
+        $downstreamTimers = [];
+        $downstreamActions = [];
 
         foreach ($downstreamOrder as $currentId) {
             $currentNode = $nodeMap[$currentId] ?? null;
@@ -237,9 +306,17 @@ class NodeConfigEngine
             if (!$currentHandler) continue;
 
             $inputValues = [];
-            $upstreamNodes = $edgeList[$currentId] ?? [];
-            foreach ($upstreamNodes as $upstreamId) {
-                $inputValues[] = $outputs[$upstreamId] ?? null;
+            $upstreamEdges = $edgeList[$currentId] ?? [];
+            foreach ($upstreamEdges as $edgeInfo) {
+                $upstreamId = $edgeInfo['source'];
+                $sourceHandle = $edgeInfo['sourceHandle'];
+                if (isset($outputs[$upstreamId][$sourceHandle])) {
+                    $inputValues[] = $outputs[$upstreamId][$sourceHandle];
+                } elseif (isset($outputs[$upstreamId])) {
+                    $inputValues[] = $outputs[$upstreamId];
+                } else {
+                    $inputValues[] = null;
+                }
             }
 
             $currentState = [];
@@ -247,10 +324,18 @@ class NodeConfigEngine
                 $currentState = $allPersisted[$currentId]->context ?? [];
             }
 
+            $currentState = array_merge($currentState, $context);
+
+            if ($currentNode['type'] === 'sustained' && isset($conditionContexts[$currentId])) {
+                $currentState = array_merge($currentState, $conditionContexts[$currentId]);
+            }
+
             $currentResult = $currentHandler->evaluate($inputValues, $currentNode['settings'] ?? [], $currentState);
 
-            if ($currentResult->shouldPropagate) {
-                $outputs[$currentId] = $currentResult->value;
+            if (!empty($currentResult->outputs)) {
+                $outputs[$currentId] = $currentResult->outputs;
+            } elseif ($currentResult->shouldPropagate) {
+                $outputs[$currentId] = ['output' => $currentResult->value];
             }
 
             NodeConfigState::updateOrCreate(
@@ -269,6 +354,7 @@ class NodeConfigEngine
 
             if ($currentHandler->getCategory() === 'action' && $currentResult->shouldPropagate && $currentResult->value) {
                 $upstreamContext = $this->resolveUpstreamContext($currentId, $edgeList, $nodeMap, $outputs);
+                $upstreamContext = array_merge($upstreamContext, $context);
                 $downstreamActions[] = [
                     'node_id' => $currentId,
                     'type' => $currentHandler->getType(),
@@ -282,10 +368,94 @@ class NodeConfigEngine
         return [
             'success' => true,
             'propagated' => true,
-            'outputs' => $downstreamOutputs,
+            'outputs' => [],
             'timers' => $downstreamTimers,
             'actions' => $downstreamActions,
         ];
+    }
+
+    /**
+     * Build a map of node_id => condition settings for each ConditionNode,
+     * keyed by the SustainedNode it feeds into.
+     */
+    private function buildConditionContexts(array $edges, array $nodeMap): array
+    {
+        $contexts = [];
+
+        foreach ($edges as $edge) {
+            $sourceNode = $nodeMap[$edge['source']] ?? null;
+            $targetNode = $nodeMap[$edge['target']] ?? null;
+
+            if (!$sourceNode || !$targetNode) continue;
+            if (($sourceNode['type'] ?? '') !== 'condition') continue;
+            if (($targetNode['type'] ?? '') !== 'sustained') continue;
+
+            $contexts[$edge['target']] = [
+                'threshold' => $sourceNode['settings']['threshold'] ?? null,
+                'operator' => $sourceNode['settings']['operator'] ?? 'greater_than',
+            ];
+        }
+
+        return $contexts;
+    }
+
+    /**
+     * Build a map of repeat node_id => sustained ancestor info.
+     * Walks backward from each repeat node to find if it has a Sustained ancestor.
+     */
+    private function buildRepeatContexts(array $edges, array $nodeMap): array
+    {
+        $contexts = [];
+        $repeatNodes = [];
+
+        foreach ($nodeMap as $node) {
+            if (($node['type'] ?? '') === 'repeat') {
+                $repeatNodes[] = $node['id'];
+            }
+        }
+
+        foreach ($repeatNodes as $repeatId) {
+            $sustainedInfo = $this->findSustainedAncestor($repeatId, $edges, $nodeMap);
+            if ($sustainedInfo) {
+                $contexts[$repeatId] = $sustainedInfo;
+            }
+        }
+
+        return $contexts;
+    }
+
+    /**
+     * Walk backward from a node to find the first Sustained ancestor and its duration.
+     */
+    private function findSustainedAncestor(string $nodeId, array $edges, array $nodeMap): ?array
+    {
+        $visited = [];
+        $queue = [$nodeId];
+
+        while (!empty($queue)) {
+            $currentId = array_shift($queue);
+            if (isset($visited[$currentId])) continue;
+            $visited[$currentId] = true;
+
+            foreach ($edges as $edge) {
+                if ($edge['target'] === $currentId) {
+                    $sourceNode = $nodeMap[$edge['source']] ?? null;
+                    if (!$sourceNode) continue;
+
+                    if (($sourceNode['type'] ?? '') === 'sustained') {
+                        $durationStr = $sourceNode['settings']['duration'] ?? '00:00:05:00:00';
+                        return [
+                            'has_sustained_ancestor' => true,
+                            'sustain_duration_seconds' => static::parseDurationToSeconds($durationStr),
+                        ];
+                    }
+
+                    $queue[] = $edge['source'];
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -303,8 +473,9 @@ class NodeConfigEngine
             if (isset($visited[$currentId])) continue;
             $visited[$currentId] = true;
 
-            $upstreamIds = $edgeList[$currentId] ?? [];
-            foreach ($upstreamIds as $upstreamId) {
+            $upstreamEdges = $edgeList[$currentId] ?? [];
+            foreach ($upstreamEdges as $edgeInfo) {
+                $upstreamId = $edgeInfo['source'];
                 $node = $nodeMap[$upstreamId] ?? null;
                 if (!$node) continue;
 

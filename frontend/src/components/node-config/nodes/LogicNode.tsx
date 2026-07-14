@@ -2,7 +2,7 @@ import { memo, useCallback } from "react";
 import { type NodeProps, Position, useReactFlow, useEdges } from "@xyflow/react";
 import { Plus, GitBranch, Minus, type LucideIcon } from "lucide-react";
 import { getInputType, getOutputType } from './socketTypes';
-import { SocketHandle } from './socket-components';
+import { NodeSocket } from './node-socket';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 const OPERATIONS: Record<string, { icon: LucideIcon; label: string }> = {
@@ -42,7 +42,7 @@ export const LogicNode = memo(({ id, data, type }: NodeProps) => {
                     <Icon size={14} className="text-violet-400" />
                 </div>
                 <Select value={operation} onValueChange={handleChange}>
-                    <SelectTrigger className="flex-1 h-7 text-xs font-semibold" onClick={(e) => e.stopPropagation()}>
+                    <SelectTrigger className="flex-1 h-7 text-xs font-semibold" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -53,22 +53,18 @@ export const LogicNode = memo(({ id, data, type }: NodeProps) => {
                 </Select>
             </div>
 
-            <div className="flex items-center pl-3 pr-3 py-2.5">
-                <div className="relative flex items-center min-h-[24px] flex-1">
-                    <SocketHandle type="target" position={Position.Left} id="input" def={inDef} />
-                    <span className="text-[10px] font-medium uppercase text-muted-foreground ml-5 shrink-0">
-                        {inDef?.label || 'Input'}{isNot ? '' : 's'}
-                    </span>
+            <div className="flex">
+                <NodeSocket type="target" position={Position.Left} id="input" def={inDef} elongated
+                    label={`${inDef?.label || 'Input'}${isNot ? '' : 's'}`}>
                     {!inputConnected && (
                         <span className="text-[10px] text-muted-foreground/40 italic ml-1">
                             {isNot ? '(1)' : '(any)'}
                         </span>
                     )}
-                </div>
-                <div className="relative flex items-center min-h-[24px]">
-                    <span className="text-[10px] font-medium text-muted-foreground mr-2">{outDef?.label || 'Result'}</span>
-                    <SocketHandle type="source" position={Position.Right} id="output" def={outDef} />
-                </div>
+                </NodeSocket>
+                <div className="flex-1" />
+                <NodeSocket type="source" position={Position.Right} id="output" def={outDef}
+                    label={outDef?.label || 'Result'} />
             </div>
         </div>
     );
