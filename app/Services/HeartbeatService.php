@@ -16,6 +16,8 @@ use App\Models\CommandResult;
 use App\Models\Activity;
 use App\Events\ServerStatsUpdated;
 use App\Enums\ServerStatus;
+use App\NodeConfig\Jobs\EvaluateNodeConfig;
+use App\NodeConfig\Models\NodeConfig;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -47,6 +49,8 @@ class HeartbeatService
                     'type' => 'server_online',
                     'description' => 'Server transitioned to Online state.',
                 ]);
+
+                $this->triggerNodeConfigForServer($server, 'online');
             }
 
             // Create Heartbeat
@@ -356,5 +360,31 @@ class HeartbeatService
                 'description' => "Command {$command->type} reported {$status}.",
             ]);
         }
+    }
+
+    private function triggerNodeConfigForServer(Server $server, string $status): void
+    {
+        $config = NodeConfig::where('slug', 'alerts')->where('enabled', true)->first();
+        if (!$config) return;
+
+        $configData = $config->getParsedConfig();
+        $nodes = $configData['nodes'] ?? [];
+
+        $sourceNodeId = null;
+        foreach ($nodes as $node) {
+            if (($node['type'] ?? '') === 'metric' && ($node['settings']['metric_type'] ?? '') === 'server_status') {
+                $sourceNodeId = $node['id'];
+                break;
+            }
+        }
+
+        if (!$sourceNodeId) return;
+
+        EvaluateNodeConfig::dispatch($config->id, $sourceNodeId, $status, [
+            'server_id' => $server->id,
+            'server_name' => $server->name,
+            'client_name' => $server->client->name ?? 'Unknown',
+            'metric_type' => 'server_status',
+        ]);
     }
 }

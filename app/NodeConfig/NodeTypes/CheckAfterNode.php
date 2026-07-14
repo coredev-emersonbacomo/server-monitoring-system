@@ -2,11 +2,11 @@
 
 namespace App\NodeConfig\NodeTypes;
 
-class DelayNode extends BaseNode
+class CheckAfterNode extends BaseNode
 {
-    public function getType(): string { return 'delay'; }
+    public function getType(): string { return 'check_after'; }
     public function getCategory(): string { return 'time'; }
-    public function getLabel(): string { return 'Delay'; }
+    public function getLabel(): string { return 'Check After'; }
 
     public function getSettingDefinitions(): array
     {

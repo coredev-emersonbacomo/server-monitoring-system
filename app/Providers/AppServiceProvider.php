@@ -8,7 +8,7 @@ use App\Services\StorageProviderFactory;
 use App\Services\UploadIntentService;
 use App\NodeConfig\Engine\NodeRegistry;
 use App\NodeConfig\NodeTypes\ConditionNode;
-use App\NodeConfig\NodeTypes\DelayNode;
+use App\NodeConfig\NodeTypes\CheckAfterNode;
 use App\NodeConfig\NodeTypes\LogicNode;
 use App\NodeConfig\NodeTypes\MetricNode;
 use App\NodeConfig\NodeTypes\NotificationNode;
@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
         $registry->register(new LogicNode);
 
         // Time nodes
-        $registry->register(new DelayNode);
+        $registry->register(new CheckAfterNode);
         $registry->register(new SustainedNode);
         $registry->register(new RepeatNode);
 

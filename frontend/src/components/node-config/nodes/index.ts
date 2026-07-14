@@ -13,7 +13,7 @@ export const nodeTypes: NodeTypes = {
     // Logic (merged)
     logic: LogicNode,
     // Time
-    delay: TimeNode,
+    check_after: TimeNode,
     sustained: TimeNode,
     repeat: TimeNode,
     // Notification (merged)

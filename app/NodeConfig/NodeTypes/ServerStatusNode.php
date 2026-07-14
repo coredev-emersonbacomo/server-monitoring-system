@@ -16,6 +16,14 @@ class ServerStatusNode extends BaseNode
             return NodeResult::noPropagate(null, $state);
         }
 
-        return NodeResult::propagate($value === 'online' || $value === true || $value === 1);
+        $isOnline = $value === 'online' || $value === true || $value === 1;
+
+        return NodeResult::multiOutput(
+            [
+                'online' => $isOnline ? true : null,
+                'offline' => !$isOnline ? true : null,
+            ],
+            $state,
+        );
     }
 }

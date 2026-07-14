@@ -9,6 +9,7 @@ class NodeResult
         public readonly bool $shouldPropagate = true,
         public readonly ?NodeTimer $timer = null,
         public readonly array $state = [],
+        public readonly array $outputs = [],
     ) {}
 
     public static function propagate(mixed $value, array $state = []): self
@@ -24,5 +25,10 @@ class NodeResult
     public static function withTimer(mixed $value, ?NodeTimer $timer, array $state = []): self
     {
         return new self($value, true, $timer, $state);
+    }
+
+    public static function multiOutput(array $outputs, array $state = []): self
+    {
+        return new self(null, false, null, $state, $outputs);
     }
 }
