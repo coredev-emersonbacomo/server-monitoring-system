@@ -47,9 +47,15 @@ $apiUrl = $response.api_url
 $registerUrl = $response.register_url
 $heartbeatInterval = $response.heartbeat_interval
 $agentVersion = $response.agent_version
-
 if (-not $apiUrl -or -not $registerUrl) {
     Fail "Invalid bootstrap configuration returned by server."
+}
+
+$serviceName = "MonitorAgent"
+if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
+    Log "Stopping existing service to release file lock..."
+    Stop-Service -Name $serviceName -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
 }
 
 if (-not (Test-Path $appDir)) {
@@ -87,19 +93,12 @@ $bootstrapJson = @{
 Set-Content -Path "$appDir\bootstrap.json" -Value $bootstrapJson -Force
 Log "Bootstrap configuration written."
 
-$taskName = "MonitorAgent"
-$action = New-ScheduledTaskAction -Execute $agentFile
-$trigger = New-ScheduledTaskTrigger -AtStartup
-$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 5 -RestartInterval (New-TimeSpan -Minutes 1)
-$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-
 try {
-    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force
-    Start-ScheduledTask -TaskName $taskName
-    Log "Scheduled task '$taskName' created and started."
+    & "$agentFile" -install | Out-Null
+    Log "Windows service registered and started via agent."
 } catch {
-    Log "Warning: Could not create scheduled task: $_"
+    Log "Warning: Could not register Windows service: $_"
     Log "You can manually run the agent: $agentFile"
 }
 
-Log "Installation complete. Agent is running as scheduled task '$taskName'."
+Log "Installation complete."
