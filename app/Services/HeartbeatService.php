@@ -32,10 +32,33 @@ class HeartbeatService
             // Update last_used_at on identity
             $identity->update(['last_used_at' => now()]);
 
-            // Update agent metadata
+            $oldVersion = $agent->version;
+            $newVersion = $payload['agent_version'] ?? $agent->version;
+            if ($oldVersion !== $newVersion) {
+                Activity::create([
+                    'server_id' => $server->id,
+                    'agent_id' => $agent->id,
+                    'type' => 'agent_updated',
+                    'description' => "Agent updated from version {$oldVersion} to {$newVersion}.",
+                ]);
+
+                // Update the AgentConfiguration heartbeat_interval in DB if the version was updated
+                $latestHeartbeatUpdate = \App\Models\AgentVersion::where('type', 'heartbeat_interval_update')
+                    ->orderBy('id', 'desc')
+                    ->first();
+                if ($latestHeartbeatUpdate && $latestHeartbeatUpdate->version === $newVersion) {
+                    $currentConfig = $agent->currentConfiguration;
+                    if ($currentConfig) {
+                        $currentConfig->update([
+                            'heartbeat_interval' => $latestHeartbeatUpdate->heartbeat_interval,
+                        ]);
+                    }
+                }
+            }
+
             $agent->update([
                 'last_seen_at' => now(),
-                'version' => $payload['agent_version'] ?? $agent->version,
+                'version' => $newVersion,
             ]);
 
             // Transition server to online if needed
@@ -85,16 +108,57 @@ class HeartbeatService
                 $this->processCompletedCommands($payload['completed_commands']);
             }
 
+            // Sync AgentConfiguration from agent's reported config (source of truth from bootstrap.json)
+            if (isset($payload['agent_config']) && is_array($payload['agent_config'])) {
+                $agentCfg = $payload['agent_config'];
+                $currentConfig = $agent->currentConfiguration;
+                if ($currentConfig) {
+                    $cfgUpdates = [];
+                    if (isset($agentCfg['heartbeat_interval']) && $agentCfg['heartbeat_interval'] > 0) {
+                        $cfgUpdates['heartbeat_interval'] = (int) $agentCfg['heartbeat_interval'];
+                    }
+                    if (!empty($cfgUpdates)) {
+                        $currentConfig->update($cfgUpdates);
+                    }
+                }
+            }
+
             // Fetch current configuration
             $currentConfig = $agent->currentConfiguration;
             $configVersion = $currentConfig ? $currentConfig->version : 1;
             $agentConfigVersion = (int) ($payload['configuration_version'] ?? 0);
 
+            $globalInterval = (int) \App\Models\Setting::get('heartbeat_interval');
             $response = [
-                'heartbeat_interval' => $currentConfig ? $currentConfig->heartbeat_interval : 5,
-                'current_time' => now()->timestamp,
-                'feature_flags' => [],
+                'heartbeat_interval' => $globalInterval ?: ($currentConfig ? $currentConfig->heartbeat_interval : 5),
+                'current_time'       => now()->timestamp,
+                'feature_flags'      => [],
+                // Always include Reverb credentials so the agent can connect the WS control channel
+                // even if bootstrap.json on disk is missing these fields (e.g. due to permissions)
+                'server_uuid'        => $server->uuid,
+                'update_url'         => url('/api/v1/agent/' . $server->uuid . '/update'),
+                'reverb_host'        => env('REVERB_HOST', '127.0.0.1'),
+                'reverb_port'        => (int) env('REVERB_PORT', 8080),
+                'reverb_scheme'      => env('REVERB_SCHEME', 'http'),
+                'reverb_app_key'     => env('REVERB_APP_KEY'),
             ];
+
+            $latestVersion = \App\Models\AgentVersion::orderBy('id', 'desc')->first();
+            $agentVersion = $payload['agent_version'] ?? '';
+            if ($latestVersion && $agentVersion !== $latestVersion->version) {
+                $latestHeartbeatUpdate = \App\Models\AgentVersion::where('type', 'heartbeat_interval_update')
+                    ->orderBy('id', 'desc')
+                    ->first();
+                $latestBinaryUpdate = \App\Models\AgentVersion::where('type', 'agent_binary_update')
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+                $response['pending_update'] = [
+                    'version' => $latestVersion->version,
+                    'heartbeat_interval' => $latestHeartbeatUpdate ? $latestHeartbeatUpdate->heartbeat_interval : null,
+                    'binary_url' => $latestBinaryUpdate ? $latestBinaryUpdate->binary_url : null,
+                ];
+            }
 
             if ($configVersion !== $agentConfigVersion && $currentConfig) {
                 $response['configuration'] = array_merge(

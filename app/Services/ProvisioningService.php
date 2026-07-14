@@ -162,12 +162,13 @@ class ProvisioningService
 
         $sha256 = file_exists($agentPath) ? hash_file('sha256', $agentPath) : '';
         $agentVersion = '2.0';
+        $heartbeatInterval = (int) (\App\Models\Setting::get('heartbeat_interval') ?: 5);
 
         return [
             'download_url' => $downloadUrl,
             'expected_sha256' => $sha256,
             'agent_version' => $agentVersion,
-            'heartbeat_interval' => 5,
+            'heartbeat_interval' => $heartbeatInterval,
             'api_url' => url('/api/v1/agent/heartbeat'),
             'register_url' => url('/api/v1/register'),
         ];
@@ -223,9 +224,11 @@ class ProvisioningService
                 'issued_at' => Carbon::now('UTC'),
             ]);
 
+            $heartbeatInterval = (int) (\App\Models\Setting::get('heartbeat_interval') ?: 5);
+
             // Create Agent Configuration
             $configJson = [
-                'heartbeat_interval' => 5,
+                'heartbeat_interval' => $heartbeatInterval,
                 'metrics_interval' => 5,
                 'port_scan_interval' => 60,
                 'service_scan_interval' => 60,
@@ -235,7 +238,7 @@ class ProvisioningService
             AgentConfiguration::create([
                 'agent_id' => $agent->id,
                 'version' => 1,
-                'heartbeat_interval' => 5,
+                'heartbeat_interval' => $heartbeatInterval,
                 'metrics_interval' => 5,
                 'port_scan_interval' => 60,
                 'service_scan_interval' => 60,
@@ -267,9 +270,15 @@ class ProvisioningService
             event(new RegistrationCompleted($server->uuid, $agent->id));
 
             return [
-                'identity' => $rawIdentity,
-                'configuration' => $configJson,
-                'heartbeat_interval' => 5,
+                'identity'           => $rawIdentity,
+                'configuration'      => $configJson,
+                'heartbeat_interval' => $heartbeatInterval,
+                'server_uuid'        => $server->uuid,
+                'update_url'         => url('/api/v1/agent/' . $server->uuid . '/update'),
+                'reverb_host'        => env('REVERB_HOST', '127.0.0.1'),
+                'reverb_port'        => (int) env('REVERB_PORT', 8080),
+                'reverb_scheme'      => env('REVERB_SCHEME', 'http'),
+                'reverb_app_key'     => env('REVERB_APP_KEY'),
             ];
         });
     }

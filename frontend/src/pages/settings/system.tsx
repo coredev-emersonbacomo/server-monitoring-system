@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings2, Save, ChevronLeft, Loader2, ShieldCheck, AlertTriangle, Radio } from "lucide-react";
+import { Settings2, Save, ChevronLeft, Loader2, ShieldCheck, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
@@ -41,8 +41,6 @@ export default function SystemSettings() {
     const updateSettings = useUpdateSettings();
 
     const [limitValue, setLimitValue] = useState<string>("2");
-    const [heartbeatValue, setHeartbeatValue] = useState<string>("5");
-    const [offlineValue, setOfflineValue] = useState<string>("5");
     const [isDirty, setIsDirty] = useState(false);
 
     // Guard: ensure user is authenticated via UUID
@@ -63,8 +61,6 @@ export default function SystemSettings() {
     useEffect(() => {
         if (settings) {
             setLimitValue(settings.secop_limit_per_client);
-            setHeartbeatValue(settings.heartbeat_interval);
-            setOfflineValue(settings.offline_threshold);
             setIsDirty(false);
         }
     }, [settings]);
@@ -72,51 +68,27 @@ export default function SystemSettings() {
     const hasChanges = useMemo(() => {
         if (!settings) return false;
         return (
-            limitValue !== settings.secop_limit_per_client ||
-            heartbeatValue !== settings.heartbeat_interval ||
-            offlineValue !== settings.offline_threshold
+            limitValue !== settings.secop_limit_per_client
         );
-    }, [limitValue, heartbeatValue, offlineValue, settings]);
+    }, [limitValue, settings]);
 
     useEffect(() => {
         setIsDirty(hasChanges);
     }, [hasChanges]);
 
-    const heartbeatNum = parseInt(heartbeatValue, 10);
-    const offlineNum = parseInt(offlineValue, 10);
-    const heartbeatBelowOffline = !isNaN(heartbeatNum) && !isNaN(offlineNum) && heartbeatNum < offlineNum;
-
     const handleSave = async () => {
         const limitParsed = parseInt(limitValue, 10);
-        const heartbeatParsed = parseInt(heartbeatValue, 10);
-        const offlineParsed = parseInt(offlineValue, 10);
 
         if (isNaN(limitParsed) || limitParsed < 1 || limitParsed > 50) {
             toast.error("SecOps limit must be a number between 1 and 50.");
-            return;
-        }
-        if (isNaN(heartbeatParsed) || heartbeatParsed < 1 || heartbeatParsed > 60) {
-            toast.error("Heartbeat interval must be between 1 and 60 minutes.");
-            return;
-        }
-        if (isNaN(offlineParsed) || offlineParsed < 1 || offlineParsed > 60) {
-            toast.error("Offline threshold must be between 1 and 60 minutes.");
-            return;
-        }
-        if (heartbeatParsed < offlineParsed) {
-            toast.error("Heartbeat interval must be greater than or equal to the offline threshold.");
             return;
         }
 
         try {
             await updateSettings.mutateAsync({
                 secop_limit_per_client: String(limitParsed),
-                heartbeat_interval: String(heartbeatParsed),
-                offline_threshold: String(offlineParsed),
             });
             setLimitValue(String(limitParsed));
-            setHeartbeatValue(String(heartbeatParsed));
-            setOfflineValue(String(offlineParsed));
             setIsDirty(false);
             toast.success("System settings saved.");
         } catch {
@@ -171,66 +143,7 @@ export default function SystemSettings() {
             <main className="py-8 flex-1">
                 <div className="max-w-2xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-6">
 
-                    {/* Section: Monitoring */}
-                    <div className="bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
-                        <div className="flex items-center gap-3 px-6 py-4 border-b border-border/60 bg-muted/30">
-                            <div className="p-1.5 bg-primary/10 rounded-md">
-                                <Radio className="w-4 h-4 text-primary" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-semibold">Monitoring</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                    Configure how agents communicate and when servers are considered offline.
-                                </p>
-                            </div>
-                        </div>
 
-                        <div className="px-6 divide-y divide-border/50">
-                            <SettingRow
-                                label="Heartbeat Interval"
-                                description="How often agents send heartbeats to the server (in minutes). Must be greater than or equal to the offline threshold."
-                            >
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        max={60}
-                                        value={heartbeatValue}
-                                        onChange={(e) => setHeartbeatValue(e.target.value)}
-                                        className="w-20 h-9 rounded-md border border-border bg-background px-3 text-sm text-center font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
-                                    />
-                                    <span className="text-xs text-muted-foreground">min</span>
-                                </div>
-                            </SettingRow>
-
-                            <SettingRow
-                                label="Offline Threshold"
-                                description="Minutes without a heartbeat before a server is marked as offline."
-                            >
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        max={60}
-                                        value={offlineValue}
-                                        onChange={(e) => setOfflineValue(e.target.value)}
-                                        className="w-20 h-9 rounded-md border border-border bg-background px-3 text-sm text-center font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
-                                    />
-                                    <span className="text-xs text-muted-foreground">min</span>
-                                </div>
-                            </SettingRow>
-                        </div>
-                    </div>
-
-                    {/* Validation warning */}
-                    {heartbeatBelowOffline && (
-                        <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-red-500/5 border border-red-500/20 text-red-600 dark:text-red-400">
-                            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                            <p className="text-xs leading-relaxed">
-                                Heartbeat interval ({heartbeatValue} min) must be greater than or equal to the offline threshold ({offlineValue} min).
-                            </p>
-                        </div>
-                    )}
 
                     {/* Section: SecOps */}
                     <div className="bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">

@@ -17,6 +17,7 @@ import Sessions from "./pages/settings/sessions";
 import Profile from "./pages/settings/profile";
 import UserDetail from "./pages/users/user-detail";
 import SystemSettings from "./pages/settings/system";
+import AgentSettings from "./pages/settings/agent";
 import AlertThresholds from "./pages/settings/thresholds";
 import NodeConfigsIndex from "./pages/node-config/index";
 import NodeConfigDetail from "./pages/node-config/node-config-detail";
@@ -97,6 +98,10 @@ const router = createBrowserRouter([
                     {
                         path: "/settings/system",
                         element: <SystemSettings />,
+                    },
+                    {
+                        path: "/settings/agent",
+                        element: <AgentSettings />,
                     },
                     {
                         path: "/settings/thresholds",

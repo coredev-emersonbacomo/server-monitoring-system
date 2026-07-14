@@ -238,6 +238,36 @@ class ServerController extends Controller
         $tokenModel = $server->provisionTokens()->latest()->first();
         $token = $tokenModel ? $tokenModel->token : '';
 
+        $agent = $server->agent;
+        $agentData = null;
+        if ($agent) {
+            $config = $agent->currentConfiguration;
+            $agentData = [
+                'version' => $agent->version, // Source of truth for version is what agent reports
+                'status' => $agent->status,
+                'registered_at' => $agent->registered_at->toIso8601String(),
+                'last_seen_at' => $agent->last_seen_at?->toIso8601String(),
+                'heartbeat_interval' => $config ? $config->heartbeat_interval : 5,
+                'metrics_interval' => $config ? $config->metrics_interval : 5,
+                'port_scan_interval' => $config ? $config->port_scan_interval : 60,
+                'service_scan_interval' => $config ? $config->service_scan_interval : 60,
+                'process_scan_interval' => $config ? $config->process_scan_interval : 60,
+                'update_channel' => $config ? $config->update_channel : 'stable',
+                'auto_update' => $config ? (bool) $config->auto_update : true,
+            ];
+        }
+
+        $activities = $server->activities()
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get()
+            ->map(fn($a) => [
+                'type' => $a->type,
+                'description' => $a->description,
+                'created_at' => $a->created_at->toIso8601String(),
+            ])
+            ->toArray();
+
         return ServerData::from([
             'uuid'                   => $server->uuid,
             'name'                  => $server->name,
@@ -291,6 +321,8 @@ class ServerController extends Controller
             ),
 
             'agent_deleted' => $server->agent ? (bool) $server->agent_deleted : true,
+            'agent' => $agentData,
+            'activities' => $activities,
         ]);
     }
 

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserCircle, Monitor, ChevronRight, Loader2, Settings as SettingsIcon, Activity, GitBranch } from "lucide-react";
+import { UserCircle, Monitor, ChevronRight, Loader2, Settings as SettingsIcon, Activity, GitBranch, Cpu } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import PageLayout from "@/components/PageLayout";
@@ -27,7 +27,7 @@ function Settings() {
 
     if (!user) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+            <div className="flex items-center justify-center min-h-[60vh] gap-3">
                 <p className="text-muted-foreground text-sm">
                     Please log in to access settings.
                 </p>
@@ -54,6 +54,12 @@ function Settings() {
             description: "Manage the system settings and preferences.",
             icon: SettingsIcon,
             href: "/settings/system",
+        },
+        {
+            title: "Agent Settings",
+            description: "Manage agent heartbeat, offline threshold, and version tracking.",
+            icon: Cpu,
+            href: "/settings/agent",
         },
         {
             title: "Alert Thresholds",

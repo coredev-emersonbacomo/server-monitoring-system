@@ -115,6 +115,18 @@ func (c *AgentClient) sendHeartbeat(url, token string, payload *HeartbeatRequest
 	if cfg, ok := result["configuration"].(map[string]interface{}); ok {
 		resp.Configuration = cfg
 	}
+	if pu, ok := result["pending_update"].(map[string]interface{}); ok {
+		resp.PendingUpdate = &AgentUpdateInfo{}
+		if v, ok := pu["version"].(string); ok {
+			resp.PendingUpdate.Version = v
+		}
+		if hb, ok := pu["heartbeat_interval"].(float64); ok {
+			resp.PendingUpdate.HeartbeatInterval = int(hb)
+		}
+		if bu, ok := pu["binary_url"].(string); ok {
+			resp.PendingUpdate.BinaryURL = bu
+		}
+	}
 	if cmds, ok := result["pending_commands"].([]interface{}); ok {
 		for _, c := range cmds {
 			if cmdMap, ok := c.(map[string]interface{}); ok {

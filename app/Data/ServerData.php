@@ -55,6 +55,11 @@ class ServerData extends Data
         public ?string $uninstall_windows_command = null,
 
         public bool $agent_deleted = false,
+
+        /** @var array{type: string, description: string, created_at: string}[]|null */
+        public ?array $activities = null,
+
+        public ?array $agent = null,
     ) {}
 
     public static function fromModel(Server $server): self
@@ -94,6 +99,35 @@ class ServerData extends Data
             'memory' => $pr->memory,
         ])->toArray() : null;
 
+        $activities = $server->activities()
+            ->orderBy('created_at', 'desc')
+            ->limit(50)
+            ->get()
+            ->map(fn($a) => [
+                'type' => $a->type,
+                'description' => $a->description,
+                'created_at' => $a->created_at->toIso8601String(),
+            ])
+            ->toArray();
+
+        $agentData = null;
+        if ($agent) {
+            $config = $agent->currentConfiguration;
+            $agentData = [
+                'version' => $agent->version,
+                'status' => $agent->status,
+                'registered_at' => $agent->registered_at->toIso8601String(),
+                'last_seen_at' => $agent->last_seen_at?->toIso8601String(),
+                'heartbeat_interval' => $config ? $config->heartbeat_interval : 5,
+                'metrics_interval' => $config ? $config->metrics_interval : 5,
+                'port_scan_interval' => $config ? $config->port_scan_interval : 60,
+                'service_scan_interval' => $config ? $config->service_scan_interval : 60,
+                'process_scan_interval' => $config ? $config->process_scan_interval : 60,
+                'update_channel' => $config ? $config->update_channel : 'stable',
+                'auto_update' => $config ? (bool) $config->auto_update : true,
+            ];
+        }
+
         return new self(
             uuid: $server->uuid,
             description: $server->description,
@@ -116,6 +150,8 @@ class ServerData extends Data
             uninstall_linux_command: $uninstallLinux,
             uninstall_windows_command: $uninstallWindows,
             agent_deleted: $agent ? (bool) $server->agent_deleted : true,
+            activities: $activities,
+            agent: $agentData,
         );
     }
 }
