@@ -12,7 +12,7 @@ class RepeatNode extends BaseNode
     {
         return [
             ['key' => 'interval', 'label' => 'Interval (MM:DD:HH:MM:SS)', 'type' => 'string', 'required' => true, 'default' => '00:00:10:00:00'],
-            ['key' => 'max_repeats', 'label' => 'Max Repeats', 'type' => 'number', 'default' => 0, 'description' => '0 = infinite'],
+            ['key' => 'max_repeats', 'label' => 'Max Repeats (0 = infinite)', 'type' => 'number', 'default' => 0, 'description' => '0 = infinite'],
         ];
     }
 
@@ -21,6 +21,10 @@ class RepeatNode extends BaseNode
         $repeatCount = (int) ($state['repeat_count'] ?? 0);
         $maxRepeats = (int) ($settings['max_repeats'] ?? 0);
         $isTimerFire = $state['timer_fire'] ?? false;
+        $hasSustainedAncestor = $state['has_sustained_ancestor'] ?? false;
+        $sustainDurationSeconds = (int) ($state['sustain_duration_seconds'] ?? 0);
+
+        $intervalSeconds = static::parseDurationToSeconds($settings['interval'] ?? '00:00:10:00:00');
 
         if (!$isTimerFire) {
             $input = $inputValues[0] ?? null;
@@ -28,12 +32,18 @@ class RepeatNode extends BaseNode
 
             if ($isTruthy && $repeatCount === 0) {
                 $newCount = 1;
-                $scheduled = $this->scheduleNext($settings, $newCount, $maxRepeats);
-                return NodeResult::withTimer($input, $scheduled, ['repeat_count' => $newCount, 'last_input' => $input]);
+                $scheduled = $this->scheduleNext($intervalSeconds, $newCount, $maxRepeats);
+
+                $newState = ['repeat_count' => $newCount, 'last_input' => $input];
+                if ($hasSustainedAncestor) {
+                    $newState['accumulated_extra_seconds'] = $intervalSeconds * $newCount;
+                }
+
+                return NodeResult::withTimer($input, $scheduled, $newState);
             }
 
             if (!$isTruthy && $repeatCount > 0) {
-                return NodeResult::propagate(false, ['repeat_count' => 0, 'last_input' => null]);
+                return NodeResult::propagate(false, ['repeat_count' => 0, 'last_input' => null, 'accumulated_extra_seconds' => 0]);
             }
 
             return NodeResult::noPropagate(null, $state);
@@ -43,25 +53,35 @@ class RepeatNode extends BaseNode
         $isStillTruthy = $lastInput === true || (is_numeric($lastInput) && (float) $lastInput > 0);
 
         if (!$isStillTruthy) {
-            return NodeResult::propagate(false, ['repeat_count' => 0, 'last_input' => null]);
+            return NodeResult::propagate(false, ['repeat_count' => 0, 'last_input' => null, 'accumulated_extra_seconds' => 0]);
         }
 
         $newCount = $repeatCount + 1;
         if ($maxRepeats > 0 && $newCount > $maxRepeats) {
-            return NodeResult::propagate($lastInput, ['repeat_count' => $newCount, 'last_input' => $lastInput]);
+            return NodeResult::propagate($lastInput, [
+                'repeat_count' => $newCount,
+                'last_input' => $lastInput,
+                'accumulated_extra_seconds' => $intervalSeconds * $newCount,
+            ]);
         }
 
-        $scheduled = $this->scheduleNext($settings, $newCount, $maxRepeats);
-        return NodeResult::withTimer($lastInput, $scheduled, ['repeat_count' => $newCount, 'last_input' => $lastInput]);
+        $scheduled = $this->scheduleNext($intervalSeconds, $newCount, $maxRepeats);
+
+        $newState = ['repeat_count' => $newCount, 'last_input' => $lastInput];
+        if ($hasSustainedAncestor) {
+            $newState['accumulated_extra_seconds'] = $intervalSeconds * $newCount;
+        }
+
+        return NodeResult::withTimer($lastInput, $scheduled, $newState);
     }
 
-    private function scheduleNext(array $settings, int $currentCount, int $maxRepeats): ?NodeTimer
+    private function scheduleNext(int $intervalSeconds, int $currentCount, int $maxRepeats): ?NodeTimer
     {
-        if ($maxRepeats > 0 && $currentCount > $maxRepeats) {
+        if ($maxRepeats > 0 && $currentCount >= $maxRepeats) {
             return null;
         }
 
-        $delayMs = static::parseDurationToSeconds($settings['interval'] ?? '00:00:10:00:00') * 1000;
+        $delayMs = $intervalSeconds * 1000;
 
         return new NodeTimer($delayMs, ['repeat_fire' => true]);
     }

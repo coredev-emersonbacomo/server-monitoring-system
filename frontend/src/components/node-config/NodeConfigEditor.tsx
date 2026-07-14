@@ -19,7 +19,7 @@ import {
     addEdge,
     Background,
     Controls,
-    // MiniMap,
+    MiniMap,
     BackgroundVariant,
     SelectionMode,
     type ReactFlowInstance,
@@ -142,6 +142,35 @@ export function NodeConfigEditor({
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
+    const nodesRef = useRef(nodes);
+    nodesRef.current = nodes;
+
+    const [sidebarWidth, setSidebarWidth] = useState(192);
+    const isDraggingSidebar = useRef(false);
+    const dragStartX = useRef(0);
+    const dragStartWidth = useRef(0);
+
+    const onSidebarDragStart = useCallback((e: React.MouseEvent) => {
+        isDraggingSidebar.current = true;
+        dragStartX.current = e.clientX;
+        dragStartWidth.current = sidebarWidth;
+        e.preventDefault();
+    }, [sidebarWidth]);
+
+    useEffect(() => {
+        const onMove = (e: MouseEvent) => {
+            if (!isDraggingSidebar.current) return;
+            const delta = e.clientX - dragStartX.current;
+            setSidebarWidth(Math.max(160, Math.min(480, dragStartWidth.current + delta)));
+        };
+        const onUp = () => { isDraggingSidebar.current = false; };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        return () => {
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onUp);
+        };
+    }, []);
 
     useEffect(() => {
         if (savedConfig && !hydrated) {
@@ -187,17 +216,17 @@ export function NodeConfigEditor({
             if (!source || !target || !sourceHandle || !targetHandle)
                 return false;
             const sourceDef = getOutputType(
-                nodes.find((n) => n.id === source)?.type || "",
+                nodesRef.current.find((n) => n.id === source)?.type || "",
             );
             const targetDef = getInputType(
-                nodes.find((n) => n.id === target)?.type || "",
+                nodesRef.current.find((n) => n.id === target)?.type || "",
                 targetHandle,
             );
             if (!sourceDef || !targetDef) return false;
             if (targetDef.type === "any") return true;
             return sourceDef.type === targetDef.type;
         },
-        [nodes],
+        [],
     );
 
     const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -336,10 +365,16 @@ export function NodeConfigEditor({
                 onPreview={handlePreview}
             />
             <div className="flex flex-1 min-h-0">
-                <NodePalette
-                    nodeTypes={definitions}
-                    onAddNode={addNodeByClick}
-                />
+                <div style={{ width: sidebarWidth, minWidth: sidebarWidth }} className="relative shrink-0 bg-card">
+                    <NodePalette
+                        nodeTypes={definitions}
+                        onAddNode={addNodeByClick}
+                    />
+                    <div
+                        onMouseDown={onSidebarDragStart}
+                        className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-border/60 transition-colors z-10"
+                    />
+                </div>
                 <div
                     className="flex-1 relative"
                     onDrop={onDrop}
@@ -370,42 +405,29 @@ export function NodeConfigEditor({
                             className="bg-background"
                         />
                         <Controls className="bg-card border border-border/40 rounded-lg" />
-                        {/* <div
-                            style={{
-                                position: 'absolute',
-                                bottom: 16,
-                                right: 16,
-                                zIndex: 10,
-                                width: 200,
-                                height: 120,
-                                background: 'hsl(var(--card))',
-                                border: '1px solid hsl(var(--border))',
-                                borderRadius: '0.5rem',
-                                overflow: 'hidden',
+                        <MiniMap
+                            nodeColor={(node) => {
+                                const cat = definitions.find(
+                                    (d) => d.type === node.type,
+                                )?.category;
+                                const colors: Record<string, string> = {
+                                    metric: "#3b82f6",
+                                    condition: "#f59e0b",
+                                    logic: "#8b5cf6",
+                                    time: "#10b981",
+                                    action: "#ef4444",
+                                };
+                                return colors[cat || ""] || "#6b7280";
                             }}
-                        >
-                            <MiniMap
-                                nodeColor={(node) => {
-                                    const cat = definitions.find(
-                                        (d) => d.type === node.type,
-                                    )?.category;
-                                    const colors: Record<string, string> = {
-                                        metric: "#3b82f6",
-                                        condition: "#f59e0b",
-                                        logic: "#8b5cf6",
-                                        time: "#10b981",
-                                        action: "#ef4444",
-                                    };
-                                    return colors[cat || ""] || "#6b7280";
-                                }}
-                                maskColor="hsl(var(--background) / 0.6)"
-                                pannable
-                                zoomable
-                                style={{ width: '100%', height: '100%', background: 'transparent' }}
-                            />
-                        </div> */}
+                            maskColor="rgba(0,0,0,0.3)"
+                            pannable
+                            zoomable
+                            className="bg-card! border! border-border! rounded-lg!"
+                        />
                     </ReactFlow>
-                    <div className={`absolute top-4 right-4 z-10 transition-opacity duration-200 ${selectedNode ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                    <div
+                        className={`absolute top-4 right-4 z-10 transition-opacity duration-200 ${selectedNode ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                    >
                         <NodeSettingsPanel
                             node={selectedNode}
                             nodeTypeDef={selectedNodeDef}

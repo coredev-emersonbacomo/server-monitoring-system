@@ -1,8 +1,7 @@
 import { memo, useCallback } from 'react';
 import { type NodeProps, Position, useReactFlow } from '@xyflow/react';
 import { Activity, MemoryStick, HardDrive, Network, Server, Heart } from 'lucide-react';
-import { getOutputType } from './socketTypes';
-import { SocketHandle } from './socket-components';
+import { NodeSocket } from './node-socket';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 const METRICS: Record<string, { icon: React.ComponentType<{ size?: number }>; label: string }> = {
@@ -16,13 +15,12 @@ const METRICS: Record<string, { icon: React.ComponentType<{ size?: number }>; la
 
 const COLOR = '#3b82f6';
 
-export const MetricNode = memo(({ id, data, type }: NodeProps) => {
+export const MetricNode = memo(({ id, data }: NodeProps) => {
     const { updateNodeData } = useReactFlow();
     const metricType = (data.metric_type as string) || 'cpu_usage';
     const metric = METRICS[metricType] || METRICS.cpu_usage;
     const Icon = metric.icon;
-
-    const outDef = getOutputType(type);
+    const isMultiOutput = metricType === 'server_status';
 
     const handleChange = useCallback(
         (v: string) => {
@@ -40,9 +38,10 @@ export const MetricNode = memo(({ id, data, type }: NodeProps) => {
                 </div>
                 <span className="text-xs font-semibold text-foreground">Metric</span>
             </div>
-            <div className="px-3 py-2">
+
+            <div className="flex px-3 py-2">
                 <Select value={metricType} onValueChange={handleChange}>
-                    <SelectTrigger className="h-7 text-xs font-semibold" onClick={(e) => e.stopPropagation()}>
+                    <SelectTrigger className="flex-1 h-7 text-xs font-semibold" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -52,10 +51,27 @@ export const MetricNode = memo(({ id, data, type }: NodeProps) => {
                     </SelectContent>
                 </Select>
             </div>
-            <div className="relative flex items-center justify-end min-h-[24px] pl-3 pr-3 pb-2.5">
-                <span className="text-[10px] font-medium text-muted-foreground mr-2">{outDef?.label || 'Value'}</span>
-                <SocketHandle type="source" position={Position.Right} id="output" def={outDef} />
-            </div>
+
+            {isMultiOutput ? (
+                <>
+                    <div className="flex pb-1">
+                        <div className="flex-1" />
+                        <NodeSocket type="source" position={Position.Right} id="online"
+                            def={{ type: 'boolean', label: 'Online' }} label="Online" labelColor="#6ee7b7" />
+                    </div>
+                    <div className="flex pb-2.5">
+                        <div className="flex-1" />
+                        <NodeSocket type="source" position={Position.Right} id="offline"
+                            def={{ type: 'boolean', label: 'Offline' }} label="Offline" labelColor="#c48888" />
+                    </div>
+                </>
+            ) : (
+                <div className="flex pb-2.5">
+                    <div className="flex-1" />
+                    <NodeSocket type="source" position={Position.Right} id="output"
+                        def={{ type: 'number', label: 'Value' }} label="Value" />
+                </div>
+            )}
         </div>
     );
 });

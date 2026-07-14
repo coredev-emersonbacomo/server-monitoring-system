@@ -24,9 +24,16 @@ class NotificationService
             $channel = $discord->getChannel($channelId);
 
             if ($channel) {
+                $content = $roleId
+                    ? "<@&{$roleId}> ({$message})"
+                    : $message;
+
                 $builder = \Discord\Builders\MessageBuilder::new()
-                    ->setContent("<@&{$roleId}> ({$message})")
-                    ->setAllowedMentions(['roles' => [$roleId]]);
+                    ->setContent($content);
+
+                if ($roleId) {
+                    $builder->setAllowedMentions(['roles' => [$roleId]]);
+                }
 
                 $channel->sendMessage($builder)->done(function () use ($discord) {
                     $discord->close();
@@ -44,18 +51,15 @@ class NotificationService
      *
      * @param array|string $receivers The email address(es) to send to.
      * @param string $message The message content to send.
+     * @param string $subject The email subject.
      */
-    public function sendEmailAlert(array|string $receivers, string $message)
+    public function sendEmailAlert(array|string $receivers, string $message, string $subject = 'System Notification')
     {
-        // Convert single receiver to array to support multiple easily
-        $receivers = is_array($receivers) ? $receivers : func_get_args()[0] ?? [$receivers];
-        if (is_string($receivers)) {
-            $receivers = [$receivers];
-        }
+        $receivers = is_array($receivers) ? $receivers : [$receivers];
 
-        Mail::raw($message, function ($mail) use ($receivers) {
+        Mail::raw($message, function ($mail) use ($receivers, $subject) {
             $mail->to($receivers)
-                 ->subject('System Notification');
+                 ->subject($subject);
         });
     }
 }

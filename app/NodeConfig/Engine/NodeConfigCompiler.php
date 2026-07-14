@@ -10,7 +10,7 @@ class NodeConfigCompiler
         'metric' => 'metric',
         'condition' => 'condition',
         'logic' => 'logic',
-        'delay' => 'time',
+        'check_after' => 'time',
         'sustained' => 'time',
         'repeat' => 'time',
         'notification' => 'action',
