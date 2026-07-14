@@ -28,8 +28,10 @@ class PingServerPorts implements ShouldQueue
             return;
         }
 
-        // Hardcoded to localhost for local testing per user request
-        $host = '127.0.0.1';
+        $host = $this->server->host_name;
+        if (!$host) {
+            return;
+        }
 
         $ports = $agent->ports->filter(fn($p) => $p->protocol === 'tcp');
         if ($ports->isEmpty()) {
