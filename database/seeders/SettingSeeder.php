@@ -24,7 +24,18 @@ class SettingSeeder extends Seeder
 
         DB::table('settings')->updateOrInsert(
             ['key' => 'offline_threshold'],
-            ['value' => '5', 'updated_at' => now(), 'created_at' => now()]
+            ['value' => '15', 'updated_at' => now(), 'created_at' => now()]
+        );
+
+        DB::table('agent_versions')->updateOrInsert(
+            ['version' => '2.0'],
+            [
+                'type' => 'heartbeat_interval_update',
+                'heartbeat_interval' => 5,
+                'description' => 'Initial agent version',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
         );
     }
 }

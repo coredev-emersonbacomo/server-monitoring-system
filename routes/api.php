@@ -14,7 +14,13 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// Standard dashboard Broadcast auth (JWT users)
 Broadcast::routes(['middleware' => [\App\Http\Middleware\JwtAuthenticate::class]]);
+
+// Agent Broadcast auth — accepts agent identity tokens for private channel subscriptions
+Route::post('/broadcasting/auth/agent', [\App\Http\Controllers\Api\V1\AgentBroadcastAuthController::class, 'authorize']);
+
+
 
 Route::prefix('v1')->group(function () {
     Route::group([], base_path('routes/api/v1/auth.php'));

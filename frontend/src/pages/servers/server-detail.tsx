@@ -853,6 +853,88 @@ export default function ServerDetail() {
                                     </p>
                                 </div>
                             </Tab.Item>
+
+                            <Tab.Item icon={Cpu} title="Agent">
+                                <div className="flex flex-col gap-6 p-5 bg-card border border-t-0 border-border/60 rounded-b-lg min-h-[300px]">
+                                    <div className="flex items-center justify-between border-b border-border/30 pb-3">
+                                        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                            <Cpu size={16} className="text-primary" /> Installed Agent Properties
+                                        </h3>
+                                        {(server as any)?.agent && (
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${
+                                                (server as any).agent.status === 'online' 
+                                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                                                    : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
+                                            }`}>
+                                                {(server as any).agent.status}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {(server as any)?.agent ? (
+                                        <>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {[
+                                                    { label: "Agent Version", value: (server as any).agent.version },
+                                                    { label: "Heartbeat Interval", value: `${(server as any).agent.heartbeat_interval} seconds` },
+                                                    { label: "Metrics Scan Interval", value: `${(server as any).agent.metrics_interval} seconds` },
+                                                    { label: "Port Scan Interval", value: `${(server as any).agent.port_scan_interval} seconds` },
+                                                    { label: "Service Scan Interval", value: `${(server as any).agent.service_scan_interval} seconds` },
+                                                    { label: "Process Scan Interval", value: `${(server as any).agent.process_scan_interval} seconds` },
+                                                    { label: "Update Channel", value: (server as any).agent.update_channel, capitalize: true },
+                                                    { label: "Auto Update Enabled", value: (server as any).agent.auto_update ? "Yes" : "No" },
+                                                    { label: "First Registered", value: new Date((server as any).agent.registered_at).toLocaleString() },
+                                                    { label: "Last Heartbeat", value: (server as any).agent.last_seen_at ? new Date((server as any).agent.last_seen_at).toLocaleString() : "Never" },
+                                                ].map((prop, idx) => (
+                                                    <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border/40 hover:bg-muted/5 transition-colors">
+                                                        <span className="text-xs font-medium text-muted-foreground">{prop.label}</span>
+                                                        <span className={`text-xs font-semibold text-foreground ${prop.capitalize ? 'capitalize' : ''}`}>{prop.value}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="border-t border-border/30 pt-5 mt-3">
+                                                <h4 className="text-xs font-semibold text-foreground flex items-center gap-2 mb-3">
+                                                    <Terminal size={14} className="text-primary" /> Agent Activity History
+                                                </h4>
+                                                {(server as any)?.activities && (server as any).activities.length > 0 ? (
+                                                    <div className="flex flex-col gap-2 max-h-[250px] overflow-y-auto pr-1">
+                                                        {(server as any).activities.map((act: any, idx: number) => (
+                                                            <div key={idx} className="flex items-start gap-3 p-2.5 rounded-lg bg-card border border-border/30 hover:bg-muted/5 transition-colors">
+                                                                <div className={cn(
+                                                                    "w-2 h-2 rounded-full mt-1.5 shrink-0",
+                                                                    act.type === 'agent_uninstalled' ? 'bg-red-500' :
+                                                                    act.type === 'agent_updated' ? 'bg-blue-500' :
+                                                                    act.type === 'server_online' ? 'bg-emerald-500' : 
+                                                                    act.type === 'registration_completed' ? 'bg-purple-500' : 'bg-primary'
+                                                                )} />
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-[11px] font-semibold text-foreground capitalize">
+                                                                        {act.type.replace(/_/g, ' ')}
+                                                                    </p>
+                                                                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                                                                        {act.description}
+                                                                    </p>
+                                                                </div>
+                                                                <span className="text-[10px] text-muted-foreground shrink-0">
+                                                                    {new Date(act.created_at).toLocaleString()}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-xs text-muted-foreground py-2 text-center">No agent activities logged yet.</p>
+                                                )}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                                            <Cpu className="text-muted-foreground/30 mb-3" size={32} />
+                                            <p className="text-xs text-muted-foreground">No agent registered on this server yet.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </Tab.Item>
                         </Tab>
 
                         {(() => {

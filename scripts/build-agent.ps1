@@ -26,3 +26,14 @@ if ($LASTEXITCODE -ne 0) { Pop-Location; exit 1 }
 
 Pop-Location
 Write-Host "Done: agent (Linux) + MonitorAgent.exe (Windows)"
+
+# --- Auto-detect binary changes and bump AgentVersion ---
+Write-Host ""
+Write-Host "Checking for binary changes..."
+$laravelRoot = Join-Path $PSScriptRoot ".."
+$phpCmd = Get-Command "php" -ErrorAction SilentlyContinue
+if ($phpCmd) {
+    & php (Join-Path $laravelRoot "artisan") agent:version-sync
+} else {
+    Write-Warning "php not found in PATH - skipping auto version-sync. Run 'php artisan agent:version-sync' manually."
+}

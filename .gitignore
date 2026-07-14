@@ -22,6 +22,7 @@ frontend/src/api/api.json
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/app/agent_build_manifest.json
 /vendor
 _ide_helper.php
 Homestead.json

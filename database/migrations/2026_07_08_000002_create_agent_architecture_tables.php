@@ -204,6 +204,16 @@ return new class extends Migration
             $table->index('server_id');
             $table->index('created_at');
         });
+
+        Schema::create('agent_versions', function (Blueprint $table) {
+            $table->id();
+            $table->string('version')->unique();
+            $table->string('type');
+            $table->integer('heartbeat_interval')->nullable();
+            $table->string('binary_url')->nullable();
+            $table->text('description')->nullable();
+            $table->timestamps();
+        });
     }
 
     /**
@@ -211,6 +221,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('agent_versions');
         Schema::dropIfExists('activities');
         Schema::dropIfExists('command_results');
         Schema::dropIfExists('agent_commands');

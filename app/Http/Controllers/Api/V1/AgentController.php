@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Server;
 use App\Models\Agent;
 use App\Models\AgentIdentity;
+use App\Models\AgentConfiguration;
+use App\Models\Activity;
 use App\Services\ProvisioningService;
 use App\Services\HeartbeatService;
 use Illuminate\Http\Request;
@@ -125,6 +127,107 @@ class AgentController extends Controller
         return response()->json($response, 200);
     }
 
+    /**
+     * Called by the agent after it has successfully applied a config update received via WebSocket.
+     * The agent authenticates using its Bearer identity token.
+     */
+    public function agentUpdate(string $serverUuid, Request $request): JsonResponse
+    {
+        $authHeader = $request->header('Authorization');
+        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $rawIdentity = substr($authHeader, 7);
+        $identityHash = hash('sha256', $rawIdentity);
+
+        $identity = AgentIdentity::where('identity_hash', $identityHash)
+            ->where('status', 'active')
+            ->first();
+
+        if (!$identity) {
+            return response()->json(['message' => 'Invalid or revoked agent identity.'], 403);
+        }
+
+        $agent = $identity->agent;
+        if (!$agent) {
+            return response()->json(['message' => 'Agent not found.'], 404);
+        }
+
+        $validated = $request->validate([
+            'agent_version'      => ['nullable', 'string'],
+            'heartbeat_interval' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        // Update the latest AgentConfiguration record
+        $config = $agent->currentConfiguration;
+        if ($config) {
+            $updates = [];
+            if (isset($validated['heartbeat_interval'])) {
+                $updates['heartbeat_interval'] = $validated['heartbeat_interval'];
+            }
+            if (!empty($updates)) {
+                $config->update($updates);
+            }
+        }
+
+        // Update agent version if provided
+        if (!empty($validated['agent_version'])) {
+            $agent->update(['version' => $validated['agent_version']]);
+        }
+
+        // Log the update as an activity
+        $server = $agent->server;
+        Activity::create([
+            'server_id'   => $server->id,
+            'agent_id'    => $agent->id,
+            'type'        => 'config_update_applied',
+            'description' => 'Agent applied config update via WebSocket control channel.',
+        ]);
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    /**
+     * Log that the agent is starting its binary update process.
+     */
+    public function agentUpdating(string $serverUuid, Request $request): JsonResponse
+    {
+        $authHeader = $request->header('Authorization');
+        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $rawIdentity = substr($authHeader, 7);
+        $identityHash = hash('sha256', $rawIdentity);
+
+        $identity = AgentIdentity::where('identity_hash', $identityHash)
+            ->where('status', 'active')
+            ->first();
+
+        if (!$identity) {
+            return response()->json(['message' => 'Invalid or revoked agent identity.'], 403);
+        }
+
+        $agent = $identity->agent;
+        if (!$agent) {
+            return response()->json(['message' => 'Agent not found.'], 404);
+        }
+
+        $validated = $request->validate([
+            'version' => ['required', 'string'],
+        ]);
+
+        Activity::create([
+            'server_id'   => $agent->server->id,
+            'agent_id'    => $agent->id,
+            'type'        => 'agent_updating',
+            'description' => "Agent started download and update to v{$validated['version']}.",
+        ]);
+
+        return response()->json(['status' => 'ok']);
+    }
+
     public function installLinux(): Response
     {
         $scriptPath = public_path('install.sh');
@@ -164,6 +267,13 @@ class AgentController extends Controller
         ]);
 
         event(new \App\Events\AgentUninstalled($server->uuid));
+
+        \App\Models\Activity::create([
+            'server_id' => $server->id,
+            'agent_id' => $server->agent?->id,
+            'type' => 'agent_uninstalled',
+            'description' => 'Agent service has been uninstalled from the host.',
+        ]);
 
         \App\Models\CustomActivityLog::create([
             'logable_type' => Server::class,
