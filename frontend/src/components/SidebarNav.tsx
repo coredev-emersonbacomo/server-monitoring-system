@@ -71,7 +71,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
             className={twMerge(
                 "flex flex-col gap-sidebar-section-gap bg-background text-foreground py-5 px-sidebar-padding",
                 isCollapsed ? "w-sidebar-collapsed" : "w-sidebar",
-                "transition-all duration-300 ease-in-out overflow-x-hidden ring ring-sidebar-ring sticky top-0 h-screen! overflow-y-auto",
+                "transition-all duration-300 ease-in-out overflow-x-hidden sticky top-0 h-screen! overflow-y-auto",
             )}
         >
             <div className="flex gap-sidebar-section-gap items-center h-16">

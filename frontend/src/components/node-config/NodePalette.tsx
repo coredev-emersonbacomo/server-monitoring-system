@@ -33,7 +33,7 @@ export function NodePalette({ nodeTypes, onAddNode }: NodePaletteProps) {
     }, []);
 
     return (
-        <div className="w-64 bg-card border-r border-border/40 overflow-y-auto p-3 flex flex-col gap-4">
+        <div className="w-full bg-card border-r border-border/40 overflow-y-auto p-3 flex flex-col gap-4">
             <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">
                 Node Types
             </div>

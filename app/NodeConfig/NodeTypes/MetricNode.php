@@ -32,7 +32,11 @@ class MetricNode extends BaseNode
         }
 
         if ($metricType === 'server_status') {
-            return NodeResult::propagate($value === 'online' || $value === true || $value === 1);
+            $isOnline = $value === 'online' || $value === true || $value === 1;
+            return NodeResult::multiOutput([
+                'online' => $isOnline ? true : null,
+                'offline' => !$isOnline ? true : null,
+            ], $state);
         }
 
         return NodeResult::propagate((float) $value);
