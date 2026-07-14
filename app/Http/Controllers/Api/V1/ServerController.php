@@ -245,6 +245,7 @@ class ServerController extends Controller
             'host_name'              => $server->host_name,
             'created_at'             => $server->created_at->toIso8601String(),
             'updated_at'             => $server->updated_at->toIso8601String(),
+            'cpu_model'              => $server->cpu_model,
             'cpu_cores'              => $server->cpu_cores ?? null,
             'ram'                    => $server->ram ?? null,
             'disk'                   => $server->disk ?? null,
@@ -256,10 +257,39 @@ class ServerController extends Controller
             'status'                 => $server->status,
             'stats'                  => $stats,
             'activeProvisionDetails' => $activeDetails,
-            'ports'               => $server->agent?->ports->map(fn($p) => ['id' => $p->id, 'port' => $p->port, 'protocol' => $p->protocol, 'state' => $p->state, 'process' => $p->process_name, 'ping_status' => $p->ping_status, 'ping_time' => $p->ping_time])->toArray(),
-            'processes'              => $server->agent?->processes()->orderByDesc('cpu')->get()->map(fn($pr) => ['pid' => $pr->pid, 'name' => $pr->name, 'cpu' => $pr->cpu, 'memory' => $pr->memory])->toArray(),
-            'uninstall_linux_command' => 'curl -fsSL ' . url('/uninstall/linux') . ' | bash -s -- ' . $token,
-            'uninstall_windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/uninstall/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl `$APP_URL"',
+
+            'ports' => $server->agent?->ports->map(fn($p) => [
+                'id'          => $p->id,
+                'port'        => $p->port,
+                'protocol'    => $p->protocol,
+                'state'       => $p->state,
+                'process'     => $p->process_name,
+                'ping_status' => $p->ping_status,
+                'ping_time'   => $p->ping_time
+            ])->toArray(),
+
+            'processes' => $server->agent?->processes()
+                ->orderByDesc('cpu')
+                ->get()
+                ->map(fn($pr) => [
+                    'pid'    => $pr->pid,
+                    'name'   => $pr->name,
+                    'cpu'    => $pr->cpu,
+                    'memory' => $pr->memory
+                ])->toArray(),
+
+            'uninstall_linux_command' => sprintf(
+                'curl -fsSL %s | bash -s -- %s',
+                url('/uninstall/linux'),
+                $token
+            ),
+
+            'uninstall_windows_command' => sprintf(
+                'powershell -ExecutionPolicy Bypass -Command "$APP_URL=\'%s\'; & ([scriptblock]::Create((irm $APP_URL/uninstall/windows.ps1))) -ProvisionToken \'%s\' -AppUrl $APP_URL"',
+                url('/'),
+                $token
+            ),
+
             'agent_deleted' => $server->agent ? (bool) $server->agent_deleted : true,
         ]);
     }
