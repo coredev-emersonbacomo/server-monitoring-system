@@ -10,9 +10,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Server;
 use App\Models\ServerUpdate;
+use App\Models\CustomActivityLog;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\Request;
-use Infrastructure\Api\ApiGenerator;
 
 class ServerController extends Controller
 {
@@ -34,11 +34,26 @@ class ServerController extends Controller
                 'name'         => $data->name,
                 'description' => $data->description,
                 'host_name'    => $data->host_name ?? $data->name,
-                'api_key'      => ApiGenerator::GenerateApiKey(),
+            ]);
+
+            $actor = auth()->user();
+
+            CustomActivityLog::create([
+                'logable_type' => Server::class,
+                'logable_id' => (string) $server->uuid,
+                'user_id' => $actor?->id,
+                'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+                'action' => 'Create Server',
+                'details' => [
+                    'message' => "Create server: {$server->name}",
+                    'name' => $server->name,
+                    'host_name' => $server->host_name,
+                    'client_uuid' => $clientModel->uuid,
+                    'client_name' => $clientModel->name,
+                ],
             ]);
 
             return ServerData::fromModel($server);
-
         } catch (\RuntimeException $e) {
             abort(500, 'Installation failed: ' . $e->getMessage());
         }
@@ -69,7 +84,48 @@ class ServerController extends Controller
             $updateData['description'] = $data->description;
         }
 
+        $originalAttributes = $serverModel->getRawOriginal();
+
         $serverModel->update($updateData);
+
+        if ($serverModel->wasChanged()) {
+            $changes = $serverModel->getChanges();
+
+            unset(
+                $changes['updated_at']
+            );
+
+            $before = [];
+            $after = [];
+
+            foreach (array_keys($changes) as $field) {
+                $before[$field] = $originalAttributes[$field] ?? null;
+                $after[$field] = $serverModel->{$field};
+            }
+
+            $details = [
+                'message' => "Updated server: {$serverModel->name}",
+                'before' => $before,
+                'after' => $after,
+            ];
+        } else {
+            $details = [
+                'message' => "Saved server configurations without modifications for {$serverModel->name}",
+                'before' => [],
+                'after' => [],
+            ];
+        }
+
+        $actor = auth()->user();
+
+        CustomActivityLog::create([
+            'logable_type' => Server::class,
+            'logable_id' => (string) $serverModel->uuid,
+            'user_id' => $actor?->id,
+            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action' => 'Update Server',
+            'details' => $details,
+        ]);
 
         return ServerData::fromModel($serverModel);
     }
@@ -79,6 +135,21 @@ class ServerController extends Controller
         $serverModel = Server::where('uuid', $serverUuid)
             ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
             ->firstOrFail();
+
+        $actor = auth()->user();
+
+        CustomActivityLog::create([
+            'logable_type' => Server::class,
+            'logable_id' => (string) $serverModel->uuid,
+            'user_id' => $actor?->id,
+            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action' => 'Delete Server',
+            'details' => [
+                'message' => "Deleted server: {$serverModel->name}",
+                'name' => $serverModel->name,
+                'host_name' => $serverModel->host_name,
+            ],
+        ]);
 
         $serverModel->delete();
 
