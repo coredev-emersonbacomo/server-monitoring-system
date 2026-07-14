@@ -739,7 +739,7 @@ export default function ServerDetail() {
                                 <Tab.Item icon={BarChart3} title="Metrics">
                                     <div className="flex flex-col gap-6 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
                                         {/* Ports and Processes */}
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        <div className="grid grid-rows-1 lg:grid-rows-2 gap-6">
                                             {/* Processes */}
                                             <div className="bg-card/50 border border-border/50 rounded-xl p-4 shadow-sm">
                                                 <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -798,8 +798,8 @@ export default function ServerDetail() {
                                                                         <td className="py-2 text-foreground font-medium">{p.process || "unknown"}</td>
                                                                         <td className="py-2 text-right flex items-center justify-end gap-1.5">
                                                                             <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
-                                                                                p.state === 'listening' 
-                                                                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                                                                                p.state === 'listening'
+                                                                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                                                                     : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
                                                                             }`}>
                                                                                 {p.state}
