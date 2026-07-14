@@ -127,7 +127,7 @@ class AgentController extends Controller
 
     public function installLinux(): Response
     {
-        $scriptPath = resource_path('installer/install.sh');
+        $scriptPath = public_path('install.sh');
         $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
         $script = str_replace('{{APP_URL}}', url('/'), $script);
         return response($script, 200, ['Content-Type' => 'text/plain']);
@@ -135,7 +135,7 @@ class AgentController extends Controller
 
     public function installWindows(): Response
     {
-        $scriptPath = resource_path('installer/install.ps1');
+        $scriptPath = public_path('install.ps1');
         $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
         $script = str_replace('{{APP_URL}}', url('/'), $script);
         return response($script, 200, ['Content-Type' => 'text/plain']);

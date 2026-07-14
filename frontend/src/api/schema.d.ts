@@ -541,12 +541,12 @@ export interface paths {
             cookie?: never;
         };
         get: operations["server.show"];
-        put: operations["server.update"];
+        put?: never;
         post?: never;
         delete: operations["server.destroy"];
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["server.update"];
         trace?: never;
     };
     "/v1/servers/{serverUuid}": {
@@ -560,6 +560,22 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["server.destroyPort"];
         options?: never;
         head?: never;
         patch?: never;
@@ -884,6 +900,8 @@ export interface components {
             created_at: string | null;
             /** Format: date-time */
             updated_at: string | null;
+            slug: string | null;
+            compiled_config: unknown[] | null;
         };
         /** NodeConfigData */
         NodeConfigData: {
@@ -934,7 +952,6 @@ export interface components {
                 windows_command: string;
             } | null;
             ports?: {
-                id: number;
                 port: number;
                 protocol: string;
                 state: string;
@@ -971,11 +988,7 @@ export interface components {
          * UploadPurpose
          * @enum {string}
          */
-        UploadPurpose:
-            | "profile_picture"
-            | "client_banner"
-            | "attachment"
-            | "document";
+        UploadPurpose: "profile_picture" | "client_banner" | "attachment" | "document";
         /** UserData */
         UserData: {
             uuid: string;
@@ -1090,20 +1103,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json":
-                        | {
-                              conflict: boolean;
-                              token: string;
-                              expires_at: string;
-                              linux_command: string;
-                              windows_command: string;
-                          }
-                        | {
-                              conflict: boolean;
-                              expires_at: string;
-                              generated_at: string;
-                              remaining_seconds: number;
-                          };
+                    "application/json": {
+                        conflict: boolean;
+                        token: string;
+                        expires_at: string;
+                        linux_command: string;
+                        windows_command: string;
+                        token_expires_in: string;
+                    } | {
+                        conflict: boolean;
+                        expires_at: string;
+                        generated_at: string;
+                        remaining_seconds: number;
+                        token_expires_in: string;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -1112,20 +1125,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json":
-                        | {
-                              conflict: boolean;
-                              token: string;
-                              expires_at: string;
-                              linux_command: string;
-                              windows_command: string;
-                          }
-                        | {
-                              conflict: boolean;
-                              expires_at: string;
-                              generated_at: string;
-                              remaining_seconds: number;
-                          };
+                    "application/json": {
+                        conflict: boolean;
+                        token: string;
+                        expires_at: string;
+                        linux_command: string;
+                        windows_command: string;
+                        token_expires_in: string;
+                    } | {
+                        conflict: boolean;
+                        expires_at: string;
+                        generated_at: string;
+                        remaining_seconds: number;
+                        token_expires_in: string;
+                    };
                 };
             };
             422: {
@@ -1156,20 +1169,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json":
-                        | {
-                              conflict: boolean;
-                              token: string;
-                              expires_at: string;
-                              linux_command: string;
-                              windows_command: string;
-                          }
-                        | {
-                              conflict: boolean;
-                              expires_at: string;
-                              generated_at: string;
-                              remaining_seconds: number;
-                          };
+                    "application/json": {
+                        conflict: boolean;
+                        token: string;
+                        expires_at: string;
+                        linux_command: string;
+                        windows_command: string;
+                        token_expires_in: string;
+                    } | {
+                        conflict: boolean;
+                        expires_at: string;
+                        generated_at: string;
+                        remaining_seconds: number;
+                        token_expires_in: string;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -1382,7 +1395,6 @@ export interface operations {
             content: {
                 "application/json": {
                     name: string;
-                    description?: string | null;
                 };
             };
         };
@@ -1620,7 +1632,9 @@ export interface operations {
                     "application/json": {
                         message: string;
                         errors: {
-                            user_uuid: [string];
+                            user_uuid: [
+                                string
+                            ];
                         };
                     };
                 };
@@ -1699,34 +1713,32 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json":
-                        | {
-                              unit: string;
-                              metric: string;
-                              series: {
-                                  server_uuid: string;
-                                  server_name: string;
-                                  client_name: string;
-                                  points: {
-                                      timestamp: string;
-                                      value: string | null;
-                                  }[];
-                              }[];
-                              top: {
-                                  server_uuid: string;
-                                  server_name: string;
-                                  client_name: string;
-                                  value: number;
-                              }[];
-                              nextCursor: null;
-                          }
-                        | {
-                              unit: string;
-                              metric: string;
-                              series: string[];
-                              top: string[];
-                              nextCursor: null;
-                          };
+                    "application/json": {
+                        unit: string;
+                        metric: string;
+                        series: {
+                            server_uuid: string;
+                            server_name: string;
+                            client_name: string;
+                            points: {
+                                timestamp: string;
+                                value: string | null;
+                            }[];
+                        }[];
+                        top: {
+                            server_uuid: string;
+                            server_name: string;
+                            client_name: string;
+                            value: number;
+                        }[];
+                        nextCursor: null;
+                    } | {
+                        unit: string;
+                        metric: string;
+                        series: string[];
+                        top: string[];
+                        nextCursor: null;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2205,27 +2217,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json":
-                        | {
-                              success: boolean;
-                              outputs: string;
-                              timers: {
-                                  node_config_id: number;
-                                  node_id: string;
-                                  delay_ms: number;
-                                  context: unknown[];
-                              }[];
-                              actions: {
-                                  node_id: string;
-                                  type: string;
-                                  settings: string | string[];
-                                  value: Record<string, never> | null;
-                              }[];
-                          }
-                        | {
-                              success: boolean;
-                              errors: unknown[];
-                          };
+                    "application/json": {
+                        success: boolean;
+                        outputs: string;
+                        timers: {
+                            node_config_id: number;
+                            node_id: string;
+                            delay_ms: number;
+                            context: unknown[];
+                        }[];
+                        actions: {
+                            node_id: string;
+                            type: string;
+                            settings: string | string[];
+                            value: Record<string, never> | null;
+                            upstream_context: {
+                                metric_name: string;
+                                sustain_value: string | null;
+                            };
+                        }[];
+                    } | {
+                        success: boolean;
+                        errors: unknown[];
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2273,15 +2287,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json":
-                        | (components["schemas"]["NodeConfig"] | null)
-                        | {
-                              nodes: string[];
-                              edges: string[];
-                              name: string;
-                              slug: string;
-                              enabled: boolean;
-                          };
+                    "application/json": (components["schemas"]["NodeConfig"] | null) | {
+                        nodes: string[];
+                        edges: string[];
+                        name: string;
+                        slug: string;
+                        enabled: boolean;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2344,29 +2356,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json":
-                        | {
-                              rules: ({
-                                  metrics: unknown[];
-                                  conditions: {
-                                      operator: string | "greater_than";
-                                      threshold: string | null;
-                                      min: string | null;
-                                      max: string;
-                                  }[];
-                                  logic: string | "and";
-                                  timing: {
-                                      type: string;
-                                      duration_seconds: number;
-                                      interval_seconds: number;
-                                      max_repeats: number | null;
-                                  };
-                                  actions: [unknown[]];
-                              } | null)[];
-                          }
-                        | {
-                              rules: string[];
-                          };
+                    "application/json": {
+                        rules: ({
+                            metrics: unknown[];
+                            conditions: {
+                                operator: string | "greater_than";
+                                threshold: string | null;
+                                min: string | null;
+                                max: string;
+                            }[];
+                            logic: string | "and";
+                            timing: {
+                                type: string;
+                                duration_seconds: number;
+                                interval_seconds: number;
+                                max_repeats: number | null;
+                            };
+                            actions: [
+                                unknown[]
+                            ];
+                        } | null)[];
+                    } | {
+                        rules: string[];
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2420,38 +2432,6 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "server.update": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                clientUuid: string;
-                serverUuid: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": {
-                    name?: string | null;
-                    host_name?: string | null;
-                    description?: string | null;
-                };
-            };
-        };
-        responses: {
-            /** @description `ServerData` */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ServerData"];
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-        };
-    };
     "server.destroy": {
         parameters: {
             query?: never;
@@ -2473,6 +2453,37 @@ export interface operations {
                         /** @constant */
                         status: "success";
                     };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "server.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    name?: string | null;
+                    description?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `ServerData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerData"];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2500,6 +2511,31 @@ export interface operations {
             };
             401: components["responses"]["AuthenticationException"];
             404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "server.destroyPort": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "success";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
         };
     };
     "session.index": {
@@ -2612,15 +2648,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json":
-                        | {
-                              /** @constant */
-                              message: "Session must be revoked before permanent deletion.";
-                          }
-                        | {
-                              /** @constant */
-                              message: "Cannot delete current session.";
-                          };
+                    "application/json": {
+                        /** @constant */
+                        message: "Session must be revoked before permanent deletion.";
+                    } | {
+                        /** @constant */
+                        message: "Cannot delete current session.";
+                    };
                 };
             };
         };
@@ -3039,7 +3073,9 @@ export interface operations {
                     "application/json": {
                         message: string;
                         errors: {
-                            client_uuid: [string];
+                            client_uuid: [
+                                string
+                            ];
                         };
                     };
                 };

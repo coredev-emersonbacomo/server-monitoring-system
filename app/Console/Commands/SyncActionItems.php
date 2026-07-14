@@ -70,6 +70,12 @@ class SyncActionItems extends Command
 
     private function syncActions(array $currentIssues): void
     {
+        // Ping ports for every server in the background
+        $servers = Server::all();
+        foreach ($servers as $server) {
+            \App\Jobs\PingServerPorts::dispatch($server);
+        }
+
         $seenKeys = [];
 
         foreach ($currentIssues as $issue) {
