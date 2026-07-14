@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+TOKEN="${1:-}"
+APP_URL="${2:-{{APP_URL}}}"
+
 readonly SERVICE_NAME="monitor-agent"
 readonly APP_DIR="/opt/monitor-agent"
+readonly BOOTSTRAP_FILE="${APP_DIR}/bootstrap.json"
 readonly SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 readonly LOG_FILE="/var/log/${SERVICE_NAME}-uninstall.log"
 readonly SERVICE_USER="monitor"
@@ -13,6 +17,10 @@ fail() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $*" | tee -a "$LOG_FILE"; 
 
 if [[ $EUID -ne 0 ]]; then
     fail "This script must be run as root."
+fi
+
+if [[ -z "$TOKEN" && -f "$BOOTSTRAP_FILE" ]]; then
+    TOKEN=$(python3 -c "import json; print(json.load(open('$BOOTSTRAP_FILE')).get('token', ''))" 2>/dev/null || true)
 fi
 
 log "Starting uninstallation of ${SERVICE_NAME}..."
@@ -39,6 +47,14 @@ fi
 log "Reloading systemd daemon..."
 systemctl daemon-reload
 systemctl reset-failed 2>/dev/null || true
+
+if [[ -n "$TOKEN" ]]; then
+    log "Notifying backend of uninstallation..."
+    curl -fsSL -X POST \
+      -H "Content-Type: application/json" \
+      -d "{\"token\":\"$TOKEN\",\"platform\":\"linux\"}" \
+      "${APP_URL}/api/v1/agent/uninstall" || warn "Failed to notify backend."
+fi
 
 if [[ -d "$APP_DIR" ]]; then
     log "Removing app directory: ${APP_DIR}..."

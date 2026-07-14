@@ -73,10 +73,14 @@ function getEcho(): Echo<"reverb"> {
 export function useServerSocket(
     serverUuid: string,
     onStatus: (status: WsStatus) => void,
+    onAgentUninstalled?: () => void,
 ) {
     const onStatusRef = useRef(onStatus);
+    const onAgentUninstalledRef = useRef(onAgentUninstalled);
+
     useEffect(() => {
         onStatusRef.current = onStatus;
+        onAgentUninstalledRef.current = onAgentUninstalled;
     });
 
     useEffect(() => {
@@ -122,6 +126,11 @@ export function useServerSocket(
             })
             .listen(".RegistrationCompleted", () => {
                 window.location.reload();
+            })
+            .listen(".AgentUninstalled", () => {
+                if (onAgentUninstalledRef.current) {
+                    onAgentUninstalledRef.current();
+                }
             });
 
         return () => {

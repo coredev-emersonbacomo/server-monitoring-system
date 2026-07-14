@@ -12,7 +12,6 @@ import {
     Info,
     BarChart3,
     Bell,
-    Server,
     Terminal,
     Copy,
     Check,
@@ -141,7 +140,12 @@ export default function ServerDetail() {
     const [, setWsStatus] = useState<WsStatus>("connecting");
     const [history, setHistory] = useState<StatPointData[]>([]);
 
-    useServerSocket(uuid!, setWsStatus);
+    useServerSocket(uuid!, setWsStatus, () => {
+        toast.success("Agent successfully uninstalled!");
+        queryClient.invalidateQueries({
+            queryKey: ["server", uuid],
+        });
+    });
 
     const live = useLiveStats(uuid!);
 
@@ -198,9 +202,9 @@ export default function ServerDetail() {
         expires_at: string;
     } | null>((initial?.activeProvisionDetails as any) ?? null);
     const [generating, setGenerating] = useState(false);
-    const [copiedKey, setCopiedKey] = useState<"linux" | "windows" | null>(
-        null,
-    );
+    const [copiedKey, setCopiedKey] = useState<
+        "linux" | "windows" | "uninstall_linux" | "uninstall_windows" | null
+    >(null);
     const [timeLeft, setTimeLeft] = useState<string>("");
 
     const [isEditingInfo, setIsEditingInfo] = useState(false);
@@ -304,7 +308,10 @@ export default function ServerDetail() {
         }
     };
 
-    const copyToClipboard = (text: string, type: "linux" | "windows") => {
+    const copyToClipboard = (
+        text: string,
+        type: "linux" | "windows" | "uninstall_linux" | "uninstall_windows",
+    ) => {
         navigator.clipboard.writeText(text);
         setCopiedKey(type);
         toast.success("Command copied to clipboard!");
@@ -320,8 +327,14 @@ export default function ServerDetail() {
             });
             toast.success(`${initial.name} has been deleted.`);
             setShowDelete(false);
-        } catch {
-            toast.error("Failed to delete server. Please try again.");
+            if (allClient) {
+                navigate("/servers");
+            } else {
+                navigate(`/clients/${initial.client_uuid}`);
+            }
+        } catch (err: any) {
+            const msg = err?.message || "Failed to delete server. Please try again.";
+            toast.error(msg);
         }
     };
 
@@ -364,7 +377,7 @@ export default function ServerDetail() {
         }
         setSavingInfo(true);
         try {
-            const { error } = await api.PATCH(
+            const { error } = await (api.PATCH as any)(
                 "/v1/clients/{clientUuid}/servers/{serverUuid}",
                 {
                     params: {
@@ -842,32 +855,103 @@ export default function ServerDetail() {
                             </Tab.Item>
                         </Tab>
 
-                        <Dialog
-                            open={showDelete}
-                            onOpenChange={(open) => !open && resetDialog()}
-                        >
-                            <DialogContent className="sm:max-w-sm">
-                                <DialogHeader>
-                                    <DialogTitle className="flex items-center gap-2 text-destructive">
-                                        <Trash2 size={16} />
-                                        Delete server
-                                    </DialogTitle>
-                                </DialogHeader>
+                        {(() => {
+                            const serverData = initial as any;
+                            return (
+                                <Dialog
+                                    open={showDelete}
+                                    onOpenChange={(open) => !open && resetDialog()}
+                                >
+                                    <DialogContent className="sm:max-w-md">
+                                        <DialogHeader>
+                                            <DialogTitle className="flex items-center gap-2 text-destructive">
+                                                <Trash2 size={16} />
+                                                Delete server
+                                            </DialogTitle>
+                                        </DialogHeader>
 
-                                <p className="text-sm text-muted-foreground">
-                                    This will permanently stop monitoring{" "}
-                                    <strong className="text-foreground">
-                                        {initial.name}
-                                    </strong>{" "}
-                                    and remove all collected metrics. This
-                                    cannot be undone.
-                                </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            This will permanently stop monitoring{" "}
+                                            <strong className="text-foreground">
+                                                {initial?.name}
+                                            </strong>{" "}
+                                            and remove all collected metrics. This
+                                            cannot be undone.
+                                        </p>
+
+                                        {serverData && !serverData.agent_deleted && (
+                                            <div className="flex flex-col gap-3 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
+                                                <div className="flex items-start gap-2">
+                                                    <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                                                    <div>
+                                                        <p className="font-semibold text-foreground">Agent Uninstallation Required</p>
+                                                        <p className="text-muted-foreground mt-0.5">
+                                                            You must uninstall the agent service from the target machine before you can delete this server. Run the command for your operating system:
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-col gap-2.5 mt-1 text-foreground">
+                                                    <div>
+                                                        <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                                            Linux (bash)
+                                                        </label>
+                                                        <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
+                                                            <span className="flex-1 whitespace-pre-wrap break-all">
+                                                                {serverData.uninstall_linux_command}
+                                                            </span>
+                                                            <button
+                                                                onClick={() =>
+                                                                    copyToClipboard(
+                                                                        serverData.uninstall_linux_command!,
+                                                                        "uninstall_linux",
+                                                                    )
+                                                                }
+                                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                            >
+                                                                {copiedKey === "uninstall_linux" ? (
+                                                                    <Check className="size-3.5 text-emerald-400" />
+                                                                ) : (
+                                                                    <Copy className="size-3.5" />
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                                            Windows (PowerShell)
+                                                        </label>
+                                                        <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
+                                                            <span className="flex-1 whitespace-pre-wrap break-all">
+                                                                {serverData.uninstall_windows_command}
+                                                            </span>
+                                                            <button
+                                                                onClick={() =>
+                                                                    copyToClipboard(
+                                                                        serverData.uninstall_windows_command!,
+                                                                        "uninstall_windows",
+                                                                    )
+                                                                }
+                                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                            >
+                                                                {copiedKey === "uninstall_windows" ? (
+                                                                    <Check className="size-3.5 text-emerald-400" />
+                                                                ) : (
+                                                                    <Copy className="size-3.5" />
+                                                                )}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
 
                                 <div className="flex flex-col gap-2 pt-1">
                                     <label className="text-xs text-muted-foreground">
                                         Type{" "}
                                         <strong className="text-foreground font-mono">
-                                            {initial.name}
+                                            {initial?.name}
                                         </strong>{" "}
                                         to confirm
                                     </label>
@@ -876,7 +960,7 @@ export default function ServerDetail() {
                                         onChange={(e) =>
                                             setConfirmText(e.target.value)
                                         }
-                                        placeholder={initial.name}
+                                        placeholder={initial?.name}
                                         autoFocus
                                         className="font-mono text-sm"
                                     />
@@ -906,6 +990,8 @@ export default function ServerDetail() {
                                 </div>
                             </DialogContent>
                         </Dialog>
+                            );
+                        })()}
                     </div>
                 </main>
             </PageLayout>

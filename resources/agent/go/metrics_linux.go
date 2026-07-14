@@ -255,7 +255,6 @@ func getOpenDatabasePorts() []PortInfo {
 
 	var result []PortInfo
 	procRe := regexp.MustCompile(`users:\(\([""]([^""]+)`)
-	dbProcRe := regexp.MustCompile(dbProcessNames)
 	dbPortSet := make(map[int]string)
 	for k, v := range dbPortNames {
 		dbPortSet[k] = v

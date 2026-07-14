@@ -136,6 +136,12 @@ class ServerController extends Controller
             ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
             ->firstOrFail();
 
+        if ($serverModel->agent()->exists() && !$serverModel->agent_deleted) {
+            return response()->json([
+                'message' => 'Cannot delete server while the agent is still running. Please run the uninstall script first.'
+            ], 422);
+        }
+
         $actor = auth()->user();
 
         CustomActivityLog::create([
@@ -156,10 +162,9 @@ class ServerController extends Controller
         return response()->json(['status' => 'success']);
     }
 
-    #[QueryParameter('client_uuid', type: 'string', description: 'Filter servers by client UUID')]
     public function listAll(Request $request)
     {
-        $query = Server::with('client', 'latestUpdate');
+        $query = Server::with('client', 'latestUpdate', 'agent');
 
         if ($clientUuid = $request->query('client_uuid')) {
             $client = Client::where('uuid', $clientUuid)->first();
@@ -171,6 +176,8 @@ class ServerController extends Controller
         $servers = $query->orderBy('created_at', 'desc')->get();
 
         return ServerData::collect($servers->map(function (Server $server) {
+            $tokenModel = $server->provisionTokens()->latest()->first();
+            $token = $tokenModel ? $tokenModel->token : '';
             return ServerData::from([
                 'uuid'             => $server->uuid,
                 'name'             => $server->name,
@@ -186,6 +193,9 @@ class ServerController extends Controller
                 'operating_system' => $server->operating_system,
                 'record_status' => $server->record_status->value,
                 'status' => $server->status,
+                'uninstall_linux_command' => 'curl -fsSL ' . url('/uninstall/linux') . ' | bash -s -- ' . $token,
+                'uninstall_windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/uninstall/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl `$APP_URL"',
+                'agent_deleted' => $server->agent ? (bool) $server->agent_deleted : true,
             ]);
         }));
     }
@@ -225,6 +235,9 @@ class ServerController extends Controller
             }
         }
 
+        $tokenModel = $server->provisionTokens()->latest()->first();
+        $token = $tokenModel ? $tokenModel->token : '';
+
         return ServerData::from([
             'uuid'                   => $server->uuid,
             'name'                  => $server->name,
@@ -245,6 +258,9 @@ class ServerController extends Controller
             'activeProvisionDetails' => $activeDetails,
             'ports'               => $server->agent?->ports->map(fn($p) => ['id' => $p->id, 'port' => $p->port, 'protocol' => $p->protocol, 'state' => $p->state, 'process' => $p->process_name, 'ping_status' => $p->ping_status, 'ping_time' => $p->ping_time])->toArray(),
             'processes'              => $server->agent?->processes()->orderByDesc('cpu')->get()->map(fn($pr) => ['pid' => $pr->pid, 'name' => $pr->name, 'cpu' => $pr->cpu, 'memory' => $pr->memory])->toArray(),
+            'uninstall_linux_command' => 'curl -fsSL ' . url('/uninstall/linux') . ' | bash -s -- ' . $token,
+            'uninstall_windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/uninstall/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl `$APP_URL"',
+            'agent_deleted' => $server->agent ? (bool) $server->agent_deleted : true,
         ]);
     }
 
