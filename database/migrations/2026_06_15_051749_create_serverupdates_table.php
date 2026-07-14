@@ -21,7 +21,7 @@ return new class extends Migration
     {
          LaravelSchema::create('server_updates', function (LaravelBlueprint $table) {
             $table->id();
-            $table->foreignId('server_id')->constrained();
+            $table->foreignId('server_id')->constrained()->cascadeOnDelete();
             $table->float('cpu_usage');
             $table->float('memory_usage');
             $table->float('disk_usage');
