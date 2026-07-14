@@ -49,6 +49,12 @@ class ServerData extends Data
 
         /** @var array{pid: int, name: string, cpu: float|null, memory: float|null}[]|null */
         public ?array $processes = null,
+
+        public ?string $uninstall_linux_command = null,
+
+        public ?string $uninstall_windows_command = null,
+
+        public bool $agent_deleted = false,
     ) {}
 
     public static function fromModel(Server $server): self
@@ -66,6 +72,11 @@ class ServerData extends Data
                 ];
             }
         }
+
+        $tokenModel = $server->provisionTokens()->latest()->first();
+        $token = $tokenModel ? $tokenModel->token : '';
+        $uninstallLinux = 'curl -fsSL ' . url('/uninstall/linux') . ' | bash -s -- ' . $token;
+        $uninstallWindows = 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/uninstall/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl `$APP_URL"';
 
         $agent = $server->agent;
 
@@ -102,6 +113,9 @@ class ServerData extends Data
             activeProvisionDetails: $activeDetails,
             ports: $ports,
             processes: $processes,
+            uninstall_linux_command: $uninstallLinux,
+            uninstall_windows_command: $uninstallWindows,
+            agent_deleted: $agent ? (bool) $server->agent_deleted : true,
         );
     }
 }

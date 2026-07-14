@@ -9,7 +9,6 @@ import (
 	"math"
 	"os"
 	"os/exec"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -356,7 +355,6 @@ func (m *metricsCollector) GetOpenDatabasePorts() []PortInfo {
 	}
 
 	procPorts := make(map[int]string)
-	dbProcRe := regexp.MustCompile(`(?i)mysqld|mariadbd|mariadb|postgres|postmaster|mongod|redis-server|memcached|cassandra|rabbitmq-server|influxd|clickhouse-server|elasticsearch`)
 
 	for _, line := range strings.Split(string(out), "\n") {
 		line = strings.TrimSpace(line)

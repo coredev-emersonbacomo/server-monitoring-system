@@ -9,3 +9,5 @@ Route::get('/', function () {
 
 Route::get('/install/linux', [AgentController::class, 'installLinux']);
 Route::get('/install/windows.ps1', [AgentController::class, 'installWindows']);
+Route::get('/uninstall/linux', [AgentController::class, 'uninstallLinux']);
+Route::get('/uninstall/windows.ps1', [AgentController::class, 'uninstallWindows']);

@@ -13,3 +13,4 @@ Route::middleware('auth:jwt')->group(function () {
 Route::post('provision', [AgentController::class, 'bootstrap']);
 Route::post('register', [AgentController::class, 'register']);
 Route::post('agent/heartbeat', [AgentController::class, 'heartbeat']);
+Route::post('agent/uninstall', [AgentController::class, 'uninstall']);

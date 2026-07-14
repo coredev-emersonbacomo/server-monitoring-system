@@ -140,4 +140,60 @@ class AgentController extends Controller
         $script = str_replace('{{APP_URL}}', url('/'), $script);
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }
+
+    public function uninstall(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'token' => 'required|string',
+            'platform' => 'nullable|string',
+        ]);
+
+        $token = \App\Models\ProvisionToken::where('token', $validated['token'])->first();
+        if (!$token) {
+            return response()->json(['message' => 'Invalid provision token.'], 404);
+        }
+
+        $server = $token->server;
+        if (!$server) {
+            return response()->json(['message' => 'Server not found.'], 404);
+        }
+
+        $server->update([
+            'agent_deleted' => true,
+            'status' => \App\Enums\ServerStatus::Archived->value
+        ]);
+
+        event(new \App\Events\AgentUninstalled($server->uuid));
+
+        \App\Models\CustomActivityLog::create([
+            'logable_type' => Server::class,
+            'logable_id' => (string) $server->uuid,
+            'user_id' => null,
+            'user' => 'Agent System',
+            'action' => 'Agent Uninstalled',
+            'details' => [
+                'message' => "Agent uninstalled on host: {$server->name}",
+                'server_name' => $server->name,
+                'platform' => $validated['platform'] ?? 'unknown',
+            ],
+        ]);
+
+        return response()->json(['status' => 'success', 'message' => 'Agent uninstalled and flag updated successfully.']);
+    }
+
+    public function uninstallLinux(): Response
+    {
+        $scriptPath = public_path('uninstall.sh');
+        $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
+        $script = str_replace('{{APP_URL}}', url('/'), $script);
+        return response($script, 200, ['Content-Type' => 'text/plain']);
+    }
+
+    public function uninstallWindows(): Response
+    {
+        $scriptPath = public_path('uninstall.ps1');
+        $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
+        $script = str_replace('{{APP_URL}}', url('/'), $script);
+        return response($script, 200, ['Content-Type' => 'text/plain']);
+    }
 }
