@@ -61,8 +61,8 @@ class ServerController extends Controller
 
         $updateData = $data->toArray();
 
-        if ($data->server_name !== null) {
-            $updateData['server_name'] = $data->server_name;
+        if ($data->name !== null) {
+            $updateData['server_name'] = $data->name;
         }
 
         if ($data->description !== null) {
@@ -172,7 +172,7 @@ class ServerController extends Controller
             'status'                 => $server->status,
             'stats'                  => $stats,
             'activeProvisionDetails' => $activeDetails,
-            'ports'                  => $server->agent?->ports->map(fn($p) => ['port' => $p->port, 'protocol' => $p->protocol, 'state' => $p->state, 'process' => $p->process_name])->toArray(),
+            'ports'               => $server->agent?->ports->map(fn($p) => ['id' => $p->id, 'port' => $p->port, 'protocol' => $p->protocol, 'state' => $p->state, 'process' => $p->process_name, 'ping_status' => $p->ping_status, 'ping_time' => $p->ping_time])->toArray(),
             'processes'              => $server->agent?->processes()->orderByDesc('cpu')->get()->map(fn($pr) => ['pid' => $pr->pid, 'name' => $pr->name, 'cpu' => $pr->cpu, 'memory' => $pr->memory])->toArray(),
         ]);
     }

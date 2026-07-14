@@ -774,6 +774,7 @@ export default function ServerDetail() {
                                                                     <th className="pb-2 font-medium">Proto</th>
                                                                     <th className="pb-2 font-medium">Process</th>
                                                                     <th className="pb-2 font-medium text-right">State</th>
+                                                                    <th className="pb-2 font-medium text-right">Ping</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="divide-y divide-border/20">
@@ -799,6 +800,9 @@ export default function ServerDetail() {
                                                                                     <Trash2 size={12} />
                                                                                 </button>
                                                                             )}
+                                                                        </td>
+                                                                        <td className="py-2 text-right text-foreground">
+                                                                            {p.ping_status === 'offline' ? 'offline' : (p.ping_status === 'online' ? `${p.ping_time}ms` : '-')}
                                                                         </td>
                                                                     </tr>
                                                                 ))}
