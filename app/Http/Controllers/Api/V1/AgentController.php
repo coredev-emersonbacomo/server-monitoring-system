@@ -181,8 +181,21 @@ class AgentController extends Controller
         Activity::create([
             'server_id'   => $server->id,
             'agent_id'    => $agent->id,
-            'type'        => 'config_update_applied',
-            'description' => 'Agent applied config update via WebSocket control channel.',
+            'type'        => 'agent_version_updated',
+            'description' => 'Agent version updated successfully.',
+        ]);
+
+        \App\Models\CustomActivityLog::create([
+            'logable_type' => Server::class,
+            'logable_id' => (string) $server->uuid,
+            'user_id' => null,
+            'user' => 'System',
+            'action' => 'Agent Version Updated',
+            'details' => json_encode([
+                'message' => "Agent version updated successfully to version " . ($validated['agent_version'] ?? $agent->version) . " on server: {$server->name}",
+                'server_name' => $server->name,
+                'agent_version' => $validated['agent_version'] ?? $agent->version,
+            ]),
         ]);
 
         return response()->json(['status' => 'ok']);
@@ -225,8 +238,73 @@ class AgentController extends Controller
             'description' => "Agent started download and update to v{$validated['version']}.",
         ]);
 
+        \App\Models\CustomActivityLog::create([
+            'logable_type' => Server::class,
+            'logable_id' => (string) $agent->server->uuid,
+            'user_id' => null,
+            'user' => 'System',
+            'action' => 'Agent Updating',
+            'details' => json_encode([
+                'message' => "Agent started download and update to v{$validated['version']} on server: {$agent->server->name}",
+                'server_name' => $agent->server->name,
+                'version' => $validated['version'],
+            ]),
+        ]);
+
         return response()->json(['status' => 'ok']);
-    }
+     }
+ 
+     public function agentError(string $serverUuid, Request $request): JsonResponse
+     {
+         $authHeader = $request->header('Authorization');
+         if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+             return response()->json(['message' => 'Unauthenticated.'], 401);
+         }
+ 
+         $rawIdentity = substr($authHeader, 7);
+         $identityHash = hash('sha256', $rawIdentity);
+ 
+         $identity = AgentIdentity::where('identity_hash', $identityHash)
+             ->where('status', 'active')
+             ->first();
+ 
+         if (!$identity) {
+             return response()->json(['message' => 'Invalid or revoked agent identity.'], 403);
+         }
+ 
+         $agent = $identity->agent;
+         if (!$agent) {
+             return response()->json(['message' => 'Agent not found.'], 404);
+         }
+ 
+         $validated = $request->validate([
+             'error' => ['required', 'string'],
+             'stack_trace' => ['nullable', 'string'],
+         ]);
+ 
+         Activity::create([
+             'server_id'   => $agent->server->id,
+             'agent_id'    => $agent->id,
+             'type'        => 'agent_error',
+             'description' => "Agent encountered error: " . substr($validated['error'], 0, 150),
+         ]);
+ 
+         \App\Models\CustomActivityLog::create([
+             'logable_type' => Server::class,
+             'logable_id' => (string) $agent->server->uuid,
+             'user_id' => null,
+             'user' => 'System',
+             'action' => 'Agent Error',
+             'details' => json_encode([
+                 'message' => "Agent encountered error on server: {$agent->server->name}",
+                 'server_name' => $agent->server->name,
+                 'error' => $validated['error'],
+                 'stack_trace' => $validated['stack_trace'] ?? '',
+             ]),
+         ]);
+ 
+         return response()->json(['status' => 'ok']);
+     }
 
     public function installLinux(): Response
     {

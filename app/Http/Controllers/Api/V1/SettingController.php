@@ -79,6 +79,13 @@ class SettingController extends Controller
                         $agent->server->uuid,
                         (int) $newHeartbeatInterval
                     ));
+
+                    \App\Models\Activity::create([
+                        'server_id' => $agent->server->id,
+                        'agent_id' => $agent->id,
+                        'type' => 'config_updated',
+                        'description' => "Agent heartbeat interval updated to {$newHeartbeatInterval}s.",
+                    ]);
                 }
             }
         }

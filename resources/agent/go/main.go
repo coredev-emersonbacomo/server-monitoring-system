@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -33,7 +34,7 @@ func main() {
 			os.Exit(1)
 		}
 	}()
-
+//
 	if len(os.Args) > 1 {
 		cmd := os.Args[1]
 		switch cmd {
@@ -56,6 +57,7 @@ func main() {
 
 	isSvc, err := isServiceSession()
 	if err == nil && isSvc {
+		IsService = true
 		if err := runService("MonitorAgent"); err != nil {
 			fmt.Fprintf(os.Stderr, "Service execution failed: %v\n", err)
 			os.Exit(1)
@@ -87,12 +89,21 @@ func runAgentLoop(stopChan <-chan struct{}) {
 		return
 	}
 
+	var identityToken string
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "PANIC RECOVERED: %v\n", r)
+			if config != nil && identityToken != "" {
+				reportAgentPanic(config, identityToken, r)
+			}
+		}
+	}()
+
 	metrics := newMetricsCollector()
 	client := NewAgentClient()
 
 	fmt.Println("Agent v2 starting...")
-
-	var identityToken string
+//
 	heartbeatInterval := config.HeartbeatInterval
 	if heartbeatInterval <= 0 {
 		heartbeatInterval = 5
@@ -101,6 +112,10 @@ func runAgentLoop(stopChan <-chan struct{}) {
 	if config.IdentityToken != "" {
 		fmt.Println("Existing identity token found. Skipping registration.")
 		identityToken = config.IdentityToken
+		// Send version update notification to backend on agent start
+		if config.UpdateURL != "" {
+			_ = client.postNotification(config.UpdateURL, identityToken, map[string]string{"agent_version": config.AgentVersion})
+		}
 	} else {
 		fmt.Println("Registering with server...")
 		registerPayload := &RegisterRequest{
@@ -165,12 +180,12 @@ func runAgentLoop(stopChan <-chan struct{}) {
 
 	ticker := time.NewTicker(time.Duration(heartbeatInterval) * time.Second)
 	defer ticker.Stop()
+	//
+	// Run once initially to register the first heartbeat and populate config / Reverb credentials
+	sendHeartbeatStep(config, client, metrics, identityToken, &heartbeatInterval)
 
 	// Start the WebSocket control channel goroutine
 	go connectControlChannel(config, identityToken, &heartbeatInterval, stopChan)
-
-	// Run once initially
-	sendHeartbeatStep(config, client, metrics, identityToken, &heartbeatInterval)
 
 	for {
 		select {
@@ -185,7 +200,6 @@ func runAgentLoop(stopChan <-chan struct{}) {
 
 func sendHeartbeatStep(config *BootstrapConfig, client *AgentClient, metrics *metricsCollector, identityToken string, heartbeatInterval *int) {
 	payload := &HeartbeatRequest{
-		AgentVersion:         config.AgentVersion,
 		ConfigurationVersion: config.confVersion,
 		Timestamp:            time.Now().Unix(),
 		Hostname:             metrics.GetHostname(),
@@ -205,28 +219,46 @@ func sendHeartbeatStep(config *BootstrapConfig, client *AgentClient, metrics *me
 	if response, err := client.sendHeartbeat(config.ApiURL, identityToken, payload); err != nil {
 		fmt.Fprintf(os.Stderr, "Heartbeat failed: %v\n", err)
 	} else {
-		if response.HeartbeatInterval > 0 {
+		hasChanges := false
+		if response.HeartbeatInterval > 0 && config.HeartbeatInterval != response.HeartbeatInterval {
 			*heartbeatInterval = response.HeartbeatInterval
 			config.HeartbeatInterval = response.HeartbeatInterval
+			hasChanges = true
 		}
-		// Dynamically update Reverb credentials from heartbeat response in-memory
-		if response.ServerUUID != "" {
+		if response.ServerUUID != "" && config.ServerUUID != response.ServerUUID {
 			config.ServerUUID = response.ServerUUID
+			hasChanges = true
 		}
-		if response.UpdateURL != "" {
+		if response.UpdateURL != "" && config.UpdateURL != response.UpdateURL {
 			config.UpdateURL = response.UpdateURL
+			hasChanges = true
 		}
-		if response.ReverbHost != "" {
+		if response.ReverbHost != "" && config.ReverbHost != response.ReverbHost {
 			config.ReverbHost = response.ReverbHost
+			hasChanges = true
 		}
-		if response.ReverbPort > 0 {
+		if response.ReverbPort > 0 && config.ReverbPort != response.ReverbPort {
 			config.ReverbPort = response.ReverbPort
+			hasChanges = true
 		}
-		if response.ReverbScheme != "" {
+		if response.ReverbScheme != "" && config.ReverbScheme != response.ReverbScheme {
 			config.ReverbScheme = response.ReverbScheme
+			hasChanges = true
 		}
-		if response.ReverbAppKey != "" {
+		if response.ReverbAppKey != "" && config.ReverbAppKey != response.ReverbAppKey {
 			config.ReverbAppKey = response.ReverbAppKey
+			hasChanges = true
+		}
+		
+		if hasChanges {
+			appDir := filepath.Dir(os.Args[0])
+			if execPath, err := os.Executable(); err == nil {
+				appDir = filepath.Dir(execPath)
+			}
+			bootstrapPath := filepath.Join(appDir, "bootstrap.json")
+			if err := writeConfig(bootstrapPath, config); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to persist Reverb config: %v\n", err)
+			}
 		}
 
 		if v, ok := response.Configuration["version"].(float64); ok {
@@ -235,6 +267,10 @@ func sendHeartbeatStep(config *BootstrapConfig, client *AgentClient, metrics *me
 		}
 		if response.PendingUpdate != nil {
 			fmt.Printf("Received agent update notification to version %s\n", response.PendingUpdate.Version)
+
+			// Notify backend that we are starting update
+			updatingURL := strings.Replace(config.UpdateURL, "/update", "/updating", 1)
+			client.postNotification(updatingURL, identityToken, map[string]string{"version": response.PendingUpdate.Version})
 
 			if response.PendingUpdate.HeartbeatInterval > 0 {
 				*heartbeatInterval = response.PendingUpdate.HeartbeatInterval
@@ -258,8 +294,9 @@ func sendHeartbeatStep(config *BootstrapConfig, client *AgentClient, metrics *me
 					fmt.Fprintf(os.Stderr, "Binary update failed: %v\n", err)
 				} else {
 					fmt.Println("Binary updated successfully! Exiting to allow restart.")
+					restartAgent()
 					os.Exit(0)
-				}
+				}//
 			}
 		}
 		if len(response.PendingCommands) > 0 {
@@ -271,7 +308,6 @@ func sendHeartbeatStep(config *BootstrapConfig, client *AgentClient, metrics *me
 			}
 			if len(completed) > 0 {
 				ackPayload := &HeartbeatRequest{
-					AgentVersion:        config.AgentVersion,
 					ConfigurationVersion: config.confVersion,
 					Timestamp:           time.Now().Unix(),
 					Hostname:            metrics.GetHostname(),
