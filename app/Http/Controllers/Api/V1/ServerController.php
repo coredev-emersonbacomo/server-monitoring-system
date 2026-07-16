@@ -200,7 +200,7 @@ class ServerController extends Controller
                 'operating_system' => $server->operating_system,
                 'record_status' => $server->record_status->value,
                 'status' => $server->status,
-                'uninstall_linux_command' => 'curl -fsSL ' . url('/uninstall/linux') . ' | bash -s -- ' . $token,
+                'uninstall_linux_command' => 'sudo curl -fsSL ' . url('/uninstall/linux') . ' | sudo bash -s -- ' . $token,
                 'uninstall_windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/uninstall/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl `$APP_URL"',
                 'agent_deleted' => $server->agent ? (bool) $server->agent_deleted : true,
             ]);
@@ -238,7 +238,7 @@ class ServerController extends Controller
                 $activeDetails = [
                     'token' => $token,
                     'expires_at' => $activeToken->expires_at->copy()->utc()->toIso8601String(),
-                    'linux_command' => 'curl -fsSL ' . url('/install/linux') . ' | bash -s -- ' . $token,
+                    'linux_command' => 'sudo curl -fsSL ' . url('/install/linux') . ' | sudo bash -s -- ' . $token,
                     'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/install/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl `$APP_URL"',
                 ];
             }
@@ -318,7 +318,7 @@ class ServerController extends Controller
                 ])->toArray(),
 
             'uninstall_linux_command' => sprintf(
-                'curl -fsSL %s | bash -s -- %s',
+                'sudo curl -fsSL %s | sudo bash -s -- %s',
                 url('/uninstall/linux'),
                 $token
             ),
