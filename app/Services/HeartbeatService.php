@@ -73,6 +73,18 @@ class HeartbeatService
                     'description' => 'Server transitioned to Online state.',
                 ]);
 
+                \App\Models\CustomActivityLog::create([
+                    'logable_type' => get_class($server),
+                    'logable_id' => $server->id,
+                    'user_id' => null,
+                    'user' => 'System',
+                    'action' => 'Agent Online',
+                    'details' => json_encode([
+                        'message' => "Agent came online for server: {$server->name}",
+                        'server_name' => $server->name,
+                    ]),
+                ]);
+
                 $this->triggerNodeConfigForServer($server, 'online');
             }
 
@@ -143,20 +155,15 @@ class HeartbeatService
                 'reverb_app_key'     => env('REVERB_APP_KEY'),
             ];
 
-            $latestVersion = \App\Models\AgentVersion::orderBy('id', 'desc')->first();
+            $latestBinaryUpdate = \App\Models\AgentVersion::where('type', 'agent_binary_update')
+                ->orderBy('id', 'desc')
+                ->first();
             $agentVersion = $payload['agent_version'] ?? '';
-            if ($latestVersion && $agentVersion !== $latestVersion->version) {
-                $latestHeartbeatUpdate = \App\Models\AgentVersion::where('type', 'heartbeat_interval_update')
-                    ->orderBy('id', 'desc')
-                    ->first();
-                $latestBinaryUpdate = \App\Models\AgentVersion::where('type', 'agent_binary_update')
-                    ->orderBy('id', 'desc')
-                    ->first();
-
+            if ($latestBinaryUpdate && $agentVersion !== $latestBinaryUpdate->version) {
                 $response['pending_update'] = [
-                    'version' => $latestVersion->version,
-                    'heartbeat_interval' => $latestHeartbeatUpdate ? $latestHeartbeatUpdate->heartbeat_interval : null,
-                    'binary_url' => $latestBinaryUpdate ? $latestBinaryUpdate->binary_url : null,
+                    'version'            => $latestBinaryUpdate->version,
+                    'heartbeat_interval' => null,
+                    'binary_url'         => $latestBinaryUpdate->binary_url,
                 ];
             }
 

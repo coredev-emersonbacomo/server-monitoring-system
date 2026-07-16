@@ -20,6 +20,9 @@ class ServerController extends Controller
     {
         $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
         $servers = Server::where('client_id', $clientModel->id)->get();
+        foreach ($servers as $s) {
+            $s->checkTokenExpiration();
+        }
         return ServerData::collect($servers->map(fn(Server $s) => ServerData::fromModel($s)));
     }
 
@@ -175,6 +178,10 @@ class ServerController extends Controller
 
         $servers = $query->orderBy('created_at', 'desc')->get();
 
+        foreach ($servers as $server) {
+            $server->checkTokenExpiration();
+        }
+
         return ServerData::collect($servers->map(function (Server $server) {
             $tokenModel = $server->provisionTokens()->latest()->first();
             $token = $tokenModel ? $tokenModel->token : '';
@@ -206,6 +213,8 @@ class ServerController extends Controller
         if (!$server) {
             abort(404, 'Server not found.');
         }
+
+        $server->checkTokenExpiration();
 
         $updates = $server->updates()
             ->orderBy('created_at')
@@ -315,7 +324,7 @@ class ServerController extends Controller
             ),
 
             'uninstall_windows_command' => sprintf(
-                'powershell -ExecutionPolicy Bypass -Command "$APP_URL=\'%s\'; & ([scriptblock]::Create((irm $APP_URL/uninstall/windows.ps1))) -ProvisionToken \'%s\' -AppUrl $APP_URL"',
+                'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'%s\'; & ([scriptblock]::Create((irm `$APP_URL/uninstall/windows.ps1))) -ProvisionToken \'%s\' -AppUrl `$APP_URL"',
                 url('/'),
                 $token
             ),

@@ -18,9 +18,10 @@ class SystemMonitor extends Command
     {
         $alertConfig = NodeConfig::where('slug', 'alerts')->where('enabled', true)->first();
 
-        $servers = \App\Models\Server::pluck('id');
-        foreach ($servers as $serverId) {
-            MonitorServer::dispatch($serverId, $alertConfig?->id);
+        $servers = \App\Models\Server::all();
+        foreach ($servers as $server) {
+            $server->checkTokenExpiration();
+            MonitorServer::dispatch($server->id, $alertConfig?->id);
         }
 
         $this->syncNoSecOpsClients();

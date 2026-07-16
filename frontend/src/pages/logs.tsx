@@ -9,10 +9,13 @@ import {
     X,
     Terminal,
     FileText,
+    Server,
+    User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useActivityLogs, type ActivityLogData } from "@/hooks/useActivityLogs";
 import { Tab } from "@/components/ui/tab";
+import { Link } from "react-router-dom";
 
 // ─── Column config ────────────────────────────────────────────────────────────
 
@@ -86,9 +89,49 @@ function LogDetailModal({
 }) {
     if (!log) return null;
 
+    let parsed: Record<string, any> | null = null;
+    try {
+        if (log.details) {
+            let obj = JSON.parse(log.details);
+            if (typeof obj === "string") {
+                obj = JSON.parse(obj);
+            }
+            if (obj && typeof obj === "object") parsed = obj;
+        }
+    } catch {}
+
+    const message = parsed?.message || log.details;
+    const serverName = parsed?.server_name || parsed?.name;
+    const isServerSubject = log.logable_type?.includes("Server");
+
+    // Dynamic extraction of expiration field to prevent undefined values
+    const expiresKey = parsed ? Object.keys(parsed).find(k => k.toLowerCase().includes("expires")) : null;
+    const expiresVal = expiresKey ? parsed?.[expiresKey] : null;
+
+    const extraDetails = Object.entries(parsed || {}).filter(
+        ([k]) => !["message", "old", "new", "before", "after", "server_name", "name", expiresKey].filter(Boolean).includes(k)
+    );
+
+    // Helper to render value for extra details (like expiry tokens)
+    const renderExtraValue = (key: string, val: any) => {
+        if (key.toLowerCase().includes("expires")) {
+            const date = new Date(val);
+            if (!isNaN(date.getTime())) {
+                return date.toLocaleString();
+            }
+        }
+        if (typeof val === "object" && val !== null) {
+            return JSON.stringify(val);
+        }
+        return String(val);
+    };
+
+    const isGenerateInstallCommand = log.action.toLowerCase() === "generate installation command";
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="bg-card border border-border rounded-xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl">
+                {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
                     <div className="flex items-center gap-2">
                         <ScrollText className="size-4 text-muted-foreground" />
@@ -104,297 +147,166 @@ function LogDetailModal({
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
-                    {/* Top summary */}
-                    <div className="flex flex-wrap items-center gap-2">
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+                    {/* Top Action + Time Row */}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                         <span
                             className={cn(
-                                "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors",
+                                "inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold uppercase tracking-wider border",
                                 actionBadgeClass(log.action),
                             )}
                         >
                             {log.action}
                         </span>
-                        <span className="text-xs text-muted-foreground ml-auto">
+                        <span className="text-xs text-muted-foreground font-mono">
                             {formatDate(log.created_at)}
                         </span>
                     </div>
 
-                    {/* Details Payload Parsing */}
-                    {log.details
-                        ? (() => {
-                            let parsed: Record<string, any> | null = null;
-                            try {
-                                const obj = JSON.parse(log.details);
-                                if (obj && typeof obj === "object") {
-                                    parsed = obj;
-                                }
-                            } catch {
-                                // not valid json, will fallback below
-                            }
+                    {/* Prominent Message */}
+                    {message && (
+                        <div className="bg-muted/30 border border-border/80 rounded-xl p-4">
+                            <p className="text-sm font-medium text-foreground leading-relaxed">
+                                {message}
+                            </p>
+                        </div>
+                    )}
 
-                            if (!parsed) {
-                                return (
-                                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap bg-muted/20 p-3 rounded-lg border border-border/50">
-                                        {log.details}
+                    {/* Special Aesthetic Table for 'Generate Installation Command' */}
+                    {isGenerateInstallCommand ? (
+                        <div className="flex flex-col gap-2.5">
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                Provision Details
+                            </p>
+                            <div className="border border-border/85 rounded-xl overflow-hidden bg-card/60 shadow-sm">
+                                <table className="w-full text-xs text-left">
+                                    <thead>
+                                        <tr className="bg-muted/30 border-b border-border/70 text-muted-foreground font-semibold">
+                                            <th className="px-4 py-2.5">Server Name</th>
+                                            <th className="px-4 py-2.5">Token Expiration</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td className="px-4 py-3.5 font-medium">
+                                                <Link
+                                                    to={`/servers/${log.logable_id}`}
+                                                    className="inline-flex items-center gap-1.5 text-primary hover:underline"
+                                                >
+                                                    <Server size={13} />
+                                                    {serverName || log.logable_id}
+                                                </Link>
+                                            </td>
+                                            <td className="px-4 py-3.5 font-mono">
+                                                {expiresVal ? renderExtraValue("expires_at", expiresVal) : <span className="text-muted-foreground/50">—</span>}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* User display below the custom table */}
+                            <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1.5">
+                                <span>Generated by:</span>
+                                {log.user_id ? (
+                                    <Link
+                                        to={`/users/${log.user_id}`}
+                                        className="font-semibold text-primary hover:underline inline-flex items-center gap-1"
+                                    >
+                                        <User size={12} />
+                                        {log.user}
+                                    </Link>
+                                ) : (
+                                    <span className="font-semibold text-foreground">{log.user || "System"}</span>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Subject / User Stacked Links */}
+                            <div className="flex flex-col gap-4 pb-2">
+                                <div className="min-w-0">
+                                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                                        Subject
                                     </p>
-                                );
-                            }
-
-                            // Extract special keys (supporting before/after and old/new aliases)
-                            const {
-                                message,
-                                old,
-                                new: newVals,
-                                before,
-                                after,
-                                ...rest
-                            } = parsed;
-
-                            const beforeData = before ?? old;
-                            const afterData = after ?? newVals;
-                            const hasDiff =
-                                beforeData !== undefined ||
-                                afterData !== undefined;
-                            const hasRest = Object.keys(rest).length > 0;
-
-                            const isObject = (val: any) =>
-                                val &&
-                                typeof val === "object" &&
-                                !Array.isArray(val);
-
-                            const formatVal = (val: any) => {
-                                if (val === undefined || val === null) {
-                                    return (
-                                        <span className="text-muted-foreground/45">
-                                            —
-                                        </span>
-                                    );
-                                }
-                                if (typeof val === "object") {
-                                    return JSON.stringify(val, null, 2);
-                                }
-                                if (typeof val === "boolean") {
-                                    return val ? "true" : "false";
-                                }
-                                return String(val);
-                            };
-
-                            // Collect all unique keys for diff comparison
-                            const diffKeys = new Set<string>();
-                            if (isObject(beforeData))
-                                Object.keys(beforeData).forEach((k) =>
-                                    diffKeys.add(k),
-                                );
-                            if (isObject(afterData))
-                                Object.keys(afterData).forEach((k) =>
-                                    diffKeys.add(k),
-                                );
-                            const keyList = Array.from(diffKeys);
-                            const isCreateAction = log.action.toLowerCase().includes("create");
-
-                            return (
-                                <div className="flex flex-col gap-4">
-                                    {message && (
-                                        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3.5">
-                                            <p className="text-sm font-medium text-foreground">
-                                                {message}
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    {isCreateAction && hasRest && (
-                                        <div className="flex flex-col gap-2">
-                                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                                                Details
-                                            </p>
-                                            <div className="border border-border rounded-lg overflow-hidden bg-card/50">
-                                                <table className="w-full text-xs text-left">
-                                                    <thead>
-                                                        <tr className="border-b border-border bg-muted/40 font-semibold text-muted-foreground">
-                                                            <th className="px-3 py-2 w-1/2">
-                                                                Field
-                                                            </th>
-                                                            <th className="px-3 py-2 w-1/2">
-                                                                Value
-                                                            </th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-border font-mono">
-                                                        {Object.entries(rest).map(
-                                                            ([key, val]) => (
-                                                                <tr key={key}>
-                                                                    <td className="px-3 py-2 font-medium text-foreground break-all">
-                                                                        {key}
-                                                                    </td>
-                                                                    <td className="px-3 py-2 text-emerald-500/90 whitespace-pre-wrap break-all">
-                                                                        {formatVal(val)}
-                                                                    </td>
-                                                                </tr>
-                                                            )
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {hasDiff && (
-                                        <div className="flex flex-col gap-2">
-                                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                                                Changes
-                                            </p>
-
-                                            {keyList.length === 0 ? (
-                                                // Fallback for flat comparisons (primitives instead of nested objects)
-                                                <div className="border border-border rounded-lg overflow-hidden bg-card/50">
-                                                    <table className="w-full text-xs text-left table-fixed">
-                                                        <thead>
-                                                            <tr className="border-b border-border bg-muted/40 font-semibold text-muted-foreground">
-                                                                <th className="px-3 py-2 w-1/2">
-                                                                    Before
-                                                                </th>
-                                                                <th className="px-3 py-2 w-1/2">
-                                                                    After
-                                                                </th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-border font-mono">
-                                                            <tr>
-                                                                <td className="px-3 py-2 text-red-500/90 whitespace-pre-wrap break-all">
-                                                                    {formatVal(
-                                                                        beforeData,
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-3 py-2 text-emerald-500/90 whitespace-pre-wrap break-all">
-                                                                    {formatVal(
-                                                                        afterData,
-                                                                    )}
-                                                                </td>
-                                                            </tr>
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            ) : (
-                                                // Rich side-by-side key comparison table
-                                                <div className="border border-border rounded-lg overflow-hidden bg-card/50">
-                                                    <table className="w-full text-xs text-left">
-                                                        <thead>
-                                                            <tr className="border-b border-border bg-muted/40 font-semibold text-muted-foreground">
-                                                                <th className="px-3 py-2 w-1/3">
-                                                                    Field
-                                                                </th>
-                                                                <th className="px-3 py-2 w-1/3">
-                                                                    Before
-                                                                </th>
-                                                                <th className="px-3 py-2 w-1/3">
-                                                                    After
-                                                                </th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-border font-mono">
-                                                            {keyList.map(
-                                                                (key) => {
-                                                                    const bVal =
-                                                                        beforeData?.[
-                                                                        key
-                                                                        ];
-                                                                    const aVal =
-                                                                        afterData?.[
-                                                                        key
-                                                                        ];
-                                                                    const isChanged =
-                                                                        JSON.stringify(
-                                                                            bVal,
-                                                                        ) !==
-                                                                        JSON.stringify(
-                                                                            aVal,
-                                                                        );
-
-                                                                    return (
-                                                                        <tr
-                                                                            key={
-                                                                                key
-                                                                            }
-                                                                            className={cn(
-                                                                                isChanged &&
-                                                                                "bg-muted/10",
-                                                                            )}
-                                                                        >
-                                                                            <td className="px-3 py-2 font-medium text-foreground break-all">
-                                                                                {
-                                                                                    key
-                                                                                }
-                                                                            </td>
-                                                                            <td className="px-3 py-2 text-red-500/90 whitespace-pre-wrap break-all">
-                                                                                {formatVal(
-                                                                                    bVal,
-                                                                                )}
-                                                                            </td>
-                                                                            <td className="px-3 py-2 text-emerald-500/90 whitespace-pre-wrap break-all">
-                                                                                {formatVal(
-                                                                                    aVal,
-                                                                                )}
-                                                                            </td>
-                                                                        </tr>
-                                                                    );
-                                                                },
-                                                            )}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {hasRest && !isCreateAction && (
-                                        <div className="bg-muted/30 border border-border/60 rounded-lg p-3 overflow-auto">
-                                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                                                Payload Updates
-                                            </p>
-                                            <pre className="text-xs text-muted-foreground font-mono">
-                                                {JSON.stringify(
-                                                    rest,
-                                                    null,
-                                                    2,
-                                                )}
-                                            </pre>
+                                    {isServerSubject ? (
+                                        <Link
+                                            to={`/servers/${log.logable_id}`}
+                                            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                                        >
+                                            <Server size={14} className="shrink-0" />
+                                            <span className="truncate">{serverName || log.logable_id}</span>
+                                            <span className="text-[10px]">→</span>
+                                        </Link>
+                                    ) : (
+                                        <div className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
+                                            <Server size={14} className="shrink-0 text-muted-foreground" />
+                                            <span className="truncate">{shortModel(log.logable_type)} (#{log.logable_id})</span>
                                         </div>
                                     )}
                                 </div>
-                            );
-                        })()
-                        : null}
 
-                    <div className="h-px bg-border" />
+                                <div className="min-w-0">
+                                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                                        User
+                                    </p>
+                                    {log.user_id ? (
+                                        <Link
+                                            to={`/users/${log.user_id}`}
+                                            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                                        >
+                                            <User size={14} className="shrink-0" />
+                                            <span className="truncate">{log.user ?? "Unknown"}</span>
+                                            <span className="text-[10px]">→</span>
+                                        </Link>
+                                    ) : (
+                                        <div className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
+                                            <User size={14} className="shrink-0 text-muted-foreground" />
+                                            <span className="truncate">{log.user ?? "System"}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
 
-                    {/* Subject / User */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="min-w-0">
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                                Subject
-                            </p>
-                            <p className="text-sm text-foreground truncate">
-                                {shortModel(log.logable_type)}
-                            </p>
-                            <p className="text-xs text-muted-foreground font-mono">
-                                #{log.logable_id}
-                            </p>
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                                User
-                            </p>
-                            <p className="text-sm text-foreground truncate">
-                                {log.user ?? "System"}
-                            </p>
-                            {log.user_id && (
-                                <p className="text-xs text-muted-foreground font-mono">
-                                    #{log.user_id}
-                                </p>
+                            {/* Extra Details Grid */}
+                            {extraDetails.length > 0 && (
+                                <div className="flex flex-col gap-2 pt-4 border-t border-border/60">
+                                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                        Extra Details
+                                    </p>
+                                    <div className="border border-border/80 rounded-lg overflow-hidden bg-card/40">
+                                        <table className="w-full text-xs text-left">
+                                            <tbody className="divide-y divide-border/60">
+                                                {extraDetails.map(([key, val]) => (
+                                                    <tr key={key}>
+                                                        <td className="px-3 py-2.5 font-semibold text-muted-foreground capitalize bg-muted/10 w-2/5">
+                                                            {key.replace(/_/g, " ")}
+                                                        </td>
+                                                        <td className="px-3 py-2.5 text-foreground font-mono break-all whitespace-pre-wrap">
+                                                            {renderExtraValue(key, val)}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             )}
-                        </div>
-                    </div>
+                        </>
+                    )}
+
+                    {/* Collapsed Raw JSON Toggle */}
+                    {parsed && (
+                        <details className="mt-2 border-t border-border/60 pt-4">
+                            <summary className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors select-none">
+                                Raw JSON Payload
+                            </summary>
+                            <pre className="mt-2 text-[11px] bg-muted/40 border border-border/80 rounded-lg p-3 overflow-auto font-mono text-muted-foreground max-h-40 leading-normal">
+                                {JSON.stringify(parsed, null, 2)}
+                            </pre>
+                        </details>
+                    )}
                 </div>
             </div>
         </div>
@@ -535,7 +447,7 @@ export default function LogsPage() {
                                                     <td className="px-4 py-3 whitespace-nowrap text-foreground">
                                                         {log.user ?? "System"}
                                                     </td>
-                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                    <td className="px-4 py-3 whitespace-nowrap text-foreground">
                                                         <span>{log.action}</span>
                                                     </td>
                                                     <td className="px-4 py-3 text-right">

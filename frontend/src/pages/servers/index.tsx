@@ -80,11 +80,13 @@ export default function ServersIndex() {
     }, [servers, statusFilter, sortField, sortDir]);
 
     const counts = useMemo(() => {
-        if (!servers) return { online: 0, warning: 0, offline: 0 };
+        if (!servers) return { online: 0, warning: 0, offline: 0, pending_installation: 0, waiting_for_installation: 0 };
         return {
             online: servers.filter((s) => s.status === "online").length,
             warning: servers.filter((s) => s.status === "warning").length,
             offline: servers.filter((s) => s.status === "offline").length,
+            pending_installation: servers.filter((s) => s.status === "pending_installation").length,
+            waiting_for_installation: servers.filter((s) => s.status === "waiting_for_installation").length,
         };
     }, [servers]);
 
@@ -120,6 +122,18 @@ export default function ServersIndex() {
                             count: counts.offline,
                             icon: <WifiOff className="size-3 text-red-400" />,
                         },
+                        {
+                            label: "Pending Installation",
+                            value: "pending_installation",
+                            count: counts.pending_installation,
+                            icon: <AlertTriangle className="size-3 text-zinc-400" />,
+                        },
+                        {
+                            label: "Waiting For Installation",
+                            value: "waiting_for_installation",
+                            count: counts.waiting_for_installation,
+                            icon: <AlertTriangle className="size-3 text-amber-400 animate-pulse" />,
+                        },
                     ]}
                     filter={statusFilter ?? ""}
                     onFilterChange={(value) =>
@@ -138,8 +152,12 @@ export default function ServersIndex() {
                     }
                     filterLabel={
                         statusFilter
-                            ? statusFilter.charAt(0).toUpperCase() +
-                              statusFilter.slice(1)
+                            ? statusFilter === "pending_installation"
+                                ? "Pending Installation"
+                                : statusFilter === "waiting_for_installation"
+                                ? "Waiting For Installation"
+                                : statusFilter.charAt(0).toUpperCase() +
+                                  statusFilter.slice(1)
                             : "All"
                     }
                     sortOptions={sortOptions as SortOption[]}

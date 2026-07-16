@@ -73,6 +73,13 @@ func runAgentLoop(stopChan <-chan struct{}) {
 		appDir = filepath.Dir(execPath)
 	}
 
+	// Redirect stdout and stderr to agent.log for service logging
+	logFile, err := os.OpenFile(filepath.Join(appDir, "agent.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err == nil {
+		os.Stdout = logFile
+		os.Stderr = logFile
+	}
+
 	bootstrapPath := filepath.Join(appDir, "bootstrap.json")
 	config, err := readConfig(bootstrapPath)
 	if err != nil {
@@ -84,63 +91,74 @@ func runAgentLoop(stopChan <-chan struct{}) {
 	client := NewAgentClient()
 
 	fmt.Println("Agent v2 starting...")
-	fmt.Println("Registering with server...")
 
-	registerPayload := &RegisterRequest{
-		Token:           config.Token,
-		AgentVersion:    config.AgentVersion,
-		Hostname:        config.Hostname,
-		OperatingSystem: metrics.GetOS(),
-		Architecture:    metrics.GetArch(),
-		Cpu:             metrics.GetCPUSpec(),
-		Memory:          metrics.GetMemorySpec(),
-		Disk:            metrics.GetDiskSpec(),
-		Capabilities:    []string{"metrics.cpu", "metrics.memory", "metrics.disk", "metrics.network", "metrics.processes", "ports.scan"},
-	}
-	if registerPayload.Hostname == "" {
-		registerPayload.Hostname = metrics.GetHostname()
-	}
-
-	registerResult, err := client.register(config.RegisterURL, registerPayload)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Registration failed: %v\n", err)
-		return
-	}
-
-	identityToken := registerResult.Identity
-	fmt.Println("Registered successfully.")
-
-	heartbeatInterval := registerResult.HeartbeatInterval
+	var identityToken string
+	heartbeatInterval := config.HeartbeatInterval
 	if heartbeatInterval <= 0 {
-		heartbeatInterval = config.HeartbeatInterval
+		heartbeatInterval = 5
 	}
 
-	if v, ok := registerResult.Configuration["version"].(float64); ok {
-		config.confVersion = int(v)
-	}
+	if config.IdentityToken != "" {
+		fmt.Println("Existing identity token found. Skipping registration.")
+		identityToken = config.IdentityToken
+	} else {
+		fmt.Println("Registering with server...")
+		registerPayload := &RegisterRequest{
+			Token:           config.Token,
+			AgentVersion:    config.AgentVersion,
+			Hostname:        config.Hostname,
+			OperatingSystem: metrics.GetOS(),
+			Architecture:    metrics.GetArch(),
+			Cpu:             metrics.GetCPUSpec(),
+			Memory:          metrics.GetMemorySpec(),
+			Disk:            metrics.GetDiskSpec(),
+			Capabilities:    []string{"metrics.cpu", "metrics.memory", "metrics.disk", "metrics.network", "metrics.processes", "ports.scan"},
+		}
+		if registerPayload.Hostname == "" {
+			registerPayload.Hostname = metrics.GetHostname()
+		}
 
-	// Persist Reverb/WS connection details so they survive restarts
-	if registerResult.ServerUUID != "" {
-		config.ServerUUID = registerResult.ServerUUID
-	}
-	if registerResult.UpdateURL != "" {
-		config.UpdateURL = registerResult.UpdateURL
-	}
-	if registerResult.ReverbHost != "" {
-		config.ReverbHost = registerResult.ReverbHost
-	}
-	if registerResult.ReverbPort > 0 {
-		config.ReverbPort = registerResult.ReverbPort
-	}
-	if registerResult.ReverbScheme != "" {
-		config.ReverbScheme = registerResult.ReverbScheme
-	}
-	if registerResult.ReverbAppKey != "" {
-		config.ReverbAppKey = registerResult.ReverbAppKey
-	}
-	// Write updated config (with Reverb credentials) back to bootstrap.json
-	if err := writeConfig(bootstrapPath, config); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to persist Reverb config: %v\n", err)
+		registerResult, err := client.register(config.RegisterURL, registerPayload)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Registration failed: %v\n", err)
+			return
+		}
+
+		identityToken = registerResult.Identity
+		fmt.Println("Registered successfully.")
+
+		if registerResult.HeartbeatInterval > 0 {
+			heartbeatInterval = registerResult.HeartbeatInterval
+		}
+
+		if v, ok := registerResult.Configuration["version"].(float64); ok {
+			config.confVersion = int(v)
+		}
+
+		// Persist Reverb/WS connection details and the identity token so they survive restarts
+		config.IdentityToken = identityToken
+		if registerResult.ServerUUID != "" {
+			config.ServerUUID = registerResult.ServerUUID
+		}
+		if registerResult.UpdateURL != "" {
+			config.UpdateURL = registerResult.UpdateURL
+		}
+		if registerResult.ReverbHost != "" {
+			config.ReverbHost = registerResult.ReverbHost
+		}
+		if registerResult.ReverbPort > 0 {
+			config.ReverbPort = registerResult.ReverbPort
+		}
+		if registerResult.ReverbScheme != "" {
+			config.ReverbScheme = registerResult.ReverbScheme
+		}
+		if registerResult.ReverbAppKey != "" {
+			config.ReverbAppKey = registerResult.ReverbAppKey
+		}
+		// Write updated config back to bootstrap.json
+		if err := writeConfig(bootstrapPath, config); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to persist Reverb config: %v\n", err)
+		}
 	}
 
 	fmt.Printf("Starting heartbeat loop (interval: %ds)...\n", heartbeatInterval)
@@ -189,6 +207,7 @@ func sendHeartbeatStep(config *BootstrapConfig, client *AgentClient, metrics *me
 	} else {
 		if response.HeartbeatInterval > 0 {
 			*heartbeatInterval = response.HeartbeatInterval
+			config.HeartbeatInterval = response.HeartbeatInterval
 		}
 		// Dynamically update Reverb credentials from heartbeat response in-memory
 		if response.ServerUUID != "" {

@@ -32,7 +32,7 @@ $body = @{
     hostname = [System.Net.Dns]::GetHostName()
     platform = "windows"
     architecture = $env:PROCESSOR_ARCHITECTURE
-    installer_version = "2.0"
+    installer_version = "99"
 } | ConvertTo-Json
 
 try {

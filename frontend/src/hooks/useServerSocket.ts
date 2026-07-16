@@ -1,4 +1,5 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import Echo from "laravel-echo";
 import Pusher from "pusher-js";
 import type { ChannelAuthorizationCallback } from "pusher-js";
@@ -75,6 +76,7 @@ export function useServerSocket(
     onStatus: (status: WsStatus) => void,
     onAgentUninstalled?: () => void,
 ) {
+    const queryClient = useQueryClient();
     const onStatusRef = useRef(onStatus);
     const onAgentUninstalledRef = useRef(onAgentUninstalled);
 
@@ -118,6 +120,8 @@ export function useServerSocket(
                     d: number;
                 }) => {
                     globalMetrics.push(serverUuid, e);
+                    queryClient.invalidateQueries({ queryKey: ["server", serverUuid] });
+                    queryClient.invalidateQueries({ queryKey: ["servers"] });
                 },
             )
             .listen(".ProvisionTokenGenerated", () => {

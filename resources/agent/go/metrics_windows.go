@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -284,49 +285,45 @@ func (m *metricsCollector) GetNetworkStats() []NetworkMetrics {
 }
 
 func (m *metricsCollector) GetTopProcesses() []ProcessInfo {
+	// Wrap in @(...) to guarantee a JSON array is always returned by ConvertTo-Json
 	out, err := exec.Command("powershell", "-Command",
-		"Get-Process | Sort-Object -Property CPU -Descending | Select-Object -First 5 Id,ProcessName,CPU,WorkingSet64 | ConvertTo-Json").Output()
+		"@(Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Where-Object { $_.Name -ne '_Total' -and $_.Name -ne 'Idle' } | Sort-Object PercentProcessorTime -Descending | Select-Object -First 5 IDProcess,Name,PercentProcessorTime,WorkingSetPrivate) | ConvertTo-Json").Output()
 	if err != nil {
 		return nil
 	}
 
-	var result []ProcessInfo
-	lines := strings.Split(string(out), "\n")
-	inObj := false
-	var current ProcessInfo
+	type wmiProcess struct {
+		IDProcess            int32   `json:"IDProcess"`
+		Name                 string  `json:"Name"`
+		PercentProcessorTime float64 `json:"PercentProcessorTime"`
+		WorkingSetPrivate    float64 `json:"WorkingSetPrivate"`
+	}
 
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "{" {
-			inObj = true
-			current = ProcessInfo{}
-			continue
+	var wmiList []wmiProcess
+	if err := json.Unmarshal(out, &wmiList); err != nil {
+		// If unmarshalling as array fails, try unmarshalling as a single object
+		var single wmiProcess
+		if errSingle := json.Unmarshal(out, &single); errSingle == nil {
+			wmiList = []wmiProcess{single}
+		} else {
+			fmt.Fprintf(os.Stderr, "[Metrics] Failed to parse top processes JSON: %v\n", err)
+			return nil
 		}
-		if line == "}" || line == "}," {
-			inObj = false
-			if current.Name != "" {
-				result = append(result, current)
-			}
-			continue
-		}
-		if !inObj || !strings.Contains(line, ":") {
-			continue
-		}
-		parts := strings.SplitN(line, ":", 2)
-		key := strings.Trim(strings.TrimSpace(parts[0]), "\"")
-		val := strings.Trim(strings.TrimSpace(parts[1]), "\",")
-		switch key {
-		case "Id":
-			pid, _ := strconv.ParseInt(val, 10, 32)
-			current.Pid = int32(pid)
-		case "ProcessName":
-			current.Name = val
-		case "CPU":
-			current.Cpu, _ = strconv.ParseFloat(val, 64)
-		case "WorkingSet64":
-			mem, _ := strconv.ParseFloat(val, 64)
-			current.Memory = math.Round(mem/1024/1024*100) / 100
-		}
+	}
+
+	numCores := float64(runtime.NumCPU())
+	if numCores <= 0 {
+		numCores = 1
+	}
+
+	var result []ProcessInfo
+	for _, p := range wmiList {
+		result = append(result, ProcessInfo{
+			Pid:    p.IDProcess,
+			Name:   p.Name,
+			Cpu:    math.Round((p.PercentProcessorTime/numCores)*100) / 100,
+			Memory: math.Round(p.WorkingSetPrivate/1024/1024*100) / 100,
+		})
 	}
 	return result
 }

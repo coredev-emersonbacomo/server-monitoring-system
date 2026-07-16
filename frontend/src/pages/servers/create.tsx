@@ -98,7 +98,7 @@ export default function CreateServer() {
             toast.error("Failed to create server.");
         } else {
             toast.success("Server created successfully!");
-            navigate(`/servers/${data.uuid}?client=all`);
+            navigate(`/servers/${data.uuid}?client=${clientUuid}`);
         }
     };
 
