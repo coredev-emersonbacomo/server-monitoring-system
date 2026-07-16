@@ -805,7 +805,7 @@ export default function ServerDetail() {
                                 <Tab.Item icon={BarChart3} title="Metrics">
                                     <div className="flex flex-col gap-6 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
                                         {/* Ports and Processes */}
-                                        <div className="grid grid-rows-1 lg:grid-rows-2 gap-6">
+                                        <div className="flex flex-col gap-6">
                                             {/* Processes */}
                                             <div className="bg-card/50 border border-border/50 rounded-xl p-4 shadow-sm">
                                                 <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
