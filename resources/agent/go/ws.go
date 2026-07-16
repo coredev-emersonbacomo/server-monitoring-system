@@ -42,6 +42,13 @@ type configUpdatePayload struct {
 // connectControlChannel maintains a persistent WebSocket connection to Reverb.
 // It runs as a goroutine alongside the heartbeat ticker.
 func connectControlChannel(config *BootstrapConfig, identityToken string, heartbeatInterval *int, stop <-chan struct{}) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "[WS] PANIC RECOVERED in control channel: %v\n", r)
+			reportAgentPanic(config, identityToken, r)
+		}
+	}()
+
 	if config.ReverbHost == "" || config.ReverbAppKey == "" {
 		fmt.Println("[WS] Reverb config not available — control channel disabled.")
 		return
@@ -320,12 +327,8 @@ func handleBinaryUpdate(payload configUpdatePayload, config *BootstrapConfig, id
 		return
 	}
 
-	fmt.Println("[WS] Binary updated successfully — sending ack and restarting...")
-
-	// Send acknowledgement to backend
-	postConfigUpdateAck(config, identityToken, *heartbeatInterval)
-
-	// Exit cleanly — service manager (Windows Service / systemd) will restart with new binary
+	fmt.Println("[WS] Binary updated successfully — exiting to allow restart...")
+	restartAgent()
 	os.Exit(0)
 }
 
