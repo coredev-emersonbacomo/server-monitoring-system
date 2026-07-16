@@ -13,7 +13,8 @@ import {
     Shield,
     MapPin,
     Mail,
-    Phone
+    Phone,
+    Bell,
 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -58,9 +59,21 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
+import { NodeConfigPreview } from "@/components/node-config/NodeConfigPreview";
+import { useScopedConfig } from "@/hooks/node-config/useNodeConfigs";
 
 // Helper function to format phone numbers
 import { formatPhoneNumber } from "@/utils/helpers";
+
+// ─── Client Alert Tab ────────────────────────────────────────────────────────
+
+function useClientAlertTab(clientUuid: string, clientName: string) {
+    const [alertScope, setAlertScope] = useState<"global" | "client">("global");
+    const effectiveScopeId = alertScope === "client" ? clientUuid : undefined;
+    const { data: config } = useScopedConfig(alertScope, effectiveScopeId ?? null);
+    const scopeLabel = alertScope === "global" ? "Global" : `Client: ${clientName}`;
+    return { alertScope, setAlertScope, config, scopeLabel };
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -89,6 +102,7 @@ export default function ClientDetail() {
         1,
         parseInt(settings?.secop_limit_per_client ?? "2", 10) || 2,
     );
+    const clientAlertTab = useClientAlertTab(clientUuid ?? "", client?.name ?? "");
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createClient = useCreateClient();
@@ -786,6 +800,43 @@ export default function ClientDetail() {
                                                 </p>
                                             </div>
                                         )}
+                                    </div>
+                                </Tab.Item>
+                            )}
+
+                            {mode !== "create" && client && (
+                                <Tab.Item icon={Bell} title="Alerts">
+                                    <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-6">
+                                        <div>
+                                            <label className="text-sm font-medium text-foreground">Alert Scope</label>
+                                            <p className="text-xs text-muted-foreground mb-3">
+                                                Choose which alert configuration applies to this client's servers.
+                                            </p>
+                                            <div className="flex gap-4">
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input type="radio" name="alertScope" value="global"
+                                                        checked={clientAlertTab.alertScope === "global"}
+                                                        onChange={() => clientAlertTab.setAlertScope("global")}
+                                                        className="accent-primary" />
+                                                    <span className="text-sm">Global</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input type="radio" name="alertScope" value="client"
+                                                        checked={clientAlertTab.alertScope === "client"}
+                                                        onChange={() => clientAlertTab.setAlertScope("client")}
+                                                        className="accent-primary" />
+                                                    <span className="text-sm">Client</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <NodeConfigPreview
+                                            config={clientAlertTab.config?.config ?? null}
+                                            name={clientAlertTab.config?.name ?? ""}
+                                            scopeType={clientAlertTab.alertScope}
+                                            scopeLabel={clientAlertTab.scopeLabel}
+                                            isEditable={clientAlertTab.alertScope === "client"}
+                                            configKey={`client_${clientUuid}`}
+                                        />
                                     </div>
                                 </Tab.Item>
                             )}

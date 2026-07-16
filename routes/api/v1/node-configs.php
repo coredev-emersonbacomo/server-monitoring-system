@@ -18,4 +18,8 @@ Route::middleware('auth:jwt')->group(function () {
     Route::get('/node-configs/by-slug/{slug}', [NodeConfigController::class, 'findBySlug']);
     Route::put('/node-configs/by-slug/{slug}', [NodeConfigController::class, 'upsertBySlug']);
     Route::post('/node-configs/preview', [NodeConfigController::class, 'preview']);
+
+    Route::get('/node-configs/resolved', [NodeConfigController::class, 'resolved']);
+    Route::get('/node-configs/scoped', [NodeConfigController::class, 'scoped']);
+    Route::post('/node-configs/scoped', [NodeConfigController::class, 'upsertScoped']);
 });

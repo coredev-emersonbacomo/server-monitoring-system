@@ -210,4 +210,108 @@ class NodeConfigController extends Controller
 
         return response()->json($compiled);
     }
+
+    public function resolved(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'server_id' => ['required', 'string'],
+        ]);
+
+        $config = NodeConfig::resolveForServer($validated['server_id']);
+
+        if (!$config) {
+            return response()->json([
+                'nodes' => [],
+                'edges' => [],
+                'name' => '',
+                'scope_type' => 'global',
+                'scope_id' => null,
+                'enabled' => true,
+            ]);
+        }
+
+        return response()->json($config);
+    }
+
+    public function scoped(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'scope_type' => ['required', 'string', 'in:global,client,server'],
+            'scope_id' => ['nullable', 'string'],
+        ]);
+
+        $query = NodeConfig::where('scope_type', $validated['scope_type']);
+
+        if ($validated['scope_type'] !== 'global') {
+            $query->where('scope_id', $validated['scope_id']);
+        }
+
+        $config = $query->first();
+
+        if (!$config) {
+            return response()->json([
+                'nodes' => [],
+                'edges' => [],
+                'name' => '',
+                'scope_type' => $validated['scope_type'],
+                'scope_id' => $validated['scope_id'] ?? null,
+                'enabled' => true,
+            ]);
+        }
+
+        return response()->json($config);
+    }
+
+    public function upsertScoped(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'config' => ['required', 'array'],
+            'config.nodes' => ['required', 'array'],
+            'config.edges' => ['required', 'array'],
+            'scope_type' => ['required', 'string', 'in:global,client,server'],
+            'scope_id' => ['nullable', 'string'],
+            'enabled' => ['nullable', 'boolean'],
+        ]);
+
+        $validator = new NodeConfigValidator();
+        if (!$validator->validate($data['config'])) {
+            return response()->json([
+                'message' => 'Invalid node config',
+                'errors' => $validator->getErrors(),
+            ], 422);
+        }
+
+        $compiler = new NodeConfigCompiler();
+        $compiledConfig = $compiler->compile($data['config']);
+
+        $query = NodeConfig::where('scope_type', $data['scope_type']);
+        if ($data['scope_type'] !== 'global') {
+            $query->where('scope_id', $data['scope_id']);
+        }
+
+        $config = $query->first();
+
+        if ($config) {
+            $config->update([
+                'name' => $data['name'],
+                'config' => $data['config'],
+                'compiled_config' => $compiledConfig,
+                'enabled' => $data['enabled'] ?? $config->enabled,
+            ]);
+        } else {
+            $config = NodeConfig::create([
+                'name' => $data['name'],
+                'slug' => $data['scope_type'] === 'global' ? 'alerts' : null,
+                'config' => $data['config'],
+                'compiled_config' => $compiledConfig,
+                'scope_type' => $data['scope_type'],
+                'scope_id' => $data['scope_id'] ?? null,
+                'enabled' => $data['enabled'] ?? true,
+                'created_by' => Auth::id(),
+            ]);
+        }
+
+        return response()->json($config);
+    }
 }

@@ -11,7 +11,23 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["activityLog.index"];
+        get: operations["v1.activityLog.index_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/activity-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.activityLog.index_0"];
         put?: never;
         post?: never;
         delete?: never;
@@ -29,7 +45,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["agent.provision"];
+        post: operations["v1.agent.provision_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -45,7 +61,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["agent.regenerate"];
+        post: operations["v1.agent.regenerate_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -61,7 +77,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["agent.bootstrap"];
+        post: operations["v1.agent.bootstrap_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -77,7 +93,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["agent.register"];
+        post: operations["v1.agent.register_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -93,7 +109,215 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["agent.heartbeat"];
+        post: operations["v1.agent.heartbeat_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/agent/uninstall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.agent.uninstall_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/agent/{serverUuid}/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Called by the agent after it has successfully applied a config update received via WebSocket.
+         *     The agent authenticates using its Bearer identity token
+         */
+        post: operations["v1.agent.agentUpdate_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/agent/{serverUuid}/updating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Log that the agent is starting its binary update process */
+        post: operations["v1.agent.agentUpdating_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/servers/{uuid}/provision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.agent.provision_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/servers/{uuid}/provision/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.agent.regenerate_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/provision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.agent.bootstrap_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.agent.register_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.agent.heartbeat_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/uninstall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.agent.uninstall_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/{serverUuid}/update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Called by the agent after it has successfully applied a config update received via WebSocket.
+         *     The agent authenticates using its Bearer identity token
+         */
+        post: operations["v1.agent.agentUpdate_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/{serverUuid}/updating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Log that the agent is starting its binary update process */
+        post: operations["v1.agent.agentUpdating_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/broadcasting/auth/agent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Authorize a Go agent's private Reverb channel subscription
+         * @description The agent passes its Bearer identity token in the Authorization header.
+         *     We validate the token, confirm the agent owns the requested channel,
+         *     then return a Pusher-signed auth string.
+         */
+        post: operations["agentBroadcastAuth.authorize"];
         delete?: never;
         options?: never;
         head?: never;
@@ -124,9 +348,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["client.servers"];
+        get: operations["v1.client.servers_0"];
         put?: never;
-        post: operations["server.store"];
+        post: operations["v1.server.store_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -140,9 +364,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["client.index"];
+        get: operations["v1.client.index_0"];
         put?: never;
-        post: operations["client.store"];
+        post: operations["v1.client.store_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -156,10 +380,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["client.show"];
-        put: operations["client.update"];
+        get: operations["v1.client.show_0"];
+        put: operations["v1.client.update_1"];
         post?: never;
-        delete: operations["client.destroy"];
+        delete: operations["v1.client.destroy_2"];
         options?: never;
         head?: never;
         patch?: never;
@@ -172,9 +396,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["client.secops"];
+        get: operations["v1.client.secops_0"];
         put?: never;
-        post: operations["client.addSecop"];
+        post: operations["v1.client.addSecop_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -191,7 +415,87 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["client.removeSecop"];
+        delete: operations["v1.client.removeSecop_0"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clients/{clientUuid}/servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.client.servers_0"];
+        put?: never;
+        post: operations["v1.server.store_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.client.index_0"];
+        put?: never;
+        post: operations["v1.client.store_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clients/{clientUuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.client.show_0"];
+        put: operations["v1.client.update_1"];
+        post?: never;
+        delete: operations["v1.client.destroy_2"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clients/{clientUuid}/secops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.client.secops_0"];
+        put?: never;
+        post: operations["v1.client.addSecop_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clients/{clientUuid}/secops/{userUuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["v1.client.removeSecop_0"];
         options?: never;
         head?: never;
         patch?: never;
@@ -204,7 +508,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["dashboard.stats"];
+        get: operations["v1.dashboard.stats_0"];
         put?: never;
         post?: never;
         delete?: never;
@@ -220,7 +524,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["dashboard.usage"];
+        get: operations["v1.dashboard.usage_0"];
         put?: never;
         post?: never;
         delete?: never;
@@ -236,7 +540,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["dashboard.actions"];
+        get: operations["v1.dashboard.actions_0"];
         put?: never;
         post?: never;
         delete?: never;
@@ -252,7 +556,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["dashboard.completed"];
+        get: operations["v1.dashboard.completed_0"];
         put?: never;
         post?: never;
         delete?: never;
@@ -270,7 +574,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["dashboard.claim"];
+        post: operations["v1.dashboard.claim_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -286,7 +590,103 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["dashboard.updateStatus"];
+        post: operations["v1.dashboard.updateStatus_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.dashboard.stats_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.dashboard.usage_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.dashboard.actions_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/actions/completed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.dashboard.completed_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/actions/{actionId}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.dashboard.claim_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/actions/{actionId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.dashboard.updateStatus_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -300,8 +700,24 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["globalAlert.index"];
-        put: operations["globalAlert.update"];
+        get: operations["v1.globalAlert.index_0"];
+        put: operations["v1.globalAlert.update_1"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/global-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.globalAlert.index_0"];
+        put: operations["v1.globalAlert.update_1"];
         post?: never;
         delete?: never;
         options?: never;
@@ -318,7 +734,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["jwtAuth.login"];
+        post: operations["v1.jwtAuth.login_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -334,7 +750,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["jwtAuth.refresh"];
+        post: operations["v1.jwtAuth.refresh_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -350,7 +766,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["jwtAuth.logout"];
+        post: operations["v1.jwtAuth.logout_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -366,7 +782,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["jwtAuth.logoutAll"];
+        post: operations["v1.jwtAuth.logoutAll_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -380,7 +796,87 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["jwtAuth.me"];
+        get: operations["v1.jwtAuth.me_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.jwtAuth.login_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.jwtAuth.refresh_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.jwtAuth.logout_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logout-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.jwtAuth.logoutAll_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.jwtAuth.me_0"];
         put?: never;
         post?: never;
         delete?: never;
@@ -396,7 +892,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["nodeConfig.nodeTypes"];
+        get: operations["nodeConfig.nodeConfig.nodeTypes_0"];
         put?: never;
         post?: never;
         delete?: never;
@@ -412,9 +908,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["nodeConfig.index"];
+        get: operations["nodeConfig.nodeConfig.index_0"];
         put?: never;
-        post: operations["nodeConfig.store"];
+        post: operations["nodeConfig.nodeConfig.store_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -428,10 +924,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["nodeConfig.show"];
-        put: operations["nodeConfig.update"];
+        get: operations["nodeConfig.nodeConfig.show_0"];
+        put: operations["nodeConfig.nodeConfig.update_1"];
         post?: never;
-        delete: operations["nodeConfig.destroy"];
+        delete: operations["nodeConfig.nodeConfig.destroy_2"];
         options?: never;
         head?: never;
         patch?: never;
@@ -446,7 +942,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["nodeConfig.toggle"];
+        post: operations["nodeConfig.nodeConfig.toggle_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -462,7 +958,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["nodeConfig.test"];
+        post: operations["nodeConfig.nodeConfig.test_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -478,7 +974,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["nodeConfig.resetState"];
+        post: operations["nodeConfig.nodeConfig.resetState_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -492,8 +988,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["nodeConfig.findBySlug"];
-        put: operations["nodeConfig.upsertBySlug"];
+        get: operations["nodeConfig.nodeConfig.findBySlug_0"];
+        put: operations["nodeConfig.nodeConfig.upsertBySlug_1"];
         post?: never;
         delete?: never;
         options?: never;
@@ -510,7 +1006,199 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["nodeConfig.preview"];
+        post: operations["nodeConfig.nodeConfig.preview_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/node-configs/resolved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.nodeConfig.resolved_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/node-configs/scoped": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.nodeConfig.scoped_0"];
+        put?: never;
+        post: operations["nodeConfig.nodeConfig.upsertScoped_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/node-config-node-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.nodeConfig.nodeTypes_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/node-configs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.nodeConfig.index_0"];
+        put?: never;
+        post: operations["nodeConfig.nodeConfig.store_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/node-configs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.nodeConfig.show_0"];
+        put: operations["nodeConfig.nodeConfig.update_1"];
+        post?: never;
+        delete: operations["nodeConfig.nodeConfig.destroy_2"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/node-configs/{id}/toggle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["nodeConfig.nodeConfig.toggle_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/node-configs/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["nodeConfig.nodeConfig.test_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/node-configs/{id}/reset-state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["nodeConfig.nodeConfig.resetState_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/node-configs/by-slug/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.nodeConfig.findBySlug_0"];
+        put: operations["nodeConfig.nodeConfig.upsertBySlug_1"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/node-configs/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["nodeConfig.nodeConfig.preview_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/node-configs/resolved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.nodeConfig.resolved_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/node-configs/scoped": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.nodeConfig.scoped_0"];
+        put?: never;
+        post: operations["nodeConfig.nodeConfig.upsertScoped_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -524,7 +1212,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["server.listAll"];
+        get: operations["v1.server.listAll_0"];
         put?: never;
         post?: never;
         delete?: never;
@@ -540,13 +1228,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["server.show"];
+        get: operations["v1.server.show_0"];
         put?: never;
         post?: never;
-        delete: operations["server.destroy"];
+        delete: operations["v1.server.destroy_2"];
         options?: never;
         head?: never;
-        patch: operations["server.update"];
+        patch: operations["v1.server.update_1"];
         trace?: never;
     };
     "/v1/servers/{serverUuid}": {
@@ -556,7 +1244,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["server.showWithStats"];
+        get: operations["v1.server.showWithStats_0"];
         put?: never;
         post?: never;
         delete?: never;
@@ -575,7 +1263,71 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["server.destroyPort"];
+        delete: operations["v1.server.destroyPort_0"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.server.listAll_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clients/{clientUuid}/servers/{serverUuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.server.show_0"];
+        put?: never;
+        post?: never;
+        delete: operations["v1.server.destroy_2"];
+        options?: never;
+        head?: never;
+        patch: operations["v1.server.update_1"];
+        trace?: never;
+    };
+    "/servers/{serverUuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.server.showWithStats_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["v1.server.destroyPort_0"];
         options?: never;
         head?: never;
         patch?: never;
@@ -588,7 +1340,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["session.index"];
+        get: operations["v1.session.index_0"];
         put?: never;
         post?: never;
         delete?: never;
@@ -607,7 +1359,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["session.revoke"];
+        delete: operations["v1.session.revoke_0"];
         options?: never;
         head?: never;
         patch?: never;
@@ -622,7 +1374,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["session.revokeAllOthers"];
+        post: operations["v1.session.revokeAllOthers_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -639,7 +1391,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["session.permanentDelete"];
+        delete: operations["v1.session.permanentDelete_0"];
         options?: never;
         head?: never;
         patch?: never;
@@ -652,7 +1404,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["session.securityActivity"];
+        get: operations["v1.session.securityActivity_0"];
         put?: never;
         post?: never;
         delete?: never;
@@ -668,7 +1420,103 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["session.activeSessionsCount"];
+        get: operations["v1.session.activeSessionsCount_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.session.index_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/{sessionUuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["v1.session.revoke_0"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/logout-all-others": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.session.revokeAllOthers_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/{sessionUuid}/permanent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["v1.session.permanentDelete_0"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/security-activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.session.securityActivity_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/active-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.session.activeSessionsCount_0"];
         put?: never;
         post?: never;
         delete?: never;
@@ -685,9 +1533,27 @@ export interface paths {
             cookie?: never;
         };
         /** Return all settings as a key-value map */
-        get: operations["setting.index"];
+        get: operations["v1.setting.index_0"];
         /** Bulk-update settings for authenticated users */
-        put: operations["setting.update"];
+        put: operations["v1.setting.update_1"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Return all settings as a key-value map */
+        get: operations["v1.setting.index_0"];
+        /** Bulk-update settings for authenticated users */
+        put: operations["v1.setting.update_1"];
         post?: never;
         delete?: never;
         options?: never;
@@ -704,7 +1570,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["upload-intents.store"];
+        post: operations["v1.uploadIntent.store_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -718,7 +1584,39 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["upload-intents.show"];
+        get: operations["v1.uploadIntent.show_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/upload-intents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.uploadIntent.store_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/upload-intents/{uploadIntent}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.uploadIntent.show_0"];
         put?: never;
         post?: never;
         delete?: never;
@@ -734,9 +1632,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["users.index"];
+        get: operations["v1.user.index_0"];
         put?: never;
-        post: operations["users.store"];
+        post: operations["v1.user.store_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -750,10 +1648,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["users.show"];
-        put: operations["users.update"];
+        get: operations["v1.user.show_0"];
+        put: operations["v1.user.update_1"];
         post?: never;
-        delete: operations["users.destroy"];
+        delete: operations["v1.user.destroy_2"];
         options?: never;
         head?: never;
         patch?: never;
@@ -766,9 +1664,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["user.clients"];
+        get: operations["v1.user.clients_0"];
         put?: never;
-        post: operations["user.addClient"];
+        post: operations["v1.user.addClient_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -785,7 +1683,71 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["user.removeClient"];
+        delete: operations["v1.user.removeClient_0"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.user.index_0"];
+        put?: never;
+        post: operations["v1.user.store_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{user}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.user.show_0"];
+        put: operations["v1.user.update_1"];
+        post?: never;
+        delete: operations["v1.user.destroy_2"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userUuid}/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.user.clients_0"];
+        put?: never;
+        post: operations["v1.user.addClient_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userUuid}/clients/{clientUuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["v1.user.removeClient_0"];
         options?: never;
         head?: never;
         patch?: never;
@@ -902,6 +1864,8 @@ export interface components {
             updated_at: string | null;
             slug: string | null;
             compiled_config: unknown[] | null;
+            scope_type: string;
+            scope_id: string | null;
         };
         /** NodeConfigData */
         NodeConfigData: {
@@ -963,6 +1927,15 @@ export interface components {
                 cpu: number | null;
                 memory: number | null;
             }[] | null;
+            uninstall_linux_command?: string | null;
+            uninstall_windows_command?: string | null;
+            agent_deleted?: boolean;
+            activities?: {
+                type: string;
+                description: string;
+                created_at: string;
+            }[] | null;
+            agent?: string[] | null;
         };
         /** StatPointData */
         StatPointData: {
@@ -1067,7 +2040,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    "activityLog.index": {
+    "v1.activityLog.index_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1087,7 +2060,27 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "agent.provision": {
+    "v1.activityLog.index_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityLog"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.agent.provision_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1153,7 +2146,7 @@ export interface operations {
             };
         };
     };
-    "agent.regenerate": {
+    "v1.agent.regenerate_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1198,7 +2191,7 @@ export interface operations {
             };
         };
     };
-    "agent.bootstrap": {
+    "v1.agent.bootstrap_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1227,8 +2220,7 @@ export interface operations {
                         expected_sha256: Record<string, never> | string;
                         /** @constant */
                         agent_version: "2.0";
-                        /** @constant */
-                        heartbeat_interval: 5;
+                        heartbeat_interval: number;
                         api_url: string;
                         register_url: string;
                     };
@@ -1237,7 +2229,7 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
-    "agent.register": {
+    "v1.agent.register_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1271,8 +2263,7 @@ export interface operations {
                     "application/json": {
                         identity: string;
                         configuration: {
-                            /** @constant */
-                            heartbeat_interval: 5;
+                            heartbeat_interval: number;
                             /** @constant */
                             metrics_interval: 5;
                             /** @constant */
@@ -1282,15 +2273,20 @@ export interface operations {
                             /** @constant */
                             process_scan_interval: 60;
                         };
-                        /** @constant */
-                        heartbeat_interval: 5;
+                        heartbeat_interval: number;
+                        server_uuid: string;
+                        update_url: string;
+                        reverb_host: unknown;
+                        reverb_port: number;
+                        reverb_scheme: unknown;
+                        reverb_app_key: unknown;
                     };
                 };
             };
             422: components["responses"]["ValidationException"];
         };
     };
-    "agent.heartbeat": {
+    "v1.agent.heartbeat_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1308,6 +2304,21 @@ export interface operations {
                         heartbeat_interval: number;
                         current_time: string;
                         feature_flags: string[];
+                        /**
+                         * @description Always include Reverb credentials so the agent can connect the WS control channel
+                         *     even if bootstrap.json on disk is missing these fields (e.g. due to permissions)
+                         */
+                        server_uuid: string;
+                        update_url: string;
+                        reverb_host: unknown;
+                        reverb_port: number;
+                        reverb_scheme: unknown;
+                        reverb_app_key: unknown;
+                        pending_update: {
+                            version: string;
+                            heartbeat_interval: string | null;
+                            binary_url: string | null;
+                        };
                         configuration: unknown[];
                         pending_commands: {
                             id: string;
@@ -1341,6 +2352,683 @@ export interface operations {
             };
         };
     };
+    "v1.agent.uninstall_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                    platform?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "success";
+                        /** @constant */
+                        message: "Agent uninstalled and flag updated successfully.";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Server not found.";
+                    } | {
+                        /** @constant */
+                        message: "Invalid provision token.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.agent.agentUpdate_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    agent_version?: string | null;
+                    heartbeat_interval?: number | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "ok";
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Invalid or revoked agent identity.";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Agent not found.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.agent.agentUpdating_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    version: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "ok";
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Invalid or revoked agent identity.";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Agent not found.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.agent.provision_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        conflict: boolean;
+                        token: string;
+                        expires_at: string;
+                        linux_command: string;
+                        windows_command: string;
+                        token_expires_in: string;
+                    } | {
+                        conflict: boolean;
+                        expires_at: string;
+                        generated_at: string;
+                        remaining_seconds: number;
+                        token_expires_in: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        conflict: boolean;
+                        token: string;
+                        expires_at: string;
+                        linux_command: string;
+                        windows_command: string;
+                        token_expires_in: string;
+                    } | {
+                        conflict: boolean;
+                        expires_at: string;
+                        generated_at: string;
+                        remaining_seconds: number;
+                        token_expires_in: string;
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
+    "v1.agent.regenerate_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        conflict: boolean;
+                        token: string;
+                        expires_at: string;
+                        linux_command: string;
+                        windows_command: string;
+                        token_expires_in: string;
+                    } | {
+                        conflict: boolean;
+                        expires_at: string;
+                        generated_at: string;
+                        remaining_seconds: number;
+                        token_expires_in: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
+    "v1.agent.bootstrap_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                    hostname?: string | null;
+                    platform?: string | null;
+                    architecture?: string | null;
+                    installer_version?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        download_url: string;
+                        expected_sha256: Record<string, never> | string;
+                        /** @constant */
+                        agent_version: "2.0";
+                        heartbeat_interval: number;
+                        api_url: string;
+                        register_url: string;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.agent.register_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                    agent_version?: string | null;
+                    capabilities?: string[] | null;
+                    hostname?: string | null;
+                    operating_system?: string | null;
+                    architecture?: string | null;
+                    memory?: string | null;
+                    disk?: string | null;
+                    cpu?: {
+                        model?: string | null;
+                        cores?: number | null;
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        identity: string;
+                        configuration: {
+                            heartbeat_interval: number;
+                            /** @constant */
+                            metrics_interval: 5;
+                            /** @constant */
+                            port_scan_interval: 60;
+                            /** @constant */
+                            service_scan_interval: 60;
+                            /** @constant */
+                            process_scan_interval: 60;
+                        };
+                        heartbeat_interval: number;
+                        server_uuid: string;
+                        update_url: string;
+                        reverb_host: unknown;
+                        reverb_port: number;
+                        reverb_scheme: unknown;
+                        reverb_app_key: unknown;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.agent.heartbeat_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        heartbeat_interval: number;
+                        current_time: string;
+                        feature_flags: string[];
+                        /**
+                         * @description Always include Reverb credentials so the agent can connect the WS control channel
+                         *     even if bootstrap.json on disk is missing these fields (e.g. due to permissions)
+                         */
+                        server_uuid: string;
+                        update_url: string;
+                        reverb_host: unknown;
+                        reverb_port: number;
+                        reverb_scheme: unknown;
+                        reverb_app_key: unknown;
+                        pending_update: {
+                            version: string;
+                            heartbeat_interval: string | null;
+                            binary_url: string | null;
+                        };
+                        configuration: unknown[];
+                        pending_commands: {
+                            id: string;
+                            type: string;
+                            payload: string;
+                        }[];
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Invalid or revoked agent identity.";
+                    };
+                };
+            };
+        };
+    };
+    "v1.agent.uninstall_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token: string;
+                    platform?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "success";
+                        /** @constant */
+                        message: "Agent uninstalled and flag updated successfully.";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Server not found.";
+                    } | {
+                        /** @constant */
+                        message: "Invalid provision token.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.agent.agentUpdate_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    agent_version?: string | null;
+                    heartbeat_interval?: number | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "ok";
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Invalid or revoked agent identity.";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Agent not found.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.agent.agentUpdating_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    version: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "ok";
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Invalid or revoked agent identity.";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Agent not found.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "agentBroadcastAuth.authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @default  */
+                    channel_name?: string;
+                    /** @default  */
+                    socket_id?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        auth: string;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Channel not authorized.";
+                    } | {
+                        /** @constant */
+                        message: "Invalid or revoked agent identity.";
+                    };
+                };
+            };
+        };
+    };
     "broadcast.authenticate": {
         parameters: {
             query?: never;
@@ -1360,7 +3048,7 @@ export interface operations {
             };
         };
     };
-    "client.servers": {
+    "v1.client.servers_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1382,7 +3070,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "server.store": {
+    "v1.server.store_1": {
         parameters: {
             query?: never;
             header?: never;
@@ -1395,6 +3083,7 @@ export interface operations {
             content: {
                 "application/json": {
                     name: string;
+                    description?: string | null;
                 };
             };
         };
@@ -1423,7 +3112,7 @@ export interface operations {
             };
         };
     };
-    "client.index": {
+    "v1.client.index_0": {
         parameters: {
             query?: {
                 user_uuid?: string | null;
@@ -1447,7 +3136,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "client.store": {
+    "v1.client.store_1": {
         parameters: {
             query?: never;
             header?: never;
@@ -1482,7 +3171,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "client.show": {
+    "v1.client.show_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1505,7 +3194,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "client.update": {
+    "v1.client.update_1": {
         parameters: {
             query?: never;
             header?: never;
@@ -1540,7 +3229,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "client.destroy": {
+    "v1.client.destroy_2": {
         parameters: {
             query?: never;
             header?: never;
@@ -1561,7 +3250,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "client.secops": {
+    "v1.client.secops_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1583,7 +3272,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "client.addSecop": {
+    "v1.client.addSecop_1": {
         parameters: {
             query?: never;
             header?: never;
@@ -1641,7 +3330,7 @@ export interface operations {
             };
         };
     };
-    "client.removeSecop": {
+    "v1.client.removeSecop_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1674,7 +3363,322 @@ export interface operations {
             };
         };
     };
-    "dashboard.stats": {
+    "v1.client.servers_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerData"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.server.store_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    description?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `ServerData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            /** @description An error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Error overview. */
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
+    "v1.client.index_0": {
+        parameters: {
+            query?: {
+                user_uuid?: string | null;
+                exclude_user_uuid?: string | null;
+                available_only?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientData"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.client.store_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    location: string;
+                    /** @description Must be unique in `clients`. */
+                    email: string;
+                    contact_number: string;
+                    description: string | null;
+                    banner_image?: Record<string, never> | null;
+                    upload_intent_id?: string | null;
+                    banner_image_storage_key?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `ClientData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.client.show_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ClientData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.client.update_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    location: string;
+                    email: string;
+                    contact_number: string;
+                    description?: string;
+                    upload_intent_id?: string | null;
+                    banner_image_storage_key?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `ClientData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.client.destroy_2": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.client.secops_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecopsUserData"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.client.addSecop_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Must exist in `users`. */
+                    user_uuid: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "SecOps added successfully";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        error: "User already assigned to this client";
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        errors: {
+                            user_uuid: [
+                                string
+                            ];
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "v1.client.removeSecop_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                userUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        error: "User not assigned to this client";
+                    };
+                };
+            };
+        };
+    };
+    "v1.dashboard.stats_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1695,7 +3699,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "dashboard.usage": {
+    "v1.dashboard.usage_0": {
         parameters: {
             query: {
                 unit: "second" | "minute" | "hour" | "day" | "week" | "month";
@@ -1745,7 +3749,7 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
-    "dashboard.actions": {
+    "v1.dashboard.actions_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1765,7 +3769,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "dashboard.completed": {
+    "v1.dashboard.completed_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1785,7 +3789,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "dashboard.claim": {
+    "v1.dashboard.claim_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1808,7 +3812,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "dashboard.updateStatus": {
+    "v1.dashboard.updateStatus_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1831,7 +3835,164 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "globalAlert.index": {
+    "v1.dashboard.stats_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `DashboardStatsData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardStatsData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.dashboard.usage_0": {
+        parameters: {
+            query: {
+                unit: "second" | "minute" | "hour" | "day" | "week" | "month";
+                metric: "cpu" | "memory" | "disk";
+                before?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        unit: string;
+                        metric: string;
+                        series: {
+                            server_uuid: string;
+                            server_name: string;
+                            client_name: string;
+                            points: {
+                                timestamp: string;
+                                value: string | null;
+                            }[];
+                        }[];
+                        top: {
+                            server_uuid: string;
+                            server_name: string;
+                            client_name: string;
+                            value: number;
+                        }[];
+                        nextCursor: null;
+                    } | {
+                        unit: string;
+                        metric: string;
+                        series: string[];
+                        top: string[];
+                        nextCursor: null;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.dashboard.actions_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionItemData"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.dashboard.completed_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionItemData"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.dashboard.claim_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                actionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ActionItemData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionItemData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.dashboard.updateStatus_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                actionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ActionItemData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionItemData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.globalAlert.index_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1851,7 +4012,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "globalAlert.update": {
+    "v1.globalAlert.update_1": {
         parameters: {
             query?: never;
             header?: never;
@@ -1881,7 +4042,57 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
-    "jwtAuth.login": {
+    "v1.globalAlert.index_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlobalAlert"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.globalAlert.update_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    metrics: string[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Global alerts updated successfully";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.jwtAuth.login_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1908,7 +4119,7 @@ export interface operations {
             };
         };
     };
-    "jwtAuth.refresh": {
+    "v1.jwtAuth.refresh_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1927,7 +4138,7 @@ export interface operations {
             };
         };
     };
-    "jwtAuth.logout": {
+    "v1.jwtAuth.logout_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1950,7 +4161,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "jwtAuth.logoutAll": {
+    "v1.jwtAuth.logoutAll_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1973,7 +4184,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "jwtAuth.me": {
+    "v1.jwtAuth.me_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -1994,7 +4205,120 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "nodeConfig.nodeTypes": {
+    "v1.jwtAuth.login_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    email: string;
+                    password: string;
+                    remember?: boolean | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    "v1.jwtAuth.refresh_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    "v1.jwtAuth.logout_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Logged out successfully.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.jwtAuth.logoutAll_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "All sessions logged out.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.jwtAuth.me_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `AuthUserData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthUserData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.nodeTypes_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2020,7 +4344,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "nodeConfig.index": {
+    "nodeConfig.nodeConfig.index_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2040,7 +4364,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "nodeConfig.store": {
+    "nodeConfig.nodeConfig.store_1": {
         parameters: {
             query?: never;
             header?: never;
@@ -2081,7 +4405,7 @@ export interface operations {
             };
         };
     };
-    "nodeConfig.show": {
+    "nodeConfig.nodeConfig.show_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2103,7 +4427,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "nodeConfig.update": {
+    "nodeConfig.nodeConfig.update_1": {
         parameters: {
             query?: never;
             header?: never;
@@ -2146,7 +4470,7 @@ export interface operations {
             };
         };
     };
-    "nodeConfig.destroy": {
+    "nodeConfig.nodeConfig.destroy_2": {
         parameters: {
             query?: never;
             header?: never;
@@ -2171,7 +4495,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "nodeConfig.toggle": {
+    "nodeConfig.nodeConfig.toggle_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2193,7 +4517,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "nodeConfig.test": {
+    "nodeConfig.nodeConfig.test_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2231,10 +4555,7 @@ export interface operations {
                             type: string;
                             settings: string | string[];
                             value: Record<string, never> | null;
-                            upstream_context: {
-                                metric_name: string;
-                                sustain_value: string | null;
-                            };
+                            upstream_context: unknown[];
                         }[];
                     } | {
                         success: boolean;
@@ -2246,7 +4567,7 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
-    "nodeConfig.resetState": {
+    "nodeConfig.nodeConfig.resetState_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2271,7 +4592,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "nodeConfig.findBySlug": {
+    "nodeConfig.nodeConfig.findBySlug_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2299,7 +4620,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "nodeConfig.upsertBySlug": {
+    "nodeConfig.nodeConfig.upsertBySlug_1": {
         parameters: {
             query?: never;
             header?: never;
@@ -2333,7 +4654,7 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
-    "nodeConfig.preview": {
+    "nodeConfig.nodeConfig.preview_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2385,12 +4706,591 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
-    "server.listAll": {
+    "nodeConfig.nodeConfig.resolved_0": {
         parameters: {
-            query?: {
-                /** @description Filter servers by client UUID */
-                client_uuid?: string;
+            query: {
+                server_id: string;
             };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": (components["schemas"]["NodeConfig"] | null) | {
+                        nodes: string[];
+                        edges: string[];
+                        name: string;
+                        /** @constant */
+                        scope_type: "global";
+                        scope_id: null;
+                        enabled: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.scoped_0": {
+        parameters: {
+            query: {
+                scope_type: "global" | "client" | "server";
+                scope_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": (components["schemas"]["NodeConfig"] | null) | {
+                        nodes: string[];
+                        edges: string[];
+                        name: string;
+                        scope_type: string;
+                        scope_id: string | null;
+                        enabled: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.upsertScoped_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** @enum {string} */
+                    scope_type: "global" | "client" | "server";
+                    scope_id?: string | null;
+                    enabled?: boolean | null;
+                    config: {
+                        nodes: string[];
+                        edges: string[];
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeConfig"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.nodeTypes_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        type: string;
+                        category: string;
+                        label: string;
+                        unlimitedInputs: string;
+                        settings: string;
+                    }[];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.index_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeConfig"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.store_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    description?: string | null;
+                    config: components["schemas"]["NodeConfigData"];
+                    enabled?: boolean;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeConfig"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Invalid node config";
+                        errors: unknown[];
+                    };
+                };
+            };
+        };
+    };
+    "nodeConfig.nodeConfig.show_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.update_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    description?: string | null;
+                    config: components["schemas"]["NodeConfigData"];
+                    enabled?: boolean;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Invalid node config";
+                        errors: unknown[];
+                    };
+                };
+            };
+        };
+    };
+    "nodeConfig.nodeConfig.destroy_2": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Node config deleted.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.toggle_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.test_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    source_node_id: string;
+                    value: string;
+                    extra_state?: string[] | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        success: boolean;
+                        outputs: string;
+                        timers: {
+                            node_config_id: number;
+                            node_id: string;
+                            delay_ms: number;
+                            context: unknown[];
+                        }[];
+                        actions: {
+                            node_id: string;
+                            type: string;
+                            settings: string | string[];
+                            value: Record<string, never> | null;
+                            upstream_context: unknown[];
+                        }[];
+                    } | {
+                        success: boolean;
+                        errors: unknown[];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.resetState_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Node config state reset.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.findBySlug_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": (components["schemas"]["NodeConfig"] | null) | {
+                        nodes: string[];
+                        edges: string[];
+                        name: string;
+                        slug: string;
+                        enabled: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.upsertBySlug_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    enabled?: boolean | null;
+                    config: {
+                        nodes: string[];
+                        edges: string[];
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeConfig"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.preview_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    config: {
+                        nodes: string[];
+                        edges: string[];
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        rules: ({
+                            metrics: unknown[];
+                            conditions: {
+                                operator: string | "greater_than";
+                                threshold: string | null;
+                                min: string | null;
+                                max: string;
+                            }[];
+                            logic: string | "and";
+                            timing: {
+                                type: string;
+                                duration_seconds: number;
+                                interval_seconds: number;
+                                max_repeats: number | null;
+                            };
+                            actions: [
+                                unknown[]
+                            ];
+                        } | null)[];
+                    } | {
+                        rules: string[];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.resolved_0": {
+        parameters: {
+            query: {
+                server_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": (components["schemas"]["NodeConfig"] | null) | {
+                        nodes: string[];
+                        edges: string[];
+                        name: string;
+                        /** @constant */
+                        scope_type: "global";
+                        scope_id: null;
+                        enabled: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.scoped_0": {
+        parameters: {
+            query: {
+                scope_type: "global" | "client" | "server";
+                scope_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": (components["schemas"]["NodeConfig"] | null) | {
+                        nodes: string[];
+                        edges: string[];
+                        name: string;
+                        scope_type: string;
+                        scope_id: string | null;
+                        enabled: boolean;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.upsertScoped_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** @enum {string} */
+                    scope_type: "global" | "client" | "server";
+                    scope_id?: string | null;
+                    enabled?: boolean | null;
+                    config: {
+                        nodes: string[];
+                        edges: string[];
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeConfig"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.server.listAll_0": {
+        parameters: {
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -2408,7 +5308,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "server.show": {
+    "v1.server.show_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2432,7 +5332,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "server.destroy": {
+    "v1.server.destroy_2": {
         parameters: {
             query?: never;
             header?: never;
@@ -2456,9 +5356,20 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Cannot delete server while the agent is still running. Please run the uninstall script first.";
+                    };
+                };
+            };
         };
     };
-    "server.update": {
+    "v1.server.update_1": {
         parameters: {
             query?: never;
             header?: never;
@@ -2468,10 +5379,10 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
-                    name?: string | null;
+                    name: string;
                     description?: string | null;
                 };
             };
@@ -2489,7 +5400,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "server.showWithStats": {
+    "v1.server.showWithStats_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2513,7 +5424,7 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
-    "server.destroyPort": {
+    "v1.server.destroyPort_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2538,7 +5449,168 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "session.index": {
+    "v1.server.listAll_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerData"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.server.show_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ServerData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.server.destroy_2": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "success";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Cannot delete server while the agent is still running. Please run the uninstall script first.";
+                    };
+                };
+            };
+        };
+    };
+    "v1.server.update_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    description?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `ServerData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.server.showWithStats_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ServerData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "v1.server.destroyPort_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "success";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.session.index_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2560,7 +5632,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "session.revoke": {
+    "v1.session.revoke_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2596,7 +5668,7 @@ export interface operations {
             };
         };
     };
-    "session.revokeAllOthers": {
+    "v1.session.revokeAllOthers_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2620,7 +5692,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "session.permanentDelete": {
+    "v1.session.permanentDelete_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2659,7 +5731,7 @@ export interface operations {
             };
         };
     };
-    "session.securityActivity": {
+    "v1.session.securityActivity_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2681,7 +5753,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "session.activeSessionsCount": {
+    "v1.session.activeSessionsCount_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2703,7 +5775,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "setting.index": {
+    "v1.session.index_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2717,13 +5789,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown[];
+                    "application/json": {
+                        data: unknown[];
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "setting.update": {
+    "v1.session.revoke_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Session revoked successfully.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Cannot revoke current session. Use logout instead.";
+                    };
+                };
+            };
+        };
+    };
+    "v1.session.revokeAllOthers_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2737,7 +5847,138 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown[];
+                    "application/json": {
+                        /** @constant */
+                        message: "All other sessions logged out.";
+                        revoked_count: number;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.session.permanentDelete_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Session deleted permanently.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Session must be revoked before permanent deletion.";
+                    } | {
+                        /** @constant */
+                        message: "Cannot delete current session.";
+                    };
+                };
+            };
+        };
+    };
+    "v1.session.securityActivity_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SecurityActivityData"][];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.session.activeSessionsCount_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        active_count: number;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.setting.index_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.setting.update_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2765,7 +6006,73 @@ export interface operations {
             };
         };
     };
-    "upload-intents.store": {
+    "v1.setting.index_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.setting.update_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Forbidden.";
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Heartbeat interval must be greater than or equal to the offline threshold.";
+                    };
+                };
+            };
+        };
+    };
+    "v1.uploadIntent.store_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2812,7 +6119,7 @@ export interface operations {
             };
         };
     };
-    "upload-intents.show": {
+    "v1.uploadIntent.show_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2848,7 +6155,90 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
-    "users.index": {
+    "v1.uploadIntent.store_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoreUploadIntentRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        intent_id: string;
+                        storage_key: string;
+                        provider: string;
+                        upload_config: unknown[] | null;
+                        purpose_config: {
+                            max_file_size: unknown;
+                            allowed_mime_types: unknown;
+                        };
+                        expires_at: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Too many upload requests. Please try again later.";
+                        retry_after: number;
+                    };
+                };
+            };
+        };
+    };
+    "v1.uploadIntent.show_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The upload intent ID */
+                uploadIntent: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: string;
+                        purpose: string;
+                        storage_key: string;
+                        provider: string;
+                        status: string;
+                        attached_to_type: string | null;
+                        attached_to_id: number | null;
+                        attached_at: string;
+                        expires_at: string;
+                        created_at: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            403: components["responses"]["AuthorizationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "v1.user.index_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2868,7 +6258,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "users.store": {
+    "v1.user.store_1": {
         parameters: {
             query?: never;
             header?: never;
@@ -2907,7 +6297,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "users.show": {
+    "v1.user.show_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -2932,7 +6322,7 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
-    "users.update": {
+    "v1.user.update_1": {
         parameters: {
             query?: never;
             header?: never;
@@ -2979,7 +6369,7 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
-    "users.destroy": {
+    "v1.user.destroy_2": {
         parameters: {
             query?: never;
             header?: never;
@@ -3002,7 +6392,7 @@ export interface operations {
             404: components["responses"]["ModelNotFoundException"];
         };
     };
-    "user.clients": {
+    "v1.user.clients_0": {
         parameters: {
             query?: never;
             header?: never;
@@ -3024,7 +6414,7 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
-    "user.addClient": {
+    "v1.user.addClient_1": {
         parameters: {
             query?: never;
             header?: never;
@@ -3082,7 +6472,274 @@ export interface operations {
             };
         };
     };
-    "user.removeClient": {
+    "v1.user.removeClient_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userUuid: string;
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        error: "Client not assigned to this user";
+                    };
+                };
+            };
+        };
+    };
+    "v1.user.index_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserData"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.user.store_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    first_name: string;
+                    last_name: string;
+                    /**
+                     * Format: email
+                     * @description Must be unique in `users`.
+                     */
+                    email: string;
+                    /** @description Must be unique in `users`. */
+                    phone_number: string;
+                    /** @description Must be unique in `users`. */
+                    username: string;
+                    /** @description Must be confirmed by a matching `_confirmation` field. */
+                    password: string;
+                    password_confirmation: string;
+                    upload_intent_id?: string | null;
+                    profile_picture_storage_key?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.user.show_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user UUID */
+                user: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `UserData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "v1.user.update_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user UUID */
+                user: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserData"] & {
+                    first_name?: string;
+                    last_name?: string;
+                    /** Format: email */
+                    email?: string;
+                    phone_number: string;
+                    username?: string;
+                    /** @description Must be confirmed by a matching `_confirmation` field. */
+                    password?: string | null;
+                    password_confirmation?: string | null;
+                    upload_intent_id?: string | null;
+                    profile_picture_storage_key?: string | null;
+                };
+            };
+        };
+        responses: {
+            /**
+             * @description logs area ends here ----------------------
+             *
+             *
+             *
+             *     `UserData`
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "v1.user.destroy_2": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The user UUID */
+                user: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "v1.user.clients_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientData"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.user.addClient_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Must exist in `clients`. */
+                    client_uuid: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Client added successfully";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        error: "Client already assigned to this user";
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                        errors: {
+                            client_uuid: [
+                                string
+                            ];
+                        };
+                    };
+                };
+            };
+        };
+    };
+    "v1.user.removeClient_0": {
         parameters: {
             query?: never;
             header?: never;

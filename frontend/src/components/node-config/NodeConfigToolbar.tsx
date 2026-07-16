@@ -6,21 +6,34 @@ interface NodeConfigToolbarProps {
     onNameChange: (name: string) => void;
     onSave: () => void;
     onPreview: () => void;
+    readOnly?: boolean;
+    scopeLabel?: string;
 }
 
 export function NodeConfigToolbar({
-    name, isSaving, onNameChange, onSave, onPreview,
+    name, isSaving, onNameChange, onSave, onPreview, readOnly, scopeLabel,
 }: NodeConfigToolbarProps) {
     return (
         <div className="flex items-center gap-3 px-4 py-2 border-b border-border/40 bg-card">
-            <input
-                type="text"
-                value={name}
-                onChange={(e) => onNameChange(e.target.value)}
-                placeholder="Config name..."
-                className="flex-1 px-3 py-1.5 text-sm font-semibold rounded-lg border border-border/60 bg-background
-                    text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
+            {readOnly ? (
+                <div className="flex-1 flex items-center gap-2 px-3 py-1.5">
+                    <span className="text-sm font-semibold text-foreground">{name}</span>
+                    {scopeLabel && (
+                        <span className="text-[10px] font-medium uppercase text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                            {scopeLabel}
+                        </span>
+                    )}
+                </div>
+            ) : (
+                <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => onNameChange(e.target.value)}
+                    placeholder="Config name..."
+                    className="flex-1 px-3 py-1.5 text-sm font-semibold rounded-lg border border-border/60 bg-background
+                        text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+            )}
             <div className="flex items-center gap-1.5">
                 <button
                     onClick={onPreview}

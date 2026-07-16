@@ -4,6 +4,7 @@ import type {
     NodeConfig,
     NodeConfigGraph,
     NodeTypeDefinition,
+    AlertScope,
 } from "@/types/node-config";
 
 async function fetchConfigs(): Promise<NodeConfig[]> {
@@ -263,5 +264,69 @@ export function usePreviewConfig() {
     return useMutation({
         mutationFn: ({ config }: { config: NodeConfigGraph }) =>
             previewConfig(config),
+    });
+}
+
+async function fetchResolvedConfig(serverId: number): Promise<NodeConfig> {
+    const res = await api.GET("/v1/node-configs/resolved", {
+        params: { query: { server_id: serverId } },
+    });
+    if (res.error) throw new Error("Failed to fetch resolved config");
+    return res.data as unknown as NodeConfig;
+}
+
+async function fetchScopedConfig(
+    scopeType: AlertScope,
+    scopeId: number | null,
+): Promise<NodeConfig> {
+    const res = await api.GET("/v1/node-configs/scoped", {
+        params: { query: { scope_type: scopeType, scope_id: scopeId ?? undefined } },
+    });
+    if (res.error) throw new Error("Failed to fetch scoped config");
+    return res.data as unknown as NodeConfig;
+}
+
+async function upsertScopedConfig(data: {
+    name: string;
+    config: NodeConfigGraph;
+    scope_type: AlertScope;
+    scope_id: number | null;
+    enabled?: boolean;
+}): Promise<NodeConfig> {
+    const res = await api.POST("/v1/node-configs/scoped", {
+        body: data as never,
+    });
+    if (res.error) throw new Error("Failed to save scoped config");
+    return res.data as unknown as NodeConfig;
+}
+
+export function useResolvedConfig(serverId: number | null) {
+    return useQuery({
+        queryKey: ["node-config-resolved", serverId],
+        queryFn: () => fetchResolvedConfig(serverId!),
+        enabled: serverId !== null,
+    });
+}
+
+export function useScopedConfig(scopeType: AlertScope, scopeId: number | null) {
+    return useQuery({
+        queryKey: ["node-config-scoped", scopeType, scopeId],
+        queryFn: () => fetchScopedConfig(scopeType, scopeId),
+        enabled: true,
+    });
+}
+
+export function useUpsertScopedConfig() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: upsertScopedConfig,
+        onSuccess: (_result, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["node-config-scoped", variables.scope_type, variables.scope_id],
+            });
+            if (variables.scope_type === "global") {
+                queryClient.invalidateQueries({ queryKey: ["node-config-by-slug", "alerts"] });
+            }
+        },
     });
 }

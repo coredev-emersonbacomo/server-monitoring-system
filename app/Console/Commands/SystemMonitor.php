@@ -5,8 +5,8 @@ namespace App\Console\Commands;
 use App\Jobs\MonitorServer;
 use App\Models\ActionItem;
 use App\Models\Client;
-use App\NodeConfig\Models\NodeConfig;
 use Illuminate\Console\Command;
+use App\NodeConfig\Models\NodeConfig;
 
 class SystemMonitor extends Command
 {

@@ -41,19 +41,6 @@ class HeartbeatService
                     'type' => 'agent_updated',
                     'description' => "Agent updated from version {$oldVersion} to {$newVersion}.",
                 ]);
-
-                // Update the AgentConfiguration heartbeat_interval in DB if the version was updated
-                $latestHeartbeatUpdate = \App\Models\AgentVersion::where('type', 'heartbeat_interval_update')
-                    ->orderBy('id', 'desc')
-                    ->first();
-                if ($latestHeartbeatUpdate && $latestHeartbeatUpdate->version === $newVersion) {
-                    $currentConfig = $agent->currentConfiguration;
-                    if ($currentConfig) {
-                        $currentConfig->update([
-                            'heartbeat_interval' => $latestHeartbeatUpdate->heartbeat_interval,
-                        ]);
-                    }
-                }
             }
 
             $agent->update([
@@ -155,8 +142,7 @@ class HeartbeatService
                 'reverb_app_key'     => env('REVERB_APP_KEY'),
             ];
 
-            $latestBinaryUpdate = \App\Models\AgentVersion::where('type', 'agent_binary_update')
-                ->orderBy('id', 'desc')
+            $latestBinaryUpdate = \App\Models\AgentVersion::orderBy('id', 'desc')
                 ->first();
             $agentVersion = $payload['agent_version'] ?? '';
             if ($latestBinaryUpdate && $agentVersion !== $latestBinaryUpdate->version) {

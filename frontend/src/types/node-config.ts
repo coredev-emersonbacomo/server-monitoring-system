@@ -18,13 +18,18 @@ export interface NodeConfigGraph {
     edges: NodeConfigEdge[];
 }
 
+export type AlertScope = 'global' | 'client' | 'server';
+
 export interface NodeConfig {
     id: number;
     name: string;
     slug: string | null;
     description: string | null;
     config: NodeConfigGraph;
+    compiled_config: { rules: unknown[] } | null;
     enabled: boolean;
+    scope_type: AlertScope;
+    scope_id: number | null;
     created_by: number | null;
     created_at: string;
     updated_at: string;

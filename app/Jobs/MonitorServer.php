@@ -26,18 +26,15 @@ class MonitorServer implements ShouldQueue
     public int $timeout = 30;
 
     public function __construct(
-        private readonly int $serverId,
-        private readonly ?int $alertConfigId = null,
+        private readonly string $serverUuid,
     ) {}
 
     public function handle(NodeRegistry $registry, NotificationService $notifications): void
     {
-        $server = Server::with(['client.secopclients', 'agent', 'latestUpdate'])->find($this->serverId);
+        $server = Server::with(['client.secopclients', 'agent', 'latestUpdate'])->where('uuid', $this->serverUuid)->first();
         if (!$server || !$server->agent) return;
 
-        $config = $this->alertConfigId
-            ? NodeConfig::find($this->alertConfigId)
-            : NodeConfig::where('slug', 'alerts')->where('enabled', true)->first();
+        $config = NodeConfig::resolveForServer($this->serverUuid);
 
         $engine = $config ? new NodeConfigEngine($registry) : null;
 

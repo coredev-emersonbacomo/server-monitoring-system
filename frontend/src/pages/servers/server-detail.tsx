@@ -48,6 +48,45 @@ import { toast } from "sonner";
 import { useDeleteServer } from "@/hooks/useDeleteServer";
 import api from "@/api/api";
 import { useQueryClient } from "@tanstack/react-query";
+import { NodeConfigPreview } from "@/components/node-config/NodeConfigPreview";
+import {
+    useResolvedConfig,
+    useScopedConfig,
+} from "@/hooks/node-config/useNodeConfigs";
+
+// ─── Server Alert Tab ────────────────────────────────────────────────────────
+
+function useServerAlertTab(
+    serverUuid: string,
+    serverName: string,
+    clientUuid: string | null,
+    clientName: string | null,
+) {
+    const [alertScope, setAlertScope] = useState<
+        "global" | "client" | "server"
+    >("global");
+    const effectiveScopeId =
+        alertScope === "server"
+            ? serverUuid
+            : alertScope === "client"
+              ? clientUuid
+              : null;
+    const { data: config } = useScopedConfig(alertScope, effectiveScopeId);
+    const scopeLabel =
+        alertScope === "global"
+            ? "Global"
+            : alertScope === "client"
+              ? `Client: ${clientName ?? "Unknown"}`
+              : `Server: ${serverName}`;
+    return {
+        alertScope,
+        setAlertScope,
+        config,
+        scopeLabel,
+        effectiveScopeId,
+        clientUuid,
+    };
+}
 
 const STATUS_CONFIG = {
     online: {
@@ -192,6 +231,12 @@ export default function ServerDetail() {
     }, [initial, setTrail, uuid, allClient]);
 
     const queryClient = useQueryClient();
+    const serverAlertTab = useServerAlertTab(
+        uuid!,
+        initial?.name ?? "Unknown",
+        initial?.client_uuid ?? null,
+        initial?.client_name ?? null,
+    );
     const [showDelete, setShowDelete] = useState(false);
     const [confirmText, setConfirmText] = useState("");
     const deleteServer = useDeleteServer();
@@ -333,18 +378,23 @@ export default function ServerDetail() {
                 navigate(`/clients/${initial.client_uuid}`);
             }
         } catch (err: any) {
-            const msg = err?.message || "Failed to delete server. Please try again.";
+            const msg =
+                err?.message || "Failed to delete server. Please try again.";
             toast.error(msg);
         }
     };
 
     const handleDeletePort = async (portId: number) => {
         if (!initial) return;
-        if (!confirm("Are you sure you want to delete this tracked port?")) return;
+        if (!confirm("Are you sure you want to delete this tracked port?"))
+            return;
         try {
-            await api.DELETE("/v1/ports/{id}" as any, {
-                params: { path: { id: portId } },
-            } as any);
+            await api.DELETE(
+                "/v1/ports/{id}" as any,
+                {
+                    params: { path: { id: portId } },
+                } as any,
+            );
             toast.success("Tracked port deleted successfully!");
             queryClient.invalidateQueries({
                 queryKey: ["server", initial.uuid],
@@ -617,7 +667,11 @@ export default function ServerDetail() {
                                                 </label>
                                                 <Input
                                                     value={editName}
-                                                    onChange={(e) => setEditName(e.target.value)}
+                                                    onChange={(e) =>
+                                                        setEditName(
+                                                            e.target.value,
+                                                        )
+                                                    }
                                                     className="text-sm"
                                                     autoFocus
                                                 />
@@ -629,7 +683,9 @@ export default function ServerDetail() {
                                                 <textarea
                                                     value={editDescription}
                                                     onChange={(e) =>
-                                                        setEditDescription(e.target.value)
+                                                        setEditDescription(
+                                                            e.target.value,
+                                                        )
                                                     }
                                                     rows={2}
                                                     maxLength={255}
@@ -639,7 +695,11 @@ export default function ServerDetail() {
                                             <div className="flex items-center gap-2">
                                                 <Button
                                                     size="sm"
-                                                    label={savingInfo ? "Saving…" : "Save"}
+                                                    label={
+                                                        savingInfo
+                                                            ? "Saving…"
+                                                            : "Save"
+                                                    }
                                                     onClick={saveInfo}
                                                     disabled={savingInfo}
                                                 />
@@ -681,7 +741,8 @@ export default function ServerDetail() {
                                         {
                                             icon: Cpu,
                                             label: "CPU Model",
-                                            value: server.cpu_model ?? "Unknown",
+                                            value:
+                                                server.cpu_model ?? "Unknown",
                                             span: true,
                                         },
                                         {
@@ -711,7 +772,12 @@ export default function ServerDetail() {
                                                 "Waiting for Agent",
                                         },
                                     ].map(
-                                        ({ icon: ItemIcon, label, value, span }) => (
+                                        ({
+                                            icon: ItemIcon,
+                                            label,
+                                            value,
+                                            span,
+                                        }) => (
                                             <div
                                                 key={label}
                                                 className={cn(
@@ -743,51 +809,111 @@ export default function ServerDetail() {
                                             {/* Processes */}
                                             <div className="bg-card/50 border border-border/50 rounded-xl p-4 shadow-sm">
                                                 <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                                                    <Cpu size={16} className="text-primary" /> Top Processes
+                                                    <Cpu
+                                                        size={16}
+                                                        className="text-primary"
+                                                    />{" "}
+                                                    Top Processes
                                                 </h3>
-                                                {server?.processes && server.processes.length > 0 ? (
+                                                {server?.processes &&
+                                                server.processes.length > 0 ? (
                                                     <div className="overflow-x-auto">
                                                         <table className="w-full text-left text-xs">
                                                             <thead>
                                                                 <tr className="text-muted-foreground border-b border-border/30">
-                                                                    <th className="pb-2 font-medium">PID</th>
-                                                                    <th className="pb-2 font-medium">Name</th>
-                                                                    <th className="pb-2 font-medium text-right">CPU</th>
-                                                                    <th className="pb-2 font-medium text-right">RAM</th>
+                                                                    <th className="pb-2 font-medium">
+                                                                        PID
+                                                                    </th>
+                                                                    <th className="pb-2 font-medium">
+                                                                        Name
+                                                                    </th>
+                                                                    <th className="pb-2 font-medium text-right">
+                                                                        CPU
+                                                                    </th>
+                                                                    <th className="pb-2 font-medium text-right">
+                                                                        RAM
+                                                                    </th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="divide-y divide-border/20">
-                                                                {server.processes.map((p) => (
-                                                                    <tr key={p.pid} className="hover:bg-muted/10">
-                                                                        <td className="py-2 text-muted-foreground">{p.pid}</td>
-                                                                        <td className="py-2 font-medium text-foreground max-w-[120px] truncate" title={p.name}>{p.name}</td>
-                                                                        <td className="py-2 text-right text-foreground">{p.cpu !== null ? `${p.cpu.toFixed(1)}%` : "-"}</td>
-                                                                        <td className="py-2 text-right text-foreground">{p.memory !== null ? `${p.memory.toFixed(1)} MB` : "-"}</td>
-                                                                    </tr>
-                                                                ))}
+                                                                {server.processes.map(
+                                                                    (p) => (
+                                                                        <tr
+                                                                            key={
+                                                                                p.pid
+                                                                            }
+                                                                            className="hover:bg-muted/10"
+                                                                        >
+                                                                            <td className="py-2 text-muted-foreground">
+                                                                                {
+                                                                                    p.pid
+                                                                                }
+                                                                            </td>
+                                                                            <td
+                                                                                className="py-2 font-medium text-foreground max-w-[120px] truncate"
+                                                                                title={
+                                                                                    p.name
+                                                                                }
+                                                                            >
+                                                                                {
+                                                                                    p.name
+                                                                                }
+                                                                            </td>
+                                                                            <td className="py-2 text-right text-foreground">
+                                                                                {p.cpu !==
+                                                                                null
+                                                                                    ? `${p.cpu.toFixed(1)}%`
+                                                                                    : "-"}
+                                                                            </td>
+                                                                            <td className="py-2 text-right text-foreground">
+                                                                                {p.memory !==
+                                                                                null
+                                                                                    ? `${p.memory.toFixed(1)} MB`
+                                                                                    : "-"}
+                                                                            </td>
+                                                                        </tr>
+                                                                    ),
+                                                                )}
                                                             </tbody>
                                                         </table>
                                                     </div>
                                                 ) : (
-                                                    <p className="text-xs text-muted-foreground py-4 text-center">No processes reported.</p>
+                                                    <p className="text-xs text-muted-foreground py-4 text-center">
+                                                        No processes reported.
+                                                    </p>
                                                 )}
                                             </div>
 
                                             {/* Open Ports */}
                                             <div className="bg-card/50 border border-border/50 rounded-xl p-4 shadow-sm">
                                                 <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                                                    <Link2 size={16} className="text-primary" /> Exposed Ports
+                                                    <Link2
+                                                        size={16}
+                                                        className="text-primary"
+                                                    />{" "}
+                                                    Exposed Ports
                                                 </h3>
-                                                {server?.ports && server.ports.length > 0 ? (
+                                                {server?.ports &&
+                                                server.ports.length > 0 ? (
                                                     <div className="overflow-x-auto">
                                                         <table className="w-full text-left text-xs">
                                                             <thead>
                                                                 <tr className="text-muted-foreground border-b border-border/30">
-                                                                    <th className="pb-2 font-medium">Port</th>
-                                                                    <th className="pb-2 font-medium">Proto</th>
-                                                                    <th className="pb-2 font-medium">Process</th>
-                                                                    <th className="pb-2 font-medium text-right">State</th>
-                                                                    <th className="pb-2 font-medium text-right">Ping</th>
+                                                                    <th className="pb-2 font-medium">
+                                                                        Port
+                                                                    </th>
+                                                                    <th className="pb-2 font-medium">
+                                                                        Proto
+                                                                    </th>
+                                                                    <th className="pb-2 font-medium">
+                                                                        Process
+                                                                    </th>
+                                                                    <th className="pb-2 font-medium text-right">
+                                                                        State
+                                                                    </th>
+                                                                    <th className="pb-2 font-medium text-right">
+                                                                        Ping
+                                                                    </th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="divide-y divide-border/20">
@@ -809,20 +935,47 @@ export default function ServerDetail() {
                                                                                     className="p-1 rounded text-red-500/80 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                                                                                     title="Delete tracked port"
                                                                                 >
-                                                                                    <Trash2 size={12} />
-                                                                                </button>
-                                                                            )}
-                                                                        </td>
-                                                                        <td className="py-2 text-right text-foreground">
-                                                                            {p.ping_status === 'offline' ? 'offline' : (p.ping_status === 'online' ? `${p.ping_time}ms` : '-')}
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
+                                                                                    {
+                                                                                        p.state
+                                                                                    }
+                                                                                </span>
+                                                                                {p.id && (
+                                                                                    <button
+                                                                                        onClick={() =>
+                                                                                            handleDeletePort(
+                                                                                                p.id,
+                                                                                            )
+                                                                                        }
+                                                                                        className="p-1 rounded text-red-500/80 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                                                                                        title="Delete tracked port"
+                                                                                    >
+                                                                                        <Trash2
+                                                                                            size={
+                                                                                                12
+                                                                                            }
+                                                                                        />
+                                                                                    </button>
+                                                                                )}
+                                                                            </td>
+                                                                            <td className="py-2 text-right text-foreground">
+                                                                                {p.ping_status ===
+                                                                                "offline"
+                                                                                    ? "offline"
+                                                                                    : p.ping_status ===
+                                                                                        "online"
+                                                                                      ? `${p.ping_time}ms`
+                                                                                      : "-"}
+                                                                            </td>
+                                                                        </tr>
+                                                                    ),
+                                                                )}
                                                             </tbody>
                                                         </table>
                                                     </div>
                                                 ) : (
-                                                    <p className="text-xs text-muted-foreground py-4 text-center">No open exposed ports.</p>
+                                                    <p className="text-xs text-muted-foreground py-4 text-center">
+                                                        No open exposed ports.
+                                                    </p>
                                                 )}
                                             </div>
                                         </div>
@@ -845,11 +998,91 @@ export default function ServerDetail() {
                             )}
 
                             <Tab.Item icon={Bell} title="Alerts">
-                                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2 bg-card border border-t-0 border-border/60 rounded-b-lg">
-                                    <Bell size={22} className="opacity-30" />
-                                    <p className="text-xs">
-                                        No alerts for this server.
-                                    </p>
+                                <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-6">
+                                    <div>
+                                        <label className="text-sm font-medium text-foreground">
+                                            Alert Scope
+                                        </label>
+                                        <p className="text-xs text-muted-foreground mb-3">
+                                            Choose which alert configuration
+                                            applies to this server.
+                                        </p>
+                                        <div className="flex gap-4">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="alertScope"
+                                                    value="global"
+                                                    checked={
+                                                        serverAlertTab.alertScope ===
+                                                        "global"
+                                                    }
+                                                    onChange={() =>
+                                                        serverAlertTab.setAlertScope(
+                                                            "global",
+                                                        )
+                                                    }
+                                                    className="accent-primary"
+                                                />
+                                                <span className="text-sm">
+                                                    Global
+                                                </span>
+                                            </label>
+                                            {serverAlertTab.clientUuid && (
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        name="alertScope"
+                                                        value="client"
+                                                        checked={
+                                                            serverAlertTab.alertScope ===
+                                                            "client"
+                                                        }
+                                                        onChange={() =>
+                                                            serverAlertTab.setAlertScope(
+                                                                "client",
+                                                            )
+                                                        }
+                                                        className="accent-primary"
+                                                    />
+                                                    <span className="text-sm">
+                                                        Client
+                                                    </span>
+                                                </label>
+                                            )}
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="radio"
+                                                    name="alertScope"
+                                                    value="server"
+                                                    checked={
+                                                        serverAlertTab.alertScope ===
+                                                        "server"
+                                                    }
+                                                    onChange={() =>
+                                                        serverAlertTab.setAlertScope(
+                                                            "server",
+                                                        )
+                                                    }
+                                                    className="accent-primary"
+                                                />
+                                                <span className="text-sm">
+                                                    Server
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <NodeConfigPreview
+                                        config={
+                                            serverAlertTab.config?.config ??
+                                            null
+                                        }
+                                        name={serverAlertTab.config?.name ?? ""}
+                                        scopeType={serverAlertTab.alertScope}
+                                        scopeLabel={serverAlertTab.scopeLabel}
+                                        isEditable={true}
+                                        configKey={`${serverAlertTab.alertScope}_${serverAlertTab.effectiveScopeId ?? "global"}`}
+                                    />
                                 </div>
                             </Tab.Item>
 
@@ -857,7 +1090,11 @@ export default function ServerDetail() {
                                 <div className="flex flex-col gap-6 p-5 bg-card border border-t-0 border-border/60 rounded-b-lg min-h-[300px]">
                                     <div className="flex items-center justify-between border-b border-border/30 pb-3">
                                         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                            <Cpu size={16} className="text-primary" /> Installed Agent Properties
+                                            <Cpu
+                                                size={16}
+                                                className="text-primary"
+                                            />{" "}
+                                            Installed Agent Properties
                                         </h3>
                                         {(server as any)?.agent && (
                                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${(server as any).agent.status === 'online'
@@ -873,29 +1110,93 @@ export default function ServerDetail() {
                                         <>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {[
-                                                    { label: "Agent Version", value: (server as any).agent.version },
-                                                    { label: "Heartbeat Interval", value: `${(server as any).agent.heartbeat_interval} seconds` },
-                                                    { label: "Metrics Scan Interval", value: `${(server as any).agent.metrics_interval} seconds` },
-                                                    { label: "Port Scan Interval", value: `${(server as any).agent.port_scan_interval} seconds` },
-                                                    { label: "Service Scan Interval", value: `${(server as any).agent.service_scan_interval} seconds` },
-                                                    { label: "Process Scan Interval", value: `${(server as any).agent.process_scan_interval} seconds` },
-                                                    { label: "Update Channel", value: (server as any).agent.update_channel, capitalize: true },
-                                                    { label: "Auto Update Enabled", value: (server as any).agent.auto_update ? "Yes" : "No" },
-                                                    { label: "First Registered", value: new Date((server as any).agent.registered_at).toLocaleString() },
-                                                    { label: "Last Heartbeat", value: (server as any).agent.last_seen_at ? new Date((server as any).agent.last_seen_at).toLocaleString() : "Never" },
+                                                    {
+                                                        label: "Agent Version",
+                                                        value: (server as any)
+                                                            .agent.version,
+                                                    },
+                                                    {
+                                                        label: "Heartbeat Interval",
+                                                        value: `${(server as any).agent.heartbeat_interval} seconds`,
+                                                    },
+                                                    {
+                                                        label: "Metrics Scan Interval",
+                                                        value: `${(server as any).agent.metrics_interval} seconds`,
+                                                    },
+                                                    {
+                                                        label: "Port Scan Interval",
+                                                        value: `${(server as any).agent.port_scan_interval} seconds`,
+                                                    },
+                                                    {
+                                                        label: "Service Scan Interval",
+                                                        value: `${(server as any).agent.service_scan_interval} seconds`,
+                                                    },
+                                                    {
+                                                        label: "Process Scan Interval",
+                                                        value: `${(server as any).agent.process_scan_interval} seconds`,
+                                                    },
+                                                    {
+                                                        label: "Update Channel",
+                                                        value: (server as any)
+                                                            .agent
+                                                            .update_channel,
+                                                        capitalize: true,
+                                                    },
+                                                    {
+                                                        label: "Auto Update Enabled",
+                                                        value: (server as any)
+                                                            .agent.auto_update
+                                                            ? "Yes"
+                                                            : "No",
+                                                    },
+                                                    {
+                                                        label: "First Registered",
+                                                        value: new Date(
+                                                            (server as any)
+                                                                .agent
+                                                                .registered_at,
+                                                        ).toLocaleString(),
+                                                    },
+                                                    {
+                                                        label: "Last Heartbeat",
+                                                        value: (server as any)
+                                                            .agent.last_seen_at
+                                                            ? new Date(
+                                                                  (
+                                                                      server as any
+                                                                  ).agent
+                                                                      .last_seen_at,
+                                                              ).toLocaleString()
+                                                            : "Never",
+                                                    },
                                                 ].map((prop, idx) => (
-                                                    <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-card border border-border/40 hover:bg-muted/5 transition-colors">
-                                                        <span className="text-xs font-medium text-muted-foreground">{prop.label}</span>
-                                                        <span className={`text-xs font-semibold text-foreground ${prop.capitalize ? 'capitalize' : ''}`}>{prop.value}</span>
+                                                    <div
+                                                        key={idx}
+                                                        className="flex items-center justify-between p-3 rounded-lg bg-card border border-border/40 hover:bg-muted/5 transition-colors"
+                                                    >
+                                                        <span className="text-xs font-medium text-muted-foreground">
+                                                            {prop.label}
+                                                        </span>
+                                                        <span
+                                                            className={`text-xs font-semibold text-foreground ${prop.capitalize ? "capitalize" : ""}`}
+                                                        >
+                                                            {prop.value}
+                                                        </span>
                                                     </div>
                                                 ))}
                                             </div>
 
                                             <div className="border-t border-border/30 pt-5 mt-3">
                                                 <h4 className="text-xs font-semibold text-foreground flex items-center gap-2 mb-3">
-                                                    <Terminal size={14} className="text-primary" /> Agent Activity History
+                                                    <Terminal
+                                                        size={14}
+                                                        className="text-primary"
+                                                    />{" "}
+                                                    Agent Activity History
                                                 </h4>
-                                                {(server as any)?.activities && (server as any).activities.length > 0 ? (
+                                                {(server as any)?.activities &&
+                                                (server as any).activities
+                                                    .length > 0 ? (
                                                     <div className="flex flex-col gap-2 max-h-[250px] overflow-y-auto pr-1">
                                                         {(server as any).activities.map((act: any, idx: number) => (
                                                             <div key={idx} className="flex items-start gap-3 p-2.5 rounded-lg bg-card border border-border/30 hover:bg-muted/5 transition-colors">
@@ -914,21 +1215,27 @@ export default function ServerDetail() {
                                                                         {act.description}
                                                                     </p>
                                                                 </div>
-                                                                <span className="text-[10px] text-muted-foreground shrink-0">
-                                                                    {new Date(act.created_at).toLocaleString()}
-                                                                </span>
-                                                            </div>
-                                                        ))}
+                                                            ),
+                                                        )}
                                                     </div>
                                                 ) : (
-                                                    <p className="text-xs text-muted-foreground py-2 text-center">No agent activities logged yet.</p>
+                                                    <p className="text-xs text-muted-foreground py-2 text-center">
+                                                        No agent activities
+                                                        logged yet.
+                                                    </p>
                                                 )}
                                             </div>
                                         </>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-12 text-center">
-                                            <Cpu className="text-muted-foreground/30 mb-3" size={32} />
-                                            <p className="text-xs text-muted-foreground">No agent registered on this server yet.</p>
+                                            <Cpu
+                                                className="text-muted-foreground/30 mb-3"
+                                                size={32}
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                No agent registered on this
+                                                server yet.
+                                            </p>
                                         </div>
                                     )}
                                 </div>
@@ -940,7 +1247,9 @@ export default function ServerDetail() {
                             return (
                                 <Dialog
                                     open={showDelete}
-                                    onOpenChange={(open) => !open && resetDialog()}
+                                    onOpenChange={(open) =>
+                                        !open && resetDialog()
+                                    }
                                 >
                                     <DialogContent className="sm:max-w-md">
                                         <DialogHeader>
@@ -951,81 +1260,103 @@ export default function ServerDetail() {
                                         </DialogHeader>
 
                                         <p className="text-sm text-muted-foreground">
-                                            This will permanently stop monitoring{" "}
+                                            This will permanently stop
+                                            monitoring{" "}
                                             <strong className="text-foreground">
                                                 {initial?.name}
                                             </strong>{" "}
-                                            and remove all collected metrics. This
-                                            cannot be undone.
+                                            and remove all collected metrics.
+                                            This cannot be undone.
                                         </p>
 
-                                        {serverData && !serverData.agent_deleted && (
-                                            <div className="flex flex-col gap-3 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
-                                                <div className="flex items-start gap-2">
-                                                    <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-                                                    <div>
-                                                        <p className="font-semibold text-foreground">Agent Uninstallation Required</p>
-                                                        <p className="text-muted-foreground mt-0.5">
-                                                            You must uninstall the agent service from the target machine before you can delete this server. Run the command for your operating system:
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex flex-col gap-2.5 mt-1 text-foreground">
-                                                    <div>
-                                                        <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                                            Linux (bash)
-                                                        </label>
-                                                        <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
-                                                            <span className="flex-1 whitespace-pre-wrap break-all">
-                                                                {serverData.uninstall_linux_command}
-                                                            </span>
-                                                            <button
-                                                                onClick={() =>
-                                                                    copyToClipboard(
-                                                                        serverData.uninstall_linux_command!,
-                                                                        "uninstall_linux",
-                                                                    )
-                                                                }
-                                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                            >
-                                                                {copiedKey === "uninstall_linux" ? (
-                                                                    <Check className="size-3.5 text-emerald-400" />
-                                                                ) : (
-                                                                    <Copy className="size-3.5" />
-                                                                )}
-                                                            </button>
+                                        {serverData &&
+                                            !serverData.agent_deleted && (
+                                                <div className="flex flex-col gap-3 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
+                                                    <div className="flex items-start gap-2">
+                                                        <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                                                        <div>
+                                                            <p className="font-semibold text-foreground">
+                                                                Agent
+                                                                Uninstallation
+                                                                Required
+                                                            </p>
+                                                            <p className="text-muted-foreground mt-0.5">
+                                                                You must
+                                                                uninstall the
+                                                                agent service
+                                                                from the target
+                                                                machine before
+                                                                you can delete
+                                                                this server. Run
+                                                                the command for
+                                                                your operating
+                                                                system:
+                                                            </p>
                                                         </div>
                                                     </div>
 
-                                                    <div>
-                                                        <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                                            Windows (PowerShell)
-                                                        </label>
-                                                        <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
-                                                            <span className="flex-1 whitespace-pre-wrap break-all">
-                                                                {serverData.uninstall_windows_command}
-                                                            </span>
-                                                            <button
-                                                                onClick={() =>
-                                                                    copyToClipboard(
-                                                                        serverData.uninstall_windows_command!,
-                                                                        "uninstall_windows",
-                                                                    )
-                                                                }
-                                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                            >
-                                                                {copiedKey === "uninstall_windows" ? (
-                                                                    <Check className="size-3.5 text-emerald-400" />
-                                                                ) : (
-                                                                    <Copy className="size-3.5" />
-                                                                )}
-                                                            </button>
+                                                    <div className="flex flex-col gap-2.5 mt-1 text-foreground">
+                                                        <div>
+                                                            <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                                                Linux (bash)
+                                                            </label>
+                                                            <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
+                                                                <span className="flex-1 whitespace-pre-wrap break-all">
+                                                                    {
+                                                                        serverData.uninstall_linux_command
+                                                                    }
+                                                                </span>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        copyToClipboard(
+                                                                            serverData.uninstall_linux_command!,
+                                                                            "uninstall_linux",
+                                                                        )
+                                                                    }
+                                                                    className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                                >
+                                                                    {copiedKey ===
+                                                                    "uninstall_linux" ? (
+                                                                        <Check className="size-3.5 text-emerald-400" />
+                                                                    ) : (
+                                                                        <Copy className="size-3.5" />
+                                                                    )}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        <div>
+                                                            <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                                                Windows
+                                                                (PowerShell)
+                                                            </label>
+                                                            <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
+                                                                <span className="flex-1 whitespace-pre-wrap break-all">
+                                                                    {
+                                                                        serverData.uninstall_windows_command
+                                                                    }
+                                                                </span>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        copyToClipboard(
+                                                                            serverData.uninstall_windows_command!,
+                                                                            "uninstall_windows",
+                                                                        )
+                                                                    }
+                                                                    className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                                >
+                                                                    {copiedKey ===
+                                                                    "uninstall_windows" ? (
+                                                                        <Check className="size-3.5 text-emerald-400" />
+                                                                    ) : (
+                                                                        <Copy className="size-3.5" />
+                                                                    )}
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
 
                                         <div className="flex flex-col gap-2 pt-1">
                                             <label className="text-xs text-muted-foreground">
