@@ -208,8 +208,6 @@ return new class extends Migration
         Schema::create('agent_versions', function (Blueprint $table) {
             $table->id();
             $table->string('version')->unique();
-            $table->string('type');
-            $table->integer('heartbeat_interval')->nullable();
             $table->string('binary_url')->nullable();
             $table->text('description')->nullable();
             $table->timestamps();

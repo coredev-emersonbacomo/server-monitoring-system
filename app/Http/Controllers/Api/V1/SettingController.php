@@ -50,7 +50,6 @@ class SettingController extends Controller
             if (!$latest || $latest->version !== $data['agent_version']) {
                 \App\Models\AgentVersion::create([
                     'version' => $data['agent_version'],
-                    'type' => 'agent_binary_update',
                     'binary_url' => url('/MonitorAgent.exe'),
                     'description' => 'Agent binary updated to version ' . $data['agent_version'],
                 ]);

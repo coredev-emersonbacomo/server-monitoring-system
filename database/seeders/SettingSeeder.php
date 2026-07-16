@@ -30,8 +30,6 @@ class SettingSeeder extends Seeder
         DB::table('agent_versions')->updateOrInsert(
             ['version' => '2.0'],
             [
-                'type' => 'heartbeat_interval_update',
-                'heartbeat_interval' => 5,
                 'description' => 'Initial agent version',
                 'created_at' => now(),
                 'updated_at' => now(),

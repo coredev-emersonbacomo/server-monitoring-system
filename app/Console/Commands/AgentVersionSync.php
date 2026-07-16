@@ -90,7 +90,6 @@ class AgentVersionSync extends Command
         // Create AgentVersion record
         AgentVersion::create([
             'version'    => $nextVersion,
-            'type'       => 'agent_binary_update',
             'binary_url' => url('/MonitorAgent.exe'),
             'description' => sprintf(
                 'Agent binary auto-updated to %s (windows: %s, linux: %s)',

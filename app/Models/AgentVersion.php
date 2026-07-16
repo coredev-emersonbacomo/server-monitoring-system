@@ -8,8 +8,6 @@ class AgentVersion extends Model
 {
     protected $fillable = [
         'version',
-        'type',
-        'heartbeat_interval',
         'binary_url',
         'description',
     ];

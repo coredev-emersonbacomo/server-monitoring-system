@@ -38,6 +38,7 @@ import {
     useConfigByKey,
     useUpsertConfigByKey,
     usePreviewConfig,
+    useUpsertScopedConfig,
 } from "@/hooks/node-config/useNodeConfigs";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -107,16 +108,25 @@ function convertFromFlow(nodes: Node[], edges: Edge[]): NodeConfigGraph {
 interface NodeConfigEditorProps {
     configKey: string;
     defaultName?: string;
+    scopeType?: string;
+    scopeLabel?: string;
+    scopeId?: number | null;
+    readOnly?: boolean;
 }
 
 export function NodeConfigEditor({
     configKey,
     defaultName = "Untitled Config",
+    scopeType,
+    scopeLabel,
+    scopeId,
+    readOnly = false,
 }: NodeConfigEditorProps) {
     const { data: definitions = [], isLoading: defsLoading } = useNodeTypes();
     const { data: savedConfig, isLoading: configLoading } =
         useConfigByKey(configKey);
     const upsertMutation = useUpsertConfigByKey();
+    const scopedUpsertMutation = useUpsertScopedConfig();
     const previewMutation = usePreviewConfig();
     useOutletFullScreen(true);
     const { theme } = useTheme();
@@ -318,18 +328,34 @@ export function NodeConfigEditor({
         return definitions.find((d) => d.type === selectedNode.type) || null;
     }, [selectedNode, definitions]);
 
+    const displayName = useMemo(() => {
+        if (scopeType === "global") return "Global Alert Config";
+        if (scopeType === "client") return "Client Alert Config";
+        if (scopeType === "server") return "Server Alert Config";
+        return name;
+    }, [scopeType, name]);
+
     const handleSave = useCallback(async () => {
         const graph = convertFromFlow(nodes, edges);
         try {
-            await upsertMutation.mutateAsync({
-                slug: configKey,
-                data: { name, config: graph },
-            });
+            if (scopeType && scopeType !== "global") {
+                await scopedUpsertMutation.mutateAsync({
+                    name: displayName,
+                    config: graph,
+                    scope_type: scopeType as "client" | "server",
+                    scope_id: scopeId ?? null,
+                });
+            } else {
+                await upsertMutation.mutateAsync({
+                    slug: configKey,
+                    data: { name: displayName, config: graph },
+                });
+            }
             toast.success("Config saved");
         } catch {
             toast.error("Failed to save config");
         }
-    }, [nodes, edges, name, configKey, upsertMutation]);
+    }, [nodes, edges, displayName, configKey, scopeType, scopeId, upsertMutation, scopedUpsertMutation]);
 
     const handlePreview = useCallback(async () => {
         const graph = convertFromFlow(nodes, edges);
@@ -358,11 +384,13 @@ export function NodeConfigEditor({
     return (
         <div className="flex-1 flex flex-col min-h-0">
             <NodeConfigToolbar
-                name={name}
-                isSaving={upsertMutation.isPending}
+                name={displayName}
+                isSaving={upsertMutation.isPending || scopedUpsertMutation.isPending}
                 onNameChange={setName}
                 onSave={handleSave}
                 onPreview={handlePreview}
+                readOnly={readOnly}
+                scopeLabel={scopeLabel}
             />
             <div className="flex flex-1 min-h-0">
                 <div style={{ width: sidebarWidth, minWidth: sidebarWidth }} className="relative shrink-0 bg-card">
