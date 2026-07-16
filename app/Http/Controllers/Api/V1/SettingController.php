@@ -57,28 +57,8 @@ class SettingController extends Controller
             }
         }
 
-        if (isset($data['heartbeat_interval'])) {
-            $oldInterval = Setting::get('heartbeat_interval');
-            if ($oldInterval !== (string) $data['heartbeat_interval']) {
-                $latest = \App\Models\AgentVersion::orderBy('id', 'desc')->first();
-                $newVersionNumber = '2.0';
-                if ($latest) {
-                    $parts = explode('.', $latest->version);
-                    if (count($parts) === 2) {
-                        $newVersionNumber = $parts[0] . '.' . ((int)$parts[1] + 1);
-                    } else {
-                        $newVersionNumber = '2.' . ($latest->id + 1);
-                    }
-                }
+        // No longer creating AgentVersion records for simple heartbeat_interval updates to prevent update-loop bugs.
 
-                \App\Models\AgentVersion::create([
-                    'version' => $newVersionNumber,
-                    'type' => 'heartbeat_interval_update',
-                    'heartbeat_interval' => (int) $data['heartbeat_interval'],
-                    'description' => 'Heartbeat interval updated to ' . $data['heartbeat_interval'] . 's',
-                ]);
-            }
-        }
 
         unset($data['agent_version']);
 

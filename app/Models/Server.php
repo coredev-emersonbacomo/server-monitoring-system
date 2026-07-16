@@ -96,8 +96,33 @@ class Server extends Model
         return Attribute::get(function () {
             $lastSeen = $this->latestUpdate?->created_at;
             $threshold = (int) Setting::get('offline_threshold', '5');
-
             return self::computeHealth($lastSeen, $threshold);
         });
+    }
+
+    public function checkTokenExpiration(): void
+    {
+        if ($this->status === \App\Enums\ServerStatus::WaitingForInstallation->value) {
+            $activeToken = $this->activeProvisionToken;
+            if (!$activeToken || $activeToken->isExpired()) {
+                $this->update(['status' => \App\Enums\ServerStatus::PendingInstallation->value]);
+
+                if ($activeToken) {
+                    $activeToken->update(['status' => 'expired']);
+                }
+
+                \App\Models\CustomActivityLog::create([
+                    'logable_type' => get_class($this),
+                    'logable_id' => $this->id,
+                    'user_id' => null,
+                    'user' => 'System',
+                    'action' => 'Token Expired',
+                    'details' => json_encode([
+                        'message' => "Installation token expired for server: {$this->name}. Status reverted to Pending Installation.",
+                        'server_name' => $this->name,
+                    ]),
+                ]);
+            }
+        }
     }
 }

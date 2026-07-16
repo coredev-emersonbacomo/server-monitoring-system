@@ -13,6 +13,7 @@ type BootstrapConfig struct {
 	ReverbPort        int    `json:"reverb_port"`
 	ReverbScheme      string `json:"reverb_scheme"`
 	ReverbAppKey      string `json:"reverb_app_key"`
+	IdentityToken     string `json:"identity_token"`
 	confVersion       int
 }
 

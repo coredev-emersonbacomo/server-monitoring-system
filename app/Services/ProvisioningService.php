@@ -45,7 +45,7 @@ class ProvisioningService
 
         // Generate new token
         $rawToken = Str::random(64);
-        $expiresAt = Carbon::now('UTC')->addMinutes(30);
+        $expiresAt = Carbon::now('UTC')->addMinutes(10);
 
         $token = DB::transaction(function () use ($server, $rawToken, $expiresAt, $user) {
             // Revoke any previous active tokens
@@ -82,11 +82,11 @@ class ProvisioningService
             'user_id' => $user?->id,
             'user' => $user ? "{$user->first_name} {$user->last_name}" : 'System',
             'action' => 'Generate Installation Command',
-            'details' => [
+            'details' => json_encode([
                 'message' => "Generated installation command for server: {$server->name}",
                 'server_name' => $server->name,
                 'token_expires_at' => $expiresAt->toIso8601String(),
-            ],
+            ]),
         ]);
 
         // Broadcast event
@@ -161,7 +161,8 @@ class ProvisioningService
         }
 
         $sha256 = file_exists($agentPath) ? hash_file('sha256', $agentPath) : '';
-        $agentVersion = '2.0';
+        $latestAgentVersion = \App\Models\AgentVersion::orderBy('id', 'desc')->first();
+        $agentVersion = $latestAgentVersion ? $latestAgentVersion->version : '2.0';
         $heartbeatInterval = (int) (\App\Models\Setting::get('heartbeat_interval') ?: 5);
 
         return [
@@ -264,6 +265,19 @@ class ProvisioningService
                 'agent_id' => $agent->id,
                 'type' => 'registration_completed',
                 'description' => 'Agent registration completed successfully.',
+            ]);
+
+            \App\Models\CustomActivityLog::create([
+                'logable_type' => get_class($server),
+                'logable_id' => $server->id,
+                'user_id' => null,
+                'user' => 'System',
+                'action' => 'Agent Installed',
+                'details' => json_encode([
+                    'message' => "Agent installed successfully on server: {$server->name}",
+                    'server_name' => $server->name,
+                    'agent_version' => $metadata['agent_version'] ?? '1.0',
+                ]),
             ]);
 
             // Broadcast event
