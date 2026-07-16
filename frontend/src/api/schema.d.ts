@@ -1785,6 +1785,20 @@ export interface components {
             /** Format: date-time */
             updated_at: string | null;
         };
+        /** AgentData */
+        AgentData: {
+            version: string;
+            status: string;
+            registered_at: string;
+            last_seen_at?: string | null;
+            heartbeat_interval: number;
+            metrics_interval: number;
+            port_scan_interval: number;
+            service_scan_interval: number;
+            process_scan_interval: number;
+            update_channel: string;
+            auto_update: boolean;
+        };
         /** AuthUserData */
         AuthUserData: {
             uuid: string;
@@ -1872,6 +1886,34 @@ export interface components {
             nodes: string[];
             edges: string[];
         };
+        /** PortsData */
+        PortsData: {
+            id: number;
+            port: number;
+            protocol: string;
+            state: string;
+            process?: string | null;
+            ping_status?: string | null;
+            ping_time?: number | null;
+        };
+        /** ProcessesData */
+        ProcessesData: {
+            pid: number;
+            name: string;
+            cpu?: number | null;
+            memory?: number | null;
+        };
+        /** ProvisionDetailData */
+        ProvisionDetailData: {
+            conflict: boolean;
+            expires_at: string;
+            token?: string | null;
+            linux_command?: string | null;
+            windows_command?: string | null;
+            generated_at?: string | null;
+            remaining_seconds?: number | null;
+            token_expires_in?: string | null;
+        };
         /** SecopsUserData */
         SecopsUserData: {
             uuid: string;
@@ -1909,24 +1951,9 @@ export interface components {
             operating_system?: string | null;
             status?: string | null;
             stats?: components["schemas"]["StatPointData"][];
-            activeProvisionDetails?: {
-                token: string;
-                expires_at: string;
-                linux_command: string;
-                windows_command: string;
-            } | null;
-            ports?: {
-                port: number;
-                protocol: string;
-                state: string;
-                process: string | null;
-            }[] | null;
-            processes?: {
-                pid: number;
-                name: string;
-                cpu: number | null;
-                memory: number | null;
-            }[] | null;
+            activeProvisionDetails?: components["schemas"]["ProvisionDetailData"] | null;
+            ports?: components["schemas"]["PortsData"][] | null;
+            processes?: components["schemas"]["ProcessesData"][] | null;
             uninstall_linux_command?: string | null;
             uninstall_windows_command?: string | null;
             agent_deleted?: boolean;
@@ -1935,7 +1962,7 @@ export interface components {
                 description: string;
                 created_at: string;
             }[] | null;
-            agent?: string[] | null;
+            agent?: components["schemas"]["AgentData"] | null;
         };
         /** StatPointData */
         StatPointData: {
@@ -2218,8 +2245,7 @@ export interface operations {
                     "application/json": {
                         download_url: string;
                         expected_sha256: Record<string, never> | string;
-                        /** @constant */
-                        agent_version: "2.0";
+                        agent_version: string | "2.0";
                         heartbeat_interval: number;
                         api_url: string;
                         register_url: string;
@@ -2316,8 +2342,8 @@ export interface operations {
                         reverb_app_key: unknown;
                         pending_update: {
                             version: string;
-                            heartbeat_interval: string | null;
-                            binary_url: string | null;
+                            heartbeat_interval: null;
+                            binary_url: string;
                         };
                         configuration: unknown[];
                         pending_commands: {
@@ -2665,8 +2691,7 @@ export interface operations {
                     "application/json": {
                         download_url: string;
                         expected_sha256: Record<string, never> | string;
-                        /** @constant */
-                        agent_version: "2.0";
+                        agent_version: string | "2.0";
                         heartbeat_interval: number;
                         api_url: string;
                         register_url: string;
@@ -2763,8 +2788,8 @@ export interface operations {
                         reverb_app_key: unknown;
                         pending_update: {
                             version: string;
-                            heartbeat_interval: string | null;
-                            binary_url: string | null;
+                            heartbeat_interval: null;
+                            binary_url: string;
                         };
                         configuration: unknown[];
                         pending_commands: {

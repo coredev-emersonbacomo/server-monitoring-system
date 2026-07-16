@@ -277,7 +277,7 @@ async function fetchResolvedConfig(serverId: number): Promise<NodeConfig> {
 
 async function fetchScopedConfig(
     scopeType: AlertScope,
-    scopeId: number | null,
+    scopeId: string | number | null,
 ): Promise<NodeConfig> {
     const res = await api.GET("/v1/node-configs/scoped", {
         params: { query: { scope_type: scopeType, scope_id: scopeId ?? undefined } },
@@ -308,7 +308,7 @@ export function useResolvedConfig(serverId: number | null) {
     });
 }
 
-export function useScopedConfig(scopeType: AlertScope, scopeId: number | null) {
+export function useScopedConfig(scopeType: AlertScope, scopeId: string | number | null) {
     return useQuery({
         queryKey: ["node-config-scoped", scopeType, scopeId],
         queryFn: () => fetchScopedConfig(scopeType, scopeId),
