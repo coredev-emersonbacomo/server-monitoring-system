@@ -557,102 +557,102 @@ export default function ServerDetail() {
                                 {(status === "waiting_for_installation" ||
                                     status === "waiting_for_first_heartbeat" ||
                                     provisionDetails) && (
-                                        <div className="space-y-5">
-                                            <p className="text-sm text-muted-foreground">
-                                                Run the appropriate command directly
-                                                on your server.
-                                            </p>
+                                    <div className="space-y-5">
+                                        <p className="text-sm text-muted-foreground">
+                                            Run the appropriate command directly
+                                            on your server.
+                                        </p>
 
-                                            <div className="space-y-4">
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                        Linux (cURL + bash)
-                                                    </label>
-                                                    <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
-                                                        <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
-                                                            {provisionDetails?.linux_command ||
-                                                                `curl -fsSL ${window.location.origin}/install/linux | bash -s -- <token>`}
-                                                        </span>
-                                                        {provisionDetails?.linux_command && (
-                                                            <button
-                                                                onClick={() =>
-                                                                    copyToClipboard(
-                                                                        provisionDetails.linux_command!,
-                                                                        "linux",
-                                                                    )
-                                                                }
-                                                                className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                            >
-                                                                {copiedKey ===
-                                                                    "linux" ? (
-                                                                    <Check className="size-4 text-emerald-400" />
-                                                                ) : (
-                                                                    <Copy className="size-4" />
-                                                                )}
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                        Windows (PowerShell)
-                                                    </label>
-                                                    <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
-                                                        <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
-                                                            {provisionDetails?.windows_command ||
-                                                                `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
-                                                        </span>
-                                                        {provisionDetails?.windows_command && (
-                                                            <button
-                                                                onClick={() =>
-                                                                    copyToClipboard(
-                                                                        provisionDetails.windows_command!,
-                                                                        "windows",
-                                                                    )
-                                                                }
-                                                                className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                            >
-                                                                {copiedKey ===
-                                                                    "windows" ? (
-                                                                    <Check className="size-4 text-emerald-400" />
-                                                                ) : (
-                                                                    <Copy className="size-4" />
-                                                                )}
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/40 text-xs text-muted-foreground">
-                                                <div>
-                                                    {provisionDetails?.expires_at && (
-                                                        <span>
-                                                            Token expires at:{" "}
-                                                            <strong>
-                                                                {new Date(
-                                                                    provisionDetails.expires_at,
-                                                                ).toLocaleString()}
-                                                            </strong>{" "}
-                                                            <span className="text-amber-500 font-mono ml-1.5">
-                                                                {timeLeft}
-                                                            </span>
-                                                        </span>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                                    Linux (cURL + bash)
+                                                </label>
+                                                <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
+                                                    <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
+                                                        {provisionDetails?.linux_command ||
+                                                            `curl -fsSL ${window.location.origin}/install/linux | bash -s -- <token>`}
+                                                    </span>
+                                                    {provisionDetails?.linux_command && (
+                                                        <button
+                                                            onClick={() =>
+                                                                copyToClipboard(
+                                                                    provisionDetails.linux_command!,
+                                                                    "linux",
+                                                                )
+                                                            }
+                                                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                        >
+                                                            {copiedKey ===
+                                                            "linux" ? (
+                                                                <Check className="size-4 text-emerald-400" />
+                                                            ) : (
+                                                                <Copy className="size-4" />
+                                                            )}
+                                                        </button>
                                                     )}
                                                 </div>
-                                                <button
-                                                    onClick={
-                                                        regenerateProvisionToken
-                                                    }
-                                                    className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-medium cursor-pointer"
-                                                >
-                                                    <RefreshCw size={12} />
-                                                    Regenerate Token
-                                                </button>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                                    Windows (PowerShell)
+                                                </label>
+                                                <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
+                                                    <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
+                                                        {provisionDetails?.windows_command ||
+                                                            `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
+                                                    </span>
+                                                    {provisionDetails?.windows_command && (
+                                                        <button
+                                                            onClick={() =>
+                                                                copyToClipboard(
+                                                                    provisionDetails.windows_command!,
+                                                                    "windows",
+                                                                )
+                                                            }
+                                                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                        >
+                                                            {copiedKey ===
+                                                            "windows" ? (
+                                                                <Check className="size-4 text-emerald-400" />
+                                                            ) : (
+                                                                <Copy className="size-4" />
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    )}
+
+                                        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/40 text-xs text-muted-foreground">
+                                            <div>
+                                                {provisionDetails?.expires_at && (
+                                                    <span>
+                                                        Token expires at:{" "}
+                                                        <strong>
+                                                            {new Date(
+                                                                provisionDetails.expires_at,
+                                                            ).toLocaleString()}
+                                                        </strong>{" "}
+                                                        <span className="text-amber-500 font-mono ml-1.5">
+                                                            {timeLeft}
+                                                        </span>
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={
+                                                    regenerateProvisionToken
+                                                }
+                                                className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-medium cursor-pointer"
+                                            >
+                                                <RefreshCw size={12} />
+                                                Regenerate Token
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -850,7 +850,7 @@ export default function ServerDetail() {
                                                                                 }
                                                                             </td>
                                                                             <td
-                                                                                className="py-2 font-medium text-foreground max-w-[120px] truncate"
+                                                                                className="py-2 font-medium text-foreground max-w-30 truncate"
                                                                                 title={
                                                                                     p.name
                                                                                 }
@@ -917,23 +917,39 @@ export default function ServerDetail() {
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="divide-y divide-border/20">
-                                                                {server.ports.map((p, idx) => (
-                                                                    <tr key={idx} className="hover:bg-muted/10">
-                                                                        <td className="py-2 font-semibold text-foreground">{p.port}</td>
-                                                                        <td className="py-2 text-muted-foreground uppercase">{p.protocol}</td>
-                                                                        <td className="py-2 text-foreground font-medium">{p.process || "unknown"}</td>
-                                                                        <td className="py-2 text-right flex items-center justify-end gap-1.5">
-                                                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${p.state === 'listening'
-                                                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                                                : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
-                                                                                }`}>
-                                                                                {p.state}
-                                                                            </span>
-                                                                            {p.id && (
-                                                                                <button
-                                                                                    onClick={() => handleDeletePort(p.id)}
-                                                                                    className="p-1 rounded text-red-500/80 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
-                                                                                    title="Delete tracked port"
+                                                                {server.ports.map(
+                                                                    (
+                                                                        p,
+                                                                        idx,
+                                                                    ) => (
+                                                                        <tr
+                                                                            key={
+                                                                                idx
+                                                                            }
+                                                                            className="hover:bg-muted/10"
+                                                                        >
+                                                                            <td className="py-2 font-semibold text-foreground">
+                                                                                {
+                                                                                    p.port
+                                                                                }
+                                                                            </td>
+                                                                            <td className="py-2 text-muted-foreground uppercase">
+                                                                                {
+                                                                                    p.protocol
+                                                                                }
+                                                                            </td>
+                                                                            <td className="py-2 text-foreground font-medium">
+                                                                                {p.process ||
+                                                                                    "unknown"}
+                                                                            </td>
+                                                                            <td className="py-2 text-right flex items-center justify-end gap-1.5">
+                                                                                <span
+                                                                                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                                                                                        p.state ===
+                                                                                        "listening"
+                                                                                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                                                                            : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                                                                                    }`}
                                                                                 >
                                                                                     {
                                                                                         p.state
@@ -1097,10 +1113,14 @@ export default function ServerDetail() {
                                             Installed Agent Properties
                                         </h3>
                                         {(server as any)?.agent && (
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${(server as any).agent.status === 'online'
-                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
-                                                }`}>
+                                            <span
+                                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${
+                                                    (server as any).agent
+                                                        .status === "online"
+                                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                                        : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                                                }`}
+                                            >
                                                 {(server as any).agent.status}
                                             </span>
                                         )}
@@ -1197,23 +1217,49 @@ export default function ServerDetail() {
                                                 {(server as any)?.activities &&
                                                 (server as any).activities
                                                     .length > 0 ? (
-                                                    <div className="flex flex-col gap-2 max-h-[250px] overflow-y-auto pr-1">
-                                                        {(server as any).activities.map((act: any, idx: number) => (
-                                                            <div key={idx} className="flex items-start gap-3 p-2.5 rounded-lg bg-card border border-border/30 hover:bg-muted/5 transition-colors">
-                                                                <div className={cn(
-                                                                    "w-2 h-2 rounded-full mt-1.5 shrink-0",
-                                                                    act.type === 'agent_uninstalled' ? 'bg-red-500' :
-                                                                        act.type === 'agent_updated' ? 'bg-blue-500' :
-                                                                            act.type === 'server_online' ? 'bg-emerald-500' :
-                                                                                act.type === 'registration_completed' ? 'bg-purple-500' : 'bg-primary'
-                                                                )} />
-                                                                <div className="flex-1 min-w-0">
-                                                                    <p className="text-[11px] font-semibold text-foreground capitalize">
-                                                                        {act.type.replace(/_/g, ' ')}
-                                                                    </p>
-                                                                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                                                                        {act.description}
-                                                                    </p>
+                                                    <div className="flex flex-col gap-2 max-h-62.5 overflow-y-auto pr-1">
+                                                        {(
+                                                            server as any
+                                                        ).activities.map(
+                                                            (
+                                                                act: any,
+                                                                idx: number,
+                                                            ) => (
+                                                                <div
+                                                                    key={idx}
+                                                                    className="flex items-start gap-3 p-2.5 rounded-lg bg-card border border-border/30 hover:bg-muted/5 transition-colors"
+                                                                >
+                                                                    <div
+                                                                        className={cn(
+                                                                            "w-2 h-2 rounded-full mt-1.5 shrink-0",
+                                                                            act.type ===
+                                                                                "agent_uninstalled"
+                                                                                ? "bg-red-500"
+                                                                                : act.type ===
+                                                                                    "agent_updated"
+                                                                                  ? "bg-blue-500"
+                                                                                  : act.type ===
+                                                                                      "server_online"
+                                                                                    ? "bg-emerald-500"
+                                                                                    : act.type ===
+                                                                                        "registration_completed"
+                                                                                      ? "bg-purple-500"
+                                                                                      : "bg-primary",
+                                                                        )}
+                                                                    />
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <p className="text-[11px] font-semibold text-foreground capitalize">
+                                                                            {act.type.replace(
+                                                                                /_/g,
+                                                                                " ",
+                                                                            )}
+                                                                        </p>
+                                                                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                                                                            {
+                                                                                act.description
+                                                                            }
+                                                                        </p>
+                                                                    </div>
                                                                 </div>
                                                             ),
                                                         )}
@@ -1369,7 +1415,9 @@ export default function ServerDetail() {
                                             <Input
                                                 value={confirmText}
                                                 onChange={(e) =>
-                                                    setConfirmText(e.target.value)
+                                                    setConfirmText(
+                                                        e.target.value,
+                                                    )
                                                 }
                                                 placeholder={initial?.name}
                                                 autoFocus
