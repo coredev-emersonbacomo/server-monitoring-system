@@ -25,7 +25,7 @@ class ServerData extends Data
         public string $updated_at,
 
         public string $record_status,
-        
+
         public ?string $cpu_model = null,
 
         public ?int $cpu_cores = null,
@@ -72,7 +72,7 @@ class ServerData extends Data
                 $activeDetails = [
                     'token' => $token,
                     'expires_at' => $activeToken->expires_at->copy()->utc()->toIso8601String(),
-                    'linux_command' => 'curl -fsSL ' . url('/install/linux') . ' | bash -s -- ' . $token,
+                    'linux_command' => 'sudo curl -fsSL ' . url('/install/linux') . ' | sudo bash -s -- ' . $token,
                     'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/install/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl `$APP_URL"',
                 ];
             }
@@ -80,7 +80,7 @@ class ServerData extends Data
 
         $tokenModel = $server->provisionTokens()->latest()->first();
         $token = $tokenModel ? $tokenModel->token : '';
-        $uninstallLinux = 'curl -fsSL ' . url('/uninstall/linux') . ' | bash -s -- ' . $token;
+        $uninstallLinux = 'sudo curl -fsSL ' . url('/uninstall/linux') . ' | sudo bash -s -- ' . $token;
         $uninstallWindows = 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/uninstall/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl `$APP_URL"';
 
         $agent = $server->agent;
