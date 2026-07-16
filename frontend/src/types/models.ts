@@ -5,12 +5,16 @@ import type { components, operations } from "@/api/schema";
 
 export type ActionItemData = components["schemas"]["ActionItemData"];
 export type ActivityLog = components["schemas"]["ActivityLog"];
+export type AgentData = components["schemas"]["AgentData"];
 export type AuthUserData = components["schemas"]["AuthUserData"];
 export type ClientData = components["schemas"]["ClientData"];
 export type DashboardStatsData = components["schemas"]["DashboardStatsData"];
 export type GlobalAlert = components["schemas"]["GlobalAlert"];
 export type NodeConfig = components["schemas"]["NodeConfig"];
 export type NodeConfigData = components["schemas"]["NodeConfigData"];
+export type PortsData = components["schemas"]["PortsData"];
+export type ProcessesData = components["schemas"]["ProcessesData"];
+export type ProvisionDetailData = components["schemas"]["ProvisionDetailData"];
 export type SecopsUserData = components["schemas"]["SecopsUserData"];
 export type SecurityActivityData = components["schemas"]["SecurityActivityData"];
 export type ServerData = components["schemas"]["ServerData"];

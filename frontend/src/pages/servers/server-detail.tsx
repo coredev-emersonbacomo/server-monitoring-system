@@ -35,7 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tab } from "@/components/ui/tab";
 import { ServerStatChart } from "@/components/dashboard/ServerStatChart";
-import type { StatPointData } from "@/types/models";
+import type { StatPointData, ProvisionDetailData } from "@/types/models";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import {
     Dialog,
@@ -49,10 +49,7 @@ import { useDeleteServer } from "@/hooks/useDeleteServer";
 import api from "@/api/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { NodeConfigPreview } from "@/components/node-config/NodeConfigPreview";
-import {
-    useResolvedConfig,
-    useScopedConfig,
-} from "@/hooks/node-config/useNodeConfigs";
+import { useScopedConfig } from "@/hooks/node-config/useNodeConfigs";
 
 // ─── Server Alert Tab ────────────────────────────────────────────────────────
 
@@ -179,6 +176,32 @@ export default function ServerDetail() {
     const [, setWsStatus] = useState<WsStatus>("connecting");
     const [history, setHistory] = useState<StatPointData[]>([]);
 
+    const queryClient = useQueryClient();
+    const serverAlertTab = useServerAlertTab(
+        uuid!,
+        initial?.name ?? "Unknown",
+        initial?.client_uuid ?? null,
+        initial?.client_name ?? null,
+    );
+    const [showDelete, setShowDelete] = useState(false);
+    const [confirmText, setConfirmText] = useState("");
+    const deleteServer = useDeleteServer();
+
+    const [provisionDetails, setProvisionDetails] =
+        useState<ProvisionDetailData | null>(
+            initial?.activeProvisionDetails ?? null,
+        );
+    const [generating, setGenerating] = useState(false);
+    const [copiedKey, setCopiedKey] = useState<
+        "linux" | "windows" | "uninstall_linux" | "uninstall_windows" | null
+    >(null);
+    const [timeLeft, setTimeLeft] = useState<string>("");
+
+    const [isEditingInfo, setIsEditingInfo] = useState(false);
+    const [editName, setEditName] = useState("");
+    const [editDescription, setEditDescription] = useState("");
+    const [savingInfo, setSavingInfo] = useState(false);
+
     useServerSocket(uuid!, setWsStatus, () => {
         toast.success("Agent successfully uninstalled!");
         queryClient.invalidateQueries({
@@ -229,33 +252,6 @@ export default function ServerDetail() {
             );
         }
     }, [initial, setTrail, uuid, allClient]);
-
-    const queryClient = useQueryClient();
-    const serverAlertTab = useServerAlertTab(
-        uuid!,
-        initial?.name ?? "Unknown",
-        initial?.client_uuid ?? null,
-        initial?.client_name ?? null,
-    );
-    const [showDelete, setShowDelete] = useState(false);
-    const [confirmText, setConfirmText] = useState("");
-    const deleteServer = useDeleteServer();
-
-    const [provisionDetails, setProvisionDetails] = useState<{
-        linux_command: string;
-        windows_command: string;
-        expires_at: string;
-    } | null>((initial?.activeProvisionDetails as any) ?? null);
-    const [generating, setGenerating] = useState(false);
-    const [copiedKey, setCopiedKey] = useState<
-        "linux" | "windows" | "uninstall_linux" | "uninstall_windows" | null
-    >(null);
-    const [timeLeft, setTimeLeft] = useState<string>("");
-
-    const [isEditingInfo, setIsEditingInfo] = useState(false);
-    const [editName, setEditName] = useState("");
-    const [editDescription, setEditDescription] = useState("");
-    const [savingInfo, setSavingInfo] = useState(false);
 
     useEffect(() => {
         if (initial) {
@@ -309,12 +305,14 @@ export default function ServerDetail() {
             );
             if (error) {
                 if (response?.status === 409) {
-                    setProvisionDetails(error as any);
+                    setProvisionDetails(
+                        error as unknown as ProvisionDetailData,
+                    );
                 } else {
                     toast.error("Failed to generate provision token.");
                 }
             } else if (data) {
-                setProvisionDetails(data as any);
+                setProvisionDetails(data);
                 toast.success("Provision token generated successfully!");
                 queryClient.invalidateQueries({
                     queryKey: ["server", initial.uuid],
@@ -340,7 +338,7 @@ export default function ServerDetail() {
             if (error) {
                 toast.error("Failed to regenerate token.");
             } else if (data) {
-                setProvisionDetails(data as any);
+                setProvisionDetails(data);
                 toast.success("Provision token regenerated!");
                 queryClient.invalidateQueries({
                     queryKey: ["server", initial.uuid],
@@ -377,6 +375,7 @@ export default function ServerDetail() {
             } else {
                 navigate(`/clients/${initial.client_uuid}`);
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             const msg =
                 err?.message || "Failed to delete server. Please try again.";
@@ -389,12 +388,9 @@ export default function ServerDetail() {
         if (!confirm("Are you sure you want to delete this tracked port?"))
             return;
         try {
-            await api.DELETE(
-                "/v1/ports/{id}" as any,
-                {
-                    params: { path: { id: portId } },
-                } as any,
-            );
+            await api.DELETE("/v1/ports/{id}", {
+                params: { path: { id: portId } },
+            });
             toast.success("Tracked port deleted successfully!");
             queryClient.invalidateQueries({
                 queryKey: ["server", initial.uuid],
@@ -427,7 +423,7 @@ export default function ServerDetail() {
         }
         setSavingInfo(true);
         try {
-            const { error } = await (api.PATCH as any)(
+            const { error } = await api.PATCH(
                 "/v1/clients/{clientUuid}/servers/{serverUuid}",
                 {
                     params: {
@@ -860,13 +856,13 @@ export default function ServerDetail() {
                                                                                 }
                                                                             </td>
                                                                             <td className="py-2 text-right text-foreground">
-                                                                                {p.cpu !==
+                                                                                {p.cpu !=
                                                                                 null
                                                                                     ? `${p.cpu.toFixed(1)}%`
                                                                                     : "-"}
                                                                             </td>
                                                                             <td className="py-2 text-right text-foreground">
-                                                                                {p.memory !==
+                                                                                {p.memory !=
                                                                                 null
                                                                                     ? `${p.memory.toFixed(1)} MB`
                                                                                     : "-"}
@@ -1103,7 +1099,7 @@ export default function ServerDetail() {
                             </Tab.Item>
 
                             <Tab.Item icon={Cpu} title="Agent">
-                                <div className="flex flex-col gap-6 p-5 bg-card border border-t-0 border-border/60 rounded-b-lg min-h-[300px]">
+                                <div className="flex flex-col gap-6 p-5 bg-card border border-t-0 border-border/60 rounded-b-lg min-h-75">
                                     <div className="flex items-center justify-between border-b border-border/30 pb-3">
                                         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                                             <Cpu
@@ -1112,79 +1108,75 @@ export default function ServerDetail() {
                                             />{" "}
                                             Installed Agent Properties
                                         </h3>
-                                        {(server as any)?.agent && (
+                                        {server?.agent && (
                                             <span
                                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${
-                                                    (server as any).agent
-                                                        .status === "online"
+                                                    server.agent.status ===
+                                                    "online"
                                                         ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                                                         : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
                                                 }`}
                                             >
-                                                {(server as any).agent.status}
+                                                {server.agent.status}
                                             </span>
                                         )}
                                     </div>
 
-                                    {(server as any)?.agent ? (
+                                    {server?.agent ? (
                                         <>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {[
                                                     {
                                                         label: "Agent Version",
-                                                        value: (server as any)
-                                                            .agent.version,
+                                                        value: server.agent
+                                                            .version,
                                                     },
                                                     {
                                                         label: "Heartbeat Interval",
-                                                        value: `${(server as any).agent.heartbeat_interval} seconds`,
+                                                        value: `${server.agent.heartbeat_interval} seconds`,
                                                     },
                                                     {
                                                         label: "Metrics Scan Interval",
-                                                        value: `${(server as any).agent.metrics_interval} seconds`,
+                                                        value: `${server.agent.metrics_interval} seconds`,
                                                     },
                                                     {
                                                         label: "Port Scan Interval",
-                                                        value: `${(server as any).agent.port_scan_interval} seconds`,
+                                                        value: `${server.agent.port_scan_interval} seconds`,
                                                     },
                                                     {
                                                         label: "Service Scan Interval",
-                                                        value: `${(server as any).agent.service_scan_interval} seconds`,
+                                                        value: `${server.agent.service_scan_interval} seconds`,
                                                     },
                                                     {
                                                         label: "Process Scan Interval",
-                                                        value: `${(server as any).agent.process_scan_interval} seconds`,
+                                                        value: `${server.agent.process_scan_interval} seconds`,
                                                     },
                                                     {
                                                         label: "Update Channel",
-                                                        value: (server as any)
-                                                            .agent
+                                                        value: server.agent
                                                             .update_channel,
                                                         capitalize: true,
                                                     },
                                                     {
                                                         label: "Auto Update Enabled",
-                                                        value: (server as any)
-                                                            .agent.auto_update
+                                                        value: server.agent
+                                                            .auto_update
                                                             ? "Yes"
                                                             : "No",
                                                     },
                                                     {
                                                         label: "First Registered",
                                                         value: new Date(
-                                                            (server as any)
-                                                                .agent
+                                                            server.agent
                                                                 .registered_at,
                                                         ).toLocaleString(),
                                                     },
                                                     {
                                                         label: "Last Heartbeat",
-                                                        value: (server as any)
-                                                            .agent.last_seen_at
+                                                        value: server.agent
+                                                            .last_seen_at
                                                             ? new Date(
-                                                                  (
-                                                                      server as any
-                                                                  ).agent
+                                                                  server.agent
                                                                       .last_seen_at,
                                                               ).toLocaleString()
                                                             : "Never",
@@ -1214,15 +1206,12 @@ export default function ServerDetail() {
                                                     />{" "}
                                                     Agent Activity History
                                                 </h4>
-                                                {(server as any)?.activities &&
-                                                (server as any).activities
-                                                    .length > 0 ? (
+                                                {server?.activities &&
+                                                server.activities.length > 0 ? (
                                                     <div className="flex flex-col gap-2 max-h-62.5 overflow-y-auto pr-1">
-                                                        {(
-                                                            server as any
-                                                        ).activities.map(
+                                                        {server.activities.map(
                                                             (
-                                                                act: any,
+                                                                act,
                                                                 idx: number,
                                                             ) => (
                                                                 <div
@@ -1289,7 +1278,7 @@ export default function ServerDetail() {
                         </Tab>
 
                         {(() => {
-                            const serverData = initial as any;
+                            const serverData = initial;
                             return (
                                 <Dialog
                                     open={showDelete}
