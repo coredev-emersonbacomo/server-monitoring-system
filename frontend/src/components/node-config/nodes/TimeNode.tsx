@@ -5,6 +5,7 @@ import { getInputType, getOutputType } from './socketTypes';
 import { NodeSocket } from './node-socket';
 import { DurationInput } from './DurationInput';
 import { colonToSeconds, secondsToColon } from './duration-utils';
+import { BaseNode } from './BaseNode';
 
 const TIME_CONFIGS: Record<string, { icon: React.ComponentType<{ size?: number }>; label: string; color: string }> = {
     check_after: { icon: Clock, label: 'Check After', color: '#10b981' },
@@ -43,7 +44,7 @@ function isValidMaxValue(v: string): boolean {
     return !isNaN(n) && n >= 0;
 }
 
-export const TimeNode = memo(({ id, data, type }: NodeProps) => {
+export const TimeNode = memo(({ id, data, type, selected }: NodeProps) => {
     const { updateNodeData } = useReactFlow();
     const allNodes = useStore((s) => s.nodeLookup);
     const allEdges = useStore((s) => s.edgeLookup);
@@ -114,8 +115,7 @@ export const TimeNode = memo(({ id, data, type }: NodeProps) => {
     }, []);
 
     return (
-        <div className="relative rounded-xl bg-card border-2 shadow-sm min-w-[220px]"
-            style={{ borderColor: `${color}99` }}>
+        <BaseNode width="w-[220px]" borderColor={`${color}99`} selected={selected}>
             <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5 border-b" style={{ borderColor: `${color}15` }}>
                 <div className="p-1.5 rounded-lg shrink-0" style={{ backgroundColor: `${color}20`, color }}>
                     <Icon size={14} />
@@ -151,7 +151,7 @@ export const TimeNode = memo(({ id, data, type }: NodeProps) => {
                                 onBlur={handleMaxBlur}
                                 onKeyDown={handleMaxKeyDown}
                                 onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
-                                className={`flex-1 text-xs font-mono text-foreground bg-background border rounded px-1.5 py-1 focus:outline-none focus:ring-1 ${
+                                className={`flex-1 min-w-0 w-full text-xs font-mono text-foreground bg-background border rounded px-1.5 py-1 focus:outline-none focus:ring-1 ${
                                     maxHasError
                                         ? 'border-red-500 focus:ring-red-500/50'
                                         : 'border-input focus:ring-ring'
@@ -168,6 +168,6 @@ export const TimeNode = memo(({ id, data, type }: NodeProps) => {
                     />
                 )}
             </div>
-        </div>
+        </BaseNode>
     );
 });

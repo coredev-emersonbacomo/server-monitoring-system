@@ -11,6 +11,7 @@ Route::middleware('auth:jwt')->group(function () {
         Route::post('/servers', [ServerController::class, 'store']);
         Route::get('/servers/{serverUuid}', [ServerController::class, 'show']);
         Route::patch('/servers/{serverUuid}', [ServerController::class, 'update']);
+        Route::patch('/servers/{serverUuid}/alert-scope', [ServerController::class, 'updateAlertScope']);
         Route::delete('/servers/{serverUuid}', [ServerController::class, 'destroy']);
     });
 

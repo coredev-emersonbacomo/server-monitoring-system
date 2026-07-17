@@ -60,6 +60,8 @@ class ServerData extends Data
 
         /** @var AgentData|null */
         public ?AgentData $agent = null,
+
+        public string $alert_scope = 'global',
     ) {}
 
     public static function fromModel(Server $server): self
@@ -155,6 +157,7 @@ class ServerData extends Data
             agent_deleted: $agent ? (bool) $server->agent_deleted : true,
             activities: $activities,
             agent: $agentData,
+            alert_scope: $server->alert_scope ?? 'global',
         );
     }
 }

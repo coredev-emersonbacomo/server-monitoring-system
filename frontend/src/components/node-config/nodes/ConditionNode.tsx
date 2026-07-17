@@ -5,6 +5,7 @@ import { getInputType, getOutputType } from './socketTypes';
 import { NodeSocket } from './node-socket';
 import { useBlurNumber } from './useBlurNumber';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { BaseNode } from './BaseNode';
 
 const OPERATORS: Record<string, string> = {
     greater_than: 'Greater Than',
@@ -23,7 +24,7 @@ function useMultiInputCount(nodeId: string, handleId: string): number {
     return edges.filter(e => e.target === nodeId && e.targetHandle === handleId).length;
 }
 
-export const ConditionNode = memo(({ id, data, type }: NodeProps) => {
+export const ConditionNode = memo(({ id, data, type, selected }: NodeProps) => {
     const { updateNodeData } = useReactFlow();
     const operator = (data.operator as string) || 'greater_than';
     const isBetween = operator === 'between';
@@ -55,7 +56,7 @@ export const ConditionNode = memo(({ id, data, type }: NodeProps) => {
     const maxVal = useBlurNumber((data.max as number) ?? 0, (v) => commit('max', v));
 
     return (
-        <div className="relative rounded-xl bg-card border-2 border-amber-400/60 shadow-sm min-w-[220px]">
+        <BaseNode width="w-[220px]" borderColor="#fbbf24" selected={selected}>
             <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5 border-b border-amber-400/10">
                 <div className="p-1.5 rounded-lg bg-amber-500/10">
                     <GitCompare size={14} className="text-amber-400" />
@@ -78,11 +79,11 @@ export const ConditionNode = memo(({ id, data, type }: NodeProps) => {
                             onChange={valueA.onChange}
                             onBlur={valueA.onBlur}
                             onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
-                            className="ml-1.5 min-w-0 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                            className="ml-1.5 mr-3 min-w-0 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
                         />
                     )}
                 </NodeSocket>
-                <div className="flex-1" />
+                {aConnected && <div className="flex-1" />}
                 <NodeSocket type="source" position={Position.Right} id="output" def={outDef}
                     label={outDef?.label || 'Result'} />
             </div>
@@ -112,7 +113,7 @@ export const ConditionNode = memo(({ id, data, type }: NodeProps) => {
                                     onChange={min.onChange}
                                     onBlur={min.onBlur}
                                     onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
-                                    className="ml-2 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                                    className="ml-2 mr-3 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
                                 />
                             )}
                         </NodeSocket>
@@ -127,7 +128,7 @@ export const ConditionNode = memo(({ id, data, type }: NodeProps) => {
                                     onChange={maxVal.onChange}
                                     onBlur={maxVal.onBlur}
                                     onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
-                                    className="ml-2 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                                    className="ml-2 mr-3 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
                                 />
                             )}
                         </NodeSocket>
@@ -144,12 +145,12 @@ export const ConditionNode = memo(({ id, data, type }: NodeProps) => {
                                 onChange={threshold.onChange}
                                 onBlur={threshold.onBlur}
                                 onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
-                                className="ml-1.5 min-w-0 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                                className="ml-1.5 mr-3 min-w-0 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
                             />
                         )}
                     </NodeSocket>
                 </div>
             )}
-        </div>
+        </BaseNode>
     );
 });

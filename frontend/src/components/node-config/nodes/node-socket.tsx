@@ -12,16 +12,17 @@ interface NodeSocketProps {
   label?: string;
   labelColor?: string;
   children?: React.ReactNode;
+  className?: string;
 }
 
-export function NodeSocket({ type, position, id, def, color, elongated, label, labelColor, children }: NodeSocketProps) {
+export function NodeSocket({ type, position, id, def, color, elongated, label, labelColor, children, className }: NodeSocketProps) {
   const bg = color ?? (def ? TYPE_COLORS[def.type] : '#9ca3af');
   const isInput = type === 'target';
   const labelStyle = labelColor ? { color: labelColor } : undefined;
 
   return (
-    <div className={`flex items-center min-h-[28px] ${isInput ? '' : 'justify-end'}`}>
-      <span className="relative flex items-center">
+    <div className={`flex items-center min-h-[28px] ${isInput ? '' : 'justify-end'} ${children ? 'flex-1 min-w-0' : ''} ${className || ''}`}>
+      <span className={`relative flex items-center ${children ? 'flex-1 min-w-0' : ''}`}>
         <Tooltip>
           <TooltipTrigger asChild>
             <Handle
@@ -29,8 +30,8 @@ export function NodeSocket({ type, position, id, def, color, elongated, label, l
               position={position}
               id={id}
               className={elongated
-                ? "!w-3 !h-6 !border-2 !border-card !rounded-md"
-                : "!w-3 !h-3 !border-2 !border-card"
+                ? "w-3! h-6! border-2! border-card! rounded-md!"
+                : "w-3! h-3! border-2! border-card!"
               }
               style={{ backgroundColor: bg }}
             />

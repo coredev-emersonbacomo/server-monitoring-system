@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('location')->nullable(false);
             $table->text('banner_image_url')->default(config('app.default_client_banner_img_unsplash'));
             $table->string('record_status')->default('active');
+            $table->string('alert_scope')->default('global');
 
             $table->timestamps();
         });

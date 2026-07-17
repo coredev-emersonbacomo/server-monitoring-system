@@ -26,7 +26,8 @@ interface SidebarNavProps {
 export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
     const location = useLocation();
     const { logout, user } = useAuthContext();
-    const { isFullScreen, isSidebarCollapsed, setSidebarCollapsed } = useOutletLayout();
+    const { isFullScreen, isSidebarCollapsed, setSidebarCollapsed } =
+        useOutletLayout();
 
     const [popoverProfileOpen, setPopoverProfileOpen] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
@@ -140,13 +141,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                                 align="center"
                                 hidden={!isCollapsed}
                                 className={twMerge(
-                                    "relative bg-primary text-primary-foreground ring-transparent text-md font-semibold",
-                                    "before:content-[''] before:absolute before:size-2 before:rotate-45",
-                                    "before:bg-primary before:ring-transparent",
-                                    "data-[side=top]:before:-bottom-1 data-[side=top]:before:left-1/2 data-[side=top]:before:-translate-x-1/2",
-                                    "data-[side=bottom]:before:-top-1 data-[side=bottom]:before:left-1/2 data-[side=bottom]:before:-translate-x-1/2",
-                                    "data-[side=left]:before:-right-1 data-[side=left]:before:top-1/2 data-[side=left]:before:-translate-y-1/2",
-                                    "data-[side=right]:before:-left-1 data-[side=right]:before:top-1/2 data-[side=right]:before:-translate-y-1/2",
+                                    "relative bg-foreground text-background ring-transparent text-md font-semibold z-9999",
+                                    "[&>svg]:hidden",
                                 )}
                             >
                                 <p>{link.name}</p>

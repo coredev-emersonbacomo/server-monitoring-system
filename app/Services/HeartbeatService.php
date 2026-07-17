@@ -392,6 +392,7 @@ class HeartbeatService
             $cmdId = $ack['command_id'] ?? null;
             if (!$cmdId) continue;
 
+            /** @var AgentCommand|null $command */
             $command = AgentCommand::find($cmdId);
             if (!$command) continue;
 
@@ -421,20 +422,14 @@ class HeartbeatService
 
     private function triggerNodeConfigForServer(Server $server, string $status): void
     {
-        $config = NodeConfig::where('slug', 'alerts')->where('enabled', true)->first();
-        if (!$config) return;
+        $config = NodeConfig::resolveForServer($server->uuid);
+        if (!$config || !$config->enabled) return;
 
-        $configData = $config->getParsedConfig();
-        $nodes = $configData['nodes'] ?? [];
+        $engine = new \App\NodeConfig\Engine\NodeConfigEngine(
+            app(\App\NodeConfig\Engine\NodeRegistry::class)
+        );
 
-        $sourceNodeId = null;
-        foreach ($nodes as $node) {
-            if (($node['type'] ?? '') === 'metric' && ($node['settings']['metric_type'] ?? '') === 'server_status') {
-                $sourceNodeId = $node['id'];
-                break;
-            }
-        }
-
+        $sourceNodeId = $engine->findMetricNode($config, 'server_status');
         if (!$sourceNodeId) return;
 
         EvaluateNodeConfig::dispatch($config->id, $sourceNodeId, $status, [

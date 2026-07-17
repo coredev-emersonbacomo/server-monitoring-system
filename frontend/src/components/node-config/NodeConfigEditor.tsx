@@ -7,6 +7,7 @@ import {
     type DragEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { useSearchParams } from "react-router-dom";
 import {
     ReactFlow,
     type Node,
@@ -55,6 +56,8 @@ const generateId = () => `node_${++nodeIdCounter}_${Date.now()}`;
 const edgeIdCounter = () =>
     `edge_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
+const SNAP_GRID: [number, number] = [10, 10];
+
 function toFlowNodes(
     configNodes: NodeConfigGraph["nodes"],
     definitions: NodeTypeDefinition[],
@@ -80,7 +83,7 @@ function toFlowEdges(configEdges: NodeConfigGraph["edges"]): Edge[] {
         target: e.target,
         sourceHandle: e.sourceHandle,
         targetHandle: e.targetHandle,
-        type: "smoothstep",
+        type: "default",
         animated: true,
         style: { stroke: "hsl(215 20% 55% / 0.6)", strokeWidth: 2 },
     }));
@@ -131,7 +134,27 @@ export function NodeConfigEditor({
     const { theme } = useTheme();
     const { portalRef } = useOutletLayout();
 
-    const [internalMaximized, setInternalMaximized] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const internalMaximized = searchParams.get("editor") === "maximized";
+    const setInternalMaximized = useCallback(
+        (value: boolean | ((prev: boolean) => boolean)) => {
+            setSearchParams(
+                (prev) => {
+                    if (typeof value === "function") {
+                        value = value(prev.get("editor") === "maximized");
+                    }
+                    if (value) {
+                        prev.set("editor", "maximized");
+                    } else {
+                        prev.delete("editor");
+                    }
+                    return prev;
+                },
+                { replace: true },
+            );
+        },
+        [setSearchParams],
+    );
     const isOutletMaximized =
         alwaysMaximized ||
         (controlledMaximized !== undefined && controlledMaximized);
@@ -162,6 +185,7 @@ export function NodeConfigEditor({
     const [hydrated, setHydrated] = useState(false);
     const [previewOpen, setPreviewOpen] = useState(false);
     const [compiledPreview, setCompiledPreview] = useState<unknown>(null);
+    const savedSnapshotRef = useRef<string>("");
 
     const initialNodes = useMemo(
         () =>
@@ -218,9 +242,22 @@ export function NodeConfigEditor({
     }, []);
 
     useEffect(() => {
+        setHydrated(false);
+    }, [configKey]);
+
+    useEffect(() => {
         if (savedConfig && !hydrated) {
-            setNodes(toFlowNodes(savedConfig.config.nodes, definitions));
-            setEdges(toFlowEdges(savedConfig.config.edges));
+            const flowNodes = toFlowNodes(
+                savedConfig.config.nodes,
+                definitions,
+            );
+            const flowEdges = toFlowEdges(savedConfig.config.edges);
+            setNodes(flowNodes);
+            setEdges(flowEdges);
+            savedSnapshotRef.current = JSON.stringify({
+                nodes: flowNodes,
+                edges: flowEdges,
+            });
             setHydrated(true);
         }
     }, [savedConfig, definitions, hydrated, setNodes, setEdges]);
@@ -237,7 +274,7 @@ export function NodeConfigEditor({
                     {
                         ...connection,
                         id: edgeIdCounter(),
-                        type: "smoothstep",
+                        type: "default",
                         animated: true,
                         style: {
                             stroke: "hsl(215 20% 55% / 0.45)",
@@ -379,6 +416,7 @@ export function NodeConfigEditor({
                 slug: configKey,
                 data: { name: displayName, config: graph },
             });
+            savedSnapshotRef.current = JSON.stringify({ nodes, edges });
             toast.success("Config saved");
         } catch {
             toast.error("Failed to save config");
@@ -408,6 +446,11 @@ export function NodeConfigEditor({
     );
     const isEmpty = previewNodes.length === 0 && previewEdges.length === 0;
 
+    const isDirty = useMemo(() => {
+        if (!hydrated) return false;
+        return savedSnapshotRef.current !== JSON.stringify({ nodes, edges });
+    }, [hydrated, nodes, edges]);
+
     if (defsLoading || configLoading) {
         return (
             <div className="flex-1 flex items-center justify-center">
@@ -421,10 +464,24 @@ export function NodeConfigEditor({
 
     const editorContent = (
         <NodeConfigGraphProvider isPreview={false}>
+            <style>{`
+                .react-flow__edge.selected .react-flow__edge-path {
+                    stroke: hsl(215 80% 55%) !important;
+                    stroke-width: 3 !important;
+                }
+                .react-flow__edge:hover:not(.selected) .react-flow__edge-path {
+                    stroke: hsl(215 80% 55% / 0.5) !important;
+                    stroke-width: 3 !important;
+                }
+                .react-flow__edge-interaction {
+                    stroke-width: 20 !important;
+                }
+            `}</style>
             <div className="flex-1 flex flex-col min-h-0">
                 <NodeConfigToolbar
                     name={displayName}
                     isSaving={upsertMutation.isPending}
+                    isDirty={isDirty}
                     onSave={handleSave}
                     onPreview={handlePreview}
                     readOnly
@@ -472,14 +529,18 @@ export function NodeConfigEditor({
                             fitView
                             minZoom={0.3}
                             deleteKeyCode={["Backspace", "Delete"]}
+                            multiSelectionKeyCode={["Meta", "Control", "Shift"]}
                             selectionMode={SelectionMode.Partial}
+                            selectionOnDrag
+                            snapToGrid
+                            snapGrid={SNAP_GRID}
                             onInit={(instance) => {
                                 reactFlowInstance.current = instance;
                             }}
                         >
                             <Background
                                 variant={BackgroundVariant.Dots}
-                                gap={20}
+                                gap={10}
                                 size={1}
                                 className="bg-background"
                             />
@@ -569,22 +630,20 @@ export function NodeConfigEditor({
                             >
                                 <Background
                                     variant={BackgroundVariant.Dots}
-                                    gap={20}
+                                    gap={10}
                                     size={1}
                                     className="bg-background"
                                 />
                             </ReactFlow>
                         )}
                     </div>
-                    {!isEmpty && (
-                        <button
-                            onClick={() => setInternalMaximized(true)}
-                            className="absolute top-2 right-2 p-1.5 rounded-md bg-card/80 backdrop-blur border border-border/40 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                            title="Open full editor"
-                        >
-                            <Maximize2 size={14} />
-                        </button>
-                    )}
+                    <button
+                        onClick={() => setInternalMaximized(true)}
+                        className="absolute top-2 right-2 p-1.5 rounded-md bg-card/80 backdrop-blur border border-border/40 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        title="Open full editor"
+                    >
+                        <Maximize2 size={14} />
+                    </button>
                 </div>
             </NodeConfigGraphProvider>
         );
