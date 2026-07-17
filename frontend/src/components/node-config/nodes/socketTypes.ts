@@ -50,6 +50,9 @@ export function getInputType(nodeType: string, handleId: string): HandleTypeDef 
     return INPUT_TYPES[nodeType]?.[handleId];
 }
 
-export function getOutputType(nodeType: string): HandleTypeDef | undefined {
+export function getOutputType(nodeType: string, handleId?: string): HandleTypeDef | undefined {
+    if (nodeType === 'metric' && handleId && (handleId === 'online' || handleId === 'offline')) {
+        return { type: 'boolean', label: handleId === 'online' ? 'Online' : 'Offline' };
+    }
     return OUTPUT_TYPES[nodeType];
 }

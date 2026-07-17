@@ -1083,7 +1083,13 @@ export default function ServerDetail() {
                                     </div>
                                     <NodeConfigEditor
                                         configKey={serverAlertTab.configKey}
-                                        name={serverAlertTab.scopeLabel}
+                                        scopeLabel={
+                                            serverAlertTab.alertScope === "server"
+                                                ? (initial?.name ?? "")
+                                                : serverAlertTab.alertScope === "client"
+                                                  ? (initial?.client_name ?? "")
+                                                  : ""
+                                        }
                                         showControls={false}
                                         showMinimap={false}
                                         showNodeTypesSidebar={false}

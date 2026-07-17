@@ -3,7 +3,7 @@ import { Save, Eye, Loader2, X } from 'lucide-react';
 interface NodeConfigToolbarProps {
     name: string;
     isSaving: boolean;
-    onNameChange: (name: string) => void;
+    onNameChange?: (name: string) => void;
     onSave: () => void;
     onPreview: () => void;
     readOnly?: boolean;

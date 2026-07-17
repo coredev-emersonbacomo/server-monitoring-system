@@ -106,7 +106,6 @@ const router = createBrowserRouter([
                         element: (
                             <NodeConfigEditor
                                 configKey="alerts"
-                                name="Alert Config"
                                 alwaysMaximized
                             />
                         ),

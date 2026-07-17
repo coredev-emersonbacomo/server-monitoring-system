@@ -898,7 +898,7 @@ export default function ClientDetail() {
                                         </div>
                                         <NodeConfigEditor
                                             configKey={clientAlertTab.configKey}
-                                            name={clientAlertTab.scopeLabel}
+                                            scopeLabel={client?.name ?? ""}
                                             showControls={false}
                                             showMinimap={false}
                                             showNodeTypesSidebar={false}

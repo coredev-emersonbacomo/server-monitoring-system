@@ -1,5 +1,4 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useState, useEffect, useCallback } from "react";
 import {
     Activity,
     Settings,
@@ -19,31 +18,12 @@ import { useOutletLayout } from "@/hooks/useOutletLayout";
 
 export function ProtectedRoute() {
     const { user, isLoading, logoutReason } = useJwtAuth();
-    const { isFullScreen, portalRef } = useOutletLayout();
+    const { isFullScreen, portalRef, isSidebarCollapsed } = useOutletLayout();
     const location = useLocation();
 
-    const [sidebarWidth, setSidebarWidth] = useState(0);
-    const measureSidebar = useCallback(() => {
-        const aside = document.querySelector("aside");
-        if (aside) setSidebarWidth(aside.offsetWidth);
-    }, []);
-
-    useEffect(() => {
-        measureSidebar();
-        window.addEventListener("resize", measureSidebar);
-        return () => window.removeEventListener("resize", measureSidebar);
-    }, [measureSidebar]);
-
-    useEffect(() => {
-        const aside = document.querySelector("aside");
-        if (!aside) return;
-        const observer = new MutationObserver(measureSidebar);
-        observer.observe(aside, {
-            attributes: true,
-            attributeFilter: ["class"],
-        });
-        return () => observer.disconnect();
-    }, [measureSidebar]);
+    const sidebarMargin = isSidebarCollapsed
+        ? "var(--sidebar-width-collapsed)"
+        : "var(--sidebar-width)";
 
     const sidebarLinks: SidebarNavLink[] = [
         { name: "Dashboard", href: "/", icon: Activity },
@@ -88,35 +68,33 @@ export function ProtectedRoute() {
     return (
         <TooltipProvider>
             <BreadcrumbProvider>
-                <div
-                    className={
-                        isFullScreen
-                            ? "flex h-screen overflow-hidden"
-                            : "flex overflow-hidden"
-                    }
-                >
-                    <div className="relative z-60">
-                        <SidebarNav links={sidebarLinks} />
-                    </div>
+                <div className={isFullScreen ? "flex h-screen" : "flex"}>
+                    <SidebarNav links={sidebarLinks} />
 
                     {isFullScreen ? (
-                        <main className="flex-1 flex flex-col min-h-0 relative">
+                        <main
+                            style={{ marginLeft: sidebarMargin }}
+                            className="flex-1 flex flex-col min-h-0 relative transition-[margin] duration-300 ease-in-out"
+                        >
                             <Outlet />
                             <div
                                 ref={portalRef}
-                                style={{ left: sidebarWidth }}
+                                style={{ left: sidebarMargin }}
                                 className="fixed inset-y-0 right-0 z-50 hidden has-[*]:flex has-[*]:flex-col has-[*]:min-h-0 has-[*]:bg-background has-[*]:overflow-y-auto has-[*]:[&>*]:h-dvh"
                             />
                         </main>
                     ) : (
-                        <main className="flex-1 flex flex-col px-8 py-8 sm:px-10 lg:px-12 gap-5 min-h-screen relative">
+                        <main
+                            style={{ marginLeft: sidebarMargin }}
+                            className="flex-1 flex flex-col px-8 py-8 sm:px-10 lg:px-12 gap-5 min-h-screen relative transition-[margin] duration-300 ease-in-out"
+                        >
                             <TopBarNav />
                             <div className="flex-1 flex flex-col">
                                 <Outlet />
                             </div>
                             <div
                                 ref={portalRef}
-                                style={{ left: sidebarWidth }}
+                                style={{ left: sidebarMargin }}
                                 className="fixed inset-y-0 right-0 z-50 hidden has-[*]:flex has-[*]:flex-col has-[*]:min-h-0 has-[*]:bg-background has-[*]:overflow-y-auto has-[*]:[&>*]:h-dvh"
                             />
                         </main>

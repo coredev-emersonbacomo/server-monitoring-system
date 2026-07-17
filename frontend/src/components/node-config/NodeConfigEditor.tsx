@@ -106,7 +106,7 @@ function fromFlow(nodes: Node[], edges: Edge[]): NodeConfigGraph {
 
 interface NodeConfigEditorProps {
     configKey: string;
-    name?: string;
+    scopeLabel?: string;
     maximized?: boolean;
     alwaysMaximized?: boolean;
     showControls?: boolean;
@@ -116,7 +116,7 @@ interface NodeConfigEditorProps {
 
 export function NodeConfigEditor({
     configKey,
-    name: defaultName = "Alert Config",
+    scopeLabel = "Global",
     maximized: controlledMaximized,
     alwaysMaximized = false,
     showControls = true,
@@ -152,12 +152,12 @@ export function NodeConfigEditor({
     const effectiveShowMinimap = isMaximized || showMinimap;
     const effectiveShowNodeTypesSidebar = isMaximized || showNodeTypesSidebar;
 
-    const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
+    const [portalContainer, setPortalContainer] =
+        useState<HTMLDivElement | null>(null);
     useEffect(() => {
         setPortalContainer(portalRef.current);
     }, [portalRef]);
 
-    const [name, setName] = useState(defaultName);
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const [hydrated, setHydrated] = useState(false);
     const [previewOpen, setPreviewOpen] = useState(false);
@@ -219,12 +219,11 @@ export function NodeConfigEditor({
 
     useEffect(() => {
         if (savedConfig && !hydrated) {
-            setName(savedConfig.name || defaultName);
             setNodes(toFlowNodes(savedConfig.config.nodes, definitions));
             setEdges(toFlowEdges(savedConfig.config.edges));
             setHydrated(true);
         }
-    }, [savedConfig, definitions, hydrated, defaultName, setNodes, setEdges]);
+    }, [savedConfig, definitions, hydrated, setNodes, setEdges]);
 
     const onConnect: OnConnect = useCallback(
         (connection: Connection) => {
@@ -262,6 +261,7 @@ export function NodeConfigEditor({
                 return false;
             const sourceDef = getOutputType(
                 nodesRef.current.find((n) => n.id === source)?.type || "",
+                sourceHandle ?? undefined,
             );
             const targetDef = getInputType(
                 nodesRef.current.find((n) => n.id === target)?.type || "",
@@ -364,8 +364,13 @@ export function NodeConfigEditor({
     }, [selectedNode, definitions]);
 
     const displayName = useMemo(() => {
-        return name || defaultName;
-    }, [name, defaultName]);
+        if (configKey === "alerts") return "Global Alert Config";
+        if (configKey.startsWith("client_"))
+            return `${scopeLabel} Client Alert Config`;
+        if (configKey.startsWith("server_"))
+            return `${scopeLabel} Server Alert Config`;
+        return `${scopeLabel} Alert Config`;
+    }, [configKey, scopeLabel]);
 
     const handleSave = useCallback(async () => {
         const graph = fromFlow(nodes, edges);
@@ -420,10 +425,9 @@ export function NodeConfigEditor({
                 <NodeConfigToolbar
                     name={displayName}
                     isSaving={upsertMutation.isPending}
-                    onNameChange={setName}
                     onSave={handleSave}
                     onPreview={handlePreview}
-                    scopeLabel={defaultName}
+                    readOnly
                     onClose={
                         alwaysMaximized
                             ? undefined
@@ -498,7 +502,7 @@ export function NodeConfigEditor({
                                         };
                                         return colors[cat || ""] || "#6b7280";
                                     }}
-                                    nodeStrokeWidth={20}
+                                    nodeStrokeWidth={10}
                                     nodeBorderRadius={20}
                                     maskColor="rgba(0,0,0,0.3)"
                                     pannable
