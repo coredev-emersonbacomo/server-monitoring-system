@@ -1,6 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Cpu, Save, ChevronLeft, Loader2, AlertTriangle, Radio } from "lucide-react";
+import {
+    Cpu,
+    Save,
+    ChevronLeft,
+    Loader2,
+    AlertTriangle,
+    Radio,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
@@ -23,7 +30,9 @@ function SettingRow({
         <div className="flex items-start justify-between gap-6 py-5">
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground">{label}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    {description}
+                </p>
             </div>
             <div className="shrink-0">{children}</div>
         </div>
@@ -84,22 +93,33 @@ export default function AgentSettings() {
 
     const heartbeatNum = parseInt(heartbeatValue, 10);
     const offlineNum = parseInt(offlineValue, 10);
-    const heartbeatBelowOffline = !isNaN(heartbeatNum) && !isNaN(offlineNum) && heartbeatNum < offlineNum;
+    const heartbeatBelowOffline =
+        !isNaN(heartbeatNum) && !isNaN(offlineNum) && heartbeatNum < offlineNum;
 
     const handleSave = async () => {
         const heartbeatParsed = parseInt(heartbeatValue, 10);
         const offlineParsed = parseInt(offlineValue, 10);
 
-        if (isNaN(heartbeatParsed) || heartbeatParsed < 1 || heartbeatParsed > 1000) {
-            toast.error("Heartbeat interval must be between 1 and 1000 seconds.");
+        if (
+            isNaN(heartbeatParsed) ||
+            heartbeatParsed < 1 ||
+            heartbeatParsed > 1000
+        ) {
+            toast.error(
+                "Heartbeat interval must be between 1 and 1000 seconds.",
+            );
             return;
         }
         if (isNaN(offlineParsed) || offlineParsed < 1 || offlineParsed > 1000) {
-            toast.error("Offline threshold must be between 1 and 1000 seconds.");
+            toast.error(
+                "Offline threshold must be between 1 and 1000 seconds.",
+            );
             return;
         }
         if (heartbeatParsed < offlineParsed) {
-            toast.error("Heartbeat interval must be greater than or equal to the offline threshold.");
+            toast.error(
+                "Heartbeat interval must be greater than or equal to the offline threshold.",
+            );
             return;
         }
         if (!versionValue.trim()) {
@@ -127,7 +147,9 @@ export default function AgentSettings() {
         return (
             <div className="flex items-center justify-center min-h-[60vh] gap-3">
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Loading settings…</p>
+                <p className="text-sm text-muted-foreground">
+                    Loading settings…
+                </p>
             </div>
         );
     }
@@ -149,16 +171,29 @@ export default function AgentSettings() {
                             <Cpu className="w-5 h-5 text-primary" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-semibold tracking-tight">Agent Settings</h1>
+                            <h1 className="text-lg font-semibold tracking-tight">
+                                Agent Settings
+                            </h1>
                             <p className="text-sm text-muted-foreground mt-0.5">
-                                Configure monitoring agent intervals, version tracking, and updates.
+                                Configure monitoring agent intervals, version
+                                tracking, and updates.
                             </p>
                         </div>
                     </div>
                     {isDirty && (
                         <Button
-                            label={updateSettings.isPending ? "Saving…" : "Save Changes"}
-                            icon={updateSettings.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                            label={
+                                updateSettings.isPending
+                                    ? "Saving…"
+                                    : "Save Changes"
+                            }
+                            icon={
+                                updateSettings.isPending ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                    <Save className="w-3.5 h-3.5" />
+                                )
+                            }
                             disabled={updateSettings.isPending}
                             onClick={handleSave}
                         />
@@ -169,7 +204,6 @@ export default function AgentSettings() {
             {/* Body */}
             <main className="py-8 flex-1">
                 <div className="max-w-2xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-6">
-
                     {/* Section: Monitoring */}
                     <div className="bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
                         <div className="flex items-center gap-3 px-6 py-4 border-b border-border/60 bg-muted/30">
@@ -177,9 +211,12 @@ export default function AgentSettings() {
                                 <Radio className="w-4 h-4 text-primary" />
                             </div>
                             <div>
-                                <p className="text-sm font-semibold">Heartbeat & Status Checks</p>
+                                <p className="text-sm font-semibold">
+                                    Heartbeat & Status Checks
+                                </p>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                    Configure how often agents report back and when they are deemed offline.
+                                    Configure how often agents report back and
+                                    when they are deemed offline.
                                 </p>
                             </div>
                         </div>
@@ -194,10 +231,14 @@ export default function AgentSettings() {
                                         type="number"
                                         min={1}
                                         value={heartbeatValue}
-                                        onChange={(e) => setHeartbeatValue(e.target.value)}
+                                        onChange={(e) =>
+                                            setHeartbeatValue(e.target.value)
+                                        }
                                         className="w-24 h-9 rounded-md border border-border bg-background px-3 text-sm text-center font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
                                     />
-                                    <span className="text-xs text-muted-foreground">sec</span>
+                                    <span className="text-xs text-muted-foreground">
+                                        sec
+                                    </span>
                                 </div>
                             </SettingRow>
 
@@ -210,10 +251,14 @@ export default function AgentSettings() {
                                         type="number"
                                         min={1}
                                         value={offlineValue}
-                                        onChange={(e) => setOfflineValue(e.target.value)}
+                                        onChange={(e) =>
+                                            setOfflineValue(e.target.value)
+                                        }
                                         className="w-24 h-9 rounded-md border border-border bg-background px-3 text-sm text-center font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
                                     />
-                                    <span className="text-xs text-muted-foreground">sec</span>
+                                    <span className="text-xs text-muted-foreground">
+                                        sec
+                                    </span>
                                 </div>
                             </SettingRow>
                         </div>
@@ -224,7 +269,9 @@ export default function AgentSettings() {
                         <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-red-500/5 border border-red-500/20 text-red-600 dark:text-red-400">
                             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                             <p className="text-xs leading-relaxed">
-                                Heartbeat interval ({heartbeatValue} sec) must be greater than or equal to the offline threshold ({offlineValue} sec).
+                                Heartbeat interval ({heartbeatValue} sec) must
+                                be greater than or equal to the offline
+                                threshold ({offlineValue} sec).
                             </p>
                         </div>
                     )}
@@ -236,9 +283,13 @@ export default function AgentSettings() {
                                 <Cpu className="w-4 h-4 text-primary" />
                             </div>
                             <div>
-                                <p className="text-sm font-semibold">Agent Update Control</p>
+                                <p className="text-sm font-semibold">
+                                    Agent Update Control
+                                </p>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                    Set the latest agent binary version. Outdated agents will download the new binary and self-update.
+                                    Set the latest agent binary version.
+                                    Outdated agents will download the new binary
+                                    and self-update.
                                 </p>
                             </div>
                         </div>
@@ -264,7 +315,11 @@ export default function AgentSettings() {
                     {isDirty && (
                         <div className="sm:hidden">
                             <Button
-                                label={updateSettings.isPending ? "Saving…" : "Save Changes"}
+                                label={
+                                    updateSettings.isPending
+                                        ? "Saving…"
+                                        : "Save Changes"
+                                }
                                 icon={<Save className="w-3.5 h-3.5" />}
                                 disabled={updateSettings.isPending}
                                 onClick={handleSave}

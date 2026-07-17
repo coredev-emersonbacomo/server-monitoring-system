@@ -18,9 +18,7 @@ import Profile from "./pages/settings/profile";
 import UserDetail from "./pages/users/user-detail";
 import SystemSettings from "./pages/settings/system";
 import AgentSettings from "./pages/settings/agent";
-import AlertThresholds from "./pages/settings/thresholds";
-import NodeConfigsIndex from "./pages/node-config/index";
-import NodeConfigDetail from "./pages/node-config/node-config-detail";
+import { NodeConfigEditor } from "./components/node-config/NodeConfigEditor";
 
 const router = createBrowserRouter([
     {
@@ -104,16 +102,14 @@ const router = createBrowserRouter([
                         element: <AgentSettings />,
                     },
                     {
-                        path: "/settings/thresholds",
-                        element: <AlertThresholds />,
-                    },
-                    {
                         path: "/settings/alerts",
-                        element: <NodeConfigsIndex />,
-                    },
-                    {
-                        path: "/settings/alerts/:id",
-                        element: <NodeConfigDetail />,
+                        element: (
+                            <NodeConfigEditor
+                                configKey="alerts"
+                                name="Alert Config"
+                                alwaysMaximized
+                            />
+                        ),
                     },
                     {
                         path: "/profile",

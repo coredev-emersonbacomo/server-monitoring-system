@@ -48,8 +48,7 @@ import { toast } from "sonner";
 import { useDeleteServer } from "@/hooks/useDeleteServer";
 import api from "@/api/api";
 import { useQueryClient } from "@tanstack/react-query";
-import { NodeConfigPreview } from "@/components/node-config/NodeConfigPreview";
-import { useScopedConfig } from "@/hooks/node-config/useNodeConfigs";
+import { NodeConfigEditor } from "@/components/node-config/NodeConfigEditor";
 
 // ─── Server Alert Tab ────────────────────────────────────────────────────────
 
@@ -62,13 +61,12 @@ function useServerAlertTab(
     const [alertScope, setAlertScope] = useState<
         "global" | "client" | "server"
     >("global");
-    const effectiveScopeId =
+    const configKey =
         alertScope === "server"
-            ? serverUuid
-            : alertScope === "client"
-              ? clientUuid
-              : null;
-    const { data: config } = useScopedConfig(alertScope, effectiveScopeId);
+            ? `server_${serverUuid}`
+            : alertScope === "client" && clientUuid
+              ? `client_${clientUuid}`
+              : "alerts";
     const scopeLabel =
         alertScope === "global"
             ? "Global"
@@ -78,9 +76,8 @@ function useServerAlertTab(
     return {
         alertScope,
         setAlertScope,
-        config,
+        configKey,
         scopeLabel,
-        effectiveScopeId,
         clientUuid,
     };
 }
@@ -1084,16 +1081,12 @@ export default function ServerDetail() {
                                             </label>
                                         </div>
                                     </div>
-                                    <NodeConfigPreview
-                                        config={
-                                            serverAlertTab.config?.config ??
-                                            null
-                                        }
-                                        name={serverAlertTab.config?.name ?? ""}
-                                        scopeType={serverAlertTab.alertScope}
-                                        scopeLabel={serverAlertTab.scopeLabel}
-                                        isEditable={true}
-                                        configKey={`${serverAlertTab.alertScope}_${serverAlertTab.effectiveScopeId ?? "global"}`}
+                                    <NodeConfigEditor
+                                        configKey={serverAlertTab.configKey}
+                                        name={serverAlertTab.scopeLabel}
+                                        showControls={false}
+                                        showMinimap={false}
+                                        showNodeTypesSidebar={false}
                                     />
                                 </div>
                             </Tab.Item>

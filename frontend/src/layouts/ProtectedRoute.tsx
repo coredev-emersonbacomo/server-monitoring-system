@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
 import {
     Activity,
     Settings,
@@ -18,8 +19,31 @@ import { useOutletLayout } from "@/hooks/useOutletLayout";
 
 export function ProtectedRoute() {
     const { user, isLoading, logoutReason } = useJwtAuth();
-    const { isFullScreen } = useOutletLayout();
+    const { isFullScreen, portalRef } = useOutletLayout();
     const location = useLocation();
+
+    const [sidebarWidth, setSidebarWidth] = useState(0);
+    const measureSidebar = useCallback(() => {
+        const aside = document.querySelector("aside");
+        if (aside) setSidebarWidth(aside.offsetWidth);
+    }, []);
+
+    useEffect(() => {
+        measureSidebar();
+        window.addEventListener("resize", measureSidebar);
+        return () => window.removeEventListener("resize", measureSidebar);
+    }, [measureSidebar]);
+
+    useEffect(() => {
+        const aside = document.querySelector("aside");
+        if (!aside) return;
+        const observer = new MutationObserver(measureSidebar);
+        observer.observe(aside, {
+            attributes: true,
+            attributeFilter: ["class"],
+        });
+        return () => observer.disconnect();
+    }, [measureSidebar]);
 
     const sidebarLinks: SidebarNavLink[] = [
         { name: "Dashboard", href: "/", icon: Activity },
@@ -66,21 +90,35 @@ export function ProtectedRoute() {
             <BreadcrumbProvider>
                 <div
                     className={
-                        isFullScreen ? "flex h-screen overflow-hidden" : "flex"
+                        isFullScreen
+                            ? "flex h-screen overflow-hidden"
+                            : "flex overflow-hidden"
                     }
                 >
-                    <SidebarNav links={sidebarLinks} />
+                    <div className="relative z-60">
+                        <SidebarNav links={sidebarLinks} />
+                    </div>
 
                     {isFullScreen ? (
-                        <main className="flex-1 flex flex-col min-h-0">
+                        <main className="flex-1 flex flex-col min-h-0 relative">
                             <Outlet />
+                            <div
+                                ref={portalRef}
+                                style={{ left: sidebarWidth }}
+                                className="fixed inset-y-0 right-0 z-50 hidden has-[*]:flex has-[*]:flex-col has-[*]:min-h-0 has-[*]:bg-background has-[*]:overflow-y-auto has-[*]:[&>*]:h-dvh"
+                            />
                         </main>
                     ) : (
-                        <main className="flex-1 flex flex-col px-8 py-8 sm:px-10 lg:px-12 gap-5 min-h-screen">
+                        <main className="flex-1 flex flex-col px-8 py-8 sm:px-10 lg:px-12 gap-5 min-h-screen relative">
                             <TopBarNav />
                             <div className="flex-1 flex flex-col">
                                 <Outlet />
                             </div>
+                            <div
+                                ref={portalRef}
+                                style={{ left: sidebarWidth }}
+                                className="fixed inset-y-0 right-0 z-50 hidden has-[*]:flex has-[*]:flex-col has-[*]:min-h-0 has-[*]:bg-background has-[*]:overflow-y-auto has-[*]:[&>*]:h-dvh"
+                            />
                         </main>
                     )}
                 </div>

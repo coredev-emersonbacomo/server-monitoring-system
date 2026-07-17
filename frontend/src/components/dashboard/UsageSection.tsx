@@ -364,9 +364,7 @@ function UsageSection({
     }, []);
 
     const chartWidth =
-        mergedData.length === 0
-            ? undefined
-            : mergedData.length * 40;
+        mergedData.length === 0 ? undefined : mergedData.length * 40;
 
     const handleWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
         if (e.shiftKey) {
@@ -421,9 +419,7 @@ function UsageSection({
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>
-                                Time Unit
-                            </DropdownMenuLabel>
+                            <DropdownMenuLabel>Time Unit</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuGroup>
                                 {UNITS.map((u) => (
@@ -638,7 +634,9 @@ function UsageSection({
                                                 const adjustedX =
                                                     index === 0
                                                         ? x + 5
-                                                        : index === visibleTicksCount - 1
+                                                        : index ===
+                                                            visibleTicksCount -
+                                                                1
                                                           ? x - 5
                                                           : x;
                                                 const d = new Date(
@@ -683,10 +681,16 @@ function UsageSection({
                                                         fontSize={10}
                                                         fill="var(--color-muted-foreground)"
                                                     >
-                                                        <tspan x={adjustedX} dy="-4">
+                                                        <tspan
+                                                            x={adjustedX}
+                                                            dy="-4"
+                                                        >
                                                             {date}
                                                         </tspan>
-                                                        <tspan x={adjustedX} dy="12">
+                                                        <tspan
+                                                            x={adjustedX}
+                                                            dy="12"
+                                                        >
                                                             {time}
                                                         </tspan>
                                                     </text>

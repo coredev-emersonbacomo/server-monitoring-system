@@ -59,8 +59,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { NodeConfigPreview } from "@/components/node-config/NodeConfigPreview";
-import { useScopedConfig } from "@/hooks/node-config/useNodeConfigs";
+import { NodeConfigEditor } from "@/components/node-config/NodeConfigEditor";
 
 // Helper function to format phone numbers
 import { formatPhoneNumber } from "@/utils/helpers";
@@ -69,10 +68,11 @@ import { formatPhoneNumber } from "@/utils/helpers";
 
 function useClientAlertTab(clientUuid: string, clientName: string) {
     const [alertScope, setAlertScope] = useState<"global" | "client">("global");
-    const effectiveScopeId = alertScope === "client" ? clientUuid : undefined;
-    const { data: config } = useScopedConfig(alertScope, effectiveScopeId ?? null);
-    const scopeLabel = alertScope === "global" ? "Global" : `Client: ${clientName}`;
-    return { alertScope, setAlertScope, config, scopeLabel };
+    const configKey =
+        alertScope === "global" ? "alerts" : `client_${clientUuid}`;
+    const scopeLabel =
+        alertScope === "global" ? "Global" : `Client: ${clientName}`;
+    return { alertScope, setAlertScope, configKey, scopeLabel };
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -102,7 +102,10 @@ export default function ClientDetail() {
         1,
         parseInt(settings?.secop_limit_per_client ?? "2", 10) || 2,
     );
-    const clientAlertTab = useClientAlertTab(clientUuid ?? "", client?.name ?? "");
+    const clientAlertTab = useClientAlertTab(
+        clientUuid ?? "",
+        client?.name ?? "",
+    );
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createClient = useCreateClient();
@@ -187,8 +190,8 @@ export default function ClientDetail() {
 
     const set =
         (key: keyof typeof form) =>
-            (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-                setForm((f) => ({ ...f, [key]: e.target.value }));
+        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+            setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const schema = z.object({
@@ -381,14 +384,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                        backgroundImage: `url(${bannerPreview})`,
-                                        backgroundSize: "cover",
-                                        backgroundPosition: "center",
-                                    }
+                                          backgroundImage: `url(${bannerPreview})`,
+                                          backgroundSize: "cover",
+                                          backgroundPosition: "center",
+                                      }
                                     : {
-                                        background:
-                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                    }
+                                          background:
+                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                      }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -445,7 +448,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                        defaultBanner,
+                                                            defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -517,7 +520,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none break-all",
                                             errors.description &&
-                                            "border-destructive",
+                                                "border-destructive",
                                         )}
                                     />
                                 </div>
@@ -556,9 +559,12 @@ export default function ClientDetail() {
                                                         label="Location"
                                                         labelBg="bg-card"
                                                         value={form.location}
-                                                        onChange={set("location")}
+                                                        onChange={set(
+                                                            "location",
+                                                        )}
                                                         className={cn(
-                                                            errors.location && "border-destructive",
+                                                            errors.location &&
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                     {errors.location && (
@@ -568,7 +574,12 @@ export default function ClientDetail() {
                                                     )}
                                                 </div>
                                             ) : (
-                                                <Field label="Location" icon={MapPin} required isEdit={showEdit}>
+                                                <Field
+                                                    label="Location"
+                                                    icon={MapPin}
+                                                    required
+                                                    isEdit={showEdit}
+                                                >
                                                     <p className="text-base font-semibold text-foreground py-1">
                                                         {client?.location}
                                                     </p>
@@ -594,7 +605,10 @@ export default function ClientDetail() {
                                                         labelBg="bg-card"
                                                         value={form.email}
                                                         onChange={set("email")}
-                                                        className={cn(errors.email && "border-destructive")}
+                                                        className={cn(
+                                                            errors.email &&
+                                                                "border-destructive",
+                                                        )}
                                                     />
                                                     {errors.email && (
                                                         <p className="text-xs text-destructive mt-1">
@@ -603,7 +617,12 @@ export default function ClientDetail() {
                                                     )}
                                                 </div>
                                             ) : (
-                                                <Field label="Email Address" icon={Mail} required isEdit={showEdit}>
+                                                <Field
+                                                    label="Email Address"
+                                                    icon={Mail}
+                                                    required
+                                                    isEdit={showEdit}
+                                                >
                                                     <p className="text-base font-semibold text-foreground ">
                                                         {client?.email}
                                                     </p>
@@ -615,30 +634,48 @@ export default function ClientDetail() {
                                                     <FloatingInput
                                                         label="Contact Number"
                                                         labelBg="bg-card"
-                                                        value={form.contact_number}
+                                                        value={
+                                                            form.contact_number
+                                                        }
                                                         onChange={(e) => {
-                                                            set("contact_number")({
+                                                            set(
+                                                                "contact_number",
+                                                            )({
                                                                 ...e,
                                                                 target: {
                                                                     ...e.target,
-                                                                    value: formatPhoneNumber(e.target.value),
+                                                                    value: formatPhoneNumber(
+                                                                        e.target
+                                                                            .value,
+                                                                    ),
                                                                 },
                                                             });
                                                         }}
                                                         className={cn(
-                                                            errors.contact_number && "border-destructive",
+                                                            errors.contact_number &&
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                     {errors.contact_number && (
                                                         <p className="text-xs text-destructive mt-1">
-                                                            {errors.contact_number}
+                                                            {
+                                                                errors.contact_number
+                                                            }
                                                         </p>
                                                     )}
                                                 </div>
                                             ) : (
-                                                <Field label="Contact Number" icon={Phone} required isEdit={showEdit}>
+                                                <Field
+                                                    label="Contact Number"
+                                                    icon={Phone}
+                                                    required
+                                                    isEdit={showEdit}
+                                                >
                                                     <p className="text-base font-semibold text-foreground">
-                                                        {formatPhoneNumber(client?.contact_number || "")}
+                                                        {formatPhoneNumber(
+                                                            client?.contact_number ||
+                                                                "",
+                                                        )}
                                                     </p>
                                                 </Field>
                                             )}
@@ -658,8 +695,8 @@ export default function ClientDetail() {
                                                         isSaving
                                                             ? "Saving…"
                                                             : mode === "create"
-                                                                ? "Create Client"
-                                                                : "Save Changes"
+                                                              ? "Create Client"
+                                                              : "Save Changes"
                                                     }
                                                 />
                                             </div>
@@ -808,34 +845,63 @@ export default function ClientDetail() {
                                 <Tab.Item icon={Bell} title="Alerts">
                                     <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-6">
                                         <div>
-                                            <label className="text-sm font-medium text-foreground">Alert Scope</label>
+                                            <label className="text-sm font-medium text-foreground">
+                                                Alert Scope
+                                            </label>
                                             <p className="text-xs text-muted-foreground mb-3">
-                                                Choose which alert configuration applies to this client's servers.
+                                                Choose which alert configuration
+                                                applies to this client's
+                                                servers.
                                             </p>
                                             <div className="flex gap-4">
                                                 <label className="flex items-center gap-2 cursor-pointer">
-                                                    <input type="radio" name="alertScope" value="global"
-                                                        checked={clientAlertTab.alertScope === "global"}
-                                                        onChange={() => clientAlertTab.setAlertScope("global")}
-                                                        className="accent-primary" />
-                                                    <span className="text-sm">Global</span>
+                                                    <input
+                                                        type="radio"
+                                                        name="alertScope"
+                                                        value="global"
+                                                        checked={
+                                                            clientAlertTab.alertScope ===
+                                                            "global"
+                                                        }
+                                                        onChange={() =>
+                                                            clientAlertTab.setAlertScope(
+                                                                "global",
+                                                            )
+                                                        }
+                                                        className="accent-primary"
+                                                    />
+                                                    <span className="text-sm">
+                                                        Global
+                                                    </span>
                                                 </label>
                                                 <label className="flex items-center gap-2 cursor-pointer">
-                                                    <input type="radio" name="alertScope" value="client"
-                                                        checked={clientAlertTab.alertScope === "client"}
-                                                        onChange={() => clientAlertTab.setAlertScope("client")}
-                                                        className="accent-primary" />
-                                                    <span className="text-sm">Client</span>
+                                                    <input
+                                                        type="radio"
+                                                        name="alertScope"
+                                                        value="client"
+                                                        checked={
+                                                            clientAlertTab.alertScope ===
+                                                            "client"
+                                                        }
+                                                        onChange={() =>
+                                                            clientAlertTab.setAlertScope(
+                                                                "client",
+                                                            )
+                                                        }
+                                                        className="accent-primary"
+                                                    />
+                                                    <span className="text-sm">
+                                                        Client
+                                                    </span>
                                                 </label>
                                             </div>
                                         </div>
-                                        <NodeConfigPreview
-                                            config={clientAlertTab.config?.config ?? null}
-                                            name={clientAlertTab.config?.name ?? ""}
-                                            scopeType={clientAlertTab.alertScope}
-                                            scopeLabel={clientAlertTab.scopeLabel}
-                                            isEditable={clientAlertTab.alertScope === "client"}
-                                            configKey={`client_${clientUuid}`}
+                                        <NodeConfigEditor
+                                            configKey={clientAlertTab.configKey}
+                                            name={clientAlertTab.scopeLabel}
+                                            showControls={false}
+                                            showMinimap={false}
+                                            showNodeTypesSidebar={false}
                                         />
                                     </div>
                                 </Tab.Item>
@@ -887,8 +953,8 @@ export default function ClientDetail() {
                                                         ? "All"
                                                         : serverFilter ===
                                                             "online"
-                                                            ? "Online"
-                                                            : "Offline"}
+                                                          ? "Online"
+                                                          : "Offline"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -915,9 +981,9 @@ export default function ClientDetail() {
                                                         onClick={() =>
                                                             setServerFilter(
                                                                 opt.value as
-                                                                | "all"
-                                                                | "online"
-                                                                | "offline",
+                                                                    | "all"
+                                                                    | "online"
+                                                                    | "offline",
                                                             )
                                                         }
                                                         className={cn(
@@ -1160,7 +1226,7 @@ export default function ClientDetail() {
                         </div>
                     </DialogContent>
                 </Dialog>
-            </div >
+            </div>
         </>
     );
 }
