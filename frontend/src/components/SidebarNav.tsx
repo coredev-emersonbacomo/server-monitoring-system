@@ -26,7 +26,7 @@ interface SidebarNavProps {
 export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
     const location = useLocation();
     const { logout, user } = useAuthContext();
-    const { isFullScreen } = useOutletLayout();
+    const { isFullScreen, isSidebarCollapsed, setSidebarCollapsed } = useOutletLayout();
 
     const [popoverProfileOpen, setPopoverProfileOpen] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
@@ -54,17 +54,14 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
         };
     }, [popoverProfileOpen]);
 
-    const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-        const stored = localStorage.getItem("sidebarCollapsed");
-        return stored ? JSON.parse(stored) : false;
-    });
+    const isCollapsed = isSidebarCollapsed;
 
     useEffect(() => {
         localStorage.setItem("sidebarCollapsed", JSON.stringify(isCollapsed));
     }, [isCollapsed]);
 
     const toggleSidebar = () => {
-        setIsCollapsed((prev) => !prev);
+        setSidebarCollapsed(!isCollapsed);
     };
 
     return (
@@ -72,7 +69,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
             className={twMerge(
                 "flex flex-col gap-sidebar-section-gap bg-background text-foreground py-5 px-sidebar-padding",
                 isCollapsed ? "w-sidebar-collapsed" : "w-sidebar",
-                "transition-all duration-300 ease-in-out overflow-x-hidden sticky top-0 h-screen! overflow-y-auto",
+                "transition-all duration-300 ease-in-out overflow-x-hidden fixed top-0 left-0 h-screen! overflow-y-auto z-60",
                 !isFullScreen && "border-r border-border/90",
             )}
         >
