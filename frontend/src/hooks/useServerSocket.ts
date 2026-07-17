@@ -120,8 +120,8 @@ export function useServerSocket(
                     d: number;
                 }) => {
                     globalMetrics.push(serverUuid, e);
-                    queryClient.invalidateQueries({ queryKey: ["server", serverUuid] });
-                    queryClient.invalidateQueries({ queryKey: ["servers"] });
+                    // queryClient.invalidateQueries({ queryKey: ["server", serverUuid] });
+                    // queryClient.invalidateQueries({ queryKey: ["servers"] });
                 },
             )
             .listen(".ProvisionTokenGenerated", () => {
