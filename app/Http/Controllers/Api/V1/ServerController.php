@@ -210,7 +210,7 @@ class ServerController extends Controller
         }));
     }
 
-    public function showWithStats(string $serverUuid): ServerData
+    public function showWithStats(string $serverUuid, \App\Data\ServerDataRequest $requestData): ServerData
     {
         $server = Server::where('uuid', $serverUuid)->first();
         if (!$server) {
@@ -219,8 +219,8 @@ class ServerController extends Controller
 
         $server->checkTokenExpiration();
 
-        $tableUnit = 'server_updates_agg_minute'; // or make this a parameter
-        $subTime = now()->subHours(2);
+        $tableUnit = $requestData->getTableUnits();
+        $subTime = $requestData->getStartFromDatetime();
 
         $updates = $this->getData($server->id, $tableUnit, $subTime);
 

@@ -3,7 +3,7 @@
 namespace App\Data;
 
 use App\Enums\TimeUnits;
-use Carbon\Carbon;
+use Illuminate\Support\Carbon;
 use Spatie\LaravelData\Attributes\MapInputName;
 use Spatie\LaravelData\Data;
 

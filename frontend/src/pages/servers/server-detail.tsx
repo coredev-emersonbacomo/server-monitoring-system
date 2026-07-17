@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
     Wifi,
@@ -175,7 +175,27 @@ export default function ServerDetail() {
     const [searchParams] = useSearchParams();
     const allClient = searchParams.get("client") === "all";
 
-    const { data: initial, isLoading, isError } = useServer(uuid!);
+    type TimeSpan = "1H" | "1D" | "1W" | "1M";
+    const [timeSpan, setTimeSpan] = useState<TimeSpan>("1H");
+
+    const timeSpanArgs = useMemo(() => {
+        switch (timeSpan) {
+            case "1H":
+                return { subtract: "-1 hour", unit: 1 }; // Minute
+            case "1D":
+                return { subtract: "-1 day", unit: 2 }; // Hour
+            case "1W":
+                return { subtract: "-1 week", unit: 3 }; // Day
+            case "1M":
+                return { subtract: "-1 month", unit: 4 }; // Week
+        }
+    }, [timeSpan]);
+
+    const { data: initial, isLoading, isError } = useServer(
+        uuid!,
+        timeSpanArgs.subtract,
+        timeSpanArgs.unit,
+    );
     const [, setWsStatus] = useState<WsStatus>("connecting");
     const [history, setHistory] = useState<StatPointData[]>([]);
 
@@ -191,10 +211,15 @@ export default function ServerDetail() {
     useEffect(() => {
         if (!live) return;
         setHistory((prev) => {
+            if (timeSpan !== "1H") return prev; // Do not mix live minutely data with aggregated data
             const next = [...prev, live as unknown as StatPointData];
             return next.length > 144 ? next.slice(next.length - 144) : next;
         });
-    }, [live]);
+    }, [live, timeSpan]);
+
+    useEffect(() => {
+        setHistory([]); // clear history when changing timespan
+    }, [timeSpan]);
 
     const { setTrail } = useBreadcrumb();
     useEffect(() => {
@@ -1002,18 +1027,42 @@ export default function ServerDetail() {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 gap-6 pt-6 border-t border-border/60">
-                                            {CHARTS.map((cfg) => (
-                                                <ServerStatChart
-                                                    key={cfg.dataKey}
-                                                    title={cfg.title}
-                                                    data={server?.stats || []}
-                                                    dataKey={cfg.dataKey}
-                                                    color={cfg.color}
-                                                    unit={cfg.unit}
-                                                    yDomain={cfg.yDomain}
-                                                />
-                                            ))}
+                                        <div className="pt-6 border-t border-border/60">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="text-sm font-semibold text-foreground">
+                                                    System Resources
+                                                </h3>
+                                                <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
+                                                    {(["1H", "1D", "1W", "1M"] as TimeSpan[]).map((span) => (
+                                                        <button
+                                                            key={span}
+                                                            onClick={() => setTimeSpan(span)}
+                                                            className={cn(
+                                                                "px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer",
+                                                                timeSpan === span
+                                                                    ? "bg-background text-foreground shadow-sm border border-border"
+                                                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                                            )}
+                                                        >
+                                                            {span}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-6">
+                                                {CHARTS.map((cfg) => (
+                                                    <ServerStatChart
+                                                        key={cfg.dataKey}
+                                                        title={cfg.title}
+                                                        data={server?.stats || []}
+                                                        dataKey={cfg.dataKey}
+                                                        color={cfg.color}
+                                                        unit={cfg.unit}
+                                                        yDomain={cfg.yDomain}
+                                                        timeSpan={timeSpan}
+                                                    />
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                 </Tab.Item>
