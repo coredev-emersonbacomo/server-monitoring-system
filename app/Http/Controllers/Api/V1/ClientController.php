@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\MediaUrlService;
 use App\Services\UploadIntentService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use \App\Models\Setting;
 
@@ -114,6 +115,22 @@ class ClientController extends Controller
 
         return ClientData::fromModel($client);
     }
+    public function updateAlertScope(Request $request, string $clientUuid)
+    {
+        $request->validate([
+            'alert_scope' => ['required', 'string', 'in:global,client'],
+        ]);
+
+        $client = Client::where('uuid', $clientUuid)->firstOrFail();
+        $newScope = $request->input('alert_scope');
+
+        if ($newScope !== 'global') {
+            app(\App\NodeConfig\Services\NodeConfigService::class)
+                ->copyGlobalConfigIfNeeded('client', $client->id);
+        }
+
+        $client->update(['alert_scope' => $newScope]);
+    }
 
     public function update(UpdateClientData $data, string $clientUuid): ClientData
     {
@@ -126,6 +143,10 @@ class ClientController extends Controller
             'email' => $data->email,
             'contact_number' => $data->contact_number,
         ];
+
+        if (!($data->alert_scope instanceof \Spatie\LaravelData\Optional)) {
+            $updatePayload['alert_scope'] = $data->alert_scope ?? 'global';
+        }
 
         if (!($data->upload_intent_id instanceof \Spatie\LaravelData\Optional) && $data->upload_intent_id !== null) {
             $oldStorageKey = $client->banner_image_storage_key;

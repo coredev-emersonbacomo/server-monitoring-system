@@ -19,6 +19,7 @@ class ClientData extends Data
         public int $secops_count,
         public string $created_at,
         public string $updated_at,
+        public string $alert_scope = 'global',
     ) {}
 
     public static function fromModel(Client $client): self
@@ -35,6 +36,7 @@ class ClientData extends Data
             secops_count: $client->secopclients_count ?? $client->secopclients()->count(),
             created_at: $client->created_at->toIso8601String(),
             updated_at: $client->updated_at->toIso8601String(),
+            alert_scope: $client->alert_scope ?? 'global',
         );
     }
 }

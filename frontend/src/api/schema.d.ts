@@ -132,6 +132,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/agent/{serverUuid}/error": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.agent.agentError_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/agent/{serverUuid}/update": {
         parameters: {
             query?: never;
@@ -265,6 +281,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/{serverUuid}/error": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.agent.agentError_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/{serverUuid}/update": {
         parameters: {
             query?: never;
@@ -389,6 +421,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/clients/{clientUuid}/alert-scope": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["v1.client.updateAlertScope_0"];
+        trace?: never;
+    };
     "/v1/clients/{clientUuid}/secops": {
         parameters: {
             query?: never;
@@ -467,6 +515,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/clients/{clientUuid}/alert-scope": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["v1.client.updateAlertScope_0"];
         trace?: never;
     };
     "/clients/{clientUuid}/secops": {
@@ -917,6 +981,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/node-configs/by-slug/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.nodeConfig.findBySlug_0"];
+        put: operations["nodeConfig.nodeConfig.upsertBySlug_1"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/node-configs/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["nodeConfig.nodeConfig.preview_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/node-configs/{id}": {
         parameters: {
             query?: never;
@@ -981,70 +1077,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/node-configs/by-slug/{slug}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["nodeConfig.nodeConfig.findBySlug_0"];
-        put: operations["nodeConfig.nodeConfig.upsertBySlug_1"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/node-configs/preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["nodeConfig.nodeConfig.preview_0"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/node-configs/resolved": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["nodeConfig.nodeConfig.resolved_0"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/node-configs/scoped": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["nodeConfig.nodeConfig.scoped_0"];
-        put?: never;
-        post: operations["nodeConfig.nodeConfig.upsertScoped_1"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/node-config-node-types": {
         parameters: {
             query?: never;
@@ -1071,6 +1103,38 @@ export interface paths {
         get: operations["nodeConfig.nodeConfig.index_0"];
         put?: never;
         post: operations["nodeConfig.nodeConfig.store_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/node-configs/by-slug/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["nodeConfig.nodeConfig.findBySlug_0"];
+        put: operations["nodeConfig.nodeConfig.upsertBySlug_1"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/node-configs/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["nodeConfig.nodeConfig.preview_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1141,70 +1205,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/node-configs/by-slug/{slug}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["nodeConfig.nodeConfig.findBySlug_0"];
-        put: operations["nodeConfig.nodeConfig.upsertBySlug_1"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/node-configs/preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["nodeConfig.nodeConfig.preview_0"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/node-configs/resolved": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["nodeConfig.nodeConfig.resolved_0"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/node-configs/scoped": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["nodeConfig.nodeConfig.scoped_0"];
-        put?: never;
-        post: operations["nodeConfig.nodeConfig.upsertScoped_1"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/servers": {
         parameters: {
             query?: never;
@@ -1235,6 +1235,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["v1.server.update_1"];
+        trace?: never;
+    };
+    "/v1/clients/{clientUuid}/servers/{serverUuid}/alert-scope": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["v1.server.updateAlertScope_0"];
         trace?: never;
     };
     "/v1/servers/{serverUuid}": {
@@ -1299,6 +1315,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["v1.server.update_1"];
+        trace?: never;
+    };
+    "/clients/{clientUuid}/servers/{serverUuid}/alert-scope": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["v1.server.updateAlertScope_0"];
         trace?: never;
     };
     "/servers/{serverUuid}": {
@@ -1823,6 +1855,7 @@ export interface components {
             secops_count: number;
             created_at: string;
             updated_at: string;
+            alert_scope?: string;
         };
         /** DashboardStatsData */
         DashboardStatsData: {
@@ -1963,6 +1996,7 @@ export interface components {
                 created_at: string;
             }[] | null;
             agent?: components["schemas"]["AgentData"] | null;
+            alert_scope?: string;
         };
         /** StatPointData */
         StatPointData: {
@@ -2019,18 +2053,6 @@ export interface components {
                 };
             };
         };
-        /** @description Not found */
-        ModelNotFoundException: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": {
-                    /** @description Error overview. */
-                    message: string;
-                };
-            };
-        };
         /** @description Validation error */
         ValidationException: {
             headers: {
@@ -2044,6 +2066,18 @@ export interface components {
                     errors: {
                         [key: string]: string[];
                     };
+                };
+            };
+        };
+        /** @description Not found */
+        ModelNotFoundException: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /** @description Error overview. */
+                    message: string;
                 };
             };
         };
@@ -2245,7 +2279,7 @@ export interface operations {
                     "application/json": {
                         download_url: string;
                         expected_sha256: Record<string, never> | string;
-                        agent_version: string | "2.0";
+                        agent_version: string;
                         heartbeat_interval: number;
                         api_url: string;
                         register_url: string;
@@ -2343,7 +2377,7 @@ export interface operations {
                         pending_update: {
                             version: string;
                             heartbeat_interval: null;
-                            binary_url: string;
+                            binary_url: string | null;
                         };
                         configuration: unknown[];
                         pending_commands: {
@@ -2418,6 +2452,71 @@ export interface operations {
                     } | {
                         /** @constant */
                         message: "Invalid provision token.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.agent.agentError_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    error: string;
+                    stack_trace?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "ok";
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Invalid or revoked agent identity.";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Agent not found.";
                     };
                 };
             };
@@ -2691,7 +2790,7 @@ export interface operations {
                     "application/json": {
                         download_url: string;
                         expected_sha256: Record<string, never> | string;
-                        agent_version: string | "2.0";
+                        agent_version: string;
                         heartbeat_interval: number;
                         api_url: string;
                         register_url: string;
@@ -2789,7 +2888,7 @@ export interface operations {
                         pending_update: {
                             version: string;
                             heartbeat_interval: null;
-                            binary_url: string;
+                            binary_url: string | null;
                         };
                         configuration: unknown[];
                         pending_commands: {
@@ -2864,6 +2963,71 @@ export interface operations {
                     } | {
                         /** @constant */
                         message: "Invalid provision token.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.agent.agentError_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    error: string;
+                    stack_trace?: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "ok";
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Invalid or revoked agent identity.";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Agent not found.";
                     };
                 };
             };
@@ -3238,6 +3402,7 @@ export interface operations {
                     description?: string;
                     upload_intent_id?: string | null;
                     banner_image_storage_key?: string | null;
+                    alert_scope?: string | null;
                 };
             };
         };
@@ -3271,6 +3436,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.client.updateAlertScope_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ClientData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientData"];
+                };
             };
             401: components["responses"]["AuthenticationException"];
         };
@@ -3553,6 +3741,7 @@ export interface operations {
                     description?: string;
                     upload_intent_id?: string | null;
                     banner_image_storage_key?: string | null;
+                    alert_scope?: string | null;
                 };
             };
         };
@@ -3586,6 +3775,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.client.updateAlertScope_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ClientData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientData"];
+                };
             };
             401: components["responses"]["AuthenticationException"];
         };
@@ -4430,6 +4642,114 @@ export interface operations {
             };
         };
     };
+    "nodeConfig.nodeConfig.findBySlug_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeConfig"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.upsertBySlug_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    enabled?: boolean | null;
+                    config: {
+                        nodes: string[];
+                        edges: string[];
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeConfig"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.preview_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    config: {
+                        nodes: string[];
+                        edges: string[];
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        rules: ({
+                            metrics: unknown[];
+                            conditions: {
+                                operator: string | "greater_than";
+                                threshold: string | null;
+                                min: string | null;
+                                max: string;
+                            }[];
+                            logic: string | "and";
+                            timing: {
+                                type: string;
+                                duration_seconds: number;
+                                interval_seconds: number;
+                                max_repeats: number | null;
+                            };
+                            actions: [
+                                unknown[]
+                            ];
+                        } | null)[];
+                    } | {
+                        rules: string[];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "nodeConfig.nodeConfig.show_0": {
         parameters: {
             query?: never;
@@ -4615,217 +4935,6 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
-        };
-    };
-    "nodeConfig.nodeConfig.findBySlug_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": (components["schemas"]["NodeConfig"] | null) | {
-                        nodes: string[];
-                        edges: string[];
-                        name: string;
-                        slug: string;
-                        enabled: boolean;
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-        };
-    };
-    "nodeConfig.nodeConfig.upsertBySlug_1": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    name: string;
-                    enabled?: boolean | null;
-                    config: {
-                        nodes: string[];
-                        edges: string[];
-                    };
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NodeConfig"];
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "nodeConfig.nodeConfig.preview_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    config: {
-                        nodes: string[];
-                        edges: string[];
-                    };
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        rules: ({
-                            metrics: unknown[];
-                            conditions: {
-                                operator: string | "greater_than";
-                                threshold: string | null;
-                                min: string | null;
-                                max: string;
-                            }[];
-                            logic: string | "and";
-                            timing: {
-                                type: string;
-                                duration_seconds: number;
-                                interval_seconds: number;
-                                max_repeats: number | null;
-                            };
-                            actions: [
-                                unknown[]
-                            ];
-                        } | null)[];
-                    } | {
-                        rules: string[];
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "nodeConfig.nodeConfig.resolved_0": {
-        parameters: {
-            query: {
-                server_id: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": (components["schemas"]["NodeConfig"] | null) | {
-                        nodes: string[];
-                        edges: string[];
-                        name: string;
-                        /** @constant */
-                        scope_type: "global";
-                        scope_id: null;
-                        enabled: boolean;
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "nodeConfig.nodeConfig.scoped_0": {
-        parameters: {
-            query: {
-                scope_type: "global" | "client" | "server";
-                scope_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": (components["schemas"]["NodeConfig"] | null) | {
-                        nodes: string[];
-                        edges: string[];
-                        name: string;
-                        scope_type: string;
-                        scope_id: string | null;
-                        enabled: boolean;
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "nodeConfig.nodeConfig.upsertScoped_1": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    name: string;
-                    /** @enum {string} */
-                    scope_type: "global" | "client" | "server";
-                    scope_id?: string | null;
-                    enabled?: boolean | null;
-                    config: {
-                        nodes: string[];
-                        edges: string[];
-                    };
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NodeConfig"];
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
         };
     };
     "nodeConfig.nodeConfig.nodeTypes_0": {
@@ -4915,6 +5024,114 @@ export interface operations {
             };
         };
     };
+    "nodeConfig.nodeConfig.findBySlug_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeConfig"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.upsertBySlug_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    enabled?: boolean | null;
+                    config: {
+                        nodes: string[];
+                        edges: string[];
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NodeConfig"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "nodeConfig.nodeConfig.preview_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    config: {
+                        nodes: string[];
+                        edges: string[];
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        rules: ({
+                            metrics: unknown[];
+                            conditions: {
+                                operator: string | "greater_than";
+                                threshold: string | null;
+                                min: string | null;
+                                max: string;
+                            }[];
+                            logic: string | "and";
+                            timing: {
+                                type: string;
+                                duration_seconds: number;
+                                interval_seconds: number;
+                                max_repeats: number | null;
+                            };
+                            actions: [
+                                unknown[]
+                            ];
+                        } | null)[];
+                    } | {
+                        rules: string[];
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "nodeConfig.nodeConfig.show_0": {
         parameters: {
             query?: never;
@@ -5100,217 +5317,6 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
-        };
-    };
-    "nodeConfig.nodeConfig.findBySlug_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": (components["schemas"]["NodeConfig"] | null) | {
-                        nodes: string[];
-                        edges: string[];
-                        name: string;
-                        slug: string;
-                        enabled: boolean;
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-        };
-    };
-    "nodeConfig.nodeConfig.upsertBySlug_1": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    name: string;
-                    enabled?: boolean | null;
-                    config: {
-                        nodes: string[];
-                        edges: string[];
-                    };
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NodeConfig"];
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "nodeConfig.nodeConfig.preview_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    config: {
-                        nodes: string[];
-                        edges: string[];
-                    };
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        rules: ({
-                            metrics: unknown[];
-                            conditions: {
-                                operator: string | "greater_than";
-                                threshold: string | null;
-                                min: string | null;
-                                max: string;
-                            }[];
-                            logic: string | "and";
-                            timing: {
-                                type: string;
-                                duration_seconds: number;
-                                interval_seconds: number;
-                                max_repeats: number | null;
-                            };
-                            actions: [
-                                unknown[]
-                            ];
-                        } | null)[];
-                    } | {
-                        rules: string[];
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "nodeConfig.nodeConfig.resolved_0": {
-        parameters: {
-            query: {
-                server_id: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": (components["schemas"]["NodeConfig"] | null) | {
-                        nodes: string[];
-                        edges: string[];
-                        name: string;
-                        /** @constant */
-                        scope_type: "global";
-                        scope_id: null;
-                        enabled: boolean;
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "nodeConfig.nodeConfig.scoped_0": {
-        parameters: {
-            query: {
-                scope_type: "global" | "client" | "server";
-                scope_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": (components["schemas"]["NodeConfig"] | null) | {
-                        nodes: string[];
-                        edges: string[];
-                        name: string;
-                        scope_type: string;
-                        scope_id: string | null;
-                        enabled: boolean;
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "nodeConfig.nodeConfig.upsertScoped_1": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    name: string;
-                    /** @enum {string} */
-                    scope_type: "global" | "client" | "server";
-                    scope_id?: string | null;
-                    enabled?: boolean | null;
-                    config: {
-                        nodes: string[];
-                        edges: string[];
-                    };
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NodeConfig"];
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            422: components["responses"]["ValidationException"];
         };
     };
     "v1.server.listAll_0": {
@@ -5409,6 +5415,7 @@ export interface operations {
                 "application/json": {
                     name: string;
                     description?: string | null;
+                    alert_scope?: string | null;
                 };
             };
         };
@@ -5423,6 +5430,38 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.server.updateAlertScope_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    alert_scope: "global" | "client" | "server";
+                };
+            };
+        };
+        responses: {
+            /** @description `ServerData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "v1.server.showWithStats_0": {
@@ -5570,6 +5609,7 @@ export interface operations {
                 "application/json": {
                     name: string;
                     description?: string | null;
+                    alert_scope?: string | null;
                 };
             };
         };
@@ -5584,6 +5624,38 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.server.updateAlertScope_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    alert_scope: "global" | "client" | "server";
+                };
+            };
+        };
+        responses: {
+            /** @description `ServerData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerData"];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "v1.server.showWithStats_0": {

@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import api from "@/api/api";
 import {
     Wifi,
     WifiOff,
@@ -46,8 +48,6 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useDeleteServer } from "@/hooks/useDeleteServer";
-import api from "@/api/api";
-import { useQueryClient } from "@tanstack/react-query";
 import { NodeConfigEditor } from "@/components/node-config/NodeConfigEditor";
 
 // ─── Server Alert Tab ────────────────────────────────────────────────────────
@@ -57,10 +57,20 @@ function useServerAlertTab(
     serverName: string,
     clientUuid: string | null,
     clientName: string | null,
+    initialScope?: string,
 ) {
-    const [alertScope, setAlertScope] = useState<
+    const queryClient = useQueryClient();
+    const [alertScope, setAlertScopeState] = useState<
         "global" | "client" | "server"
     >("global");
+    const hydratedRef = useRef(false);
+    useEffect(() => {
+        if (!hydratedRef.current && initialScope) {
+            hydratedRef.current = true;
+            setAlertScopeState(initialScope as "global" | "client" | "server");
+        }
+    }, [initialScope]);
+
     const configKey =
         alertScope === "server"
             ? `server_${serverUuid}`
@@ -73,6 +83,25 @@ function useServerAlertTab(
             : alertScope === "client"
               ? `Client: ${clientName ?? "Unknown"}`
               : `Server: ${serverName}`;
+
+    const setAlertScope = useCallback(
+        (scope: "global" | "client" | "server") => {
+            setAlertScopeState(scope);
+            api.PATCH(
+                "/v1/clients/{clientUuid}/servers/{serverUuid}/alert-scope",
+                {
+                    params: { path: { clientUuid: clientUuid!, serverUuid } },
+                    body: { alert_scope: scope },
+                },
+            ).then(() => {
+                queryClient.invalidateQueries({
+                    queryKey: ["server", serverUuid],
+                });
+            });
+        },
+        [serverUuid, clientUuid, queryClient],
+    );
+
     return {
         alertScope,
         setAlertScope,
@@ -179,6 +208,7 @@ export default function ServerDetail() {
         initial?.name ?? "Unknown",
         initial?.client_uuid ?? null,
         initial?.client_name ?? null,
+        (initial as Record<string, unknown>)?.alert_scope as string | undefined,
     );
     const [showDelete, setShowDelete] = useState(false);
     const [confirmText, setConfirmText] = useState("");
@@ -1084,9 +1114,11 @@ export default function ServerDetail() {
                                     <NodeConfigEditor
                                         configKey={serverAlertTab.configKey}
                                         scopeLabel={
-                                            serverAlertTab.alertScope === "server"
+                                            serverAlertTab.alertScope ===
+                                            "server"
                                                 ? (initial?.name ?? "")
-                                                : serverAlertTab.alertScope === "client"
+                                                : serverAlertTab.alertScope ===
+                                                    "client"
                                                   ? (initial?.client_name ?? "")
                                                   : ""
                                         }

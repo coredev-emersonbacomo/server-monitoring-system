@@ -8,6 +8,7 @@ Route::middleware('auth:jwt')->group(function () {
     Route::post('/clients', [ClientController::class, 'store']);
     Route::get('/clients/{clientUuid}', [ClientController::class, 'show']);
     Route::put('/clients/{clientUuid}', [ClientController::class, 'update']);
+    Route::patch('/clients/{clientUuid}/alert-scope', [ClientController::class, 'updateAlertScope']);
     Route::delete('/clients/{clientUuid}', [ClientController::class, 'destroy']);
     Route::get('/clients/{clientUuid}/servers', [ClientController::class, 'servers']);
 

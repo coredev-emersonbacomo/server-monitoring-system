@@ -159,15 +159,17 @@ class NodeConfigController extends Controller
         $config = $query->first();
 
         if (!$config) {
-            return response()->json([
-                'nodes' => [],
-                'edges' => [],
-                'name' => '',
-                'slug' => $slug,
-                'scope_type' => $parsed['scope_type'],
-                'scope_id' => $parsed['scope_id'],
-                'enabled' => true,
-            ]);
+            $config = NodeConfig::firstOrCreate(
+                ['slug' => $slug],
+                [
+                    'scope_type' => $parsed['scope_type'],
+                    'scope_id' => $parsed['scope_id'] ? (int) $parsed['scope_id'] : null,
+                    'name' => '',
+                    'config' => ['nodes' => [], 'edges' => []],
+                    'enabled' => true,
+                    'created_by' => Auth::id(),
+                ],
+            );
         }
 
         return response()->json($config);
@@ -178,8 +180,8 @@ class NodeConfigController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'config' => ['required', 'array'],
-            'config.nodes' => ['required', 'array'],
-            'config.edges' => ['required', 'array'],
+            'config.nodes' => ['nullable', 'array'],
+            'config.edges' => ['nullable', 'array'],
             'enabled' => ['nullable', 'boolean'],
         ]);
 

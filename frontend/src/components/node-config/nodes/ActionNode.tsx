@@ -5,6 +5,7 @@ import { getInputType, getOutputType } from './socketTypes';
 import { NodeSocket } from './node-socket';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { TemplateInput } from './TemplateInput';
+import { BaseNode } from './BaseNode';
 
 const CHANNELS: Record<string, { icon: React.ComponentType<{ size?: number }>; label: string }> = {
     email: { icon: Mail, label: 'User Email' },
@@ -12,7 +13,7 @@ const CHANNELS: Record<string, { icon: React.ComponentType<{ size?: number }>; l
     discord: { icon: MessageCircle, label: 'Discord' },
 };
 
-export const ActionNode = memo(({ id, data, type }: NodeProps) => {
+export const ActionNode = memo(({ id, data, type, selected }: NodeProps) => {
     const { updateNodeData } = useReactFlow();
     const channel = (data.channel as string) || 'email';
     const ch = CHANNELS[channel] || CHANNELS.email;
@@ -36,7 +37,7 @@ export const ActionNode = memo(({ id, data, type }: NodeProps) => {
     const roleId = (data.role_id as string) || '';
 
     return (
-        <div className="relative rounded-xl bg-card border-2 border-red-400/60 shadow-sm min-w-[220px]">
+        <BaseNode width="w-[220px]" borderColor="#f87171" selected={selected}>
             <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5 border-b border-red-400/10">
                 <div className="p-1.5 rounded-lg bg-red-500/10 text-red-400">
                     <Icon size={14} />
@@ -86,7 +87,7 @@ export const ActionNode = memo(({ id, data, type }: NodeProps) => {
                                     value={botToken}
                                     onChange={(e) => handleStringChange('bot_token', e.target.value)}
                                     onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
-                                    className="flex-1 text-xs text-foreground bg-background border border-input rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                                    className="flex-1 min-w-0 w-full text-xs text-foreground bg-background border border-input rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
                                 />
                             </div>
                             <div className="flex items-center gap-2">
@@ -121,6 +122,6 @@ export const ActionNode = memo(({ id, data, type }: NodeProps) => {
                     </div>
                 </div>
             </div>
-        </div>
+        </BaseNode>
     );
 });

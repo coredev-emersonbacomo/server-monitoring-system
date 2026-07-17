@@ -80,7 +80,7 @@ export function ProtectedRoute() {
                             <div
                                 ref={portalRef}
                                 style={{ left: sidebarMargin }}
-                                className="fixed inset-y-0 right-0 z-50 hidden has-[*]:flex has-[*]:flex-col has-[*]:min-h-0 has-[*]:bg-background has-[*]:overflow-y-auto has-[*]:[&>*]:h-dvh"
+                                className="fixed inset-y-0 right-0 z-50 hidden has-[*]:flex has-[*]:flex-col has-[*]:min-h-0 has-[*]:bg-background has-[*]:overflow-y-auto has-[*]:*:h-dvh"
                             />
                         </main>
                     ) : (
@@ -95,7 +95,7 @@ export function ProtectedRoute() {
                             <div
                                 ref={portalRef}
                                 style={{ left: sidebarMargin }}
-                                className="fixed inset-y-0 right-0 z-50 hidden has-[*]:flex has-[*]:flex-col has-[*]:min-h-0 has-[*]:bg-background has-[*]:overflow-y-auto has-[*]:[&>*]:h-dvh"
+                                className="fixed inset-y-0 right-0 z-50 hidden has-[*]:flex has-[*]:flex-col has-[*]:min-h-0 has-[*]:bg-background has-[*]:overflow-y-auto has-[*]:*:h-dvh"
                             />
                         </main>
                     )}

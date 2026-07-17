@@ -4,6 +4,7 @@ namespace App\NodeConfig\Engine;
 
 use App\NodeConfig\Models\NodeConfig;
 use App\NodeConfig\Models\NodeConfigState;
+use App\NodeConfig\NodeTypes\BaseNode;
 use App\NodeConfig\NodeTypes\NodeResult;
 use App\NodeConfig\NodeTypes\NodeTimer;
 use App\NodeConfig\Validation\NodeConfigValidator;
@@ -446,7 +447,7 @@ class NodeConfigEngine
                         $durationStr = $sourceNode['settings']['duration'] ?? '00:00:05:00:00';
                         return [
                             'has_sustained_ancestor' => true,
-                            'sustain_duration_seconds' => static::parseDurationToSeconds($durationStr),
+                            'sustain_duration_seconds' => BaseNode::parseDurationToSeconds($durationStr),
                         ];
                     }
 
@@ -492,7 +493,7 @@ class NodeConfigEngine
 
                 if ($type === 'sustained') {
                     $durationStr = $settings['duration'] ?? '00:00:05:00:00';
-                    $seconds = static::parseDurationToSeconds($durationStr);
+                    $seconds = BaseNode::parseDurationToSeconds($durationStr);
                     $formatted = $this->formatDuration($seconds);
                     if (!in_array($formatted, $sustainDurations)) {
                         $sustainDurations[] = $formatted;
@@ -507,6 +508,20 @@ class NodeConfigEngine
             'metric_name' => implode(', ', $metricNames) ?: 'Unknown Metric',
             'sustain_value' => implode(', ', $sustainDurations) ?: null,
         ];
+    }
+
+    public function findMetricNode(NodeConfig $config, string $metricType): ?string
+    {
+        $configData = $config->getParsedConfig();
+        $nodes = $configData['nodes'] ?? [];
+
+        foreach ($nodes as $node) {
+            if (($node['type'] ?? '') === 'metric' && ($node['settings']['metric_type'] ?? '') === $metricType) {
+                return $node['id'];
+            }
+        }
+
+        return null;
     }
 
     private function formatDuration(int $seconds): string
