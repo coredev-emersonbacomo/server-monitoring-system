@@ -13,6 +13,9 @@ use App\Models\ServerUpdate;
 use App\Models\CustomActivityLog;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ServerController extends Controller
 {
@@ -216,17 +219,14 @@ class ServerController extends Controller
 
         $server->checkTokenExpiration();
 
-        $updates = $server->updates()
-            ->orderBy('created_at')
-            ->limit(144)
-            ->get();
+        $tableUnit = 'server_updates_agg_minute'; // or make this a parameter
+        $subTime = now()->subHours(2);
 
-        $stats = [];
-        $prev = null;
-        foreach ($updates as $row) {
-            $stats[] = StatPointData::from(self::computeStatPointPublic($row, $prev));
-            $prev = $row;
-        }
+        $updates = $this->getData($server->id, $tableUnit, $subTime);
+
+        $stats = $updates->map(
+            fn($row) => StatPointData::from(self::computeStatPointFromAgg($row, $tableUnit))
+        )->values()->toArray();
 
         $client = $server->client;
 
@@ -366,5 +366,36 @@ class ServerController extends Controller
         $port = \App\Models\Port::findOrFail($id);
         $port->delete();
         return response()->json(['status' => 'success']);
+    }
+
+    public static function computeStatPointFromAgg(object $row, string $tableUnit): array
+    {
+        $bucketSeconds = match (true) {
+            str_contains($tableUnit, 'minute') => 60,
+            str_contains($tableUnit, 'hour')   => 3600,
+            str_contains($tableUnit, 'day')    => 86400,
+            str_contains($tableUnit, 'week')   => 604800,
+            str_contains($tableUnit, 'month')  => 2592000,
+            default                            => 60,
+        };
+
+        return [
+            'timestamp' => (int) (strtotime($row->timestamp) * 1000),
+            'cpu'       => round((float) $row->cpu, 1),
+            'memory'    => round((float) $row->memory, 1),
+            'disk'      => round((float) $row->disk, 1),
+            'netIn'     => round(((float) $row->netin / 1_000_000) / $bucketSeconds, 2),
+            'netOut'    => round(((float) $row->netout / 1_000_000) / $bucketSeconds, 2),
+        ];
+    }
+
+    public function getData(int $serverId, string $tableUnit, Carbon $subTime): Collection
+    {
+        return DB::table($tableUnit)
+            ->selectRaw('timestamp, cpu, memory, disk, netin, netout')
+            ->where('server_id', $serverId)
+            ->where('timestamp', '>=', $subTime)
+            ->orderBy('timestamp')
+            ->get();
     }
 }
