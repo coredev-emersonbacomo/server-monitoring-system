@@ -379,8 +379,14 @@ class ServerController extends Controller
             default                            => 60,
         };
 
+        // The database might append a local timezone offset (e.g., +08) to the timestamp string,
+        // but the time itself is actually in UTC. We extract just the Y-m-d H:i:s part 
+        // and parse it explicitly as UTC to get the correct epoch.
+        $timeString = substr($row->timestamp, 0, 19);
+        $epochMs = \Illuminate\Support\Carbon::parse($timeString, 'UTC')->getPreciseTimestamp(3);
+
         return [
-            'timestamp' => (int) (strtotime($row->timestamp) * 1000),
+            'timestamp' => $epochMs,
             'cpu'       => round((float) $row->cpu, 1),
             'memory'    => round((float) $row->memory, 1),
             'disk'      => round((float) $row->disk, 1),

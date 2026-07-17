@@ -15,20 +15,20 @@ import type { StatPoint } from "@/types/stats";
 function fmtTime(ts: number, timeSpan: string = "1H") {
     const d = new Date(ts);
     if (timeSpan === "1W" || timeSpan === "1M") {
-        return d.toLocaleDateString("en", { month: "short", day: "numeric" });
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     }
     if (timeSpan === "1D") {
-        return `${d.getHours().toString().padStart(2, "0")}:00`;
+        return d.toLocaleTimeString("en-US", { hour: "numeric", hour12: true });
     }
-    return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
 function fmtDatetime(ts: number) {
     const d = new Date(ts);
     return (
-        d.toLocaleDateString("en", { month: "short", day: "numeric" }) +
+        d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
         " " +
-        `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`
+        d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
     );
 }
 
