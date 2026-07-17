@@ -144,7 +144,7 @@ class HeartbeatService
 
             $latestBinaryUpdate = \App\Models\AgentVersion::orderBy('id', 'desc')
                 ->first();
-            $agentVersion = $payload['agent_version'] ?? '';
+            $agentVersion = $agent->version;
             if ($latestBinaryUpdate && $agentVersion !== $latestBinaryUpdate->version) {
                 $response['pending_update'] = [
                     'version'            => $latestBinaryUpdate->version,
