@@ -1,7 +1,18 @@
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useNavigate, useParams } from "react-router-dom";
-import { Pencil, Upload, AlertTriangle, Trash2, RefreshCw, Info, Building, Plus, Loader2, Search } from "lucide-react";
+import {
+    Pencil,
+    Upload,
+    AlertTriangle,
+    Trash2,
+    RefreshCw,
+    Info,
+    Building,
+    Plus,
+    Loader2,
+    Search,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { Button } from "@/components/ui/button";
@@ -134,18 +145,18 @@ function PasswordStrength({ password }: { password: string }) {
         passedCount <= 1
             ? "Weak"
             : passedCount === 2
-                ? "Fair"
-                : passedCount === 3
-                    ? "Good"
-                    : "Strong";
+              ? "Fair"
+              : passedCount === 3
+                ? "Good"
+                : "Strong";
     const strengthColor =
         passedCount <= 1
             ? "bg-destructive"
             : passedCount === 2
-                ? "bg-amber-500"
-                : passedCount === 3
-                    ? "bg-blue-500"
-                    : "bg-emerald-500";
+              ? "bg-amber-500"
+              : passedCount === 3
+                ? "bg-blue-500"
+                : "bg-emerald-500";
 
     return (
         <div className="flex flex-col gap-1.5">
@@ -210,8 +221,12 @@ export default function UserDetail() {
 
     // ── Data fetching ──────────────────────────────────────────────────────────
     const { data: user, isLoading, isError } = useUser(uuid);
-    const { data: userClients = [], isLoading: clientsLoading } = useUserClients(uuid);
-    const { data: allClients = [] } = useClients({ exclude_user_uuid: uuid, available_only: true });
+    const { data: userClients = [], isLoading: clientsLoading } =
+        useUserClients(uuid);
+    const { data: allClients = [] } = useClients({
+        exclude_user_uuid: uuid,
+        available_only: true,
+    });
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createUser = useCreateUser();
@@ -224,7 +239,9 @@ export default function UserDetail() {
     const [showDelete, setShowDelete] = useState(false);
     const [showClientDialog, setShowClientDialog] = useState(false);
     const [clientSearch, setClientSearch] = useState("");
-    const [selectedClientToAdd, setSelectedClientToAdd] = useState<string | null>(null);
+    const [selectedClientToAdd, setSelectedClientToAdd] = useState<
+        string | null
+    >(null);
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -288,8 +305,8 @@ export default function UserDetail() {
 
     const set =
         (key: keyof typeof form) =>
-            (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-                setForm((f) => ({ ...f, [key]: e.target.value }));
+        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+            setForm((f) => ({ ...f, [key]: e.target.value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const isCreate = mode === "create";
@@ -390,9 +407,9 @@ export default function UserDetail() {
                     phone_number: form.phone_number,
                     ...(form.password
                         ? {
-                            password: form.password,
-                            password_confirmation: form.password_confirmation,
-                        }
+                              password: form.password,
+                              password_confirmation: form.password_confirmation,
+                          }
                         : {}),
                     ...uploadFields,
                 };
@@ -425,9 +442,9 @@ export default function UserDetail() {
                     err?.response?.data?.message || err?.message;
                 toast.error(
                     serverMessage ||
-                    (mode === "create"
-                        ? "Failed to create user."
-                        : "Failed to update user."),
+                        (mode === "create"
+                            ? "Failed to create user."
+                            : "Failed to update user."),
                 );
             }
         }
@@ -720,7 +737,7 @@ export default function UserDetail() {
                                                         onChange={set("email")}
                                                         className={cn(
                                                             errors.email &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                     {errors.email && (
@@ -730,7 +747,11 @@ export default function UserDetail() {
                                                     )}
                                                 </div>
                                             ) : (
-                                                <Field label="Email Address" required isEdit={showEdit}>
+                                                <Field
+                                                    label="Email Address"
+                                                    required
+                                                    isEdit={showEdit}
+                                                >
                                                     <p className="text-base font-semibold text-foreground py-1">
                                                         {user?.email}
                                                     </p>
@@ -743,14 +764,17 @@ export default function UserDetail() {
                                                         label="Username"
                                                         labelBg="bg-card"
                                                         value={form.username}
-                                                        onChange={set("username")}
+                                                        onChange={set(
+                                                            "username",
+                                                        )}
                                                         className={cn(
                                                             errors.username &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                     <p className="text-[11px] text-muted-foreground mt-1">
-                                                        Letters, numbers, and dots only
+                                                        Letters, numbers, and
+                                                        dots only
                                                     </p>
                                                     {errors.username && (
                                                         <p className="text-xs text-destructive mt-1">
@@ -759,7 +783,11 @@ export default function UserDetail() {
                                                     )}
                                                 </div>
                                             ) : (
-                                                <Field label="Username" required isEdit={showEdit}>
+                                                <Field
+                                                    label="Username"
+                                                    required
+                                                    isEdit={showEdit}
+                                                >
                                                     <p className="text-base font-semibold text-foreground py-1">
                                                         @{user?.username}
                                                     </p>
@@ -771,60 +799,100 @@ export default function UserDetail() {
                                                     <FloatingInput
                                                         label="Phone Number"
                                                         labelBg="bg-card"
-                                                        value={form.phone_number}
+                                                        value={
+                                                            form.phone_number
+                                                        }
                                                         onChange={(e) => {
                                                             // Strip non-digits, hard cap at 11
-                                                            const digits = e.target.value
-                                                                .replace(/\D/g, "")
-                                                                .slice(0, 11);
+                                                            const digits =
+                                                                e.target.value
+                                                                    .replace(
+                                                                        /\D/g,
+                                                                        "",
+                                                                    )
+                                                                    .slice(
+                                                                        0,
+                                                                        11,
+                                                                    );
                                                             setForm((f) => ({
                                                                 ...f,
-                                                                phone_number: digits,
+                                                                phone_number:
+                                                                    digits,
                                                             }));
 
                                                             // Live validation
-                                                            if (digits.length === 0) {
-                                                                setErrors((prev) => ({
-                                                                    ...prev,
-                                                                    phone_number:
-                                                                        "Phone number is required",
-                                                                }));
-                                                            } else if (!digits.startsWith("09")) {
-                                                                setErrors((prev) => ({
-                                                                    ...prev,
-                                                                    phone_number: "Must start with 09",
-                                                                }));
-                                                            } else if (digits.length < 11) {
-                                                                setErrors((prev) => ({
-                                                                    ...prev,
-                                                                    phone_number: `${11 - digits.length} more digit${11 - digits.length !== 1 ? "s" : ""} needed`,
-                                                                }));
+                                                            if (
+                                                                digits.length ===
+                                                                0
+                                                            ) {
+                                                                setErrors(
+                                                                    (prev) => ({
+                                                                        ...prev,
+                                                                        phone_number:
+                                                                            "Phone number is required",
+                                                                    }),
+                                                                );
+                                                            } else if (
+                                                                !digits.startsWith(
+                                                                    "09",
+                                                                )
+                                                            ) {
+                                                                setErrors(
+                                                                    (prev) => ({
+                                                                        ...prev,
+                                                                        phone_number:
+                                                                            "Must start with 09",
+                                                                    }),
+                                                                );
+                                                            } else if (
+                                                                digits.length <
+                                                                11
+                                                            ) {
+                                                                setErrors(
+                                                                    (prev) => ({
+                                                                        ...prev,
+                                                                        phone_number: `${11 - digits.length} more digit${11 - digits.length !== 1 ? "s" : ""} needed`,
+                                                                    }),
+                                                                );
                                                             } else {
                                                                 // Valid — clear error
-                                                                setErrors((prev) => {
-                                                                    const n = { ...prev };
-                                                                    delete n.phone_number;
-                                                                    return n;
-                                                                });
+                                                                setErrors(
+                                                                    (prev) => {
+                                                                        const n =
+                                                                            {
+                                                                                ...prev,
+                                                                            };
+                                                                        delete n.phone_number;
+                                                                        return n;
+                                                                    },
+                                                                );
                                                             }
                                                         }}
                                                         maxLength={11}
                                                         className={cn(
                                                             errors.phone_number &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                     {errors.phone_number && (
                                                         <p className="text-xs text-destructive mt-1">
-                                                            {errors.phone_number}
+                                                            {
+                                                                errors.phone_number
+                                                            }
                                                         </p>
                                                     )}
                                                 </div>
                                             ) : (
-                                                <Field label="Phone Number" required isEdit={showEdit}>
+                                                <Field
+                                                    label="Phone Number"
+                                                    required
+                                                    isEdit={showEdit}
+                                                >
                                                     <p className="text-base font-semibold text-foreground py-1">
                                                         {user?.phone_number
-                                                            ? formatPhoneNumber(user.phone_number)
+                                                            ? formatPhoneNumber(
+                                                                  user.phone_number,
+                                                              )
                                                             : "—"}
                                                     </p>
                                                 </Field>
@@ -859,75 +927,113 @@ export default function UserDetail() {
                                                                     : "New password"
                                                             }
                                                             labelBg="bg-card"
-                                                            value={form.password}
+                                                            value={
+                                                                form.password
+                                                            }
                                                             onChange={(e) => {
-                                                                const value = e.target.value;
-                                                                setForm((f) => ({
-                                                                    ...f,
-                                                                    password: value,
-                                                                }));
+                                                                const value =
+                                                                    e.target
+                                                                        .value;
+                                                                setForm(
+                                                                    (f) => ({
+                                                                        ...f,
+                                                                        password:
+                                                                            value,
+                                                                    }),
+                                                                );
 
                                                                 // Live validation
-                                                                setErrors((prev) => {
-                                                                    const next = { ...prev };
+                                                                setErrors(
+                                                                    (prev) => {
+                                                                        const next =
+                                                                            {
+                                                                                ...prev,
+                                                                            };
 
-                                                                    if (!value) {
-                                                                        if (isCreate)
-                                                                            next.password =
-                                                                                "Password is required";
-                                                                        else delete next.password;
-                                                                    } else {
-                                                                        const checks = {
-                                                                            length: value.length >= 8,
-                                                                            upper: /[A-Z]/.test(value),
-                                                                            number: /[0-9]/.test(value),
-                                                                            symbol: /[^A-Za-z0-9]/.test(value),
-                                                                        };
-                                                                        const failed = !checks.length
-                                                                            ? "Must be at least 8 characters"
-                                                                            : !checks.upper
-                                                                                ? "Must include an uppercase letter"
-                                                                                : !checks.number
-                                                                                    ? "Must include a number"
-                                                                                    : !checks.symbol
-                                                                                        ? "Must include a symbol (!@#$...)"
-                                                                                        : null;
-
-                                                                        if (failed) next.password = failed;
-                                                                        else delete next.password;
-                                                                    }
-
-                                                                    // Re-check confirm field whenever password changes
-                                                                    if (form.password_confirmation) {
                                                                         if (
-                                                                            form.password_confirmation !==
-                                                                            value
+                                                                            !value
                                                                         ) {
-                                                                            next.password_confirmation =
-                                                                                "Passwords do not match";
+                                                                            if (
+                                                                                isCreate
+                                                                            )
+                                                                                next.password =
+                                                                                    "Password is required";
+                                                                            else
+                                                                                delete next.password;
                                                                         } else {
-                                                                            delete next.password_confirmation;
-                                                                        }
-                                                                    }
+                                                                            const checks =
+                                                                                {
+                                                                                    length:
+                                                                                        value.length >=
+                                                                                        8,
+                                                                                    upper: /[A-Z]/.test(
+                                                                                        value,
+                                                                                    ),
+                                                                                    number: /[0-9]/.test(
+                                                                                        value,
+                                                                                    ),
+                                                                                    symbol: /[^A-Za-z0-9]/.test(
+                                                                                        value,
+                                                                                    ),
+                                                                                };
+                                                                            const failed =
+                                                                                !checks.length
+                                                                                    ? "Must be at least 8 characters"
+                                                                                    : !checks.upper
+                                                                                      ? "Must include an uppercase letter"
+                                                                                      : !checks.number
+                                                                                        ? "Must include a number"
+                                                                                        : !checks.symbol
+                                                                                          ? "Must include a symbol (!@#$...)"
+                                                                                          : null;
 
-                                                                    return next;
-                                                                });
+                                                                            if (
+                                                                                failed
+                                                                            )
+                                                                                next.password =
+                                                                                    failed;
+                                                                            else
+                                                                                delete next.password;
+                                                                        }
+
+                                                                        // Re-check confirm field whenever password changes
+                                                                        if (
+                                                                            form.password_confirmation
+                                                                        ) {
+                                                                            if (
+                                                                                form.password_confirmation !==
+                                                                                value
+                                                                            ) {
+                                                                                next.password_confirmation =
+                                                                                    "Passwords do not match";
+                                                                            } else {
+                                                                                delete next.password_confirmation;
+                                                                            }
+                                                                        }
+
+                                                                        return next;
+                                                                    },
+                                                                );
                                                             }}
                                                             className={cn(
                                                                 errors.password &&
-                                                                "border-destructive",
+                                                                    "border-destructive",
                                                             )}
                                                         />
 
                                                         {/* Strength meter */}
                                                         {form.password && (
                                                             <PasswordStrength
-                                                                password={form.password}
+                                                                password={
+                                                                    form.password
+                                                                }
                                                             />
                                                         )}
                                                         {errors.password && (
                                                             <p className="text-xs text-destructive">
-                                                                {errors.password}
+                                                                {
+                                                                    errors.password
+                                                                }
                                                             </p>
                                                         )}
                                                     </div>
@@ -937,44 +1043,65 @@ export default function UserDetail() {
                                                             type="password"
                                                             label="Confirm password"
                                                             labelBg="bg-card"
-                                                            value={form.password_confirmation}
+                                                            value={
+                                                                form.password_confirmation
+                                                            }
                                                             onChange={(e) => {
-                                                                const value = e.target.value;
-                                                                setForm((f) => ({
-                                                                    ...f,
-                                                                    password_confirmation: value,
-                                                                }));
+                                                                const value =
+                                                                    e.target
+                                                                        .value;
+                                                                setForm(
+                                                                    (f) => ({
+                                                                        ...f,
+                                                                        password_confirmation:
+                                                                            value,
+                                                                    }),
+                                                                );
 
-                                                                setErrors((prev) => {
-                                                                    const next = { ...prev };
-                                                                    if (!value) {
-                                                                        if (isCreate)
+                                                                setErrors(
+                                                                    (prev) => {
+                                                                        const next =
+                                                                            {
+                                                                                ...prev,
+                                                                            };
+                                                                        if (
+                                                                            !value
+                                                                        ) {
+                                                                            if (
+                                                                                isCreate
+                                                                            )
+                                                                                next.password_confirmation =
+                                                                                    "Please confirm your password";
+                                                                            else
+                                                                                delete next.password_confirmation;
+                                                                        } else if (
+                                                                            value !==
+                                                                            form.password
+                                                                        ) {
                                                                             next.password_confirmation =
-                                                                                "Please confirm your password";
-                                                                        else
+                                                                                "Passwords do not match";
+                                                                        } else {
                                                                             delete next.password_confirmation;
-                                                                    } else if (value !== form.password) {
-                                                                        next.password_confirmation =
-                                                                            "Passwords do not match";
-                                                                    } else {
-                                                                        delete next.password_confirmation;
-                                                                    }
-                                                                    return next;
-                                                                });
+                                                                        }
+                                                                        return next;
+                                                                    },
+                                                                );
                                                             }}
                                                             className={cn(
                                                                 errors.password_confirmation &&
-                                                                "border-destructive",
+                                                                    "border-destructive",
                                                                 !errors.password_confirmation &&
-                                                                form.password_confirmation &&
-                                                                form.password_confirmation ===
-                                                                form.password &&
-                                                                "border-emerald-500",
+                                                                    form.password_confirmation &&
+                                                                    form.password_confirmation ===
+                                                                        form.password &&
+                                                                    "border-emerald-500",
                                                             )}
                                                         />
                                                         {errors.password_confirmation && (
                                                             <p className="text-xs text-destructive mt-1">
-                                                                {errors.password_confirmation}
+                                                                {
+                                                                    errors.password_confirmation
+                                                                }
                                                             </p>
                                                         )}
                                                     </div>
@@ -996,8 +1123,8 @@ export default function UserDetail() {
                                                         isSaving
                                                             ? "Saving…"
                                                             : isCreate
-                                                                ? "Create User"
-                                                                : "Save Changes"
+                                                              ? "Create User"
+                                                              : "Save Changes"
                                                     }
                                                 />
                                             </div>
@@ -1015,7 +1142,8 @@ export default function UserDetail() {
                                                     Client Assignments
                                                 </h2>
                                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                                    Manage clients assigned to this user.
+                                                    Manage clients assigned to
+                                                    this user.
                                                 </p>
                                             </div>
                                             <Button
@@ -1058,20 +1186,42 @@ export default function UserDetail() {
                                                             <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted shrink-0 flex items-center justify-center">
                                                                 {client.banner_image_url ? (
                                                                     <img
-                                                                        src={client.banner_image_url}
-                                                                        alt={client.name}
+                                                                        src={
+                                                                            client.banner_image_url
+                                                                        }
+                                                                        alt={
+                                                                            client.name
+                                                                        }
                                                                         className="h-full w-full object-cover"
                                                                     />
                                                                 ) : (
-                                                                    <Building size={16} className="text-muted-foreground" />
+                                                                    <Building
+                                                                        size={
+                                                                            16
+                                                                        }
+                                                                        className="text-muted-foreground"
+                                                                    />
                                                                 )}
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-sm font-medium text-foreground truncate">
-                                                                    {client.name}
+                                                                    {
+                                                                        client.name
+                                                                    }
                                                                 </p>
                                                                 <p className="text-xs text-muted-foreground truncate">
-                                                                    {client.location} • {client.servers_count} server{client.servers_count !== 1 ? 's' : ''}
+                                                                    {
+                                                                        client.location
+                                                                    }{" "}
+                                                                    •{" "}
+                                                                    {
+                                                                        client.servers_count
+                                                                    }{" "}
+                                                                    server
+                                                                    {client.servers_count !==
+                                                                    1
+                                                                        ? "s"
+                                                                        : ""}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -1081,20 +1231,24 @@ export default function UserDetail() {
                                                                 removeClient.mutate(
                                                                     client.uuid,
                                                                     {
-                                                                        onSuccess: () => {
-                                                                            toast.error(
-                                                                                `${client.name} removed from ${user.first_name}'s list.`,
-                                                                            );
-                                                                        },
-                                                                        onError: () => {
-                                                                            toast.error(
-                                                                                "Failed to remove client.",
-                                                                            );
-                                                                        },
+                                                                        onSuccess:
+                                                                            () => {
+                                                                                toast.error(
+                                                                                    `${client.name} removed from ${user.first_name}'s list.`,
+                                                                                );
+                                                                            },
+                                                                        onError:
+                                                                            () => {
+                                                                                toast.error(
+                                                                                    "Failed to remove client.",
+                                                                                );
+                                                                            },
                                                                     },
                                                                 )
                                                             }
-                                                            disabled={removeClient.isPending}
+                                                            disabled={
+                                                                removeClient.isPending
+                                                            }
                                                             className="text-xs text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50 cursor-pointer"
                                                         >
                                                             Remove
@@ -1108,7 +1262,8 @@ export default function UserDetail() {
                                                     No clients assigned yet.
                                                 </p>
                                                 <p className="text-xs">
-                                                    Assign clients to this user to let them monitor servers.
+                                                    Assign clients to this user
+                                                    to let them monitor servers.
                                                 </p>
                                             </div>
                                         )}
@@ -1155,7 +1310,10 @@ export default function UserDetail() {
                 </Dialog>
 
                 {/* ── Add Client Dialog ── */}
-                <Dialog open={showClientDialog} onOpenChange={setShowClientDialog}>
+                <Dialog
+                    open={showClientDialog}
+                    onOpenChange={setShowClientDialog}
+                >
                     <DialogContent className="sm:max-w-md">
                         <DialogHeader>
                             <DialogTitle>Assign Client</DialogTitle>
@@ -1193,7 +1351,9 @@ export default function UserDetail() {
                                                         `${client.name} assigned successfully.`,
                                                     );
                                                     setShowClientDialog(false);
-                                                    setSelectedClientToAdd(null);
+                                                    setSelectedClientToAdd(
+                                                        null,
+                                                    );
                                                     setClientSearch("");
                                                 },
                                                 onError: () => {
@@ -1212,12 +1372,17 @@ export default function UserDetail() {
                                         <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted shrink-0 flex items-center justify-center">
                                             {client.banner_image_url ? (
                                                 <img
-                                                    src={client.banner_image_url}
+                                                    src={
+                                                        client.banner_image_url
+                                                    }
                                                     alt={client.name}
                                                     className="h-full w-full object-cover"
                                                 />
                                             ) : (
-                                                <Building size={14} className="text-muted-foreground" />
+                                                <Building
+                                                    size={14}
+                                                    className="text-muted-foreground"
+                                                />
                                             )}
                                         </div>
                                         <div className="flex-1 min-w-0">
@@ -1245,7 +1410,7 @@ export default function UserDetail() {
                         </div>
                     </DialogContent>
                 </Dialog>
-            </div >
+            </div>
         </>
     );
 }

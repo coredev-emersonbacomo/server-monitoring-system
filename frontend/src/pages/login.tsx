@@ -1,4 +1,5 @@
 import { useState, type SubmitEvent } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, Server, Eye, EyeOff } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { FloatingInput } from "@/components/ui/floatingInput";
@@ -6,6 +7,8 @@ import { cn } from "@/lib/utils";
 
 export default function Login() {
     const { login, isLoggingIn } = useJwtAuth();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -27,6 +30,12 @@ export default function Login() {
 
         try {
             await login({ email, password, remember });
+            const returnTo = searchParams.get("returnTo");
+            if (returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")) {
+                navigate(returnTo, { replace: true });
+            } else {
+                navigate("/", { replace: true });
+            }
         } catch (err: unknown) {
             if (err && typeof err === "object" && "response" in err) {
                 const axiosErr = err as {

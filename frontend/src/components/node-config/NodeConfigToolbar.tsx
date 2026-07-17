@@ -1,4 +1,4 @@
-import { Save, Eye, Loader2 } from 'lucide-react';
+import { Save, Eye, Loader2, X } from 'lucide-react';
 
 interface NodeConfigToolbarProps {
     name: string;
@@ -8,10 +8,11 @@ interface NodeConfigToolbarProps {
     onPreview: () => void;
     readOnly?: boolean;
     scopeLabel?: string;
+    onClose?: () => void;
 }
 
 export function NodeConfigToolbar({
-    name, isSaving, onNameChange, onSave, onPreview, readOnly, scopeLabel,
+    name, isSaving, onNameChange, onSave, onPreview, readOnly, scopeLabel, onClose,
 }: NodeConfigToolbarProps) {
     return (
         <div className="flex items-center gap-3 px-4 py-2 border-b border-border/40 bg-card">
@@ -52,6 +53,15 @@ export function NodeConfigToolbar({
                     {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                     <span>{isSaving ? 'Saving...' : 'Save'}</span>
                 </button>
+                {onClose && (
+                    <button
+                        onClick={onClose}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        title="Close editor"
+                    >
+                        <X size={16} />
+                    </button>
+                )}
             </div>
         </div>
     );

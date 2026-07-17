@@ -1,6 +1,14 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { UserCircle, Monitor, ChevronRight, Loader2, Settings as SettingsIcon, Activity, GitBranch, Cpu } from "lucide-react";
+import { Link } from "react-router-dom";
+import {
+    UserCircle,
+    Monitor,
+    ChevronRight,
+    Loader2,
+    Settings as SettingsIcon,
+    GitBranch,
+    Cpu,
+} from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import PageLayout from "@/components/PageLayout";
@@ -8,7 +16,6 @@ import PageLayout from "@/components/PageLayout";
 function Settings() {
     const { user, isLoading: authLoading } = useJwtAuth();
     const { setTrail } = useBreadcrumb();
-    const navigate = useNavigate();
 
     useEffect(() => {
         setTrail([{ label: "Settings" }]);
@@ -57,19 +64,15 @@ function Settings() {
         },
         {
             title: "Agent Settings",
-            description: "Manage agent heartbeat, offline threshold, and version tracking.",
+            description:
+                "Manage agent heartbeat, offline threshold, and version tracking.",
             icon: Cpu,
             href: "/settings/agent",
         },
         {
-            title: "Alert Thresholds",
-            description: "Configure CPU, RAM, and Storage thresholds for global server alerts.",
-            icon: Activity,
-            href: "/settings/thresholds",
-        },
-        {
             title: "Alert Configs",
-            description: "Build visual alert configurations with conditions, delays, and notifications.",
+            description:
+                "Build visual alert configurations with conditions, delays, and notifications.",
             icon: GitBranch,
             href: "/settings/alerts",
         },
@@ -98,9 +101,9 @@ function Settings() {
             <main className="py-6 w-full flex-1">
                 <div className="max-w-2xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-3">
                     {settingsSections.map((section) => (
-                        <button
+                        <Link
                             key={section.href}
-                            onClick={() => navigate(section.href)}
+                            to={section.href}
                             className="flex items-center gap-4 p-4 bg-card border border-border/60 rounded-xl shadow-sm hover:shadow-md hover:border-border transition-all text-left group cursor-pointer"
                         >
                             <div className="p-2.5 bg-primary/10 rounded-lg shrink-0">
@@ -115,7 +118,7 @@ function Settings() {
                                 </p>
                             </div>
                             <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-                        </button>
+                        </Link>
                     ))}
                 </div>
             </main>

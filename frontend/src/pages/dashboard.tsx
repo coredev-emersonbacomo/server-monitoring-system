@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import PageLayout from "@/components/PageLayout";
 import {
     Activity,
@@ -168,7 +168,6 @@ function CompletedModal({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-    const navigate = useNavigate();
     const { user } = useAuthContext();
     const [completedOpen, setCompletedOpen] = useState(false);
     const [searchParams, setSearchParams] = useSearchParams();
@@ -254,8 +253,8 @@ export default function Dashboard() {
                     >
                         {/* Stat Cards */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                            <div
-                                onClick={() => navigate("/servers")}
+                            <Link
+                                to="/servers"
                                 className="rounded-xl border border-border/60 bg-card p-5 flex items-center gap-4 cursor-pointer hover:bg-muted/30 transition-colors h-fit w-full"
                             >
                                 <div className="p-3 rounded-lg bg-primary/10 text-primary">
@@ -271,9 +270,9 @@ export default function Dashboard() {
                                         Servers
                                     </p>
                                 </div>
-                            </div>
-                            <div
-                                onClick={() => navigate("/clients")}
+                            </Link>
+                            <Link
+                                to="/clients"
                                 className="rounded-xl border border-border/60 bg-card p-5 flex items-center gap-4 cursor-pointer hover:bg-muted/30 transition-colors h-fit w-full"
                             >
                                 <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-400">
@@ -289,9 +288,9 @@ export default function Dashboard() {
                                         Clients
                                     </p>
                                 </div>
-                            </div>
-                            <div
-                                onClick={() => navigate("/users")}
+                            </Link>
+                            <Link
+                                to="/users"
                                 className="rounded-xl border border-border/60 bg-card p-5 flex items-center gap-4 cursor-pointer hover:bg-muted/30 transition-colors h-fit w-full"
                             >
                                 <div className="p-3 rounded-lg bg-amber-500/10 text-amber-400">
@@ -307,7 +306,7 @@ export default function Dashboard() {
                                         Users
                                     </p>
                                 </div>
-                            </div>
+                            </Link>
                         </div>
 
                         {/* Server Overview */}
@@ -348,13 +347,9 @@ export default function Dashboard() {
                                     </ResponsiveContainer>
                                     <div className="flex flex-wrap gap-4 mt-2 justify-center">
                                         {pieData.map((d) => (
-                                            <div
+                                            <Link
                                                 key={d.name}
-                                                onClick={() =>
-                                                    navigate(
-                                                        `/servers?status=${d.name.toLowerCase()}`,
-                                                    )
-                                                }
+                                                to={`/servers?status=${d.name.toLowerCase()}`}
                                                 className="flex items-center gap-1.5 text-xs cursor-pointer hover:opacity-80 transition-opacity"
                                             >
                                                 <span
@@ -370,7 +365,7 @@ export default function Dashboard() {
                                                 <span className="font-medium text-foreground">
                                                     {d.value}
                                                 </span>
-                                            </div>
+                                            </Link>
                                         ))}
                                     </div>
                                 </div>
@@ -450,23 +445,15 @@ export default function Dashboard() {
                                                     <Icon className="size-4" />
                                                 </div>
 
-                                                <div
+                                                <Link
                                                     className="flex-1 min-w-0 cursor-pointer"
-                                                    onClick={() => {
-                                                        if (
-                                                            action.server_uuid
-                                                        ) {
-                                                            navigate(
-                                                                `/servers/${action.server_uuid}`,
-                                                            );
-                                                        } else if (
-                                                            action.client_uuid
-                                                        ) {
-                                                            navigate(
-                                                                `/clients/${action.client_uuid}`,
-                                                            );
-                                                        }
-                                                    }}
+                                                    to={
+                                                        action.server_uuid
+                                                            ? `/servers/${action.server_uuid}`
+                                                            : action.client_uuid
+                                                              ? `/clients/${action.client_uuid}`
+                                                              : "#"
+                                                    }
                                                 >
                                                     <p className="text-sm font-medium text-foreground truncate">
                                                         {action.message}
@@ -486,7 +473,7 @@ export default function Dashboard() {
                                                             </span>
                                                         </div>
                                                     )}
-                                                </div>
+                                                </Link>
 
                                                 <div className="flex items-center gap-1 shrink-0">
                                                     {action.status ===

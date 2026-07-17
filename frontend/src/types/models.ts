@@ -9,7 +9,6 @@ export type AgentData = components["schemas"]["AgentData"];
 export type AuthUserData = components["schemas"]["AuthUserData"];
 export type ClientData = components["schemas"]["ClientData"];
 export type DashboardStatsData = components["schemas"]["DashboardStatsData"];
-export type GlobalAlert = components["schemas"]["GlobalAlert"];
 export type NodeConfig = components["schemas"]["NodeConfig"];
 export type NodeConfigData = components["schemas"]["NodeConfigData"];
 export type PortsData = components["schemas"]["PortsData"];
