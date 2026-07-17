@@ -54,7 +54,7 @@ export const ServerStatChart = memo(function ServerStatChart({
           )
         : data;
 
-    const windowSize = 60;
+    const windowSize = 100;
     const displayData =
         zoomedData.length <= windowSize
             ? zoomedData
@@ -89,7 +89,7 @@ export const ServerStatChart = memo(function ServerStatChart({
                 onTouchMove={onTouchMove}
             >
                 {displayData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={110}>
+                    <ResponsiveContainer width="100%" height={200}>
                         <LineChart
                             data={displayData}
                             margin={{ top: 0, right: 0, left: 0, bottom: 0 }}

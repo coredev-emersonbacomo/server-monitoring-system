@@ -314,11 +314,11 @@ export default function ServerDetail() {
                     toast.error("Failed to generate provision token.");
                 }
             } else if (data) {
-                setProvisionDetails(data as any);
+               setProvisionDetails(data as any);
                 toast.success("Provision token generated successfully!");
-                queryClient.invalidateQueries({
-                    queryKey: ["server", initial.uuid],
-                });
+                queryClient.setQueryData(["server", initial.uuid], (old: typeof initial) =>
+                old ? { ...old, activeProvisionDetails: data } : old
+               );
             }
         } catch {
             toast.error("An error occurred.");
@@ -342,9 +342,9 @@ export default function ServerDetail() {
             } else if (data) {
                 setProvisionDetails(data as any);
                 toast.success("Provision token regenerated!");
-                queryClient.invalidateQueries({
-                    queryKey: ["server", initial.uuid],
-                });
+                queryClient.setQueryData(["server", initial.uuid], (old: typeof initial) =>
+                    old ? { ...old, activeProvisionDetails: data } : old
+                );
             }
         } catch {
             toast.error("An error occurred.");
@@ -396,9 +396,9 @@ export default function ServerDetail() {
                 } as any,
             );
             toast.success("Tracked port deleted successfully!");
-            queryClient.invalidateQueries({
-                queryKey: ["server", initial.uuid],
-            });
+            queryClient.setQueryData(["server", initial.uuid], (old: typeof initial) =>
+                old ? { ...old, ports: old.ports?.filter((p) => p.id !== portId) } : old
+            );
         } catch {
             toast.error("Failed to delete port.");
         }
@@ -447,10 +447,16 @@ export default function ServerDetail() {
             } else {
                 toast.success("Server info updated.");
                 setIsEditingInfo(false);
-                queryClient.invalidateQueries({
-                    queryKey: ["server", initial.uuid],
-                });
-            }
+                queryClient.setQueryData(["server", initial.uuid], (old: typeof initial) =>
+                    old
+                        ? {
+                              ...old,
+                              name: editName.trim(),
+                              description: editDescription.trim() || undefined,
+                          }
+                        : old
+                );
+          }
         } catch {
             toast.error("An error occurred.");
         } finally {
@@ -571,7 +577,7 @@ export default function ServerDetail() {
                                                 <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
                                                     <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
                                                         {provisionDetails?.linux_command ||
-                                                            `curl -fsSL ${window.location.origin}/install/linux | bash -s -- <token>`}
+                                                            `sudo curl -fsSL ${window.location.origin}/install/linux | sudo bash -s -- <token>`}
                                                     </span>
                                                     {provisionDetails?.linux_command && (
                                                         <button
