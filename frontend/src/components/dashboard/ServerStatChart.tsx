@@ -12,8 +12,14 @@ import { useChartZoomContext } from "@/hooks/useChartZoomContext";
 import { useZoomHandlers } from "@/hooks/useZoomHandlers";
 import type { StatPoint } from "@/types/stats";
 
-function fmtTime(ts: number) {
+function fmtTime(ts: number, timeSpan: string = "1H") {
     const d = new Date(ts);
+    if (timeSpan === "1W" || timeSpan === "1M") {
+        return d.toLocaleDateString("en", { month: "short", day: "numeric" });
+    }
+    if (timeSpan === "1D") {
+        return `${d.getHours().toString().padStart(2, "0")}:00`;
+    }
     return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 }
 
@@ -22,7 +28,7 @@ function fmtDatetime(ts: number) {
     return (
         d.toLocaleDateString("en", { month: "short", day: "numeric" }) +
         " " +
-        fmtTime(ts)
+        `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`
     );
 }
 
@@ -33,6 +39,7 @@ interface ServerStatChartProps {
     color: string;
     unit?: string;
     yDomain?: [number | "auto", number | "auto"];
+    timeSpan?: string;
 }
 
 export const ServerStatChart = memo(function ServerStatChart({
@@ -42,6 +49,7 @@ export const ServerStatChart = memo(function ServerStatChart({
     color,
     unit = "",
     yDomain = ["auto", "auto"],
+    timeSpan = "1H",
 }: ServerStatChartProps) {
     const { domain } = useChartZoomContext();
     const allTimestamps = data.map((d) => d.timestamp);
@@ -62,14 +70,6 @@ export const ServerStatChart = memo(function ServerStatChart({
 
     const last = displayData[displayData.length - 1];
     const currentValue = last?.[dataKey];
-
-    const tickTimestamps =
-        displayData.length < 2
-            ? displayData.map((d) => d.timestamp)
-            : [
-                  displayData[Math.floor(displayData.length / 2)].timestamp,
-                  displayData[displayData.length - 1].timestamp,
-              ];
 
     const tsValues = displayData.map((d) => d.timestamp);
     const xDomain: [number, number] =
@@ -104,15 +104,14 @@ export const ServerStatChart = memo(function ServerStatChart({
                                 type="number"
                                 scale="time"
                                 domain={xDomain}
-                                ticks={tickTimestamps}
-                                tickFormatter={fmtTime}
+                                tickFormatter={(ts) => fmtTime(ts, timeSpan)}
                                 tick={{
                                     fontSize: 10,
                                     fill: "var(--color-muted-foreground)",
                                 }}
                                 tickLine={false}
                                 axisLine={false}
-                                minTickGap={50}
+                                minTickGap={30}
                             />
                             <YAxis
                                 domain={yDomain}
