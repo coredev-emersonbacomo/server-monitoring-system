@@ -7,6 +7,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime/debug"
+	"strings"
 	"time"
 )
 
@@ -90,4 +92,19 @@ func waitForInternet() {
 	for !hasInternet() {
 		time.Sleep(5 * time.Second)
 	}
+}
+
+func reportAgentPanic(config *BootstrapConfig, identityToken string, errVal interface{}) {
+	if config == nil || config.UpdateURL == "" || identityToken == "" {
+		return
+	}
+	errorURL := strings.Replace(config.UpdateURL, "/update", "/error", 1)
+	stack := string(debug.Stack())
+	payload := map[string]string{
+		"error":       fmt.Sprintf("%v", errVal),
+		"stack_trace": stack,
+	}
+
+	client := NewAgentClient()
+	_ = client.postNotification(errorURL, identityToken, payload)
 }

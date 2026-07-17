@@ -47,7 +47,6 @@ type RegisterResponse struct {
 }
 
 type HeartbeatRequest struct {
-	AgentVersion         string            `json:"agent_version"`
 	ConfigurationVersion int               `json:"configuration_version"`
 	Timestamp            int64             `json:"timestamp"`
 	Hostname             string            `json:"hostname"`
