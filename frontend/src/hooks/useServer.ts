@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import api from "@/api/api";
 
 export const useServer = (serverUuid: string, timeSubtract: string = '-2 hour', timeUnit: number = 1) => {
@@ -15,5 +15,6 @@ export const useServer = (serverUuid: string, timeSubtract: string = '-2 hour', 
             return data;
         },
         enabled: !!serverUuid,
+        placeholderData: keepPreviousData,
     });
 };
