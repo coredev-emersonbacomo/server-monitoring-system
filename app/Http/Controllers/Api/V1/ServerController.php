@@ -221,8 +221,9 @@ class ServerController extends Controller
 
         $tableUnit = $requestData->getTableUnits();
         $subTime = $requestData->getStartFromDatetime();
+        $endTime = $requestData->getEndToDatetime();
 
-        $updates = $this->getData($server->id, $tableUnit, $subTime);
+        $updates = $this->getData($server->id, $tableUnit, $subTime, $endTime);
 
         $stats = $updates->map(
             fn($row) => StatPointData::from(self::computeStatPointFromAgg($row, $tableUnit))
@@ -380,7 +381,7 @@ class ServerController extends Controller
         };
 
         // The database might append a local timezone offset (e.g., +08) to the timestamp string,
-        // but the time itself is actually in UTC. We extract just the Y-m-d H:i:s part 
+        // but the time itself is actually in UTC. We extract just the Y-m-d H:i:s part
         // and parse it explicitly as UTC to get the correct epoch.
         $timeString = substr($row->timestamp, 0, 19);
         $epochMs = \Illuminate\Support\Carbon::parse($timeString, 'UTC')->getPreciseTimestamp(3);
@@ -395,13 +396,17 @@ class ServerController extends Controller
         ];
     }
 
-    public function getData(int $serverId, string $tableUnit, Carbon $subTime): Collection
+    public function getData(int $serverId, string $tableUnit, Carbon $subTime, ?Carbon $endTime = null): Collection
     {
-        return DB::table($tableUnit)
+        $query = DB::table($tableUnit)
             ->selectRaw('timestamp, cpu, memory, disk, netin, netout')
             ->where('server_id', $serverId)
-            ->where('timestamp', '>=', $subTime)
-            ->orderBy('timestamp')
-            ->get();
+            ->where('timestamp', '>=', $subTime);
+
+        if ($endTime) {
+            $query->where('timestamp', '<=', $endTime);
+        }
+
+        return $query->orderBy('timestamp')->get();
     }
 }
