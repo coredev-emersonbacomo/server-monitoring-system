@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { z } from "zod";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -16,7 +16,6 @@ import {
 import { toast } from "sonner";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { Label } from "@/components/ui/label";
 import {
@@ -291,6 +290,19 @@ export default function UserDetail() {
         }
     }, [user]);
 
+    const hasChanges = useMemo(() => {
+        if (!user) return false;
+        const formChanged =
+            form.first_name !== user.first_name ||
+            form.last_name !== user.last_name ||
+            form.email !== user.email ||
+            form.username !== user.username ||
+            form.phone_number !== user.phone_number ||
+            form.password !== "" ||
+            form.password_confirmation !== "";
+        return formChanged || avatarFile !== null;
+    }, [form, user, avatarFile]);
+
     // Breadcrumb
     useEffect(() => {
         if (mode === "create") {
@@ -303,10 +315,8 @@ export default function UserDetail() {
         }
     }, [setTrail, mode, user]);
 
-    const set =
-        (key: keyof typeof form) =>
-        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-            setForm((f) => ({ ...f, [key]: e.target.value }));
+    const set = (key: keyof typeof form) => (value: string) =>
+        setForm((f) => ({ ...f, [key]: value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const isCreate = mode === "create";
@@ -315,7 +325,7 @@ export default function UserDetail() {
         .object({
             first_name: z.string().trim().min(1, "Required"),
             last_name: z.string().trim().min(1, "Required"),
-            email: z.string().trim().min(1, "Required").email("Invalid email"),
+            email: z.email("Invalid email").trim().min(1, "Required"),
             username: z.string().trim().min(1, "Required"),
             phone_number: z
                 .string()
@@ -555,7 +565,7 @@ export default function UserDetail() {
                         <div className="absolute inset-0 bg-linear-to-r from-background/40 to-transparent" />
                     </div>
 
-                    <div className="relative z-10 px-6 sm:px-8 lg:px-10 pt-6 pb-20">
+                    <div className="relative z-10 px-6 sm:px-8 lg:px-10 pt-6 pb-20 min-h-60">
                         {/* ── Top bar: actions ── */}
                         <div className="flex items-center justify-end mb-6">
                             <div className="flex items-center gap-2">
@@ -581,21 +591,48 @@ export default function UserDetail() {
                                     />
                                 )}
                                 {showEdit && mode !== "create" && (
-                                    <Button
-                                        className="cursor-pointer"
-                                        variant="outline"
-                                        size="sm"
-                                        label="Cancel"
-                                        onClick={cancelEdit}
-                                    />
+                                    <>
+                                        <Button
+                                            className="cursor-pointer"
+                                            variant="outline"
+                                            size="sm"
+                                            label="Cancel"
+                                            onClick={cancelEdit}
+                                            disabled={isSaving}
+                                        />
+                                        <Button
+                                            className="cursor-pointer"
+                                            type="submit"
+                                            size="sm"
+                                            disabled={isSaving || !hasChanges}
+                                            label={
+                                                isSaving
+                                                    ? "Saving…"
+                                                    : "Save Changes"
+                                            }
+                                        />
+                                    </>
                                 )}
                                 {showEdit && mode === "create" && (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        label="Cancel"
-                                        onClick={() => navigate("/users")}
-                                    />
+                                    <>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            label="Cancel"
+                                            onClick={() => navigate("/users")}
+                                        />
+                                        <Button
+                                            className="cursor-pointer"
+                                            type="submit"
+                                            size="sm"
+                                            disabled={isSaving}
+                                            label={
+                                                isSaving
+                                                    ? "Saving…"
+                                                    : "Create User"
+                                            }
+                                        />
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -638,7 +675,11 @@ export default function UserDetail() {
                                             </Label>
                                             <input
                                                 value={form.first_name}
-                                                onChange={set("first_name")}
+                                                onChange={(e) =>
+                                                    set("first_name")(
+                                                        e.target.value,
+                                                    )
+                                                }
                                                 placeholder="First name"
                                                 className="w-full text-xl sm:text-2xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
                                             />
@@ -654,7 +695,11 @@ export default function UserDetail() {
                                             </Label>
                                             <input
                                                 value={form.last_name}
-                                                onChange={set("last_name")}
+                                                onChange={(e) =>
+                                                    set("last_name")(
+                                                        e.target.value,
+                                                    )
+                                                }
                                                 placeholder="Last name"
                                                 className="w-full text-xl sm:text-2xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
                                             />
@@ -732,9 +777,10 @@ export default function UserDetail() {
                                                     <FloatingInput
                                                         type="email"
                                                         label="Email Address"
-                                                        labelBg="bg-card"
                                                         value={form.email}
-                                                        onChange={set("email")}
+                                                        onValueChange={set(
+                                                            "email",
+                                                        )}
                                                         className={cn(
                                                             errors.email &&
                                                                 "border-destructive",
@@ -762,9 +808,8 @@ export default function UserDetail() {
                                                 <div>
                                                     <FloatingInput
                                                         label="Username"
-                                                        labelBg="bg-card"
                                                         value={form.username}
-                                                        onChange={set(
+                                                        onValueChange={set(
                                                             "username",
                                                         )}
                                                         className={cn(
@@ -798,22 +843,19 @@ export default function UserDetail() {
                                                 <div className="flex flex-col gap-1">
                                                     <FloatingInput
                                                         label="Phone Number"
-                                                        labelBg="bg-card"
                                                         value={
                                                             form.phone_number
                                                         }
-                                                        onChange={(e) => {
+                                                        onValueChange={(
+                                                            value,
+                                                        ) => {
                                                             // Strip non-digits, hard cap at 11
-                                                            const digits =
-                                                                e.target.value
-                                                                    .replace(
-                                                                        /\D/g,
-                                                                        "",
-                                                                    )
-                                                                    .slice(
-                                                                        0,
-                                                                        11,
-                                                                    );
+                                                            const digits = value
+                                                                .replace(
+                                                                    /\D/g,
+                                                                    "",
+                                                                )
+                                                                .slice(0, 11);
                                                             setForm((f) => ({
                                                                 ...f,
                                                                 phone_number:
@@ -926,14 +968,12 @@ export default function UserDetail() {
                                                                     ? "Password"
                                                                     : "New password"
                                                             }
-                                                            labelBg="bg-card"
                                                             value={
                                                                 form.password
                                                             }
-                                                            onChange={(e) => {
-                                                                const value =
-                                                                    e.target
-                                                                        .value;
+                                                            onValueChange={(
+                                                                value,
+                                                            ) => {
                                                                 setForm(
                                                                     (f) => ({
                                                                         ...f,
@@ -1042,14 +1082,12 @@ export default function UserDetail() {
                                                         <FloatingInput
                                                             type="password"
                                                             label="Confirm password"
-                                                            labelBg="bg-card"
                                                             value={
                                                                 form.password_confirmation
                                                             }
-                                                            onChange={(e) => {
-                                                                const value =
-                                                                    e.target
-                                                                        .value;
+                                                            onValueChange={(
+                                                                value,
+                                                            ) => {
                                                                 setForm(
                                                                     (f) => ({
                                                                         ...f,
@@ -1107,27 +1145,6 @@ export default function UserDetail() {
                                                     </div>
                                                 </div>
                                             </section>
-                                        </>
-                                    )}
-
-                                    {/* Actions */}
-                                    {showEdit && (
-                                        <>
-                                            <div className="h-px bg-border" />
-                                            <div className="flex items-center justify-end gap-3">
-                                                <Button
-                                                    className="cursor-pointer"
-                                                    type="submit"
-                                                    disabled={isSaving}
-                                                    label={
-                                                        isSaving
-                                                            ? "Saving…"
-                                                            : isCreate
-                                                              ? "Create User"
-                                                              : "Save Changes"
-                                                    }
-                                                />
-                                            </div>
                                         </>
                                     )}
                                 </form>
