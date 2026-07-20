@@ -10,8 +10,7 @@ use App\Models\Setting;
 use App\NodeConfig\Engine\NodeConfigEngine;
 use App\NodeConfig\Engine\NodeRegistry;
 use App\NodeConfig\Models\NodeConfig;
-use App\NodeConfig\Jobs\FireNodeTimer;
-use App\NodeConfig\Services\NodeConfigNotificationService;
+use App\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -30,15 +29,14 @@ class MonitorServer implements ShouldQueue
         private readonly string $serverUuid,
     ) {}
 
-    public function handle(NodeRegistry $registry, NodeConfigNotificationService $notifications): void
+    public function handle(NodeRegistry $registry, NotificationService $notifications): void
     {
         $server = Server::with(['client.secopclients', 'agent', 'latestUpdate'])->where('uuid', $this->serverUuid)->first();
         if (!$server || !$server->agent) return;
 
         $config = NodeConfig::resolveForServer($this->serverUuid);
-        if (!$config || !$config->enabled) return;
 
-        $engine = new NodeConfigEngine($registry);
+        $engine = $config ? new NodeConfigEngine($registry) : null;
 
         $this->evaluateServerAlerts($server, $config, $engine, $notifications);
         $this->evaluateNumericMetrics($server, $config, $engine, $notifications);
@@ -47,17 +45,19 @@ class MonitorServer implements ShouldQueue
 
     private function evaluateServerAlerts(
         Server $server,
-        NodeConfig $config,
-        NodeConfigEngine $engine,
-        NodeConfigNotificationService $notifications,
+        ?NodeConfig $config,
+        ?NodeConfigEngine $engine,
+        NotificationService $notifications,
     ): void {
+        if (!$config || !$engine) return;
+
         $agent = $server->agent;
-        $offlineThresholdMinutes = (int) Setting::get('offline_threshold', '5');
+        $offlineThresholdSeconds = (int) Setting::get('offline_threshold', '15');
         $isOnline = $agent->last_seen_at && $agent->last_seen_at->greaterThan(
-            now()->subMinutes($offlineThresholdMinutes)
+            now()->subSeconds($offlineThresholdSeconds)
         );
 
-        $sourceNodeId = $engine->findMetricNode($config, 'server_status');
+        $sourceNodeId = $this->findMetricNode($config, 'server_status');
         if (!$sourceNodeId) return;
 
         $extraState = [
@@ -71,7 +71,7 @@ class MonitorServer implements ShouldQueue
         if (!$result['success']) return;
 
         foreach ($result['timers'] as $timer) {
-            FireNodeTimer::dispatch(
+            \App\NodeConfig\Jobs\FireNodeTimer::dispatch(
                 $timer['node_config_id'],
                 $timer['node_id'],
                 array_merge($timer['context'], $extraState),
@@ -86,16 +86,18 @@ class MonitorServer implements ShouldQueue
                 'metric' => 'server_status',
                 'node' => $action['node_id'],
             ]);
-            $notifications->dispatchAction($action);
+            $this->dispatchNotification($action, $notifications);
         }
     }
 
     private function evaluateNumericMetrics(
         Server $server,
-        NodeConfig $config,
-        NodeConfigEngine $engine,
-        NodeConfigNotificationService $notifications,
+        ?NodeConfig $config,
+        ?NodeConfigEngine $engine,
+        NotificationService $notifications,
     ): void {
+        if (!$config || !$engine) return;
+
         $agent = $server->agent;
 
         $metrics = [
@@ -105,7 +107,7 @@ class MonitorServer implements ShouldQueue
         ];
 
         foreach ($metrics as $metricType => $sampleInfo) {
-            $sourceNodeId = $engine->findMetricNode($config, $metricType);
+            $sourceNodeId = $this->findMetricNode($config, $metricType);
             if (!$sourceNodeId) continue;
 
             $latestSample = MetricSample::whereHas('batch', function ($q) use ($agent) {
@@ -129,7 +131,7 @@ class MonitorServer implements ShouldQueue
             if (!$result['success']) continue;
 
             foreach ($result['timers'] as $timer) {
-                FireNodeTimer::dispatch(
+                \App\NodeConfig\Jobs\FireNodeTimer::dispatch(
                     $timer['node_config_id'],
                     $timer['node_id'],
                     array_merge($timer['context'], $extraState),
@@ -144,18 +146,18 @@ class MonitorServer implements ShouldQueue
                     'value' => $latestSample->value,
                     'node' => $action['node_id'],
                 ]);
-                $notifications->dispatchAction($action);
+                $this->dispatchNotification($action, $notifications);
             }
         }
     }
 
     private function syncServerActionItem(
         Server $server,
-        NodeConfig $config,
-        NodeConfigEngine $engine,
+        ?NodeConfig $config,
+        ?NodeConfigEngine $engine,
     ): void {
         $isOffline = $server->health === ServerHealth::Offline;
-        $wouldNotifyOffline = $this->engineWouldNotifyOffline($server, $config, $engine);
+        $wouldNotifyOffline = $config && $engine && $this->engineWouldNotifyOffline($server, $config, $engine);
 
         if (!$isOffline && !$wouldNotifyOffline) {
             $resolved = ActionItem::where('action_type', 'server_offline')
@@ -202,14 +204,14 @@ class MonitorServer implements ShouldQueue
         $agent = $server->agent;
         if (!$agent) return false;
 
-        $offlineThresholdMinutes = (int) Setting::get('offline_threshold', '5');
+        $offlineThresholdSeconds = (int) Setting::get('offline_threshold', '15');
         $isOnline = $agent->last_seen_at && $agent->last_seen_at->greaterThan(
-            now()->subMinutes($offlineThresholdMinutes)
+            now()->subSeconds($offlineThresholdSeconds)
         );
 
         if ($isOnline) return false;
 
-        $sourceNodeId = $engine->findMetricNode($config, 'server_status');
+        $sourceNodeId = $this->findMetricNode($config, 'server_status');
         if (!$sourceNodeId) return false;
 
         $result = $engine->trigger($config, $sourceNodeId, 'offline', [
@@ -226,5 +228,112 @@ class MonitorServer implements ShouldQueue
         }
 
         return false;
+    }
+
+    private function findMetricNode(NodeConfig $config, string $metricType): ?string
+    {
+        $configData = $config->getParsedConfig();
+        $nodes = $configData['nodes'] ?? [];
+
+        foreach ($nodes as $node) {
+            if (($node['type'] ?? '') === 'metric' && ($node['settings']['metric_type'] ?? '') === $metricType) {
+                return $node['id'];
+            }
+        }
+
+        return null;
+    }
+
+    private function dispatchNotification(array $action, NotificationService $notifications): void
+    {
+        $settings = $action['settings'];
+        $context = $action['upstream_context'] ?? [];
+
+        $serverId = $context['server_id'] ?? null;
+        $server = $serverId ? Server::with('client')->find($serverId) : null;
+
+        $templateData = [
+            'server' => $server,
+            'runtime' => [
+                'metricName' => $context['metric_name'] ?? 'Unknown Metric',
+                'sustainValue' => $context['sustain_value'] ?? '',
+                'offlineDuration' => $server?->agent?->last_seen_at
+                    ? now()->diffForHumans($server->agent->last_seen_at, true) . ' ago'
+                    : 'unknown',
+            ],
+        ];
+
+        $subject = $this->resolveTemplates($settings['subject'] ?? 'Alert triggered', $templateData);
+        $message = $this->resolveTemplates($settings['message'] ?? 'An alert condition was triggered.', $templateData);
+
+        $channel = $settings['channel'] ?? 'email';
+
+        try {
+            match ($channel) {
+                'email' => $this->sendEmail($server, $subject, $message, $notifications),
+                'discord' => $this->sendDiscord($settings, $message, $notifications),
+                default => null,
+            };
+
+            Log::info("[server-events] Notification dispatched", [
+                'server_id' => $serverId,
+                'server' => $server?->name,
+                'channel' => $channel,
+                'subject' => $subject,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("[server-events] Notification failed", [
+                'server_id' => $serverId,
+                'server' => $server?->name,
+                'channel' => $channel,
+                'error' => $e->getMessage(),
+                'node_id' => $action['node_id'],
+            ]);
+        }
+    }
+
+    private function sendEmail(?Server $server, string $subject, string $message, NotificationService $notifications): void
+    {
+        $emails = $server?->client?->secopclients?->pluck('email')->filter()->values()->all();
+        if (empty($emails)) return;
+
+        $notifications->sendEmailAlert($emails, $message, $subject);
+    }
+
+    private function sendDiscord(array $settings, string $message, NotificationService $notifications): void
+    {
+        $botToken = $settings['bot_token'] ?? null;
+        $channelId = $settings['channel_id'] ?? null;
+        $roleId = $settings['role_id'] ?? null;
+
+        if (!$botToken || !$channelId) return;
+
+        $notifications->sendDiscordAlert($botToken, $roleId ?? '', $message, $channelId);
+    }
+
+    private function resolveTemplates(string $text, array $data): string
+    {
+        return preg_replace_callback('/\{([^}]+)\}/', function ($matches) use ($data) {
+            return $this->resolveTemplateVar($matches[1], $data);
+        }, $text);
+    }
+
+    private function resolveTemplateVar(string $path, array $data): string
+    {
+        $allowedPrefixes = ['server', 'runtime'];
+
+        if ($path === '' || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*$/', $path)) {
+            return '{' . $path . '}';
+        }
+
+        $firstSegment = strtolower(explode('.', $path)[0]);
+
+        if (!in_array($firstSegment, $allowedPrefixes, true)) {
+            return '{' . $path . '}';
+        }
+
+        $result = data_get($data, $path);
+
+        return $result !== null ? (string) $result : '{' . $path . '}';
     }
 }

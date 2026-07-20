@@ -38,9 +38,9 @@ class SettingController extends Controller
         ]);
 
         if (isset($data['heartbeat_interval']) && isset($data['offline_threshold'])) {
-            if ($data['heartbeat_interval'] < $data['offline_threshold']) {
+            if ($data['offline_threshold'] < $data['heartbeat_interval']) {
                 return response()->json([
-                    'message' => 'Heartbeat interval must be greater than or equal to the offline threshold.',
+                    'message' => 'Offline threshold must be greater than or equal to the heartbeat interval.',
                 ], 422);
             }
         }

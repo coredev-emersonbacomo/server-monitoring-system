@@ -48,6 +48,10 @@ class HeartbeatService
                 'version' => $newVersion,
             ]);
 
+            $offlineThresholdSeconds = (int) \App\Models\Setting::get('offline_threshold', '15');
+            \App\Jobs\CheckServerOffline::dispatch($server->uuid)
+                ->delay(now()->addSeconds($offlineThresholdSeconds));
+
             // Transition server to online if needed
             $oldStatus = $server->status;
             if ($oldStatus !== ServerStatus::Online->value) {
@@ -72,7 +76,27 @@ class HeartbeatService
                     ]),
                 ]);
 
+                // Real-time push so UI immediately reflects online status
+                \App\Events\ServerStatsUpdated::dispatchSync($server->uuid, [
+                    'timestamp' => now()->timestamp,
+                    'c'         => 0.0,
+                    'm'         => 0.0,
+                    'd'         => 0.0,
+                    'netIn'     => 0.0,
+                    'netOut'    => 0.0,
+                ]);
+
                 $this->triggerNodeConfigForServer($server, 'online');
+
+                // Real-time push so the frontend immediately shows Online
+                \App\Events\ServerStatsUpdated::dispatchSync($server->uuid, [
+                    'timestamp' => now()->timestamp,
+                    'c'         => 0.0,
+                    'm'         => 0.0,
+                    'd'         => 0.0,
+                    'netIn'     => 0.0,
+                    'netOut'    => 0.0,
+                ]);
             }
 
             // Create Heartbeat
@@ -392,7 +416,6 @@ class HeartbeatService
             $cmdId = $ack['command_id'] ?? null;
             if (!$cmdId) continue;
 
-            /** @var AgentCommand|null $command */
             $command = AgentCommand::find($cmdId);
             if (!$command) continue;
 
@@ -422,14 +445,20 @@ class HeartbeatService
 
     private function triggerNodeConfigForServer(Server $server, string $status): void
     {
-        $config = NodeConfig::resolveForServer($server->uuid);
-        if (!$config || !$config->enabled) return;
+        $config = NodeConfig::where('slug', 'alerts')->where('enabled', true)->first();
+        if (!$config) return;
 
-        $engine = new \App\NodeConfig\Engine\NodeConfigEngine(
-            app(\App\NodeConfig\Engine\NodeRegistry::class)
-        );
+        $configData = $config->getParsedConfig();
+        $nodes = $configData['nodes'] ?? [];
 
-        $sourceNodeId = $engine->findMetricNode($config, 'server_status');
+        $sourceNodeId = null;
+        foreach ($nodes as $node) {
+            if (($node['type'] ?? '') === 'metric' && ($node['settings']['metric_type'] ?? '') === 'server_status') {
+                $sourceNodeId = $node['id'];
+                break;
+            }
+        }
+
         if (!$sourceNodeId) return;
 
         EvaluateNodeConfig::dispatch($config->id, $sourceNodeId, $status, [

@@ -61,6 +61,35 @@ test('admin can update settings', function () {
     expect(Setting::get('secop_limit_per_client'))->toBe('3');
 });
 
+test('settings validation fails if offline threshold is less than heartbeat interval', function () {
+    $token = loginAs($this->admin);
+
+    $response = $this->withHeaders([
+        'Authorization' => 'Bearer ' . $token,
+    ])->putJson('/api/settings', [
+        'heartbeat_interval' => 10,
+        'offline_threshold' => 9,
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJson([
+            'message' => 'Offline threshold must be greater than or equal to the heartbeat interval.',
+        ]);
+});
+
+test('settings validation passes if offline threshold is greater than or equal to heartbeat interval', function () {
+    $token = loginAs($this->admin);
+
+    $response = $this->withHeaders([
+        'Authorization' => 'Bearer ' . $token,
+    ])->putJson('/api/settings', [
+        'heartbeat_interval' => 10,
+        'offline_threshold' => 11,
+    ]);
+
+    $response->assertStatus(200);
+});
+
 test('non-admin cannot update settings', function () {
     $token = loginAs($this->secop);
 

@@ -93,8 +93,8 @@ export default function AgentSettings() {
 
     const heartbeatNum = parseInt(heartbeatValue, 10);
     const offlineNum = parseInt(offlineValue, 10);
-    const heartbeatBelowOffline =
-        !isNaN(heartbeatNum) && !isNaN(offlineNum) && heartbeatNum < offlineNum;
+    const offlineBelowHeartbeat =
+        !isNaN(heartbeatNum) && !isNaN(offlineNum) && offlineNum < heartbeatNum;
 
     const handleSave = async () => {
         const heartbeatParsed = parseInt(heartbeatValue, 10);
@@ -116,9 +116,9 @@ export default function AgentSettings() {
             );
             return;
         }
-        if (heartbeatParsed < offlineParsed) {
+        if (offlineParsed < heartbeatParsed) {
             toast.error(
-                "Heartbeat interval must be greater than or equal to the offline threshold.",
+                "Offline threshold must be greater than or equal to the heartbeat interval.",
             );
             return;
         }
@@ -224,7 +224,7 @@ export default function AgentSettings() {
                         <div className="px-6 divide-y divide-border/50">
                             <SettingRow
                                 label="Heartbeat Interval"
-                                description="How often agents send heartbeats to the server (in seconds). Must be greater than or equal to the offline threshold."
+                                description="How often agents send heartbeats to the server (in seconds). Must be less than or equal to the offline threshold."
                             >
                                 <div className="flex items-center gap-2">
                                     <input
@@ -244,7 +244,7 @@ export default function AgentSettings() {
 
                             <SettingRow
                                 label="Offline Threshold"
-                                description="Seconds without a heartbeat before a server is marked as offline."
+                                description="Seconds without a heartbeat before a server is marked as offline. Must be greater than or equal to the heartbeat interval."
                             >
                                 <div className="flex items-center gap-2">
                                     <input
@@ -265,13 +265,13 @@ export default function AgentSettings() {
                     </div>
 
                     {/* Validation warning */}
-                    {heartbeatBelowOffline && (
+                    {offlineBelowHeartbeat && (
                         <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-red-500/5 border border-red-500/20 text-red-600 dark:text-red-400">
                             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                             <p className="text-xs leading-relaxed">
-                                Heartbeat interval ({heartbeatValue} sec) must
-                                be greater than or equal to the offline
-                                threshold ({offlineValue} sec).
+                                Offline threshold ({offlineValue} sec) must
+                                be greater than or equal to the heartbeat
+                                interval ({heartbeatValue} sec).
                             </p>
                         </div>
                     )}

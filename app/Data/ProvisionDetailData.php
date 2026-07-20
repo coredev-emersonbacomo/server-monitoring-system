@@ -7,8 +7,8 @@ use Spatie\LaravelData\Data;
 class ProvisionDetailData extends Data
 {
     public function __construct(
-        public bool $conflict,
         public string $expires_at,
+        public bool $conflict = false,
         public ?string $token = null,
         public ?string $linux_command = null,
         public ?string $windows_command = null,
