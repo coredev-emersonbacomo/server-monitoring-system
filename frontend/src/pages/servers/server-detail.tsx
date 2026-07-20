@@ -175,26 +175,73 @@ export default function ServerDetail() {
     const [searchParams] = useSearchParams();
     const allClient = searchParams.get("client") === "all";
 
-    type TimeSpan = "1H" | "1D" | "1W" | "1M";
+    type TimeSpan = "1H" | "1D" | "1W" | "1M" | "3M" | "6M" | "1Y" | "3Y" | "6Y" | "9Y" | "12Y" | "Custom";
     const [timeSpan, setTimeSpan] = useState<TimeSpan>("1H");
+    
+    // For Custom range
+    const [customFrom, setCustomFrom] = useState<string>("");
+    const [customTo, setCustomTo] = useState<string>("");
+    const [customUnitStr, setCustomUnitStr] = useState<string>("auto");
 
     const timeSpanArgs = useMemo(() => {
+        if (timeSpan === "Custom") {
+            if (!customFrom || !customTo) return { subtract: "-1 hour", unit: 1 };
+            
+            const fromTime = new Date(customFrom).getTime();
+            const toTime = new Date(customTo).getTime();
+            const diffHours = (toTime - fromTime) / (1000 * 60 * 60);
+            
+            let minUnit = 1; // Minute
+            if (diffHours > 24 * 365) minUnit = 5; // Month
+            else if (diffHours > 24 * 31) minUnit = 4; // Week
+            else if (diffHours > 48) minUnit = 3; // Day
+            else if (diffHours > 2) minUnit = 2; // Hour
+
+            let unit = customUnitStr === "auto" ? minUnit : parseInt(customUnitStr, 10);
+            if (unit < minUnit) unit = minUnit;
+
+            return {
+                subtract: undefined,
+                unit,
+                minUnit,
+                fromTime: new Date(customFrom).toISOString(),
+                toTime: new Date(customTo).toISOString(),
+            };
+        }
+
         switch (timeSpan) {
             case "1H":
-                return { subtract: "-1 hour", unit: 1 }; // Minute
+                return { subtract: "-1 hour", unit: 1 };   // Minute data points
             case "1D":
-                return { subtract: "-1 day", unit: 2 }; // Hour
+                return { subtract: "-1 day", unit: 2 };    // Hour data points
             case "1W":
-                return { subtract: "-1 week", unit: 3 }; // Day
+                return { subtract: "-1 week", unit: 3 };   // Day data points
             case "1M":
-                return { subtract: "-1 month", unit: 4 }; // Week
+                return { subtract: "-1 month", unit: 4 };  // Week data points
+            case "3M":
+                return { subtract: "-3 months", unit: 4 }; // Week data points
+            case "6M":
+                return { subtract: "-6 months", unit: 4 }; // Week data points
+            case "1Y":
+                return { subtract: "-1 year", unit: 5 };   // Month data points
+            case "3Y":
+                return { subtract: "-3 years", unit: 5 };  // Month data points
+            case "6Y":
+                return { subtract: "-6 years", unit: 5 };  // Month data points
+            case "9Y":
+                return { subtract: "-9 years", unit: 5 };  // Month data points
+            case "12Y":
+                return { subtract: "-12 years", unit: 5 }; // Month data points
         }
-    }, [timeSpan]);
+    }, [timeSpan, customFrom, customTo, customUnitStr]);
 
     const { data: initial, isLoading, isError } = useServer(
-        uuid!,
-        timeSpanArgs.subtract,
-        timeSpanArgs.unit,
+        uuid!, {
+            timeSubtract: timeSpanArgs?.subtract,
+            timeUnit: timeSpanArgs?.unit,
+            fromTime: (timeSpanArgs as any)?.fromTime,
+            toTime: (timeSpanArgs as any)?.toTime,
+        }
     );
     const [, setWsStatus] = useState<WsStatus>("connecting");
     const [history, setHistory] = useState<StatPointData[]>([]);
@@ -1032,23 +1079,79 @@ export default function ServerDetail() {
                                                 <h3 className="text-sm font-semibold text-foreground">
                                                     System Resources
                                                 </h3>
-                                                <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
-                                                    {(["1H", "1D", "1W", "1M"] as TimeSpan[]).map((span) => (
-                                                        <button
-                                                            key={span}
-                                                            onClick={() => setTimeSpan(span)}
-                                                            className={cn(
-                                                                "px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer",
-                                                                timeSpan === span
-                                                                    ? "bg-background text-foreground shadow-sm border border-border"
-                                                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                                                            )}
-                                                        >
-                                                            {span}
-                                                        </button>
-                                                    ))}
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
+                                                        {(["1H", "1D", "1W", "1M", "3M", "6M"] as TimeSpan[]).map((span) => (
+                                                            <button
+                                                                key={span}
+                                                                onClick={() => setTimeSpan(span)}
+                                                                className={cn(
+                                                                    "px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer",
+                                                                    timeSpan === span
+                                                                        ? "bg-background text-foreground shadow-sm border border-border"
+                                                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                                                )}
+                                                            >
+                                                                {span}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
+                                                        {(["1Y", "3Y", "6Y", "9Y", "12Y", "Custom"] as TimeSpan[]).map((span) => (
+                                                            <button
+                                                                key={span}
+                                                                onClick={() => setTimeSpan(span)}
+                                                                className={cn(
+                                                                    "px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer",
+                                                                    timeSpan === span
+                                                                        ? "bg-background text-foreground shadow-sm border border-border"
+                                                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                                                )}
+                                                            >
+                                                                {span}
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             </div>
+
+                                            {timeSpan === "Custom" && (
+                                                <div className="flex flex-wrap items-center gap-4 mb-6 bg-muted/20 p-3 rounded-lg border border-border/50">
+                                                    <div className="flex items-center gap-2">
+                                                        <label className="text-xs text-muted-foreground font-medium">From:</label>
+                                                        <input 
+                                                            type="datetime-local" 
+                                                            value={customFrom}
+                                                            onChange={(e) => setCustomFrom(e.target.value)}
+                                                            className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 dark:[&::-webkit-calendar-picker-indicator]:invert"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <label className="text-xs text-muted-foreground font-medium">Until:</label>
+                                                        <input 
+                                                            type="datetime-local" 
+                                                            value={customTo}
+                                                            onChange={(e) => setCustomTo(e.target.value)}
+                                                            className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 dark:[&::-webkit-calendar-picker-indicator]:invert"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <label className="text-xs text-muted-foreground font-medium">Unit:</label>
+                                                        <select
+                                                            value={customUnitStr}
+                                                            onChange={(e) => setCustomUnitStr(e.target.value)}
+                                                            className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                                                        >
+                                                            <option value="auto">Auto</option>
+                                                            <option value="1" disabled={(timeSpanArgs as any)?.minUnit > 1}>Minute</option>
+                                                            <option value="2" disabled={(timeSpanArgs as any)?.minUnit > 2}>Hour</option>
+                                                            <option value="3" disabled={(timeSpanArgs as any)?.minUnit > 3}>Day</option>
+                                                            <option value="4" disabled={(timeSpanArgs as any)?.minUnit > 4}>Week</option>
+                                                            <option value="5" disabled={(timeSpanArgs as any)?.minUnit > 5}>Month</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            )}
                                             <div className="grid grid-cols-1 gap-6">
                                                 {CHARTS.map((cfg) => (
                                                     <ServerStatChart
