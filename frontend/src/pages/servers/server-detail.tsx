@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { z } from "zod";
 import { useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
 import {
@@ -21,8 +22,6 @@ import {
     ArrowLeft,
     Loader2,
     Link2,
-    Pencil,
-    X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useServer } from "@/hooks/useServer";
@@ -40,15 +39,19 @@ import { ServerStatChart } from "@/components/dashboard/ServerStatChart";
 import type { StatPointData, ProvisionDetailData } from "@/types/models";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import {
-    Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogClose,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useDeleteServer } from "@/hooks/useDeleteServer";
 import { NodeConfigEditor } from "@/components/node-config/NodeConfigEditor";
+import { Form, createFormStore, useForm } from "@/components/ui/form";
+
+const serverInfoSchema = z.object({
+    name: z.string().min(1, "Server name is required."),
+    description: z.string(),
+});
 
 // ─── Server Alert Tab ────────────────────────────────────────────────────────
 
@@ -210,10 +213,6 @@ export default function ServerDetail() {
         initial?.client_name ?? null,
         (initial as Record<string, unknown>)?.alert_scope as string | undefined,
     );
-    const [showDelete, setShowDelete] = useState(false);
-    const [confirmText, setConfirmText] = useState("");
-    const deleteServer = useDeleteServer();
-
     const [provisionDetails, setProvisionDetails] =
         useState<ProvisionDetailData | null>(
             initial?.activeProvisionDetails ?? null,
@@ -224,10 +223,29 @@ export default function ServerDetail() {
     >(null);
     const [timeLeft, setTimeLeft] = useState<string>("");
 
-    const [isEditingInfo, setIsEditingInfo] = useState(false);
-    const [editName, setEditName] = useState("");
-    const [editDescription, setEditDescription] = useState("");
-    const [savingInfo, setSavingInfo] = useState(false);
+    const store = useMemo(
+        () =>
+            createFormStore({
+                schema: serverInfoSchema,
+                originalData: initial
+                    ? {
+                          name: initial.name,
+                          description: initial.description ?? "",
+                      }
+                    : null,
+                initialMode: "view",
+            }),
+        [initial],
+    );
+
+    const form = useForm(
+        store,
+        (s) => s.form as z.infer<typeof serverInfoSchema>,
+    );
+    const mode = useForm(store, (s) => s.mode);
+    const [confirmText, setConfirmText] = useState("");
+    const deleteServer = useDeleteServer();
+    const isConfirmed = initial ? confirmText.trim() === initial.name : false;
 
     useServerSocket(uuid!, setWsStatus, () => {
         toast.success("Agent successfully uninstalled!");
@@ -281,13 +299,6 @@ export default function ServerDetail() {
     }, [initial, setTrail, uuid, allClient]);
 
     useEffect(() => {
-        if (initial) {
-            setEditName(initial.name);
-            setEditDescription(initial.description ?? "");
-        }
-    }, [initial]);
-
-    useEffect(() => {
         setProvisionDetails(initial?.activeProvisionDetails ?? null);
     }, [initial?.activeProvisionDetails]);
 
@@ -317,8 +328,6 @@ export default function ServerDetail() {
         const intervalId = setInterval(updateCountdown, 1000);
         return () => clearInterval(intervalId);
     }, [provisionDetails?.expires_at]);
-
-    const isConfirmed = initial ? confirmText.trim() === initial.name : false;
 
     const generateProvisionToken = async () => {
         if (!initial) return;
@@ -388,28 +397,6 @@ export default function ServerDetail() {
         setTimeout(() => setCopiedKey(null), 2000);
     };
 
-    const handleDelete = async () => {
-        if (!initial || !isConfirmed || !initial.client_uuid) return;
-        try {
-            await deleteServer.mutateAsync({
-                clientUuid: initial.client_uuid,
-                serverUuid: initial.uuid,
-            });
-            toast.success(`${initial.name} has been deleted.`);
-            setShowDelete(false);
-            if (allClient) {
-                navigate("/servers");
-            } else {
-                navigate(`/clients/${initial.client_uuid}`);
-            }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (err: any) {
-            const msg =
-                err?.message || "Failed to delete server. Please try again.";
-            toast.error(msg);
-        }
-    };
-
     const handleDeletePort = async (portId: number) => {
         if (!initial) return;
         if (!confirm("Are you sure you want to delete this tracked port?"))
@@ -425,65 +412,6 @@ export default function ServerDetail() {
         } catch {
             toast.error("Failed to delete port.");
         }
-    };
-
-    const startEditInfo = () => {
-        if (!initial) return;
-        setEditName(initial.name);
-        setEditDescription(initial.description ?? "");
-        setIsEditingInfo(true);
-    };
-
-    const cancelEditInfo = () => {
-        setIsEditingInfo(false);
-    };
-
-    const saveInfo = async () => {
-        if (!initial) return;
-        if (!editName.trim()) {
-            toast.error("Server name is required.");
-            return;
-        }
-        if (!initial.client_uuid) {
-            toast.error("Missing client reference for this server.");
-            return;
-        }
-        setSavingInfo(true);
-        try {
-            const { error } = await api.PATCH(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}",
-                {
-                    params: {
-                        path: {
-                            clientUuid: initial.client_uuid,
-                            serverUuid: initial.uuid,
-                        },
-                    },
-                    body: {
-                        name: editName.trim(),
-                        description: editDescription.trim() || undefined,
-                    },
-                },
-            );
-            if (error) {
-                toast.error("Failed to update server info.");
-            } else {
-                toast.success("Server info updated.");
-                setIsEditingInfo(false);
-                queryClient.invalidateQueries({
-                    queryKey: ["server", initial.uuid],
-                });
-            }
-        } catch {
-            toast.error("An error occurred.");
-        } finally {
-            setSavingInfo(false);
-        }
-    };
-
-    const resetDialog = () => {
-        setShowDelete(false);
-        setConfirmText("");
     };
 
     if (isLoading) {
@@ -536,17 +464,6 @@ export default function ServerDetail() {
                                 <StatusIcon size={14} />
                                 {label}
                             </span>
-
-                            <div className="flex items-center ml-auto">
-                                <button
-                                    onClick={() => setShowDelete(true)}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-red-600/90 hover:bg-red-600 text-white transition-colors cursor-pointer"
-                                    title="Delete server"
-                                >
-                                    <Trash2 size={14} />
-                                    Delete
-                                </button>
-                            </div>
                         </div>
 
                         {!isInstalled && (
@@ -681,84 +598,130 @@ export default function ServerDetail() {
 
                         <Tab>
                             <Tab.Item icon={Info} title="Info">
-                                <div className="flex flex-col gap-1 p-4 pb-0 bg-card border border-t-0 border-b-0 border-border/60">
-                                    {isEditingInfo ? (
-                                        <div className="flex flex-col gap-3">
-                                            <div>
-                                                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                    Server name
-                                                </label>
-                                                <Input
-                                                    value={editName}
-                                                    onChange={(e) =>
-                                                        setEditName(
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    className="text-sm"
-                                                    autoFocus
-                                                />
+                                <Form.Root store={store}>
+                                    <Form.SubmitHandler
+                                        handler={async (
+                                            data: Record<string, unknown>,
+                                        ) => {
+                                            if (!initial?.client_uuid) {
+                                                toast.error(
+                                                    "Missing client reference for this server.",
+                                                );
+                                                return;
+                                            }
+                                            try {
+                                                const { error } =
+                                                    await api.PATCH(
+                                                        "/v1/clients/{clientUuid}/servers/{serverUuid}",
+                                                        {
+                                                            params: {
+                                                                path: {
+                                                                    clientUuid:
+                                                                        initial.client_uuid,
+                                                                    serverUuid:
+                                                                        initial.uuid,
+                                                                },
+                                                            },
+                                                            body: {
+                                                                name: String(
+                                                                    data.name,
+                                                                ).trim(),
+                                                                description:
+                                                                    String(
+                                                                        data.description,
+                                                                    ).trim() ||
+                                                                    undefined,
+                                                            },
+                                                        },
+                                                    );
+                                                if (error) {
+                                                    toast.error(
+                                                        "Failed to update server info.",
+                                                    );
+                                                } else {
+                                                    toast.success(
+                                                        "Server info updated.",
+                                                    );
+                                                    store.setMode("view");
+                                                    queryClient.invalidateQueries(
+                                                        {
+                                                            queryKey: [
+                                                                "server",
+                                                                initial.uuid,
+                                                            ],
+                                                        },
+                                                    );
+                                                }
+                                            } catch {
+                                                toast.error(
+                                                    "An error occurred.",
+                                                );
+                                            }
+                                        }}
+                                    />
+                                    <div className="flex flex-col gap-1 p-4 bg-card border border-t-0 border-b-0 border-border/60">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="min-w-0 flex-1">
+                                                {mode !== "view" ? (
+                                                    <div>
+                                                        <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                                            Server name
+                                                        </label>
+                                                        <Input
+                                                            value={form.name}
+                                                            onChange={(e) =>
+                                                                store.set("name")(
+                                                                    e.target.value,
+                                                                )
+                                                            }
+                                                            className="text-sm"
+                                                            autoFocus
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <h3 className="text-2xl font-semibold text-foreground">
+                                                        {form.name}
+                                                    </h3>
+                                                )}
                                             </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {mode !== "view" ? (
+                                                    <>
+                                                        <Form.Buttons.Cancel />
+                                                        <Form.Buttons.Submit />
+                                                    </>
+                                                ) : (
+                                                    <Form.Buttons.Edit />
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {mode !== "view" ? (
                                             <div>
                                                 <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
                                                     Description
                                                 </label>
                                                 <textarea
-                                                    value={editDescription}
+                                                    value={form.description}
                                                     onChange={(e) =>
-                                                        setEditDescription(
-                                                            e.target.value,
-                                                        )
+                                                        store.set(
+                                                            "description",
+                                                        )(e.target.value)
                                                     }
                                                     rows={2}
                                                     maxLength={255}
                                                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                                                 />
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    label={
-                                                        savingInfo
-                                                            ? "Saving…"
-                                                            : "Save"
-                                                    }
-                                                    onClick={saveInfo}
-                                                    disabled={savingInfo}
-                                                />
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    icon={<X size={13} />}
-                                                    label="Cancel"
-                                                    onClick={cancelEditInfo}
-                                                    disabled={savingInfo}
-                                                />
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <h3 className="text-2xl font-semibold text-foreground">
-                                                    {server.name}
-                                                </h3>
-                                                {server.description && (
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {server.description}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <button
-                                                onClick={startEditInfo}
-                                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border bg-transparent hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0 cursor-pointer"
-                                                title="Edit name and description"
-                                            >
-                                                <Pencil size={13} />
-                                                Edit
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
+                                        ) : (
+                                            form.description && (
+                                                <p className="text-sm text-muted-foreground">
+                                                    {form.description}
+                                                </p>
+                                            )
+                                        )}
+
+                                    </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
                                     {[
                                         {
@@ -823,8 +786,188 @@ export default function ServerDetail() {
                                         ),
                                     )}
                                 </div>
+
+                                <div className="mt-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5">
+                                    <p className="text-xs font-semibold text-destructive uppercase tracking-wider mb-3">
+                                        Danger Zone
+                                    </p>
+                                    <Form.DeleteModal
+                                        buttonProps={{
+                                            variant: "danger",
+                                            size: "sm",
+                                            icon: <Trash2 size={13} />,
+                                        }}
+                                        onOpenChange={(open) => {
+                                            if (!open) setConfirmText("");
+                                        }}
+                                        modal={(show) => (
+                                            <DialogContent className="sm:max-w-md">
+                                                <DialogHeader>
+                                                    <DialogTitle className="flex items-center gap-2 text-destructive">
+                                                        <Trash2 size={16} />
+                                                        Delete server
+                                                    </DialogTitle>
+                                                </DialogHeader>
+
+                                                <p className="text-sm text-muted-foreground">
+                                                    This will permanently stop monitoring{" "}
+                                                    <strong className="text-foreground">
+                                                        {initial?.name}
+                                                    </strong>{" "}
+                                                    and remove all collected metrics. This cannot be undone.
+                                                </p>
+
+                                                {initial &&
+                                                    !initial.agent_deleted && (
+                                                        <div className="flex flex-col gap-3 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
+                                                            <div className="flex items-start gap-2">
+                                                                <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                                                                <div>
+                                                                    <p className="font-semibold text-foreground">
+                                                                        Agent Uninstallation Required
+                                                                    </p>
+                                                                    <p className="text-muted-foreground mt-0.5">
+                                                                        You must uninstall the agent service from the target machine before you can delete this server. Run the command for your operating system:
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex flex-col gap-2.5 mt-1 text-foreground">
+                                                                <div>
+                                                                    <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                                                        Linux (bash)
+                                                                    </label>
+                                                                    <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
+                                                                        <span className="flex-1 whitespace-pre-wrap break-all">
+                                                                            {initial.uninstall_linux_command}
+                                                                        </span>
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                copyToClipboard(
+                                                                                    initial.uninstall_linux_command!,
+                                                                                    "uninstall_linux",
+                                                                                )
+                                                                            }
+                                                                            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                                        >
+                                                                            {copiedKey === "uninstall_linux" ? (
+                                                                                <Check className="size-3.5 text-emerald-400" />
+                                                                            ) : (
+                                                                                <Copy className="size-3.5" />
+                                                                            )}
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div>
+                                                                    <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                                                        Windows (PowerShell)
+                                                                    </label>
+                                                                    <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
+                                                                        <span className="flex-1 whitespace-pre-wrap break-all">
+                                                                            {initial.uninstall_windows_command}
+                                                                        </span>
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                copyToClipboard(
+                                                                                    initial.uninstall_windows_command!,
+                                                                                    "uninstall_windows",
+                                                                                )
+                                                                            }
+                                                                            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                                        >
+                                                                            {copiedKey === "uninstall_windows" ? (
+                                                                                <Check className="size-3.5 text-emerald-400" />
+                                                                            ) : (
+                                                                                <Copy className="size-3.5" />
+                                                                            )}
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                <div className="flex flex-col gap-2 pt-1">
+                                                    <label className="text-xs text-muted-foreground">
+                                                        Type{" "}
+                                                        <strong className="text-foreground font-mono">
+                                                            {initial?.name}
+                                                        </strong>{" "}
+                                                        to confirm
+                                                    </label>
+                                                    <Input
+                                                        value={confirmText}
+                                                        onChange={(e) =>
+                                                            setConfirmText(e.target.value)
+                                                        }
+                                                        placeholder={initial?.name}
+                                                        autoFocus
+                                                        className="font-mono text-sm"
+                                                    />
+                                                </div>
+
+                                                <div className="flex justify-end gap-3 pt-2">
+                                                    <Form.Buttons.Cancel
+                                                        onClick={() => {
+                                                            show(false);
+                                                            setConfirmText("");
+                                                        }}
+                                                    />
+                                                    <Form.Button
+                                                        variant="danger"
+                                                        disabled={
+                                                            !isConfirmed ||
+                                                            deleteServer.isPending
+                                                        }
+                                                        onClick={async () => {
+                                                            if (
+                                                                !initial ||
+                                                                !isConfirmed ||
+                                                                !initial.client_uuid
+                                                            )
+                                                                return;
+                                                            try {
+                                                                await deleteServer.mutateAsync({
+                                                                    clientUuid: initial.client_uuid,
+                                                                    serverUuid: initial.uuid,
+                                                                });
+                                                                toast.success(
+                                                                    `${initial.name} has been deleted.`,
+                                                                );
+                                                                if (allClient) {
+                                                                    navigate("/servers");
+                                                                } else {
+                                                                    navigate(
+                                                                        `/clients/${initial.client_uuid}`,
+                                                                    );
+                                                                }
+                                                            } catch (err: unknown) {
+                                                                const msg =
+                                                                    (
+                                                                        err as {
+                                                                            message?: string;
+                                                                        }
+                                                                    )?.message ||
+                                                                    "Failed to delete server. Please try again.";
+                                                                toast.error(msg);
+                                                            }
+                                                        }}
+                                                    >
+                                                        {deleteServer.isPending
+                                                            ? "Deleting…"
+                                                            : "Delete server"}
+                                                    </Form.Button>
+                                                </div>
+                                            </DialogContent>
+                                        )}
+                                    >
+                                        Delete this server
+                                    </Form.DeleteModal>
+                                </div>
+                                </Form.Root>
                             </Tab.Item>
-                            {isInstalled && (
+                            {isInstalled && mode === "view" && (
                                 <Tab.Item icon={BarChart3} title="Metrics">
                                     <div className="flex flex-col gap-6 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
                                         {/* Ports and Processes */}
@@ -1036,441 +1179,286 @@ export default function ServerDetail() {
                                 </Tab.Item>
                             )}
 
-                            <Tab.Item icon={Bell} title="Alerts">
-                                <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-6">
-                                    <div>
-                                        <label className="text-sm font-medium text-foreground">
-                                            Alert Scope
-                                        </label>
-                                        <p className="text-xs text-muted-foreground mb-3">
-                                            Choose which alert configuration
-                                            applies to this server.
-                                        </p>
-                                        <div className="flex gap-4">
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input
-                                                    type="radio"
-                                                    name="alertScope"
-                                                    value="global"
-                                                    checked={
-                                                        serverAlertTab.alertScope ===
-                                                        "global"
-                                                    }
-                                                    onChange={() =>
-                                                        serverAlertTab.setAlertScope(
-                                                            "global",
-                                                        )
-                                                    }
-                                                    className="accent-primary"
-                                                />
-                                                <span className="text-sm">
-                                                    Global
-                                                </span>
+                            {mode === "view" && (
+                                <Tab.Item icon={Bell} title="Alerts">
+                                    <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-6">
+                                        <div>
+                                            <label className="text-sm font-medium text-foreground">
+                                                Alert Scope
                                             </label>
-                                            {serverAlertTab.clientUuid && (
+                                            <p className="text-xs text-muted-foreground mb-3">
+                                                Choose which alert configuration
+                                                applies to this server.
+                                            </p>
+                                            <div className="flex gap-4">
                                                 <label className="flex items-center gap-2 cursor-pointer">
                                                     <input
                                                         type="radio"
                                                         name="alertScope"
-                                                        value="client"
+                                                        value="global"
                                                         checked={
                                                             serverAlertTab.alertScope ===
-                                                            "client"
+                                                            "global"
                                                         }
                                                         onChange={() =>
                                                             serverAlertTab.setAlertScope(
-                                                                "client",
+                                                                "global",
                                                             )
                                                         }
                                                         className="accent-primary"
                                                     />
                                                     <span className="text-sm">
-                                                        Client
+                                                        Global
                                                     </span>
                                                 </label>
-                                            )}
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input
-                                                    type="radio"
-                                                    name="alertScope"
-                                                    value="server"
-                                                    checked={
-                                                        serverAlertTab.alertScope ===
-                                                        "server"
-                                                    }
-                                                    onChange={() =>
-                                                        serverAlertTab.setAlertScope(
-                                                            "server",
-                                                        )
-                                                    }
-                                                    className="accent-primary"
-                                                />
-                                                <span className="text-sm">
-                                                    Server
-                                                </span>
-                                            </label>
+                                                {serverAlertTab.clientUuid && (
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="alertScope"
+                                                            value="client"
+                                                            checked={
+                                                                serverAlertTab.alertScope ===
+                                                                "client"
+                                                            }
+                                                            onChange={() =>
+                                                                serverAlertTab.setAlertScope(
+                                                                    "client",
+                                                                )
+                                                            }
+                                                            className="accent-primary"
+                                                        />
+                                                        <span className="text-sm">
+                                                            Client
+                                                        </span>
+                                                    </label>
+                                                )}
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        name="alertScope"
+                                                        value="server"
+                                                        checked={
+                                                            serverAlertTab.alertScope ===
+                                                            "server"
+                                                        }
+                                                        onChange={() =>
+                                                            serverAlertTab.setAlertScope(
+                                                                "server",
+                                                            )
+                                                        }
+                                                        className="accent-primary"
+                                                    />
+                                                    <span className="text-sm">
+                                                        Server
+                                                    </span>
+                                                </label>
+                                            </div>
                                         </div>
+                                        <NodeConfigEditor
+                                            configKey={serverAlertTab.configKey}
+                                            scopeLabel={
+                                                serverAlertTab.alertScope ===
+                                                "server"
+                                                    ? (initial?.name ?? "")
+                                                    : serverAlertTab.alertScope ===
+                                                        "client"
+                                                      ? (initial?.client_name ??
+                                                        "")
+                                                      : ""
+                                            }
+                                            showControls={false}
+                                            showMinimap={false}
+                                            showNodeTypesSidebar={false}
+                                        />
                                     </div>
-                                    <NodeConfigEditor
-                                        configKey={serverAlertTab.configKey}
-                                        scopeLabel={
-                                            serverAlertTab.alertScope ===
-                                            "server"
-                                                ? (initial?.name ?? "")
-                                                : serverAlertTab.alertScope ===
-                                                    "client"
-                                                  ? (initial?.client_name ?? "")
-                                                  : ""
-                                        }
-                                        showControls={false}
-                                        showMinimap={false}
-                                        showNodeTypesSidebar={false}
-                                    />
-                                </div>
-                            </Tab.Item>
+                                </Tab.Item>
+                            )}
 
-                            <Tab.Item icon={Cpu} title="Agent">
-                                <div className="flex flex-col gap-6 p-5 bg-card border border-t-0 border-border/60 rounded-b-lg min-h-75">
-                                    <div className="flex items-center justify-between border-b border-border/30 pb-3">
-                                        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                            <Cpu
-                                                size={16}
-                                                className="text-primary"
-                                            />{" "}
-                                            Installed Agent Properties
-                                        </h3>
-                                        {server?.agent && (
-                                            <span
-                                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${
-                                                    server.agent.status ===
-                                                    "online"
-                                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                                        : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-                                                }`}
-                                            >
-                                                {server.agent.status}
-                                            </span>
+                            {mode === "view" && (
+                                <Tab.Item icon={Cpu} title="Agent">
+                                    <div className="flex flex-col gap-6 p-5 bg-card border border-t-0 border-border/60 rounded-b-lg min-h-75">
+                                        <div className="flex items-center justify-between border-b border-border/30 pb-3">
+                                            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                                <Cpu
+                                                    size={16}
+                                                    className="text-primary"
+                                                />{" "}
+                                                Installed Agent Properties
+                                            </h3>
+                                            {server?.agent && (
+                                                <span
+                                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${
+                                                        server.agent.status ===
+                                                        "online"
+                                                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                                            : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                                                    }`}
+                                                >
+                                                    {server.agent.status}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {server?.agent ? (
+                                            <>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {[
+                                                        {
+                                                            label: "Agent Version",
+                                                            value: server.agent
+                                                                .version,
+                                                        },
+                                                        {
+                                                            label: "Heartbeat Interval",
+                                                            value: `${server.agent.heartbeat_interval} seconds`,
+                                                        },
+                                                        {
+                                                            label: "Metrics Scan Interval",
+                                                            value: `${server.agent.metrics_interval} seconds`,
+                                                        },
+                                                        {
+                                                            label: "Port Scan Interval",
+                                                            value: `${server.agent.port_scan_interval} seconds`,
+                                                        },
+                                                        {
+                                                            label: "Service Scan Interval",
+                                                            value: `${server.agent.service_scan_interval} seconds`,
+                                                        },
+                                                        {
+                                                            label: "Process Scan Interval",
+                                                            value: `${server.agent.process_scan_interval} seconds`,
+                                                        },
+                                                        {
+                                                            label: "Update Channel",
+                                                            value: server.agent
+                                                                .update_channel,
+                                                            capitalize: true,
+                                                        },
+                                                        {
+                                                            label: "Auto Update Enabled",
+                                                            value: server.agent
+                                                                .auto_update
+                                                                ? "Yes"
+                                                                : "No",
+                                                        },
+                                                        {
+                                                            label: "First Registered",
+                                                            value: new Date(
+                                                                server.agent
+                                                                    .registered_at,
+                                                            ).toLocaleString(),
+                                                        },
+                                                        {
+                                                            label: "Last Heartbeat",
+                                                            value: server.agent
+                                                                .last_seen_at
+                                                                ? new Date(
+                                                                      server
+                                                                          .agent
+                                                                          .last_seen_at,
+                                                                  ).toLocaleString()
+                                                                : "Never",
+                                                        },
+                                                    ].map((prop, idx) => (
+                                                        <div
+                                                            key={idx}
+                                                            className="flex items-center justify-between p-3 rounded-lg bg-card border border-border/40 hover:bg-muted/5 transition-colors"
+                                                        >
+                                                            <span className="text-xs font-medium text-muted-foreground">
+                                                                {prop.label}
+                                                            </span>
+                                                            <span
+                                                                className={`text-xs font-semibold text-foreground ${prop.capitalize ? "capitalize" : ""}`}
+                                                            >
+                                                                {prop.value}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <div className="border-t border-border/30 pt-5 mt-3">
+                                                    <h4 className="text-xs font-semibold text-foreground flex items-center gap-2 mb-3">
+                                                        <Terminal
+                                                            size={14}
+                                                            className="text-primary"
+                                                        />{" "}
+                                                        Agent Activity History
+                                                    </h4>
+                                                    {server?.activities &&
+                                                    server.activities.length >
+                                                        0 ? (
+                                                        <div className="flex flex-col gap-2 max-h-62.5 overflow-y-auto pr-1">
+                                                            {server.activities.map(
+                                                                (
+                                                                    act,
+                                                                    idx: number,
+                                                                ) => (
+                                                                    <div
+                                                                        key={
+                                                                            idx
+                                                                        }
+                                                                        className="flex items-start gap-3 p-2.5 rounded-lg bg-card border border-border/30 hover:bg-muted/5 transition-colors"
+                                                                    >
+                                                                        <div
+                                                                            className={cn(
+                                                                                "w-2 h-2 rounded-full mt-1.5 shrink-0",
+                                                                                act.type ===
+                                                                                    "agent_uninstalled"
+                                                                                    ? "bg-red-500"
+                                                                                    : act.type ===
+                                                                                        "agent_updated"
+                                                                                      ? "bg-blue-500"
+                                                                                      : act.type ===
+                                                                                          "server_online"
+                                                                                        ? "bg-emerald-500"
+                                                                                        : act.type ===
+                                                                                            "registration_completed"
+                                                                                          ? "bg-purple-500"
+                                                                                          : "bg-primary",
+                                                                            )}
+                                                                        />
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <p className="text-[11px] font-semibold text-foreground capitalize">
+                                                                                {act.type.replace(
+                                                                                    /_/g,
+                                                                                    " ",
+                                                                                )}
+                                                                            </p>
+                                                                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                                                                                {
+                                                                                    act.description
+                                                                                }
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                ),
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-xs text-muted-foreground py-2 text-center">
+                                                            No agent activities
+                                                            logged yet.
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center py-12 text-center">
+                                                <Cpu
+                                                    className="text-muted-foreground/30 mb-3"
+                                                    size={32}
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    No agent registered on this
+                                                    server yet.
+                                                </p>
+                                            </div>
                                         )}
                                     </div>
-
-                                    {server?.agent ? (
-                                        <>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {[
-                                                    {
-                                                        label: "Agent Version",
-                                                        value: server.agent
-                                                            .version,
-                                                    },
-                                                    {
-                                                        label: "Heartbeat Interval",
-                                                        value: `${server.agent.heartbeat_interval} seconds`,
-                                                    },
-                                                    {
-                                                        label: "Metrics Scan Interval",
-                                                        value: `${server.agent.metrics_interval} seconds`,
-                                                    },
-                                                    {
-                                                        label: "Port Scan Interval",
-                                                        value: `${server.agent.port_scan_interval} seconds`,
-                                                    },
-                                                    {
-                                                        label: "Service Scan Interval",
-                                                        value: `${server.agent.service_scan_interval} seconds`,
-                                                    },
-                                                    {
-                                                        label: "Process Scan Interval",
-                                                        value: `${server.agent.process_scan_interval} seconds`,
-                                                    },
-                                                    {
-                                                        label: "Update Channel",
-                                                        value: server.agent
-                                                            .update_channel,
-                                                        capitalize: true,
-                                                    },
-                                                    {
-                                                        label: "Auto Update Enabled",
-                                                        value: server.agent
-                                                            .auto_update
-                                                            ? "Yes"
-                                                            : "No",
-                                                    },
-                                                    {
-                                                        label: "First Registered",
-                                                        value: new Date(
-                                                            server.agent
-                                                                .registered_at,
-                                                        ).toLocaleString(),
-                                                    },
-                                                    {
-                                                        label: "Last Heartbeat",
-                                                        value: server.agent
-                                                            .last_seen_at
-                                                            ? new Date(
-                                                                  server.agent
-                                                                      .last_seen_at,
-                                                              ).toLocaleString()
-                                                            : "Never",
-                                                    },
-                                                ].map((prop, idx) => (
-                                                    <div
-                                                        key={idx}
-                                                        className="flex items-center justify-between p-3 rounded-lg bg-card border border-border/40 hover:bg-muted/5 transition-colors"
-                                                    >
-                                                        <span className="text-xs font-medium text-muted-foreground">
-                                                            {prop.label}
-                                                        </span>
-                                                        <span
-                                                            className={`text-xs font-semibold text-foreground ${prop.capitalize ? "capitalize" : ""}`}
-                                                        >
-                                                            {prop.value}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            <div className="border-t border-border/30 pt-5 mt-3">
-                                                <h4 className="text-xs font-semibold text-foreground flex items-center gap-2 mb-3">
-                                                    <Terminal
-                                                        size={14}
-                                                        className="text-primary"
-                                                    />{" "}
-                                                    Agent Activity History
-                                                </h4>
-                                                {server?.activities &&
-                                                server.activities.length > 0 ? (
-                                                    <div className="flex flex-col gap-2 max-h-62.5 overflow-y-auto pr-1">
-                                                        {server.activities.map(
-                                                            (
-                                                                act,
-                                                                idx: number,
-                                                            ) => (
-                                                                <div
-                                                                    key={idx}
-                                                                    className="flex items-start gap-3 p-2.5 rounded-lg bg-card border border-border/30 hover:bg-muted/5 transition-colors"
-                                                                >
-                                                                    <div
-                                                                        className={cn(
-                                                                            "w-2 h-2 rounded-full mt-1.5 shrink-0",
-                                                                            act.type ===
-                                                                                "agent_uninstalled"
-                                                                                ? "bg-red-500"
-                                                                                : act.type ===
-                                                                                    "agent_updated"
-                                                                                  ? "bg-blue-500"
-                                                                                  : act.type ===
-                                                                                      "server_online"
-                                                                                    ? "bg-emerald-500"
-                                                                                    : act.type ===
-                                                                                        "registration_completed"
-                                                                                      ? "bg-purple-500"
-                                                                                      : "bg-primary",
-                                                                        )}
-                                                                    />
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <p className="text-[11px] font-semibold text-foreground capitalize">
-                                                                            {act.type.replace(
-                                                                                /_/g,
-                                                                                " ",
-                                                                            )}
-                                                                        </p>
-                                                                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                                                                            {
-                                                                                act.description
-                                                                            }
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            ),
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-xs text-muted-foreground py-2 text-center">
-                                                        No agent activities
-                                                        logged yet.
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center py-12 text-center">
-                                            <Cpu
-                                                className="text-muted-foreground/30 mb-3"
-                                                size={32}
-                                            />
-                                            <p className="text-xs text-muted-foreground">
-                                                No agent registered on this
-                                                server yet.
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            </Tab.Item>
+                                </Tab.Item>
+                            )}
                         </Tab>
-
-                        {(() => {
-                            const serverData = initial;
-                            return (
-                                <Dialog
-                                    open={showDelete}
-                                    onOpenChange={(open) =>
-                                        !open && resetDialog()
-                                    }
-                                >
-                                    <DialogContent className="sm:max-w-md">
-                                        <DialogHeader>
-                                            <DialogTitle className="flex items-center gap-2 text-destructive">
-                                                <Trash2 size={16} />
-                                                Delete server
-                                            </DialogTitle>
-                                        </DialogHeader>
-
-                                        <p className="text-sm text-muted-foreground">
-                                            This will permanently stop
-                                            monitoring{" "}
-                                            <strong className="text-foreground">
-                                                {initial?.name}
-                                            </strong>{" "}
-                                            and remove all collected metrics.
-                                            This cannot be undone.
-                                        </p>
-
-                                        {serverData &&
-                                            !serverData.agent_deleted && (
-                                                <div className="flex flex-col gap-3 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
-                                                    <div className="flex items-start gap-2">
-                                                        <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-                                                        <div>
-                                                            <p className="font-semibold text-foreground">
-                                                                Agent
-                                                                Uninstallation
-                                                                Required
-                                                            </p>
-                                                            <p className="text-muted-foreground mt-0.5">
-                                                                You must
-                                                                uninstall the
-                                                                agent service
-                                                                from the target
-                                                                machine before
-                                                                you can delete
-                                                                this server. Run
-                                                                the command for
-                                                                your operating
-                                                                system:
-                                                            </p>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex flex-col gap-2.5 mt-1 text-foreground">
-                                                        <div>
-                                                            <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                                                Linux (bash)
-                                                            </label>
-                                                            <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
-                                                                <span className="flex-1 whitespace-pre-wrap break-all">
-                                                                    {
-                                                                        serverData.uninstall_linux_command
-                                                                    }
-                                                                </span>
-                                                                <button
-                                                                    onClick={() =>
-                                                                        copyToClipboard(
-                                                                            serverData.uninstall_linux_command!,
-                                                                            "uninstall_linux",
-                                                                        )
-                                                                    }
-                                                                    className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                                >
-                                                                    {copiedKey ===
-                                                                    "uninstall_linux" ? (
-                                                                        <Check className="size-3.5 text-emerald-400" />
-                                                                    ) : (
-                                                                        <Copy className="size-3.5" />
-                                                                    )}
-                                                                </button>
-                                                            </div>
-                                                        </div>
-
-                                                        <div>
-                                                            <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                                                Windows
-                                                                (PowerShell)
-                                                            </label>
-                                                            <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
-                                                                <span className="flex-1 whitespace-pre-wrap break-all">
-                                                                    {
-                                                                        serverData.uninstall_windows_command
-                                                                    }
-                                                                </span>
-                                                                <button
-                                                                    onClick={() =>
-                                                                        copyToClipboard(
-                                                                            serverData.uninstall_windows_command!,
-                                                                            "uninstall_windows",
-                                                                        )
-                                                                    }
-                                                                    className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                                >
-                                                                    {copiedKey ===
-                                                                    "uninstall_windows" ? (
-                                                                        <Check className="size-3.5 text-emerald-400" />
-                                                                    ) : (
-                                                                        <Copy className="size-3.5" />
-                                                                    )}
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                        <div className="flex flex-col gap-2 pt-1">
-                                            <label className="text-xs text-muted-foreground">
-                                                Type{" "}
-                                                <strong className="text-foreground font-mono">
-                                                    {initial?.name}
-                                                </strong>{" "}
-                                                to confirm
-                                            </label>
-                                            <Input
-                                                value={confirmText}
-                                                onChange={(e) =>
-                                                    setConfirmText(
-                                                        e.target.value,
-                                                    )
-                                                }
-                                                placeholder={initial?.name}
-                                                autoFocus
-                                                className="font-mono text-sm"
-                                            />
-                                        </div>
-
-                                        <div className="flex justify-end gap-3 pt-2">
-                                            <DialogClose asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    label="Cancel"
-                                                    onClick={resetDialog}
-                                                />
-                                            </DialogClose>
-                                            <Button
-                                                variant="danger"
-                                                label={
-                                                    deleteServer.isPending
-                                                        ? "Deleting…"
-                                                        : "Delete server"
-                                                }
-                                                disabled={
-                                                    !isConfirmed ||
-                                                    deleteServer.isPending
-                                                }
-                                                onClick={handleDelete}
-                                            />
-                                        </div>
-                                    </DialogContent>
-                                </Dialog>
-                            );
-                        })()}
                     </div>
                 </main>
             </PageLayout>

@@ -1,11 +1,16 @@
 <?php
 
 use App\Http\Controllers\Api\V1\JwtAuthController;
+use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\SessionController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [JwtAuthController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/refresh', [JwtAuthController::class, 'refresh']);
+
+Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword'])->middleware('throttle:3,1');
+Route::post('/verify-reset-code', [PasswordResetController::class, 'verifyCode'])->middleware('throttle:5,1');
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->middleware('throttle:5,1');
 
 Route::middleware('auth:jwt')->group(function () {
     Route::post('/logout', [JwtAuthController::class, 'logout']);

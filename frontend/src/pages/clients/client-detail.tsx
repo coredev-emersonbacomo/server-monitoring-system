@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
@@ -36,7 +36,6 @@ import { useSettings } from "@/hooks/useSettings";
 import { Tab } from "@/components/ui/tab";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { Label } from "@/components/ui/label";
 import {
@@ -68,7 +67,11 @@ import { formatPhoneNumber } from "@/utils/helpers";
 
 // ─── Client Alert Tab ────────────────────────────────────────────────────────
 
-function useClientAlertTab(clientUuid: string, clientName: string, initialScope?: string) {
+function useClientAlertTab(
+    clientUuid: string,
+    clientName: string,
+    initialScope?: string,
+) {
     const queryClient = useQueryClient();
     const [alertScope, setAlertScopeState] = useState<"global" | "client">(
         "global",
@@ -93,7 +96,9 @@ function useClientAlertTab(clientUuid: string, clientName: string, initialScope?
                 params: { path: { clientUuid } },
                 body: { alert_scope: scope },
             }).then(() => {
-                queryClient.invalidateQueries({ queryKey: ["clients", clientUuid] });
+                queryClient.invalidateQueries({
+                    queryKey: ["clients", clientUuid],
+                });
             });
         },
         [clientUuid, queryClient],
@@ -201,6 +206,17 @@ export default function ClientDetail() {
         }
     }, [client]);
 
+    const hasChanges = useMemo(() => {
+        if (!client) return false;
+        const formChanged =
+            form.name !== client.name ||
+            form.description !== (client.description ?? "") ||
+            form.location !== client.location ||
+            form.email !== client.email ||
+            form.contact_number !== client.contact_number;
+        return formChanged || bannerFile !== null;
+    }, [form, client, bannerFile]);
+
     // Breadcrumb
     useEffect(() => {
         if (mode === "create") {
@@ -216,10 +232,8 @@ export default function ClientDetail() {
         }
     }, [setTrail, mode, client]);
 
-    const set =
-        (key: keyof typeof form) =>
-        (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-            setForm((f) => ({ ...f, [key]: e.target.value }));
+    const set = (key: keyof typeof form) => (value: string) =>
+        setForm((f) => ({ ...f, [key]: value }));
 
     // ── Validation ─────────────────────────────────────────────────────────────
     const schema = z.object({
@@ -405,8 +419,8 @@ export default function ClientDetail() {
             <LoadingOverlay visible={isSaving} />
             <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
                 {/* ── Banner / Hero ── */}
-                <div className="relative">
-                    <div className="absolute inset-0 overflow-hidden rounded-t-xl">
+                <div className="relative overflow-hidden">
+                    <div className="absolute -top-10 inset-x-0 bottom-0 overflow-hidden rounded-t-xl">
                         <div
                             className="w-full h-full"
                             style={
@@ -414,7 +428,7 @@ export default function ClientDetail() {
                                     ? {
                                           backgroundImage: `url(${bannerPreview})`,
                                           backgroundSize: "cover",
-                                          backgroundPosition: "center",
+                                          backgroundPosition: "top center",
                                       }
                                     : {
                                           background:
@@ -426,7 +440,7 @@ export default function ClientDetail() {
                         <div className="absolute inset-0 bg-linear-to-r from-background/40 to-transparent" />
                     </div>
 
-                    <div className="relative z-10 px-6 sm:px-8 lg:px-10 pt-6 pb-20">
+                    <div className="relative z-10 px-6 sm:px-8 lg:px-10 pt-6 pb-20 min-h-60">
                         {/* ── Name + actions ── */}
                         <div className="flex items-start justify-between gap-4 mb-6">
                             <div className="flex-1 min-w-0">
@@ -437,7 +451,9 @@ export default function ClientDetail() {
                                         </Label>
                                         <input
                                             value={form.name}
-                                            onChange={set("name")}
+                                            onChange={(e) =>
+                                                set("name")(e.target.value)
+                                            }
                                             placeholder="Client name"
                                             className="w-full text-2xl sm:text-3xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
                                         />
@@ -513,21 +529,48 @@ export default function ClientDetail() {
                                     />
                                 )}
                                 {showEdit && mode !== "create" && (
-                                    <Button
-                                        className="cursor-pointer"
-                                        variant="outline"
-                                        size="sm"
-                                        label="Cancel"
-                                        onClick={cancelEdit}
-                                    />
+                                    <>
+                                        <Button
+                                            className="cursor-pointer"
+                                            variant="outline"
+                                            size="sm"
+                                            label="Cancel"
+                                            onClick={cancelEdit}
+                                            disabled={isSaving}
+                                        />
+                                        <Button
+                                            className="cursor-pointer"
+                                            type="submit"
+                                            size="sm"
+                                            disabled={isSaving || !hasChanges}
+                                            label={
+                                                isSaving
+                                                    ? "Saving…"
+                                                    : "Save Changes"
+                                            }
+                                        />
+                                    </>
                                 )}
                                 {showEdit && mode === "create" && (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        label="Cancel"
-                                        onClick={() => navigate("/clients")}
-                                    />
+                                    <>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            label="Cancel"
+                                            onClick={() => navigate("/clients")}
+                                        />
+                                        <Button
+                                            className="cursor-pointer"
+                                            type="submit"
+                                            size="sm"
+                                            disabled={isSaving}
+                                            label={
+                                                isSaving
+                                                    ? "Saving…"
+                                                    : "Create Client"
+                                            }
+                                        />
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -541,7 +584,9 @@ export default function ClientDetail() {
                                     </Label>
                                     <textarea
                                         value={form.description}
-                                        onChange={set("description")}
+                                        onChange={(e) =>
+                                            set("description")(e.target.value)
+                                        }
                                         placeholder="Brief description about the client..."
                                         rows={2}
                                         maxLength={255}
@@ -585,9 +630,8 @@ export default function ClientDetail() {
                                                 <div>
                                                     <FloatingInput
                                                         label="Location"
-                                                        labelBg="bg-card"
                                                         value={form.location}
-                                                        onChange={set(
+                                                        onValueChange={set(
                                                             "location",
                                                         )}
                                                         className={cn(
@@ -630,9 +674,10 @@ export default function ClientDetail() {
                                                     <FloatingInput
                                                         type="email"
                                                         label="Email Address"
-                                                        labelBg="bg-card"
                                                         value={form.email}
-                                                        onChange={set("email")}
+                                                        onValueChange={set(
+                                                            "email",
+                                                        )}
                                                         className={cn(
                                                             errors.email &&
                                                                 "border-destructive",
@@ -661,23 +706,19 @@ export default function ClientDetail() {
                                                 <div>
                                                     <FloatingInput
                                                         label="Contact Number"
-                                                        labelBg="bg-card"
                                                         value={
                                                             form.contact_number
                                                         }
-                                                        onChange={(e) => {
+                                                        onValueChange={(
+                                                            value,
+                                                        ) => {
                                                             set(
                                                                 "contact_number",
-                                                            )({
-                                                                ...e,
-                                                                target: {
-                                                                    ...e.target,
-                                                                    value: formatPhoneNumber(
-                                                                        e.target
-                                                                            .value,
-                                                                    ),
-                                                                },
-                                                            });
+                                                            )(
+                                                                formatPhoneNumber(
+                                                                    value,
+                                                                ),
+                                                            );
                                                         }}
                                                         className={cn(
                                                             errors.contact_number &&
@@ -709,31 +750,10 @@ export default function ClientDetail() {
                                             )}
                                         </div>
                                     </section>
-
-                                    {/* Actions */}
-                                    {showEdit && (
-                                        <>
-                                            <div className="h-px bg-border" />
-                                            <div className="flex items-center justify-end gap-3">
-                                                <Button
-                                                    className="cursor-pointer"
-                                                    type="submit"
-                                                    disabled={isSaving}
-                                                    label={
-                                                        isSaving
-                                                            ? "Saving…"
-                                                            : mode === "create"
-                                                              ? "Create Client"
-                                                              : "Save Changes"
-                                                    }
-                                                />
-                                            </div>
-                                        </>
-                                    )}
                                 </form>
                             </Tab.Item>
 
-                            {mode !== "create" && client && (
+                            {mode === "view" && client && (
                                 <Tab.Item icon={Shield} title="Sec Ops">
                                     <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-8">
                                         <div className="flex items-center justify-between mb-6">
@@ -869,7 +889,7 @@ export default function ClientDetail() {
                                 </Tab.Item>
                             )}
 
-                            {mode !== "create" && client && (
+                            {mode === "view" && client && (
                                 <Tab.Item icon={Bell} title="Alerts">
                                     <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-6">
                                         <div>
@@ -936,7 +956,7 @@ export default function ClientDetail() {
                             )}
                         </Tab>
 
-                        {mode !== "create" && client && (
+                        {mode === "view" && client && (
                             <section>
                                 <div className="flex items-center justify-between mb-4">
                                     <div>

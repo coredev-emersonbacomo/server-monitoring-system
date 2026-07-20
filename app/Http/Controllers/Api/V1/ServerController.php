@@ -101,10 +101,6 @@ class ServerController extends Controller
 
         $updateData = $data->toArray();
 
-        if ($data->name !== null) {
-            $updateData['server_name'] = $data->name;
-        }
-
         if ($data->description !== null) {
             $updateData['description'] = $data->description;
         }

@@ -154,10 +154,10 @@ export default function CreateServer() {
                             <div>
                                 <FloatingInput
                                     label="Server name"
-                                    labelBg="bg-card"
+
                                     value={serverName}
-                                    onChange={(e) => {
-                                        setServerName(e.target.value);
+                                    onValueChange={(value) => {
+                                        setServerName(value);
                                         setError("");
                                     }}
                                     className={cn(
