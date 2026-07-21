@@ -25,18 +25,14 @@ Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useServer } from "@/hooks/useServer";
-import {
-useServerSocket,
-useLiveStats,
-type WsStatus,
-} from "@/hooks/useServerSocket";
+
 import PageLayout from "@/components/PageLayout";
 import { ChartZoomProvider } from "@/contexts/ChartZoomContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tab } from "@/components/ui/tab";
 import { ServerStatChart } from "@/components/dashboard/ServerStatChart";
-import type { StatPointData, ProvisionDetailData } from "@/types/models";
+import type { ProvisionDetailData } from "@/types/models";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import {
 DialogContent,
@@ -269,8 +265,7 @@ const { data: initial, isLoading, isError } = useServer(
         toTime: (timeSpanArgs as any)?.toTime,
     }
 );
-const [, setWsStatus] = useState<WsStatus>("connecting");
-const [history, setHistory] = useState<StatPointData[]>([]);
+
 
 const queryClient = useQueryClient();
 const serverAlertTab = useServerAlertTab(
@@ -314,27 +309,7 @@ const [confirmText, setConfirmText] = useState("");
 const deleteServer = useDeleteServer();
 const isConfirmed = initial ? confirmText.trim() === initial.name : false;
 
-useServerSocket(uuid!, setWsStatus, () => {
-    toast.success("Agent successfully uninstalled!");
-    queryClient.invalidateQueries({
-        queryKey: ["server", uuid],
-    });
-});
 
-const live = useLiveStats(uuid!);
-
-useEffect(() => {
-    if (!live) return;
-    setHistory((prev) => {
-        if (timeSpan !== "1H") return prev; // Do not mix live minutely data with aggregated data
-        const next = [...prev, live as unknown as StatPointData];
-        return next.length > 144 ? next.slice(next.length - 144) : next;
-    });
-}, [live, timeSpan]);
-
-useEffect(() => {
-    setHistory([]); // clear history when changing timespan
-}, [timeSpan]);
 
 const { setTrail } = useBreadcrumb();
 useEffect(() => {
@@ -578,10 +553,6 @@ const handleDeletePort = async (portId: number) => {
 
     const server = {
         ...initial,
-        stats:
-            history.length > 0
-                ? [...(initial.stats ?? []), ...history]
-                : initial.stats,
     };
     const status =
         (server.status as keyof typeof STATUS_CONFIG) || "pending_installation";
@@ -1305,6 +1276,17 @@ const handleDeletePort = async (portId: number) => {
                                                     System Resources
                                                 </h3>
                                                 <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        icon={<RefreshCw size={13} />}
+                                                        label="Refresh"
+                                                        onClick={() =>
+                                                            queryClient.invalidateQueries({
+                                                                queryKey: ["server", uuid],
+                                                            })
+                                                        }
+                                                    />
                                                     <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
                                                         {(["1H", "1D", "1W", "1M", "3M", "6M"] as TimeSpan[]).map((span) => (
                                                             <button
