@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type {
     NodeConfigNode,
     NodeTypeDefinition,
@@ -113,6 +113,49 @@ interface SettingFieldProps {
     onChange: (value: unknown) => void;
 }
 
+function autoResize(textarea: HTMLTextAreaElement) {
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+}
+
+function AutoSizeTextarea({
+    id,
+    value,
+    onChange,
+    placeholder,
+    className,
+}: {
+    id: string;
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    className?: string;
+}) {
+    const ref = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        if (ref.current) autoResize(ref.current);
+    }, [value]);
+
+    return (
+        <textarea
+            ref={ref}
+            id={id}
+            value={value}
+            onChange={(e) => {
+                onChange(e.target.value);
+                autoResize(e.target);
+            }}
+            rows={1}
+            className={
+                className ??
+                "px-2.5 py-1.5 text-sm rounded-lg border border-border/60 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none overflow-hidden"
+            }
+            placeholder={placeholder}
+        />
+    );
+}
+
 function SettingField({ def, value, onChange }: SettingFieldProps) {
     const id = `setting-${def.key}`;
 
@@ -145,31 +188,6 @@ function SettingField({ def, value, onChange }: SettingFieldProps) {
         );
     }
 
-    if (def.type === "textarea") {
-        return (
-            <div className="flex flex-col gap-1.5">
-                <label
-                    htmlFor={id}
-                    className="text-xs font-medium text-muted-foreground"
-                >
-                    {def.label}
-                    {def.required && (
-                        <span className="text-red-400 ml-0.5">*</span>
-                    )}
-                </label>
-                <textarea
-                    id={id}
-                    value={String(value)}
-                    onChange={(e) => onChange(e.target.value)}
-                    rows={3}
-                    className="px-2.5 py-1.5 text-sm rounded-lg border border-border/60 bg-background text-foreground
-                        focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                    placeholder={def.description || ""}
-                />
-            </div>
-        );
-    }
-
     return (
         <div className="flex flex-col gap-1.5">
             <label
@@ -179,19 +197,16 @@ function SettingField({ def, value, onChange }: SettingFieldProps) {
                 {def.label}
                 {def.required && <span className="text-red-400 ml-0.5">*</span>}
             </label>
-            <input
+            <AutoSizeTextarea
                 id={id}
-                type={def.type === "number" ? "number" : "text"}
                 value={String(value)}
-                onChange={(e) =>
+                onChange={(v) =>
                     onChange(
                         def.type === "number"
-                            ? parseFloat(e.target.value) || 0
-                            : e.target.value,
+                            ? parseFloat(v) || 0
+                            : v,
                     )
                 }
-                className="px-2.5 py-1.5 text-sm rounded-lg border border-border/60 bg-background text-foreground
-                    focus:outline-none focus:ring-2 focus:ring-primary/30"
                 placeholder={def.description || ""}
             />
         </div>

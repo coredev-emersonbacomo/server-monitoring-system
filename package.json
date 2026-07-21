@@ -5,7 +5,7 @@
   "scripts": {
     "build": "npm run build -w frontend && vite build",
     "start": "node -e \"console.log('nausab na, \\\"npm run dev\\\" na')\"",
-    "dev": "concurrently --names \"dev,ws,queue,schedule\" --prefix-colors \"green,cyan,magenta,blue\" \"npm run dev -w frontend\" \"php artisan reverb:start\" \"php artisan queue:work -q\" \"php artisan schedule:work\"",
+    "dev": "concurrently --names \"redis,dev,ws,queue,schedule\" --prefix-colors \"red,green,cyan,magenta,blue\" \"C:\\Users\\User\\Redis\\redis-server.exe\" \"npm run dev -w frontend\" \"php artisan reverb:start\" \"php artisan queue:work -q\" \"php artisan schedule:work\"",
     "types": "php artisan scramble:clear && php artisan scramble:export --path=frontend/src/api/api.json && node frontend/scripts/patch-schema.js && npm run types -w frontend",
     "test": "php artisan test",
     "test:filter": "php artisan test --filter",

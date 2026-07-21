@@ -25,7 +25,7 @@ class NodeConfigNotificationService
         $context = $action['upstream_context'] ?? [];
 
         $serverId = $context['server_id'] ?? null;
-        $server = $serverId ? Server::with('client.secopclients.agent')->find($serverId) : null;
+        $server = $serverId ? Server::with('client.secopclients')->find($serverId) : null;
 
         $templateData = [
             'server' => $server,

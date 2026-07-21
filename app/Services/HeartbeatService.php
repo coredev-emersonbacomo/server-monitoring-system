@@ -16,6 +16,7 @@ use App\Models\CommandResult;
 use App\Models\Activity;
 use App\Events\ServerStatsUpdated;
 use App\Enums\ServerStatus;
+use App\NodeConfig\Cache\NodeConfigCache;
 use App\NodeConfig\Jobs\EvaluateNodeConfig;
 use App\NodeConfig\Models\NodeConfig;
 use Illuminate\Support\Facades\DB;
@@ -445,7 +446,7 @@ class HeartbeatService
 
     private function triggerNodeConfigForServer(Server $server, string $status): void
     {
-        $config = NodeConfig::where('slug', 'alerts')->where('enabled', true)->first();
+        $config = NodeConfigCache::findBySlug('alerts');
         if (!$config) return;
 
         $configData = $config->getParsedConfig();

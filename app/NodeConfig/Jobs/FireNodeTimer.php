@@ -2,6 +2,7 @@
 
 namespace App\NodeConfig\Jobs;
 
+use App\NodeConfig\Cache\NodeConfigCache;
 use App\NodeConfig\Engine\NodeRegistry;
 use App\NodeConfig\Engine\NodeConfigEngine;
 use App\NodeConfig\Models\NodeConfig;
@@ -27,7 +28,7 @@ class FireNodeTimer implements ShouldQueue
 
     public function handle(NodeRegistry $registry, NodeConfigNotificationService $notifications): void
     {
-        $config = NodeConfig::find($this->configId);
+        $config = NodeConfigCache::findById($this->configId);
         if (!$config || !$config->enabled) {
             return;
         }

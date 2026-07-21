@@ -603,6 +603,7 @@ export default function ServerDetail() {
                                         handler={async (
                                             data: Record<string, unknown>,
                                         ) => {
+                                            console.log("[server-detail] submitHandler called", { data });
                                             if (!initial?.client_uuid) {
                                                 toast.error(
                                                     "Missing client reference for this server.",

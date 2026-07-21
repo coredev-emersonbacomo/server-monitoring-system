@@ -5,6 +5,7 @@ namespace App\NodeConfig\Models;
 use App\Models\Client;
 use App\Models\Server;
 use App\Models\User;
+use App\NodeConfig\Cache\NodeConfigCache;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -21,6 +22,17 @@ class NodeConfig extends Model
             'compiled_config' => 'array',
             'enabled' => 'boolean',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(function (NodeConfig $config) {
+            NodeConfigCache::refresh($config);
+        });
+
+        static::deleted(function (NodeConfig $config) {
+            NodeConfigCache::invalidate($config);
+        });
     }
 
     public function creator(): BelongsTo
@@ -59,6 +71,11 @@ class NodeConfig extends Model
     }
 
     public static function resolveForServer(string $serverUuid): ?self
+    {
+        return NodeConfigCache::resolveForServer($serverUuid);
+    }
+
+    public static function resolveForServerFromDb(string $serverUuid): ?self
     {
         $server = Server::with('client')->where('uuid', $serverUuid)->first();
         if (!$server) return null;
