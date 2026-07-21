@@ -27,9 +27,16 @@ class NotificationNode extends BaseNode
     public function evaluate(array $inputValues, array $settings, array $state): NodeResult
     {
         $input = $inputValues[0] ?? null;
+
         if (!$input) {
+            return NodeResult::noPropagate(null, ['already_fired' => false]);
+        }
+
+        $alreadyFired = $state['already_fired'] ?? false;
+        if ($alreadyFired) {
             return NodeResult::noPropagate(null, $state);
         }
-        return NodeResult::propagate(true, ['action_dispatched' => true]);
+
+        return NodeResult::propagate(true, ['action_dispatched' => true, 'already_fired' => true]);
     }
 }

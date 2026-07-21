@@ -10,7 +10,7 @@ use App\Models\Setting;
 use App\NodeConfig\Engine\NodeConfigEngine;
 use App\NodeConfig\Engine\NodeRegistry;
 use App\NodeConfig\Models\NodeConfig;
-use App\Services\NotificationService;
+use App\NodeConfig\Services\NodeConfigNotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -29,7 +29,7 @@ class MonitorServer implements ShouldQueue
         private readonly string $serverUuid,
     ) {}
 
-    public function handle(NodeRegistry $registry, NotificationService $notifications): void
+    public function handle(NodeRegistry $registry, NodeConfigNotificationService $notifications): void
     {
         $server = Server::with(['client.secopclients', 'agent', 'latestUpdate'])->where('uuid', $this->serverUuid)->first();
         if (!$server || !$server->agent) return;
@@ -47,7 +47,7 @@ class MonitorServer implements ShouldQueue
         Server $server,
         ?NodeConfig $config,
         ?NodeConfigEngine $engine,
-        NotificationService $notifications,
+        NodeConfigNotificationService $notifications,
     ): void {
         if (!$config || !$engine) return;
 
@@ -86,7 +86,7 @@ class MonitorServer implements ShouldQueue
                 'metric' => 'server_status',
                 'node' => $action['node_id'],
             ]);
-            $this->dispatchNotification($action, $notifications);
+            $notifications->dispatchAction($action);
         }
     }
 
@@ -94,7 +94,7 @@ class MonitorServer implements ShouldQueue
         Server $server,
         ?NodeConfig $config,
         ?NodeConfigEngine $engine,
-        NotificationService $notifications,
+        NodeConfigNotificationService $notifications,
     ): void {
         if (!$config || !$engine) return;
 
@@ -146,7 +146,7 @@ class MonitorServer implements ShouldQueue
                     'value' => $latestSample->value,
                     'node' => $action['node_id'],
                 ]);
-                $this->dispatchNotification($action, $notifications);
+                $notifications->dispatchAction($action);
             }
         }
     }
@@ -242,98 +242,5 @@ class MonitorServer implements ShouldQueue
         }
 
         return null;
-    }
-
-    private function dispatchNotification(array $action, NotificationService $notifications): void
-    {
-        $settings = $action['settings'];
-        $context = $action['upstream_context'] ?? [];
-
-        $serverId = $context['server_id'] ?? null;
-        $server = $serverId ? Server::with('client')->find($serverId) : null;
-
-        $templateData = [
-            'server' => $server,
-            'runtime' => [
-                'metricName' => $context['metric_name'] ?? 'Unknown Metric',
-                'sustainValue' => $context['sustain_value'] ?? '',
-                'offlineDuration' => $server?->agent?->last_seen_at
-                    ? now()->diffForHumans($server->agent->last_seen_at, true) . ' ago'
-                    : 'unknown',
-            ],
-        ];
-
-        $subject = $this->resolveTemplates($settings['subject'] ?? 'Alert triggered', $templateData);
-        $message = $this->resolveTemplates($settings['message'] ?? 'An alert condition was triggered.', $templateData);
-
-        $channel = $settings['channel'] ?? 'email';
-
-        try {
-            match ($channel) {
-                'email' => $this->sendEmail($server, $subject, $message, $notifications),
-                'discord' => $this->sendDiscord($settings, $message, $notifications),
-                default => null,
-            };
-
-            Log::info("[server-events] Notification dispatched", [
-                'server_id' => $serverId,
-                'server' => $server?->name,
-                'channel' => $channel,
-                'subject' => $subject,
-            ]);
-        } catch (\Throwable $e) {
-            Log::error("[server-events] Notification failed", [
-                'server_id' => $serverId,
-                'server' => $server?->name,
-                'channel' => $channel,
-                'error' => $e->getMessage(),
-                'node_id' => $action['node_id'],
-            ]);
-        }
-    }
-
-    private function sendEmail(?Server $server, string $subject, string $message, NotificationService $notifications): void
-    {
-        $emails = $server?->client?->secopclients?->pluck('email')->filter()->values()->all();
-        if (empty($emails)) return;
-
-        $notifications->sendEmailAlert($emails, $message, $subject);
-    }
-
-    private function sendDiscord(array $settings, string $message, NotificationService $notifications): void
-    {
-        $botToken = $settings['bot_token'] ?? null;
-        $channelId = $settings['channel_id'] ?? null;
-        $roleId = $settings['role_id'] ?? null;
-
-        if (!$botToken || !$channelId) return;
-
-        $notifications->sendDiscordAlert($botToken, $roleId ?? '', $message, $channelId);
-    }
-
-    private function resolveTemplates(string $text, array $data): string
-    {
-        return preg_replace_callback('/\{([^}]+)\}/', function ($matches) use ($data) {
-            return $this->resolveTemplateVar($matches[1], $data);
-        }, $text);
-    }
-
-    private function resolveTemplateVar(string $path, array $data): string
-    {
-        $allowedPrefixes = ['server', 'runtime'];
-
-        if ($path === '' || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*$/', $path)) {
-            return '{' . $path . '}';
-        }
-
-        $firstSegment = strtolower(explode('.', $path)[0]);
-
-        if (!in_array($firstSegment, $allowedPrefixes, true)) {
-            return '{' . $path . '}';
-        }
-
-        $result = data_get($data, $path);
-
-        return $result !== null ? (string) $result : '{' . $path . '}';
     }
 }

@@ -70,5 +70,9 @@ class AppServiceProvider extends ServiceProvider
             $schedule->command('uploads:cleanup')->hourly();
             $schedule->command('uploads:consistency-check')->daily();
         });
+
+        if (!app()->runningInConsole() || app()->environment('production')) {
+            \App\NodeConfig\Cache\NodeConfigCache::warm();
+        }
     }
 }

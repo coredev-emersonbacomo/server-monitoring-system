@@ -49,7 +49,7 @@ class SustainedNode extends BaseNode
             }
 
             if ($conditionMet && $alreadyFired) {
-                return NodeResult::propagate(true, $state);
+                return NodeResult::noPropagate(null, $state);
             }
 
             if (!$conditionMet) {
@@ -63,7 +63,7 @@ class SustainedNode extends BaseNode
             if (!$input) {
                 return NodeResult::propagate(false, ['already_fired' => false]);
             }
-            return NodeResult::propagate(true, $state);
+            return NodeResult::noPropagate(null, $state);
         }
 
         if ($input) {
