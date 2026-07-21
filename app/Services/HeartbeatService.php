@@ -48,6 +48,10 @@ class HeartbeatService
                 'version' => $newVersion,
             ]);
 
+            $offlineThresholdSeconds = (int) \App\Models\Setting::get('offline_threshold', '15');
+            \App\Jobs\CheckServerOffline::dispatch($server->uuid)
+                ->delay(now()->addSeconds($offlineThresholdSeconds));
+
             // Transition server to online if needed
             $oldStatus = $server->status;
             if ($oldStatus !== ServerStatus::Online->value) {
@@ -72,7 +76,27 @@ class HeartbeatService
                     ]),
                 ]);
 
+                // Real-time push so UI immediately reflects online status
+                \App\Events\ServerStatsUpdated::dispatchSync($server->uuid, [
+                    'timestamp' => now()->timestamp,
+                    'c'         => 0.0,
+                    'm'         => 0.0,
+                    'd'         => 0.0,
+                    'netIn'     => 0.0,
+                    'netOut'    => 0.0,
+                ]);
+
                 $this->triggerNodeConfigForServer($server, 'online');
+
+                // Real-time push so the frontend immediately shows Online
+                \App\Events\ServerStatsUpdated::dispatchSync($server->uuid, [
+                    'timestamp' => now()->timestamp,
+                    'c'         => 0.0,
+                    'm'         => 0.0,
+                    'd'         => 0.0,
+                    'netIn'     => 0.0,
+                    'netOut'    => 0.0,
+                ]);
             }
 
             // Create Heartbeat
@@ -144,7 +168,7 @@ class HeartbeatService
 
             $latestBinaryUpdate = \App\Models\AgentVersion::orderBy('id', 'desc')
                 ->first();
-            $agentVersion = $payload['agent_version'] ?? '';
+            $agentVersion = $agent->version;
             if ($latestBinaryUpdate && $agentVersion !== $latestBinaryUpdate->version) {
                 $response['pending_update'] = [
                     'version'            => $latestBinaryUpdate->version,

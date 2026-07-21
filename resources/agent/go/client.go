@@ -95,6 +95,24 @@ func (c *AgentClient) register(url string, req *RegisterRequest) (*RegisterRespo
 	if cfg, ok := result["configuration"].(map[string]interface{}); ok {
 		resp.Configuration = cfg
 	}
+	if uuid, ok := result["server_uuid"].(string); ok {
+		resp.ServerUUID = uuid
+	}
+	if uurl, ok := result["update_url"].(string); ok {
+		resp.UpdateURL = uurl
+	}
+	if rhost, ok := result["reverb_host"].(string); ok {
+		resp.ReverbHost = rhost
+	}
+	if rport, ok := result["reverb_port"].(float64); ok {
+		resp.ReverbPort = int(rport)
+	}
+	if rscheme, ok := result["reverb_scheme"].(string); ok {
+		resp.ReverbScheme = rscheme
+	}
+	if rappkey, ok := result["reverb_app_key"].(string); ok {
+		resp.ReverbAppKey = rappkey
+	}
 	return resp, nil
 }
 
@@ -154,6 +172,15 @@ func tryGetMessage(body []byte) (string, bool) {
 	}
 	msg, ok := m["message"].(string)
 	return msg, ok
+}
+
+func (c *AgentClient) postNotification(url, token string, payload interface{}) error {
+	if url == "" {
+		return fmt.Errorf("empty notification URL")
+	}
+	headers := map[string]string{"Authorization": "Bearer " + token}
+	_, err := c.sendWithRetry(url, payload, headers, 3)
+	return err
 }
 
 

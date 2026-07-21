@@ -1,9 +1,4 @@
-import {
-    Outlet,
-    useParams,
-    useNavigate,
-    useSearchParams,
-} from "react-router-dom";
+import { Outlet, useParams, useSearchParams, Link } from "react-router-dom";
 import { useServers } from "@/hooks/useServers";
 import { cn } from "@/lib/utils";
 import { Wifi, WifiOff, AlertTriangle, Search } from "lucide-react";
@@ -26,16 +21,18 @@ const STATUS_META = {
 
 export default function ServerLayout() {
     const { uuid } = useParams<{ uuid: string }>();
-    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const clientParam = searchParams.get("client");
-    const clientUuid = clientParam && clientParam !== "all" ? clientParam : undefined;
+    const clientUuid =
+        clientParam && clientParam !== "all" ? clientParam : undefined;
     const { data: servers, isLoading } = useServers(clientUuid);
     const [search, setSearch] = useState("");
 
-    const filtered = servers?.filter((s) =>
-        s.client_uuid === servers?.find((x) => x.uuid === uuid)?.client_uuid &&
-        s.name.toLowerCase().includes(search.toLowerCase())
+    const filtered = servers?.filter(
+        (s) =>
+            s.client_uuid ===
+                servers?.find((x) => x.uuid === uuid)?.client_uuid &&
+            s.name.toLowerCase().includes(search.toLowerCase()),
     );
 
     return (
@@ -85,9 +82,10 @@ export default function ServerLayout() {
                                 STATUS_META.unknown;
                             const Icon = meta.icon;
                             return (
-                                <button
+                                <Link
                                     key={server.uuid}
-                                    onClick={() => navigate(`/servers/${server.uuid}`, { replace: true })}
+                                    to={`/servers/${server.uuid}`}
+                                    state={{ replace: true }}
                                     className={cn(
                                         "w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm",
                                         isActive
@@ -116,7 +114,7 @@ export default function ServerLayout() {
                                             {server.client_name}
                                         </p>
                                     </div>
-                                </button>
+                                </Link>
                             );
                         })
                     )}

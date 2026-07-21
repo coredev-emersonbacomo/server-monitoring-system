@@ -6,6 +6,7 @@ interface TemplateInputProps {
     onChange: (value: string) => void;
     onKeyDown?: (e: React.KeyboardEvent) => void;
     onClick?: (e: React.MouseEvent) => void;
+    onPointerDown?: (e: React.PointerEvent) => void;
     type?: string;
     className?: string;
 }
@@ -23,7 +24,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
     );
 }
 
-export function TemplateInput({ value, onChange, onKeyDown, onClick, type = 'text', className }: TemplateInputProps) {
+export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDown, type = 'text', className }: TemplateInputProps) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
@@ -146,7 +147,8 @@ export function TemplateInput({ value, onChange, onKeyDown, onClick, type = 'tex
                 onFocus={() => inputRef.current && checkForTrigger(inputRef.current)}
                 onBlur={() => setTimeout(() => setOpen(false), 50)}
                 onClick={onClick}
-                className={className}
+                onPointerDown={onPointerDown}
+                className={`w-full ${className || ''}`}
             />
             {showDropdown && (
                 <div

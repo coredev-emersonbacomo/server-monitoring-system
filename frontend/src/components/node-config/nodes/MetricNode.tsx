@@ -3,6 +3,7 @@ import { type NodeProps, Position, useReactFlow } from '@xyflow/react';
 import { Activity, MemoryStick, HardDrive, Network, Server, Heart } from 'lucide-react';
 import { NodeSocket } from './node-socket';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { BaseNode } from './BaseNode';
 
 const METRICS: Record<string, { icon: React.ComponentType<{ size?: number }>; label: string }> = {
     cpu_usage: { icon: Activity, label: 'CPU Usage' },
@@ -15,7 +16,7 @@ const METRICS: Record<string, { icon: React.ComponentType<{ size?: number }>; la
 
 const COLOR = '#3b82f6';
 
-export const MetricNode = memo(({ id, data }: NodeProps) => {
+export const MetricNode = memo(({ id, data, selected }: NodeProps) => {
     const { updateNodeData } = useReactFlow();
     const metricType = (data.metric_type as string) || 'cpu_usage';
     const metric = METRICS[metricType] || METRICS.cpu_usage;
@@ -30,8 +31,7 @@ export const MetricNode = memo(({ id, data }: NodeProps) => {
     );
 
     return (
-        <div className="relative rounded-xl bg-card border-2 shadow-sm min-w-[200px]"
-            style={{ borderColor: COLOR }}>
+        <BaseNode width="w-[200px]" borderColor={COLOR} selected={selected}>
             <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5 border-b" style={{ borderColor: `${COLOR}15` }}>
                 <div className="p-1.5 rounded-lg shrink-0" style={{ backgroundColor: `${COLOR}20`, color: COLOR }}>
                     <Icon size={14} />
@@ -72,6 +72,6 @@ export const MetricNode = memo(({ id, data }: NodeProps) => {
                         def={{ type: 'number', label: 'Value' }} label="Value" />
                 </div>
             )}
-        </div>
+        </BaseNode>
     );
 });

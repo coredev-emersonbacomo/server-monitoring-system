@@ -1,23 +1,35 @@
-import { Save, Eye, Loader2 } from 'lucide-react';
+import { Save, Eye, Loader2, X } from "lucide-react";
 
 interface NodeConfigToolbarProps {
     name: string;
     isSaving: boolean;
-    onNameChange: (name: string) => void;
+    isDirty: boolean;
+    onNameChange?: (name: string) => void;
     onSave: () => void;
     onPreview: () => void;
     readOnly?: boolean;
     scopeLabel?: string;
+    onClose?: () => void;
 }
 
 export function NodeConfigToolbar({
-    name, isSaving, onNameChange, onSave, onPreview, readOnly, scopeLabel,
+    name,
+    isSaving,
+    isDirty,
+    onNameChange,
+    onSave,
+    onPreview,
+    readOnly,
+    scopeLabel,
+    onClose,
 }: NodeConfigToolbarProps) {
     return (
         <div className="flex items-center gap-3 px-4 py-2 border-b border-border/40 bg-card">
             {readOnly ? (
-                <div className="flex-1 flex items-center gap-2 px-3 py-1.5">
-                    <span className="text-sm font-semibold text-foreground">{name}</span>
+                <div className="flex-1 flex items-center gap-2 px-1 py-1.5">
+                    <span className="text-sm font-semibold text-foreground">
+                        {name}
+                    </span>
                     {scopeLabel && (
                         <span className="text-[10px] font-medium uppercase text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                             {scopeLabel}
@@ -41,17 +53,32 @@ export function NodeConfigToolbar({
                     title="Preview compiled config"
                 >
                     <Eye size={14} className="text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Preview</span>
+                    <span className="text-xs text-muted-foreground">
+                        Preview
+                    </span>
                 </button>
                 <button
                     onClick={onSave}
-                    disabled={isSaving}
+                    disabled={isSaving || !isDirty}
                     className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground
                         hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                    {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                    <span>{isSaving ? 'Saving...' : 'Save'}</span>
+                    {isSaving ? (
+                        <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                        <Save size={14} />
+                    )}
+                    <span>{isSaving ? "Saving..." : "Save"}</span>
                 </button>
+                {onClose && (
+                    <button
+                        onClick={onClose}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        title="Close editor"
+                    >
+                        <X size={16} />
+                    </button>
+                )}
             </div>
         </div>
     );

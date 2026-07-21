@@ -6,7 +6,6 @@ use App\Jobs\MonitorServer;
 use App\Models\ActionItem;
 use App\Models\Client;
 use Illuminate\Console\Command;
-use App\NodeConfig\Models\NodeConfig;
 
 class SystemMonitor extends Command
 {
@@ -16,12 +15,10 @@ class SystemMonitor extends Command
 
     public function handle(): int
     {
-        $alertConfig = NodeConfig::where('slug', 'alerts')->where('enabled', true)->first();
-
         $servers = \App\Models\Server::all();
         foreach ($servers as $server) {
             $server->checkTokenExpiration();
-            MonitorServer::dispatch($server->id, $alertConfig?->id);
+            MonitorServer::dispatch($server->uuid);
         }
 
         $this->syncNoSecOpsClients();
