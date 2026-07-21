@@ -26,6 +26,7 @@ return new class extends Migration
             $table->string('disk')->nullable();
             $table->string('operating_system')->nullable();
             $table->string('record_status')->default('active');
+            $table->string('alert_scope')->default('global');
             $table->boolean('agent_deleted')->default(false);
             $table->timestamps();
         });

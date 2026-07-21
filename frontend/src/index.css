@@ -209,3 +209,7 @@
         background: oklch(0.556 0 0);
     }
 }
+
+.preview-nodes-disabled .react-flow__node {
+    pointer-events: none !important;
+}

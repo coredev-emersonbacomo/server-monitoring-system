@@ -74,6 +74,28 @@ class ServerController extends Controller
         return ServerData::fromModel($serverModel);
     }
 
+    public function updateAlertScope(Request $request, string $clientUuid, string $serverUuid)
+    {
+        $request->validate([
+            'alert_scope' => ['required', 'string', 'in:global,client,server'],
+        ]);
+
+        $serverModel = Server::where('uuid', $serverUuid)
+            ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
+            ->firstOrFail();
+
+        $newScope = $request->input('alert_scope');
+
+        if ($newScope !== 'global') {
+            $scopeType = $newScope;
+            $scopeId = $scopeType === 'server' ? $serverModel->id : $serverModel->client_id;
+            app(\App\NodeConfig\Services\NodeConfigService::class)
+                ->copyGlobalConfigIfNeeded($scopeType, $scopeId);
+        }
+
+        $serverModel->update(['alert_scope' => $newScope]);
+    }
+
     public function update(UpdateServerData $data, string $clientUuid, string $serverUuid): ServerData
     {
         $serverModel = Server::where('uuid', $serverUuid)
@@ -82,12 +104,12 @@ class ServerController extends Controller
 
         $updateData = $data->toArray();
 
-        if ($data->name !== null) {
-            $updateData['server_name'] = $data->name;
-        }
-
         if ($data->description !== null) {
             $updateData['description'] = $data->description;
+        }
+
+        if (!($data->alert_scope instanceof \Spatie\LaravelData\Optional)) {
+            $updateData['alert_scope'] = $data->alert_scope ?? 'global';
         }
 
         $originalAttributes = $serverModel->getRawOriginal();
@@ -206,6 +228,7 @@ class ServerController extends Controller
                 'uninstall_linux_command' => 'sudo curl -fsSL ' . url('/uninstall/linux') . ' | sudo bash -s -- ' . $token,
                 'uninstall_windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/uninstall/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl `$APP_URL"',
                 'agent_deleted' => $server->agent ? (bool) $server->agent_deleted : true,
+                'alert_scope' => $server->alert_scope ?? 'global',
             ]);
         }));
     }

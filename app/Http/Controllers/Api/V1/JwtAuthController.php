@@ -98,7 +98,16 @@ class JwtAuthController extends Controller
         );
 
         return $responseData->toResponse($request)
-            ->withCookie($this->buildRefreshTokenCookie($refreshToken, $rememberMe));
+            ->withCookie($this->buildRefreshTokenCookie($refreshToken, $rememberMe))
+            ->withCookie(cookie(
+                name: 'has_session',
+                value: '1',
+                minutes: $rememberMe ? 60 * 24 * 30 : 0,
+                path: '/',
+                secure: config('jwt.cookie_secure', false),
+                httpOnly: false,
+                sameSite: 'lax',
+            ));
     }
 
     public function refresh(Request $request): JsonResponse
@@ -174,7 +183,8 @@ class JwtAuthController extends Controller
         }
 
         return response()->json(['message' => 'Logged out successfully.'])
-            ->withCookie(cookie()->forget(config('jwt.cookie', 'refresh_token'), '/api'));
+            ->withCookie(cookie()->forget(config('jwt.cookie', 'refresh_token'), '/api'))
+            ->withCookie(cookie()->forget('has_session', '/'));
     }
 
     public function logoutAll(Request $request): JsonResponse
@@ -193,7 +203,8 @@ class JwtAuthController extends Controller
         }
 
         return response()->json(['message' => 'All sessions logged out.'])
-            ->withCookie(cookie()->forget(config('jwt.cookie', 'refresh_token'), '/api'));
+            ->withCookie(cookie()->forget(config('jwt.cookie', 'refresh_token'), '/api'))
+            ->withCookie(cookie()->forget('has_session', '/'));
     }
 
     public function me(Request $request): AuthUserData

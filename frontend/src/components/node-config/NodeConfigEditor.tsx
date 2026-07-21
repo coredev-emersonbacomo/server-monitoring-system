@@ -6,12 +6,12 @@ import {
     useEffect,
     type DragEvent,
 } from "react";
+import { createPortal } from "react-dom";
+import { useSearchParams } from "react-router-dom";
 import {
     ReactFlow,
     type Node,
     type Edge,
-    type OnNodesChange,
-    type OnEdgesChange,
     type OnConnect,
     type Connection,
     useNodesState,
@@ -38,11 +38,10 @@ import {
     useConfigByKey,
     useUpsertConfigByKey,
     usePreviewConfig,
-    useUpsertScopedConfig,
 } from "@/hooks/node-config/useNodeConfigs";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-import { useOutletFullScreen } from "@/hooks/useOutletLayout";
+import { Loader2, Maximize2 } from "lucide-react";
+import { useOutletLayout, useOutletFullScreen } from "@/hooks/useOutletLayout";
 import { useTheme } from "@/hooks/useTheme";
 import {
     Dialog,
@@ -50,17 +49,20 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { NodeConfigGraphProvider } from "@/contexts/NodeConfigGraphContext";
 
 let nodeIdCounter = 0;
 const generateId = () => `node_${++nodeIdCounter}_${Date.now()}`;
 const edgeIdCounter = () =>
     `edge_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
-function convertToFlowNodes(
-    config: NodeConfigGraph,
+const SNAP_GRID: [number, number] = [10, 10];
+
+function toFlowNodes(
+    configNodes: NodeConfigGraph["nodes"],
     definitions: NodeTypeDefinition[],
 ): Node[] {
-    return (config?.nodes || []).map((n) => ({
+    return (configNodes || []).map((n) => ({
         id: n.id,
         type: n.type,
         position: n.position,
@@ -74,24 +76,24 @@ function convertToFlowNodes(
     }));
 }
 
-function convertToFlowEdges(config: NodeConfigGraph): Edge[] {
-    return (config?.edges || []).map((e) => ({
+function toFlowEdges(configEdges: NodeConfigGraph["edges"]): Edge[] {
+    return (configEdges || []).map((e) => ({
         id: e.id,
         source: e.source,
         target: e.target,
         sourceHandle: e.sourceHandle,
         targetHandle: e.targetHandle,
-        type: "smoothstep",
+        type: "default",
         animated: true,
         style: { stroke: "hsl(215 20% 55% / 0.6)", strokeWidth: 2 },
     }));
 }
 
-function convertFromFlow(nodes: Node[], edges: Edge[]): NodeConfigGraph {
+function fromFlow(nodes: Node[], edges: Edge[]): NodeConfigGraph {
     return {
         nodes: nodes.map((n) => ({
             id: n.id,
-            type: n.type,
+            type: n.type ?? "",
             settings: n.data as Record<string, unknown>,
             position: n.position,
         })),
@@ -99,53 +101,101 @@ function convertFromFlow(nodes: Node[], edges: Edge[]): NodeConfigGraph {
             id: e.id,
             source: e.source,
             target: e.target,
-            sourceHandle: e.sourceHandle,
-            targetHandle: e.targetHandle,
+            sourceHandle: e.sourceHandle ?? undefined,
+            targetHandle: e.targetHandle ?? undefined,
         })),
     };
 }
 
 interface NodeConfigEditorProps {
     configKey: string;
-    defaultName?: string;
-    scopeType?: string;
     scopeLabel?: string;
-    scopeId?: number | null;
-    readOnly?: boolean;
+    maximized?: boolean;
+    alwaysMaximized?: boolean;
+    showControls?: boolean;
+    showMinimap?: boolean;
+    showNodeTypesSidebar?: boolean;
 }
 
 export function NodeConfigEditor({
     configKey,
-    defaultName = "Untitled Config",
-    scopeType,
-    scopeLabel,
-    scopeId,
-    readOnly = false,
+    scopeLabel = "Global",
+    maximized: controlledMaximized,
+    alwaysMaximized = false,
+    showControls = true,
+    showMinimap = true,
+    showNodeTypesSidebar = true,
 }: NodeConfigEditorProps) {
     const { data: definitions = [], isLoading: defsLoading } = useNodeTypes();
     const { data: savedConfig, isLoading: configLoading } =
         useConfigByKey(configKey);
     const upsertMutation = useUpsertConfigByKey();
-    const scopedUpsertMutation = useUpsertScopedConfig();
     const previewMutation = usePreviewConfig();
-    useOutletFullScreen(true);
     const { theme } = useTheme();
+    const { portalRef } = useOutletLayout();
 
-    const [name, setName] = useState(defaultName);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const internalMaximized = searchParams.get("editor") === "maximized";
+    const setInternalMaximized = useCallback(
+        (value: boolean | ((prev: boolean) => boolean)) => {
+            setSearchParams(
+                (prev) => {
+                    if (typeof value === "function") {
+                        value = value(prev.get("editor") === "maximized");
+                    }
+                    if (value) {
+                        prev.set("editor", "maximized");
+                    } else {
+                        prev.delete("editor");
+                    }
+                    return prev;
+                },
+                { replace: true },
+            );
+        },
+        [setSearchParams],
+    );
+    const isOutletMaximized =
+        alwaysMaximized ||
+        (controlledMaximized !== undefined && controlledMaximized);
+    const isMaximized = isOutletMaximized || internalMaximized;
+
+    useOutletFullScreen(isOutletMaximized);
+
+    useEffect(() => {
+        if (internalMaximized) {
+            document.body.style.overflow = "hidden";
+            return () => {
+                document.body.style.overflow = "";
+            };
+        }
+    }, [internalMaximized]);
+
+    const effectiveShowControls = isMaximized || showControls;
+    const effectiveShowMinimap = isMaximized || showMinimap;
+    const effectiveShowNodeTypesSidebar = isMaximized || showNodeTypesSidebar;
+
+    const [portalContainer, setPortalContainer] =
+        useState<HTMLDivElement | null>(null);
+    useEffect(() => {
+        setPortalContainer(portalRef.current);
+    }, [portalRef]);
+
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const [hydrated, setHydrated] = useState(false);
     const [previewOpen, setPreviewOpen] = useState(false);
     const [compiledPreview, setCompiledPreview] = useState<unknown>(null);
+    const savedSnapshotRef = useRef<string>("");
 
     const initialNodes = useMemo(
         () =>
             savedConfig
-                ? convertToFlowNodes(savedConfig.config, definitions)
+                ? toFlowNodes(savedConfig.config.nodes, definitions)
                 : [],
         [savedConfig, definitions],
     );
     const initialEdges = useMemo(
-        () => (savedConfig ? convertToFlowEdges(savedConfig.config) : []),
+        () => (savedConfig ? toFlowEdges(savedConfig.config.edges) : []),
         [savedConfig],
     );
 
@@ -153,43 +203,64 @@ export function NodeConfigEditor({
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
     const nodesRef = useRef(nodes);
-    nodesRef.current = nodes;
+    useEffect(() => {
+        nodesRef.current = nodes;
+    });
 
     const [sidebarWidth, setSidebarWidth] = useState(192);
     const isDraggingSidebar = useRef(false);
     const dragStartX = useRef(0);
     const dragStartWidth = useRef(0);
 
-    const onSidebarDragStart = useCallback((e: React.MouseEvent) => {
-        isDraggingSidebar.current = true;
-        dragStartX.current = e.clientX;
-        dragStartWidth.current = sidebarWidth;
-        e.preventDefault();
-    }, [sidebarWidth]);
+    const onSidebarDragStart = useCallback(
+        (e: React.MouseEvent) => {
+            isDraggingSidebar.current = true;
+            dragStartX.current = e.clientX;
+            dragStartWidth.current = sidebarWidth;
+            e.preventDefault();
+        },
+        [sidebarWidth],
+    );
 
     useEffect(() => {
         const onMove = (e: MouseEvent) => {
             if (!isDraggingSidebar.current) return;
             const delta = e.clientX - dragStartX.current;
-            setSidebarWidth(Math.max(160, Math.min(480, dragStartWidth.current + delta)));
+            setSidebarWidth(
+                Math.max(160, Math.min(480, dragStartWidth.current + delta)),
+            );
         };
-        const onUp = () => { isDraggingSidebar.current = false; };
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
+        const onUp = () => {
+            isDraggingSidebar.current = false;
+        };
+        window.addEventListener("mousemove", onMove);
+        window.addEventListener("mouseup", onUp);
         return () => {
-            window.removeEventListener('mousemove', onMove);
-            window.removeEventListener('mouseup', onUp);
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", onUp);
         };
     }, []);
 
     useEffect(() => {
+        setHydrated(false);
+    }, [configKey]);
+
+    useEffect(() => {
         if (savedConfig && !hydrated) {
-            setName(savedConfig.name || defaultName);
-            setNodes(convertToFlowNodes(savedConfig.config, definitions));
-            setEdges(convertToFlowEdges(savedConfig.config));
+            const flowNodes = toFlowNodes(
+                savedConfig.config.nodes,
+                definitions,
+            );
+            const flowEdges = toFlowEdges(savedConfig.config.edges);
+            setNodes(flowNodes);
+            setEdges(flowEdges);
+            savedSnapshotRef.current = JSON.stringify({
+                nodes: flowNodes,
+                edges: flowEdges,
+            });
             setHydrated(true);
         }
-    }, [savedConfig, definitions, hydrated, defaultName, setNodes, setEdges]);
+    }, [savedConfig, definitions, hydrated, setNodes, setEdges]);
 
     const onConnect: OnConnect = useCallback(
         (connection: Connection) => {
@@ -203,7 +274,7 @@ export function NodeConfigEditor({
                     {
                         ...connection,
                         id: edgeIdCounter(),
-                        type: "smoothstep",
+                        type: "default",
                         animated: true,
                         style: {
                             stroke: "hsl(215 20% 55% / 0.45)",
@@ -227,6 +298,7 @@ export function NodeConfigEditor({
                 return false;
             const sourceDef = getOutputType(
                 nodesRef.current.find((n) => n.id === source)?.type || "",
+                sourceHandle ?? undefined,
             );
             const targetDef = getInputType(
                 nodesRef.current.find((n) => n.id === target)?.type || "",
@@ -329,36 +401,30 @@ export function NodeConfigEditor({
     }, [selectedNode, definitions]);
 
     const displayName = useMemo(() => {
-        if (scopeType === "global") return "Global Alert Config";
-        if (scopeType === "client") return "Client Alert Config";
-        if (scopeType === "server") return "Server Alert Config";
-        return name;
-    }, [scopeType, name]);
+        if (configKey === "alerts") return "Global Alert Config";
+        if (configKey.startsWith("client_"))
+            return `${scopeLabel} Client Alert Config`;
+        if (configKey.startsWith("server_"))
+            return `${scopeLabel} Server Alert Config`;
+        return `${scopeLabel} Alert Config`;
+    }, [configKey, scopeLabel]);
 
     const handleSave = useCallback(async () => {
-        const graph = convertFromFlow(nodes, edges);
+        const graph = fromFlow(nodes, edges);
         try {
-            if (scopeType && scopeType !== "global") {
-                await scopedUpsertMutation.mutateAsync({
-                    name: displayName,
-                    config: graph,
-                    scope_type: scopeType as "client" | "server",
-                    scope_id: scopeId ?? null,
-                });
-            } else {
-                await upsertMutation.mutateAsync({
-                    slug: configKey,
-                    data: { name: displayName, config: graph },
-                });
-            }
+            await upsertMutation.mutateAsync({
+                slug: configKey,
+                data: { name: displayName, config: graph },
+            });
+            savedSnapshotRef.current = JSON.stringify({ nodes, edges });
             toast.success("Config saved");
         } catch {
             toast.error("Failed to save config");
         }
-    }, [nodes, edges, displayName, configKey, scopeType, scopeId, upsertMutation, scopedUpsertMutation]);
+    }, [nodes, edges, displayName, configKey, upsertMutation]);
 
     const handlePreview = useCallback(async () => {
-        const graph = convertFromFlow(nodes, edges);
+        const graph = fromFlow(nodes, edges);
         try {
             const result = await previewMutation.mutateAsync({
                 config: graph,
@@ -369,6 +435,21 @@ export function NodeConfigEditor({
             toast.error("Failed to compile config");
         }
     }, [nodes, edges, previewMutation]);
+
+    const previewNodes = useMemo(
+        () => toFlowNodes(savedConfig?.config.nodes ?? [], definitions),
+        [savedConfig, definitions],
+    );
+    const previewEdges = useMemo(
+        () => toFlowEdges(savedConfig?.config.edges ?? []),
+        [savedConfig],
+    );
+    const isEmpty = previewNodes.length === 0 && previewEdges.length === 0;
+
+    const isDirty = useMemo(() => {
+        if (!hydrated) return false;
+        return savedSnapshotRef.current !== JSON.stringify({ nodes, edges });
+    }, [hydrated, nodes, edges]);
 
     if (defsLoading || configLoading) {
         return (
@@ -381,106 +462,197 @@ export function NodeConfigEditor({
         );
     }
 
-    return (
-        <div className="flex-1 flex flex-col min-h-0">
-            <NodeConfigToolbar
-                name={displayName}
-                isSaving={upsertMutation.isPending || scopedUpsertMutation.isPending}
-                onNameChange={setName}
-                onSave={handleSave}
-                onPreview={handlePreview}
-                readOnly={readOnly}
-                scopeLabel={scopeLabel}
-            />
-            <div className="flex flex-1 min-h-0">
-                <div style={{ width: sidebarWidth, minWidth: sidebarWidth }} className="relative shrink-0 bg-card">
-                    <NodePalette
-                        nodeTypes={definitions}
-                        onAddNode={addNodeByClick}
-                    />
-                    <div
-                        onMouseDown={onSidebarDragStart}
-                        className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-border/60 transition-colors z-10"
-                    />
-                </div>
-                <div
-                    className="flex-1 relative"
-                    onDrop={onDrop}
-                    onDragOver={onDragOver}
-                >
-                    <ReactFlow
-                        colorMode={theme}
-                        nodes={nodes}
-                        edges={edges}
-                        onNodesChange={onNodesChange}
-                        onEdgesChange={onEdgesChange}
-                        onConnect={onConnect}
-                        isValidConnection={isValidConnection}
-                        onNodeClick={onNodeClick}
-                        onPaneClick={onPaneClick}
-                        nodeTypes={nodeTypes}
-                        fitView
-                        deleteKeyCode={["Backspace", "Delete"]}
-                        selectionMode={SelectionMode.Partial}
-                        onInit={(instance) => {
-                            reactFlowInstance.current = instance;
-                        }}
-                    >
-                        <Background
-                            variant={BackgroundVariant.Dots}
-                            gap={20}
-                            size={1}
-                            className="bg-background"
-                        />
-                        <Controls className="bg-card border border-border/40 rounded-lg" />
-                        <MiniMap
-                            nodeColor={(node) => {
-                                const cat = definitions.find(
-                                    (d) => d.type === node.type,
-                                )?.category;
-                                const colors: Record<string, string> = {
-                                    metric: "#3b82f6",
-                                    condition: "#f59e0b",
-                                    logic: "#8b5cf6",
-                                    time: "#10b981",
-                                    action: "#ef4444",
-                                };
-                                return colors[cat || ""] || "#6b7280";
+    const editorContent = (
+        <NodeConfigGraphProvider isPreview={false}>
+            <style>{`
+                .react-flow__edge.selected .react-flow__edge-path {
+                    stroke: hsl(215 80% 55%) !important;
+                    stroke-width: 3 !important;
+                }
+                .react-flow__edge:hover:not(.selected) .react-flow__edge-path {
+                    stroke: hsl(215 80% 55% / 0.5) !important;
+                    stroke-width: 3 !important;
+                }
+                .react-flow__edge-interaction {
+                    stroke-width: 20 !important;
+                }
+            `}</style>
+            <div className="flex-1 flex flex-col min-h-0">
+                <NodeConfigToolbar
+                    name={displayName}
+                    isSaving={upsertMutation.isPending}
+                    isDirty={isDirty}
+                    onSave={handleSave}
+                    onPreview={handlePreview}
+                    readOnly
+                    onClose={
+                        alwaysMaximized
+                            ? undefined
+                            : () => setInternalMaximized(false)
+                    }
+                />
+                <div className="flex flex-1 min-h-0">
+                    {effectiveShowNodeTypesSidebar && (
+                        <div
+                            style={{
+                                width: sidebarWidth,
+                                minWidth: sidebarWidth,
                             }}
-                            maskColor="rgba(0,0,0,0.3)"
-                            pannable
-                            zoomable
-                            className="bg-card! border! border-border! rounded-lg!"
-                        />
-                    </ReactFlow>
+                            className="relative shrink-0 bg-card"
+                        >
+                            <NodePalette
+                                nodeTypes={definitions}
+                                onAddNode={addNodeByClick}
+                            />
+                            <div
+                                onMouseDown={onSidebarDragStart}
+                                className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-border/60 transition-colors z-10"
+                            />
+                        </div>
+                    )}
                     <div
-                        className={`absolute top-4 right-4 z-10 transition-opacity duration-200 ${selectedNode ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                        className="flex-1 relative"
+                        onDrop={onDrop}
+                        onDragOver={onDragOver}
                     >
-                        <NodeSettingsPanel
-                            node={selectedNode}
-                            nodeTypeDef={selectedNodeDef}
-                            onUpdate={updateNodeSettings}
-                            onDelete={deleteNode}
-                            onClose={() => setSelectedNode(null)}
-                        />
+                        <ReactFlow
+                            colorMode={theme}
+                            nodes={nodes}
+                            edges={edges}
+                            onNodesChange={onNodesChange}
+                            onEdgesChange={onEdgesChange}
+                            onConnect={onConnect}
+                            isValidConnection={isValidConnection}
+                            onNodeClick={onNodeClick}
+                            onPaneClick={onPaneClick}
+                            nodeTypes={nodeTypes}
+                            fitView
+                            minZoom={0.3}
+                            deleteKeyCode={["Backspace", "Delete"]}
+                            multiSelectionKeyCode={["Meta", "Control", "Shift"]}
+                            selectionMode={SelectionMode.Partial}
+                            selectionOnDrag
+                            snapToGrid
+                            snapGrid={SNAP_GRID}
+                            onInit={(instance) => {
+                                reactFlowInstance.current = instance;
+                            }}
+                        >
+                            <Background
+                                variant={BackgroundVariant.Dots}
+                                gap={10}
+                                size={1}
+                                className="bg-background"
+                            />
+                            {effectiveShowControls && (
+                                <Controls className="bg-card border border-border/40 rounded-lg" />
+                            )}
+                            {effectiveShowMinimap && (
+                                <MiniMap
+                                    nodeColor="transparent"
+                                    nodeStrokeColor={(node) => {
+                                        const cat = definitions.find(
+                                            (d) => d.type === node.type,
+                                        )?.category;
+                                        const colors: Record<string, string> = {
+                                            metric: "#3b82f6",
+                                            condition: "#f59e0b",
+                                            logic: "#8b5cf6",
+                                            time: "#10b981",
+                                            action: "#ef4444",
+                                        };
+                                        return colors[cat || ""] || "#6b7280";
+                                    }}
+                                    nodeStrokeWidth={10}
+                                    nodeBorderRadius={20}
+                                    maskColor="rgba(0,0,0,0.3)"
+                                    pannable
+                                    zoomable
+                                    className="bg-card! border! border-border! rounded-lg!"
+                                />
+                            )}
+                        </ReactFlow>
+                        <div
+                            className={`absolute top-4 right-4 z-10 transition-opacity duration-200 ${selectedNode ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                        >
+                            <NodeSettingsPanel
+                                node={selectedNode}
+                                nodeTypeDef={selectedNodeDef}
+                                onUpdate={updateNodeSettings}
+                                onDelete={deleteNode}
+                                onClose={() => setSelectedNode(null)}
+                            />
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-                <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
-                    <DialogHeader>
-                        <DialogTitle>Compiled Config</DialogTitle>
-                    </DialogHeader>
-                    <div className="flex-1 overflow-auto">
-                        <pre className="text-xs font-mono text-foreground bg-background border border-border/40 rounded-lg p-4 whitespace-pre-wrap">
-                            {compiledPreview
-                                ? JSON.stringify(compiledPreview, null, 2)
-                                : "No preview available"}
-                        </pre>
-                    </div>
-                </DialogContent>
-            </Dialog>
-        </div>
+                <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+                    <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+                        <DialogHeader>
+                            <DialogTitle>Compiled Config</DialogTitle>
+                        </DialogHeader>
+                        <div className="flex-1 overflow-auto">
+                            <pre className="text-xs font-mono text-foreground bg-background border border-border/40 rounded-lg p-4 whitespace-pre-wrap">
+                                {compiledPreview
+                                    ? JSON.stringify(compiledPreview, null, 2)
+                                    : "No preview available"}
+                            </pre>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        </NodeConfigGraphProvider>
     );
+
+    if (!isOutletMaximized && !internalMaximized) {
+        return (
+            <NodeConfigGraphProvider isPreview={true}>
+                <div className="relative rounded-xl border border-border/40 bg-background overflow-hidden">
+                    <div className="h-70 preview-nodes-disabled">
+                        {isEmpty ? (
+                            <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+                                No alerts configured. Maximize to edit.
+                            </div>
+                        ) : (
+                            <ReactFlow
+                                nodes={previewNodes}
+                                edges={previewEdges}
+                                nodeTypes={nodeTypes}
+                                fitView
+                                minZoom={0.3}
+                                proOptions={{ hideAttribution: true }}
+                                nodesDraggable={false}
+                                nodesConnectable={false}
+                                elementsSelectable={false}
+                                panOnDrag
+                                zoomOnScroll
+                                zoomOnPinch
+                            >
+                                <Background
+                                    variant={BackgroundVariant.Dots}
+                                    gap={10}
+                                    size={1}
+                                    className="bg-background"
+                                />
+                            </ReactFlow>
+                        )}
+                    </div>
+                    <button
+                        onClick={() => setInternalMaximized(true)}
+                        className="absolute top-2 right-2 p-1.5 rounded-md bg-card/80 backdrop-blur border border-border/40 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        title="Open full editor"
+                    >
+                        <Maximize2 size={14} />
+                    </button>
+                </div>
+            </NodeConfigGraphProvider>
+        );
+    }
+
+    if (isOutletMaximized) {
+        return editorContent;
+    }
+
+    if (!portalContainer) return null;
+    return createPortal(editorContent, portalContainer);
 }

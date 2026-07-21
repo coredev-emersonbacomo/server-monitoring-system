@@ -27,6 +27,7 @@ public function newUniqueId(): string
         'banner_image_storage_key',
         'status',
         'uuid',
+        'alert_scope',
     ];
 public function uniqueIds(): array
     {

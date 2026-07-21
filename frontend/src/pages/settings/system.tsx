@@ -1,6 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings2, Save, ChevronLeft, Loader2, ShieldCheck, AlertTriangle } from "lucide-react";
+import {
+    Settings2,
+    Save,
+    ChevronLeft,
+    Loader2,
+    ShieldCheck,
+    AlertTriangle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
@@ -23,7 +30,9 @@ function SettingRow({
         <div className="flex items-start justify-between gap-6 py-5">
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground">{label}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    {description}
+                </p>
             </div>
             <div className="shrink-0">{children}</div>
         </div>
@@ -67,9 +76,7 @@ export default function SystemSettings() {
 
     const hasChanges = useMemo(() => {
         if (!settings) return false;
-        return (
-            limitValue !== settings.secop_limit_per_client
-        );
+        return limitValue !== settings.secop_limit_per_client;
     }, [limitValue, settings]);
 
     useEffect(() => {
@@ -100,7 +107,9 @@ export default function SystemSettings() {
         return (
             <div className="flex items-center justify-center min-h-[60vh] gap-3">
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Loading settings…</p>
+                <p className="text-sm text-muted-foreground">
+                    Loading settings…
+                </p>
             </div>
         );
     }
@@ -122,7 +131,9 @@ export default function SystemSettings() {
                             <Settings2 className="w-5 h-5 text-primary" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-semibold tracking-tight">System Settings</h1>
+                            <h1 className="text-lg font-semibold tracking-tight">
+                                System Settings
+                            </h1>
                             <p className="text-sm text-muted-foreground mt-0.5">
                                 Global configuration for the monitoring system.
                             </p>
@@ -130,8 +141,18 @@ export default function SystemSettings() {
                     </div>
                     {isDirty && (
                         <Button
-                            label={updateSettings.isPending ? "Saving…" : "Save Changes"}
-                            icon={updateSettings.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                            label={
+                                updateSettings.isPending
+                                    ? "Saving…"
+                                    : "Save Changes"
+                            }
+                            icon={
+                                updateSettings.isPending ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                    <Save className="w-3.5 h-3.5" />
+                                )
+                            }
                             disabled={updateSettings.isPending}
                             onClick={handleSave}
                         />
@@ -142,9 +163,6 @@ export default function SystemSettings() {
             {/* Body */}
             <main className="py-8 flex-1">
                 <div className="max-w-2xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-6">
-
-
-
                     {/* Section: SecOps */}
                     <div className="bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
                         <div className="flex items-center gap-3 px-6 py-4 border-b border-border/60 bg-muted/30">
@@ -152,9 +170,12 @@ export default function SystemSettings() {
                                 <ShieldCheck className="w-4 h-4 text-primary" />
                             </div>
                             <div>
-                                <p className="text-sm font-semibold">SecOps Assignments</p>
+                                <p className="text-sm font-semibold">
+                                    SecOps Assignments
+                                </p>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                    Controls how many SecOps personnel can be assigned per client.
+                                    Controls how many SecOps personnel can be
+                                    assigned per client.
                                 </p>
                             </div>
                         </div>
@@ -171,10 +192,14 @@ export default function SystemSettings() {
                                         min={1}
                                         max={50}
                                         value={limitValue}
-                                        onChange={(e) => setLimitValue(e.target.value)}
+                                        onChange={(e) =>
+                                            setLimitValue(e.target.value)
+                                        }
                                         className="w-20 h-9 rounded-md border border-border bg-background px-3 text-sm text-center font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
                                     />
-                                    <span className="text-xs text-muted-foreground">users</span>
+                                    <span className="text-xs text-muted-foreground">
+                                        users
+                                    </span>
                                 </div>
                             </SettingRow>
                         </div>
@@ -184,9 +209,12 @@ export default function SystemSettings() {
                     <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-amber-500/5 border border-amber-500/20 text-amber-600 dark:text-amber-400">
                         <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                         <p className="text-xs leading-relaxed">
-                            Reducing the SecOps limit below the current assignment count for existing clients
-                            does not automatically remove existing SecOps. It only prevents new assignments
-                            that exceed the new limit. Changes to monitoring settings take effect on the next sync cycle.
+                            Reducing the SecOps limit below the current
+                            assignment count for existing clients does not
+                            automatically remove existing SecOps. It only
+                            prevents new assignments that exceed the new limit.
+                            Changes to monitoring settings take effect on the
+                            next sync cycle.
                         </p>
                     </div>
 
@@ -194,7 +222,11 @@ export default function SystemSettings() {
                     {isDirty && (
                         <div className="sm:hidden">
                             <Button
-                                label={updateSettings.isPending ? "Saving…" : "Save Changes"}
+                                label={
+                                    updateSettings.isPending
+                                        ? "Saving…"
+                                        : "Save Changes"
+                                }
                                 icon={<Save className="w-3.5 h-3.5" />}
                                 disabled={updateSettings.isPending}
                                 onClick={handleSave}

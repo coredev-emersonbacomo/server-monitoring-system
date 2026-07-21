@@ -52,9 +52,9 @@ class MonitorServer implements ShouldQueue
         if (!$config || !$engine) return;
 
         $agent = $server->agent;
-        $offlineThresholdMinutes = (int) Setting::get('offline_threshold', '5');
+        $offlineThresholdSeconds = (int) Setting::get('offline_threshold', '15');
         $isOnline = $agent->last_seen_at && $agent->last_seen_at->greaterThan(
-            now()->subMinutes($offlineThresholdMinutes)
+            now()->subSeconds($offlineThresholdSeconds)
         );
 
         $sourceNodeId = $this->findMetricNode($config, 'server_status');
@@ -204,9 +204,9 @@ class MonitorServer implements ShouldQueue
         $agent = $server->agent;
         if (!$agent) return false;
 
-        $offlineThresholdMinutes = (int) Setting::get('offline_threshold', '5');
+        $offlineThresholdSeconds = (int) Setting::get('offline_threshold', '15');
         $isOnline = $agent->last_seen_at && $agent->last_seen_at->greaterThan(
-            now()->subMinutes($offlineThresholdMinutes)
+            now()->subSeconds($offlineThresholdSeconds)
         );
 
         if ($isOnline) return false;

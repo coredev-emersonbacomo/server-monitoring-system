@@ -149,7 +149,6 @@ function IndexToolbar({
                             </div>
                         </div>
 
-
                         <div className="h-px bg-border" />
 
                         {/* Sort section */}

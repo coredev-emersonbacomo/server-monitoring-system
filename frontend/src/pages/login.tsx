@@ -1,4 +1,5 @@
 import { useState, type SubmitEvent } from "react";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Loader2, Server, Eye, EyeOff } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { FloatingInput } from "@/components/ui/floatingInput";
@@ -6,6 +7,8 @@ import { cn } from "@/lib/utils";
 
 export default function Login() {
     const { login, isLoggingIn } = useJwtAuth();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -27,6 +30,16 @@ export default function Login() {
 
         try {
             await login({ email, password, remember });
+            const returnTo = searchParams.get("returnTo");
+            if (
+                returnTo &&
+                returnTo.startsWith("/") &&
+                !returnTo.startsWith("//")
+            ) {
+                navigate(returnTo, { replace: true });
+            } else {
+                navigate("/", { replace: true });
+            }
         } catch (err: unknown) {
             if (err && typeof err === "object" && "response" in err) {
                 const axiosErr = err as {
@@ -71,13 +84,17 @@ export default function Login() {
                             type="text"
                             autoComplete="username"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onValueChange={(value) => setEmail(value)}
                             required
                             disabled={isPending}
+                            inputBg="bg-background"
                             className={cn(errors.email && "border-destructive")}
                         />
                         {errors.email?.map((e) => (
-                            <p key={e} className="text-xs text-destructive mt-1">
+                            <p
+                                key={e}
+                                className="text-xs text-destructive mt-1"
+                            >
                                 {e}
                             </p>
                         ))}
@@ -91,9 +108,10 @@ export default function Login() {
                                 type={showPassword ? "text" : "password"}
                                 autoComplete="current-password"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                onValueChange={(value) => setPassword(value)}
                                 required
                                 disabled={isPending}
+                                inputBg="bg-background"
                                 className={cn(
                                     "pr-9",
                                     errors.password && "border-destructive",
@@ -114,38 +132,50 @@ export default function Login() {
                             </button>
                         </div>
                         {errors.password?.map((e) => (
-                            <p key={e} className="text-xs text-destructive mt-1">
+                            <p
+                                key={e}
+                                className="text-xs text-destructive mt-1"
+                            >
                                 {e}
                             </p>
                         ))}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <input
-                            id="remember"
-                            type="checkbox"
-                            checked={remember}
-                            onChange={(e) =>
-                                handleRememberChange(e.target.checked)
-                            }
-                            disabled={isPending}
-                            className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                        />
-                        <label
-                            htmlFor="remember"
-                            className="text-sm text-muted-foreground cursor-pointer select-none"
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <input
+                                id="remember"
+                                type="checkbox"
+                                checked={remember}
+                                onChange={(e) =>
+                                    handleRememberChange(e.target.checked)
+                                }
+                                disabled={isPending}
+                                className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                            />
+                            <label
+                                htmlFor="remember"
+                                className="text-sm text-muted-foreground cursor-pointer select-none"
+                            >
+                                Remember me
+                            </label>
+                        </div>
+                        <Link
+                            to="/forgot-password"
+                            className="text-xs text-primary hover:text-primary/80 transition-colors"
                         >
-                            Remember me
-                        </label>
+                            Forgot password?
+                        </Link>
                     </div>
-
                     <button
                         id="auth-submit"
                         type="submit"
                         disabled={isPending}
-                        className="w-full h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium shadow hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
+                        className="w-full h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium shadow hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-10"
                     >
-                        {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {isPending && (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        )}
                         Sign in
                     </button>
                 </form>

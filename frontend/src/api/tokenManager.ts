@@ -9,6 +9,10 @@ export function getAccessToken(): string | null {
     return accessToken;
 }
 
+function hasSessionCookie(): boolean {
+    return document.cookie.split(';').some(c => c.trim().startsWith('has_session='));
+}
+
 async function doRefresh(): Promise<string | null> {
     try {
         const response = await fetch("/api/v1/refresh", {
@@ -19,7 +23,10 @@ async function doRefresh(): Promise<string | null> {
                 "Content-Type": "application/json",
             },
         });
-        if (!response.ok) return null;
+        if (!response.ok) {
+            accessToken = null;
+            return null;
+        }
         const data = await response.json();
         const token = data.access_token ?? null;
         if (token) {
@@ -33,6 +40,9 @@ async function doRefresh(): Promise<string | null> {
 }
 
 export function refreshAccessToken(): Promise<string | null> {
+    if (!hasSessionCookie()) {
+        return Promise.resolve(null);
+    }
     if (refreshPromise) {
         return refreshPromise;
     }

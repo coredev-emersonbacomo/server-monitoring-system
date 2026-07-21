@@ -1,13 +1,13 @@
 import { useCallback, useMemo } from "react";
 import type {
-    Node,
+    NodeConfigNode,
     NodeTypeDefinition,
     NodeSettingDefinition,
 } from "@/types/node-config";
 import { X } from "lucide-react";
 
 interface NodeSettingsPanelProps {
-    node: Node | null;
+    node: NodeConfigNode | null;
     nodeTypeDef: NodeTypeDefinition | null;
     onUpdate: (id: string, settings: Record<string, unknown>) => void;
     onDelete: (id: string) => void;
@@ -60,7 +60,7 @@ export function NodeSettingsPanel({
     }, [nodeTypeDef, channel]);
 
     return (
-        <div className="w-72 max-h-120 bg-card border border-border/40 rounded-lg shadow-lg overflow-y-auto">
+        <div className="w-72 max-h-120 bg-card border border-border/40 ring-1 ring-foreground/30 rounded-lg shadow-lg overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-border/40">
                 <div>
                     <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">

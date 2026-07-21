@@ -19,7 +19,7 @@ import {
     Terminal,
     UserCheck,
     Fingerprint,
-    ChevronLeft
+    ChevronLeft,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
@@ -121,10 +121,11 @@ function ConfirmDialog({
                 onClick={(e) => e.stopPropagation()}
             >
                 <div
-                    className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 ${variant === "destructive"
-                        ? "bg-red-500/10 text-red-600"
-                        : "bg-muted text-muted-foreground"
-                        }`}
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center mb-4 ${
+                        variant === "destructive"
+                            ? "bg-red-500/10 text-red-600"
+                            : "bg-muted text-muted-foreground"
+                    }`}
                 >
                     {variant === "destructive" ? (
                         <AlertTriangle className="w-5 h-5" />
@@ -349,7 +350,6 @@ export default function Sessions() {
                                     profile.
                                 </p>
                             </div>
-
                         </div>
                         <div className="flex items-center gap-2">
                             <Button
@@ -363,16 +363,16 @@ export default function Sessions() {
                             </Button>
                             {otherSessions.filter((s) => s.status === "active")
                                 .length > 0 && (
-                                    <Button
-                                        onClick={() => setConfirmLogoutOthers(true)}
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 gap-1.5 hidden sm:flex text-xs font-medium cursor-pointer"
-                                    >
-                                        <LogOut className="w-3.5 h-3.5" />
-                                        Sign Out Others
-                                    </Button>
-                                )}
+                                <Button
+                                    onClick={() => setConfirmLogoutOthers(true)}
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 gap-1.5 hidden sm:flex text-xs font-medium cursor-pointer"
+                                >
+                                    <LogOut className="w-3.5 h-3.5" />
+                                    Sign Out Others
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </header>
@@ -640,12 +640,13 @@ export default function Sessions() {
                                         >
                                             <div className="flex items-start gap-3 min-w-0">
                                                 <div
-                                                    className={`p-2 rounded-lg shrink-0 ${session.status ===
-                                                        "active" &&
+                                                    className={`p-2 rounded-lg shrink-0 ${
+                                                        session.status ===
+                                                            "active" &&
                                                         !session.compromised
-                                                        ? "bg-emerald-500/10 text-emerald-600"
-                                                        : "bg-muted text-muted-foreground"
-                                                        }`}
+                                                            ? "bg-emerald-500/10 text-emerald-600"
+                                                            : "bg-muted text-muted-foreground"
+                                                    }`}
                                                 >
                                                     {getDeviceIcon(
                                                         session.device_type,
@@ -728,27 +729,27 @@ export default function Sessions() {
                                                 {(session.status ===
                                                     "revoked" ||
                                                     session.compromised) && (
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() =>
-                                                                        setConfirmDelete(
-                                                                            session.session_uuid,
-                                                                        )
-                                                                    }
-                                                                    className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
-                                                                >
-                                                                    <Trash2 className="w-4 h-4" />
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                Purge record
-                                                                permanently
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    )}
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() =>
+                                                                    setConfirmDelete(
+                                                                        session.session_uuid,
+                                                                    )
+                                                                }
+                                                                className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            Purge record
+                                                            permanently
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                )}
                                             </div>
                                         </div>
                                     ))}

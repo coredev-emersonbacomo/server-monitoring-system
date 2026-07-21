@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuthContext } from "@/hooks/useAuthContext";
+import { useOutletLayout } from "@/hooks/useOutletLayout";
 import {
     Tooltip,
     TooltipContent,
@@ -23,9 +24,10 @@ interface SidebarNavProps {
 }
 
 export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
-    const navigate = useNavigate();
     const location = useLocation();
     const { logout, user } = useAuthContext();
+    const { isFullScreen, isSidebarCollapsed, setSidebarCollapsed } =
+        useOutletLayout();
 
     const [popoverProfileOpen, setPopoverProfileOpen] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
@@ -53,17 +55,14 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
         };
     }, [popoverProfileOpen]);
 
-    const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-        const stored = localStorage.getItem("sidebarCollapsed");
-        return stored ? JSON.parse(stored) : false;
-    });
+    const isCollapsed = isSidebarCollapsed;
 
     useEffect(() => {
         localStorage.setItem("sidebarCollapsed", JSON.stringify(isCollapsed));
     }, [isCollapsed]);
 
     const toggleSidebar = () => {
-        setIsCollapsed((prev) => !prev);
+        setSidebarCollapsed(!isCollapsed);
     };
 
     return (
@@ -71,7 +70,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
             className={twMerge(
                 "flex flex-col gap-sidebar-section-gap bg-background text-foreground py-5 px-sidebar-padding",
                 isCollapsed ? "w-sidebar-collapsed" : "w-sidebar",
-                "transition-all duration-300 ease-in-out overflow-x-hidden sticky top-0 h-screen! overflow-y-auto",
+                "transition-all duration-300 ease-in-out overflow-x-hidden fixed top-0 left-0 h-screen! overflow-y-auto z-60",
+                !isFullScreen && "border-r border-border/90",
             )}
         >
             <div className="flex gap-sidebar-section-gap items-center h-16">
@@ -86,7 +86,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                         )}
                     />
                 </button>
-                <label className="text-4xl font-bold tracking-tight mx-auto -translate-y-0.5">
+                <label className="text-xl font-bold tracking-tight mx-auto -translate-y-0.5">
                     Name
                 </label>
                 <Menu className="size-icon opacity-0" />
@@ -105,7 +105,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                                 <Link
                                     to={link.href}
                                     className={twMerge(
-                                        "rounded-xl text-lg transition-all duration-300 ease-in-out overflow-hidden cursor-pointer",
+                                        "rounded-xl transition-all duration-300 ease-in-out overflow-hidden cursor-pointer",
                                         isCollapsed
                                             ? "w-sidebar-button-collapsed"
                                             : "w-full",
@@ -141,13 +141,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                                 align="center"
                                 hidden={!isCollapsed}
                                 className={twMerge(
-                                    "relative bg-primary text-primary-foreground ring-transparent text-md font-semibold",
-                                    "before:content-[''] before:absolute before:size-2 before:rotate-45",
-                                    "before:bg-primary before:ring-transparent",
-                                    "data-[side=top]:before:-bottom-1 data-[side=top]:before:left-1/2 data-[side=top]:before:-translate-x-1/2",
-                                    "data-[side=bottom]:before:-top-1 data-[side=bottom]:before:left-1/2 data-[side=bottom]:before:-translate-x-1/2",
-                                    "data-[side=left]:before:-right-1 data-[side=left]:before:top-1/2 data-[side=left]:before:-translate-y-1/2",
-                                    "data-[side=right]:before:-left-1 data-[side=right]:before:top-1/2 data-[side=right]:before:-translate-y-1/2",
+                                    "relative bg-foreground text-background ring-transparent text-md font-semibold z-9999",
+                                    "[&>svg]:hidden",
                                 )}
                             >
                                 <p>{link.name}</p>
@@ -168,22 +163,24 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                     align="end"
                     side="right"
                     sideOffset={8}
-                    className="w-64 bg-background p-5 rounded-lg flex flex-col gap-sidebar-section-gap ring-foreground/50 z-9999"
+                    className="w-64 bg-background p-5 rounded-lg flex flex-col gap-2 ring-foreground/50 z-9999"
                 >
                     {isCollapsed ? (
-                        <ProfileBar
-                            asNavigation
-                            setPopoverOpen={setPopoverProfileOpen}
-                            user={user}
-                        />
+                        <Link
+                            to="/profile"
+                            onClick={() => setPopoverProfileOpen(false)}
+                        >
+                            <ProfileBar user={user} asNavigation />
+                        </Link>
                     ) : (
-                        <Button
-                            className="cursor-pointer"
-                            variant={"outline"}
-                            icon={<CircleUser />}
-                            label="Profile"
-                            onClick={() => navigate("/profile")}
-                        />
+                        <Link
+                            to="/profile"
+                            onClick={() => setPopoverProfileOpen(false)}
+                            className="flex gap-3 items-center px-4 py-2 rounded-lg transition-colors w-full hover:bg-muted cursor-pointer"
+                        >
+                            <CircleUser className="size-5" />
+                            <span>Profile</span>
+                        </Link>
                     )}
                     <ThemeToggle />
 
@@ -201,12 +198,10 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
 
 const ProfileBar = ({
     asNavigation,
-    setPopoverOpen,
     isCollapsed = false,
     user,
 }: {
     asNavigation?: boolean;
-    setPopoverOpen?: React.Dispatch<React.SetStateAction<boolean>>;
     isCollapsed?: boolean;
     user: {
         first_name?: string;
@@ -215,7 +210,6 @@ const ProfileBar = ({
         profile_picture_url?: string;
     } | null;
 }) => {
-    const navigate = useNavigate();
     if (!user) return null;
 
     const firstName = user.first_name;
@@ -228,14 +222,6 @@ const ProfileBar = ({
 
     return (
         <div
-            onClick={
-                asNavigation
-                    ? () => {
-                          navigate("/profile");
-                          setPopoverOpen?.(false);
-                      }
-                    : undefined
-            }
             className={twMerge(
                 "rounded-xl text-lg transition-all duration-300 ease-in-out overflow-hidden cursor-pointer",
                 isCollapsed ? "w-sidebar-button-collapsed" : "w-sidebar-button",

@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import Dashboard from "./pages/dashboard";
 import Login from "./pages/login";
+import ForgotPassword from "./pages/forgot-password";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
 import { GuestLayout } from "./layouts/GuestLayout";
 import Clients from "./pages/clients/index";
@@ -18,9 +19,7 @@ import Profile from "./pages/settings/profile";
 import UserDetail from "./pages/users/user-detail";
 import SystemSettings from "./pages/settings/system";
 import AgentSettings from "./pages/settings/agent";
-import AlertThresholds from "./pages/settings/thresholds";
-import NodeConfigsIndex from "./pages/node-config/index";
-import NodeConfigDetail from "./pages/node-config/node-config-detail";
+import { NodeConfigEditor } from "./components/node-config/NodeConfigEditor";
 
 const router = createBrowserRouter([
     {
@@ -32,6 +31,10 @@ const router = createBrowserRouter([
                     {
                         path: "/login",
                         element: <Login />,
+                    },
+                    {
+                        path: "/forgot-password",
+                        element: <ForgotPassword />,
                     },
                 ],
             },
@@ -104,16 +107,13 @@ const router = createBrowserRouter([
                         element: <AgentSettings />,
                     },
                     {
-                        path: "/settings/thresholds",
-                        element: <AlertThresholds />,
-                    },
-                    {
                         path: "/settings/alerts",
-                        element: <NodeConfigsIndex />,
-                    },
-                    {
-                        path: "/settings/alerts/:id",
-                        element: <NodeConfigDetail />,
+                        element: (
+                            <NodeConfigEditor
+                                configKey="alerts"
+                                alwaysMaximized
+                            />
+                        ),
                     },
                     {
                         path: "/profile",
