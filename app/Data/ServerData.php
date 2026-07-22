@@ -78,6 +78,8 @@ class ServerData extends Data
         public float $gross_cost = 0.0,
 
         public float $net_cost = 0.0,
+
+        public float $accumulated_cost = 0.0,
     ) {}
 
     public static function fromModel(Server $server): self
@@ -187,6 +189,12 @@ class ServerData extends Data
         $grossCost = round($historicalCost + $currentPeriodCost, 4);
         // Accumulated server cost minus recorded payments/offsets = net payment due
         $netCost = max(0.0, round($grossCost - $costOffset, 4));
+        $accumulatedCost = $netCost;
+
+        // Sync database column so accumulated_cost is saved directly in the servers table (minused by cost_offset)
+        if (abs((float) ($server->accumulated_cost ?? 0.0) - $accumulatedCost) > 0.0001) {
+            $server->updateQuietly(['accumulated_cost' => $accumulatedCost]);
+        }
 
         return new self(
             uuid: $server->uuid,
@@ -221,6 +229,7 @@ class ServerData extends Data
             uptime_seconds: $uptimeSeconds,
             gross_cost: $grossCost,
             net_cost: $netCost,
+            accumulated_cost: $accumulatedCost,
         );
     }
 }

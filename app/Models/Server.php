@@ -48,6 +48,7 @@ class Server extends Model
             'cost_reset_at' => 'datetime',
             'online_seconds' => 'integer',
             'historical_cost' => 'float',
+            'accumulated_cost' => 'float',
             'rate_updated_at' => 'datetime',
         ];
     }
