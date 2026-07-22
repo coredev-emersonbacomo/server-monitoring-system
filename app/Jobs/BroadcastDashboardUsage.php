@@ -115,11 +115,15 @@ class BroadcastDashboardUsage implements ShouldQueue
 
         usort($top, fn ($a, $b) => $b['value'] <=> $a['value']);
 
-        DashboardUsageBroadcast::dispatchSync([
-            'unit'   => 'minute',
-            'metric' => 'cpu',
-            'series' => $series,
-            'top'    => $top,
-        ]);
+        try {
+            DashboardUsageBroadcast::dispatchSync([
+                'unit'   => 'minute',
+                'metric' => 'cpu',
+                'series' => $series,
+                'top'    => $top,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[broadcast] Failed to broadcast dashboard usage', ['error' => $e->getMessage()]);
+        }
     }
 }

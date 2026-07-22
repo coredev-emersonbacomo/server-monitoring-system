@@ -62,6 +62,22 @@ class ServerData extends Data
         public ?AgentData $agent = null,
 
         public string $alert_scope = 'global',
+
+        public float $hourly_cost = 0.0,
+
+        public float $cost_offset = 0.0,
+
+        public ?string $cost_reset_at = null,
+
+        public float $historical_cost = 0.0,
+
+        public ?string $rate_updated_at = null,
+
+        public int $uptime_seconds = 0,
+
+        public float $gross_cost = 0.0,
+
+        public float $net_cost = 0.0,
     ) {}
 
     public static function fromModel(Server $server): self
@@ -133,6 +149,45 @@ class ServerData extends Data
             );
         }
 
+        $hourlyCost = (float) ($server->hourly_cost ?? 0.0);
+        $costOffset = (float) ($server->cost_offset ?? 0.0);
+        $costResetAtStr = $server->cost_reset_at ? $server->cost_reset_at->toIso8601String() : null;
+        $historicalCost = (float) ($server->historical_cost ?? 0.0);
+        $rateUpdatedAtStr = $server->rate_updated_at ? $server->rate_updated_at->toIso8601String() : null;
+
+        $dbOnlineSeconds = (int) ($server->online_seconds ?? 0);
+        $offlineThreshold = (int) \App\Models\Setting::get('offline_threshold', '15');
+
+        $pendingSeconds = 0;
+        if ($server->status === 'online' && $agent && $agent->last_seen_at) {
+            $elapsedSinceHeartbeat = (int) $agent->last_seen_at->diffInSeconds(now());
+            if ($elapsedSinceHeartbeat > 0 && $elapsedSinceHeartbeat <= ($offlineThreshold + 5)) {
+                $pendingSeconds = $elapsedSinceHeartbeat;
+            }
+        }
+
+        $uptimeSeconds = $dbOnlineSeconds + $pendingSeconds;
+
+        if ($server->rate_updated_at !== null) {
+            $secondsSinceRateUpdate = max(0, time() - $server->rate_updated_at->timestamp);
+            if ($secondsSinceRateUpdate < 3600) {
+                $currentBilledHours = 0;
+            } else {
+                $currentBilledHours = (int) floor($secondsSinceRateUpdate / 3600.0);
+            }
+        } else {
+            if ($uptimeSeconds > 0 || $server->status === 'online') {
+                $currentBilledHours = max(1, (int) ceil(max(1, $uptimeSeconds) / 3600.0));
+            } else {
+                $currentBilledHours = 0;
+            }
+        }
+
+        $currentPeriodCost = round($currentBilledHours * $hourlyCost, 4);
+        $grossCost = round($historicalCost + $currentPeriodCost, 4);
+        // Accumulated server cost minus recorded payments/offsets = net payment due
+        $netCost = max(0.0, round($grossCost - $costOffset, 4));
+
         return new self(
             uuid: $server->uuid,
             description: $server->description,
@@ -158,6 +213,14 @@ class ServerData extends Data
             activities: $activities,
             agent: $agentData,
             alert_scope: $server->alert_scope ?? 'global',
+            hourly_cost: $hourlyCost,
+            cost_offset: $costOffset,
+            cost_reset_at: $costResetAtStr,
+            historical_cost: $historicalCost,
+            rate_updated_at: $rateUpdatedAtStr,
+            uptime_seconds: $uptimeSeconds,
+            gross_cost: $grossCost,
+            net_cost: $netCost,
         );
     }
 }

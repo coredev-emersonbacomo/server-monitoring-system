@@ -1205,6 +1205,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.passwordReset.forgotPassword_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/verify-reset-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.passwordReset.verifyCode_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.passwordReset.resetPassword_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.passwordReset.forgotPassword_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/verify-reset-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.passwordReset.verifyCode_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.passwordReset.resetPassword_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/servers": {
         parameters: {
             query?: never;
@@ -1251,6 +1347,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["v1.server.updateAlertScope_0"];
+        trace?: never;
+    };
+    "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-adjustment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.server.adjustCost_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/servers/{serverUuid}": {
@@ -1331,6 +1443,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["v1.server.updateAlertScope_0"];
+        trace?: never;
+    };
+    "/clients/{clientUuid}/servers/{serverUuid}/cost-adjustment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.server.adjustCost_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/servers/{serverUuid}": {
@@ -1938,8 +2066,8 @@ export interface components {
         };
         /** ProvisionDetailData */
         ProvisionDetailData: {
-            conflict: boolean;
             expires_at: string;
+            conflict?: boolean;
             token?: string | null;
             linux_command?: string | null;
             windows_command?: string | null;
@@ -1997,6 +2125,14 @@ export interface components {
             }[] | null;
             agent?: components["schemas"]["AgentData"] | null;
             alert_scope?: string;
+            hourly_cost?: number;
+            cost_offset?: number;
+            cost_reset_at?: string | null;
+            historical_cost?: number;
+            rate_updated_at?: string | null;
+            uptime_seconds?: number;
+            gross_cost?: number;
+            net_cost?: number;
         };
         /** StatPointData */
         StatPointData: {
@@ -2041,18 +2177,6 @@ export interface components {
         };
     };
     responses: {
-        /** @description Unauthenticated */
-        AuthenticationException: {
-            headers: {
-                [name: string]: unknown;
-            };
-            content: {
-                "application/json": {
-                    /** @description Error overview. */
-                    message: string;
-                };
-            };
-        };
         /** @description Validation error */
         ValidationException: {
             headers: {
@@ -2066,6 +2190,18 @@ export interface components {
                     errors: {
                         [key: string]: string[];
                     };
+                };
+            };
+        };
+        /** @description Unauthenticated */
+        AuthenticationException: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /** @description Error overview. */
+                    message: string;
                 };
             };
         };
@@ -3273,6 +3409,7 @@ export interface operations {
                 "application/json": {
                     name: string;
                     description?: string | null;
+                    hourly_cost?: number | null;
                 };
             };
         };
@@ -3449,18 +3586,23 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    alert_scope: "global" | "client";
+                };
+            };
+        };
         responses: {
-            /** @description `ClientData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["ClientData"];
-                };
+                content?: never;
             };
             401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "v1.client.secops_0": {
@@ -3612,6 +3754,7 @@ export interface operations {
                 "application/json": {
                     name: string;
                     description?: string | null;
+                    hourly_cost?: number | null;
                 };
             };
         };
@@ -3788,18 +3931,23 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    alert_scope: "global" | "client";
+                };
+            };
+        };
         responses: {
-            /** @description `ClientData` */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["ClientData"];
-                };
+                content?: never;
             };
             401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
         };
     };
     "v1.client.secops_0": {
@@ -4679,8 +4827,8 @@ export interface operations {
                     name: string;
                     enabled?: boolean | null;
                     config: {
-                        nodes: string[];
-                        edges: string[];
+                        nodes?: string[] | null;
+                        edges?: string[] | null;
                     };
                 };
             };
@@ -5061,8 +5209,8 @@ export interface operations {
                     name: string;
                     enabled?: boolean | null;
                     config: {
-                        nodes: string[];
-                        edges: string[];
+                        nodes?: string[] | null;
+                        edges?: string[] | null;
                     };
                 };
             };
@@ -5319,6 +5467,190 @@ export interface operations {
             401: components["responses"]["AuthenticationException"];
         };
     };
+    "v1.passwordReset.forgotPassword_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    email: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "If an account with that email or username exists, a reset code has been sent.";
+                        masked_email: string;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.passwordReset.verifyCode_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    email: string;
+                    code: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Code verified successfully.";
+                        reset_token: string;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.passwordReset.resetPassword_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reset_token: string;
+                    password: string;
+                    password_confirmation: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Password has been reset successfully.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.passwordReset.forgotPassword_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    email: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "If an account with that email or username exists, a reset code has been sent.";
+                        masked_email: string;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.passwordReset.verifyCode_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    email: string;
+                    code: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Code verified successfully.";
+                        reset_token: string;
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.passwordReset.resetPassword_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reset_token: string;
+                    password: string;
+                    password_confirmation: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Password has been reset successfully.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "v1.server.listAll_0": {
         parameters: {
             query?: never;
@@ -5416,6 +5748,7 @@ export interface operations {
                     name: string;
                     description?: string | null;
                     alert_scope?: string | null;
+                    hourly_cost?: number | null;
                 };
             };
         };
@@ -5447,6 +5780,36 @@ export interface operations {
                 "application/json": {
                     /** @enum {string} */
                     alert_scope: "global" | "client" | "server";
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.server.adjustCost_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    action: "full_payment" | "deduction";
+                    amount?: number | null;
                 };
             };
         };
@@ -5610,6 +5973,7 @@ export interface operations {
                     name: string;
                     description?: string | null;
                     alert_scope?: string | null;
+                    hourly_cost?: number | null;
                 };
             };
         };
@@ -5641,6 +6005,36 @@ export interface operations {
                 "application/json": {
                     /** @enum {string} */
                     alert_scope: "global" | "client" | "server";
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.server.adjustCost_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    action: "full_payment" | "deduction";
+                    amount?: number | null;
                 };
             };
         };
@@ -6097,7 +6491,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         /** @constant */
-                        message: "Heartbeat interval must be greater than or equal to the offline threshold.";
+                        message: "Offline threshold must be greater than or equal to the heartbeat interval.";
                     };
                 };
             };
@@ -6163,7 +6557,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         /** @constant */
-                        message: "Heartbeat interval must be greater than or equal to the offline threshold.";
+                        message: "Offline threshold must be greater than or equal to the heartbeat interval.";
                     };
                 };
             };

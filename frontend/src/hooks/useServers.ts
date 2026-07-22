@@ -1,7 +1,30 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
+import { getEchoInstance } from "@/hooks/useServerSocket";
 
 export const useServers = (clientUuid?: string) => {
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        try {
+            const echo = getEchoInstance();
+            const channel = echo.private("dashboard");
+
+            const handler = () => {
+                queryClient.invalidateQueries({ queryKey: ["servers"] });
+            };
+
+            channel.listen(".ServerStatusUpdated", handler);
+
+            return () => {
+                channel.stopListening(".ServerStatusUpdated", handler);
+            };
+        } catch {
+            // Echo not available yet
+        }
+    }, [queryClient]);
+
     return useQuery({
         queryKey: ["servers", clientUuid],
         queryFn: async () => {
