@@ -53,6 +53,7 @@ export default function CreateServer() {
 
     const [serverName, setServerName] = useState("");
     const [serverDescription, setServerDescription] = useState("");
+    const [hourlyCost, setHourlyCost] = useState("0");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -84,7 +85,8 @@ export default function CreateServer() {
                 body: {
                     name: serverName.trim(),
                     description: serverDescription.trim() || "",
-                },
+                    hourly_cost: parseFloat(hourlyCost) || 0,
+                } as any,
             },
         );
 
@@ -169,6 +171,18 @@ export default function CreateServer() {
                                         {error}
                                     </p>
                                 )}
+                            </div>
+
+                            <div>
+                                <FloatingInput
+                                    label="Hourly Cost (₱ / hr)"
+                                    labelBg="bg-card"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={hourlyCost}
+                                    onChange={(e) => setHourlyCost(e.target.value)}
+                                />
                             </div>
 
                             <Field

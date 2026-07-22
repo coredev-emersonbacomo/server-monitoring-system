@@ -15,6 +15,7 @@ use App\Models\AgentCommand;
 use App\Models\CommandResult;
 use App\Models\Activity;
 use App\Events\ServerStatsUpdated;
+use App\Events\ServerStatusUpdated;
 use App\Enums\ServerStatus;
 use App\NodeConfig\Cache\NodeConfigCache;
 use App\NodeConfig\Jobs\EvaluateNodeConfig;
@@ -29,7 +30,20 @@ class HeartbeatService
         $agent = $identity->agent;
         $server = $agent->server;
 
-        return DB::transaction(function () use ($identity, $agent, $server, $payload) {
+        // Accumulate monitored online time OUTSIDE the transaction so it always persists
+        // even if the transaction rolls back due to other errors.
+        $offlineThresholdSeconds = (int) \App\Models\Setting::get('offline_threshold', '15');
+        if ($agent->last_seen_at) {
+            $elapsedSeconds = (int) $agent->last_seen_at->diffInSeconds(now());
+            $maxStepSeconds = max(5, $offlineThresholdSeconds + 5);
+            if ($elapsedSeconds > 0) {
+                $incrementSeconds = min($elapsedSeconds, $maxStepSeconds);
+                $server->increment('online_seconds', $incrementSeconds);
+                $server->refresh();
+            }
+        }
+
+        return DB::transaction(function () use ($identity, $agent, $server, $payload, $offlineThresholdSeconds) {
             // Update last_used_at on identity
             $identity->update(['last_used_at' => now()]);
 
@@ -49,9 +63,8 @@ class HeartbeatService
                 'version' => $newVersion,
             ]);
 
-            $offlineThresholdSeconds = (int) \App\Models\Setting::get('offline_threshold', '15');
             \App\Jobs\CheckServerOffline::dispatch($server->uuid)
-                ->delay(now()->addSeconds($offlineThresholdSeconds));
+                ->delay(now()->addSeconds($offlineThresholdSeconds + 2));
 
             // Transition server to online if needed
             $oldStatus = $server->status;
@@ -77,27 +90,20 @@ class HeartbeatService
                     ]),
                 ]);
 
-                // Real-time push so UI immediately reflects online status
-                \App\Events\ServerStatsUpdated::dispatchSync($server->uuid, [
-                    'timestamp' => now()->timestamp,
-                    'c'         => 0.0,
-                    'm'         => 0.0,
-                    'd'         => 0.0,
-                    'netIn'     => 0.0,
-                    'netOut'    => 0.0,
-                ]);
-
-                $this->triggerNodeConfigForServer($server, 'online');
-
-                // Real-time push so the frontend immediately shows Online
-                \App\Events\ServerStatsUpdated::dispatchSync($server->uuid, [
-                    'timestamp' => now()->timestamp,
-                    'c'         => 0.0,
-                    'm'         => 0.0,
-                    'd'         => 0.0,
-                    'netIn'     => 0.0,
-                    'netOut'    => 0.0,
-                ]);
+                // Real-time push so UI immediately reflects online status (failsafe if Reverb is offline)
+                try {
+                    ServerStatusUpdated::dispatch($server->uuid, ServerStatus::Online->value, $server->name);
+                    ServerStatsUpdated::dispatchSync($server->uuid, [
+                        'timestamp' => now()->timestamp,
+                        'c'         => 0.0,
+                        'm'         => 0.0,
+                        'd'         => 0.0,
+                        'netIn'     => 0.0,
+                        'netOut'    => 0.0,
+                    ]);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[broadcast] Failed to push online update', ['error' => $e->getMessage()]);
+                }
             }
 
             // Create Heartbeat
@@ -313,8 +319,12 @@ class HeartbeatService
             'netOut' => 0.0,
         ];
 
-        // Trigger real-time stats update broadcast
-        ServerStatsUpdated::dispatchSync($agent->server->uuid, $uiStats);
+        // Trigger real-time stats update broadcast (failsafe if Reverb is offline)
+        try {
+            ServerStatsUpdated::dispatchSync($agent->server->uuid, $uiStats);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[broadcast] Failed to push stats update', ['error' => $e->getMessage()]);
+        }
     }
 
     private function updateServices(Agent $agent, array $services): void

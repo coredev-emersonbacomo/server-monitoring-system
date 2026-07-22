@@ -59,7 +59,11 @@ class ServerStatsUpdated implements ShouldBroadcastNow
         Cache::put("broadcast:last:{$serverUuid}", $stats, 3600);
 
         $event = new self($serverUuid, $stats);
-        broadcast($event);
+        try {
+            broadcast($event);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[broadcast] ServerStatsUpdated broadcast failed', ['error' => $e->getMessage()]);
+        }
 
         return $event;
     }

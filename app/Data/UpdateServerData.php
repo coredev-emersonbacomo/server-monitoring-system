@@ -15,6 +15,7 @@ class UpdateServerData extends Data
         public string $name,
         #[StringType, Max(512)]
         public ?string $description = null,
-        public string|Optional|null $alert_scope,
+        public string|Optional|null $alert_scope = null,
+        public float|Optional|null $hourly_cost = null,
     ) {}
 }
