@@ -21,6 +21,7 @@ import {
     Cpu,
     Database,
     HardDrive,
+    Clock,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useDashboardStats } from "@/hooks/useDashboard";
@@ -155,6 +156,12 @@ function CompletedModal({
                                         {action.assigned_to_name &&
                                             ` · ${action.assigned_to_name}`}
                                     </p>
+                                    {action.created_at && (
+                                        <p className="flex items-center gap-1 text-[11px] text-muted-foreground/70 mt-0.5">
+                                            <Clock className="size-3" />
+                                            {new Date(action.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         ))
@@ -470,6 +477,14 @@ export default function Dashboard() {
                                                                 {
                                                                     action.assigned_to_name
                                                                 }
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {action.created_at && (
+                                                        <div className="flex items-center gap-1 mt-1.5">
+                                                            <Clock className="size-3 text-muted-foreground/60" />
+                                                            <span className="text-[11px] text-muted-foreground/70">
+                                                                {new Date(action.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                                                             </span>
                                                         </div>
                                                     )}
