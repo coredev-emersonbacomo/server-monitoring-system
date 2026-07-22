@@ -17,7 +17,20 @@ import {
     Mail,
     Phone,
     Bell,
+    Banknote,
+    Coins,
+    Clock,
 } from "lucide-react";
+
+function formatUptime(seconds: number): string {
+    if (!seconds || seconds <= 0) return "0s";
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hrs > 0) return `${hrs}h ${mins}m ${secs}s`;
+    if (mins > 0) return `${mins}m ${secs}s`;
+    return `${secs}s`;
+}
 import { z } from "zod";
 import { toast } from "sonner";
 import {
@@ -113,6 +126,7 @@ export default function ClientDetail() {
     const navigate = useNavigate();
     const { uuid: clientUuid } = useParams<{ uuid: string }>();
     const { setTrail } = useBreadcrumb();
+    const queryClient = useQueryClient();
 
     const [secopSearch, setSecopSearch] = useState("");
 
@@ -165,6 +179,29 @@ export default function ClientDetail() {
     const [serverFilter, setServerFilter] = useState<
         "all" | "online" | "offline"
     >("all");
+    const [deductingServerUuid, setDeductingServerUuid] = useState<string | null>(null);
+
+    const handleFullDeduction = async (serverUuid: string, serverName: string) => {
+        if (!clientUuid) return;
+        setDeductingServerUuid(serverUuid);
+        try {
+            const { error } = await api.POST(
+                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-adjustment",
+                {
+                    params: { path: { clientUuid, serverUuid } },
+                    body: { action: "full_payment" },
+                },
+            );
+            if (error) throw error;
+            toast.success(`Full deduction recorded for ${serverName}.`);
+            queryClient.invalidateQueries({ queryKey: ["clients", clientUuid, "servers"] });
+            queryClient.invalidateQueries({ queryKey: ["clients", clientUuid] });
+        } catch (err: any) {
+            toast.error(err?.message || "Failed to process full deduction.");
+        } finally {
+            setDeductingServerUuid(null);
+        }
+    };
 
     const [form, setForm] = useState({
         name: "",
@@ -426,14 +463,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                          backgroundImage: `url(${bannerPreview})`,
-                                          backgroundSize: "cover",
-                                          backgroundPosition: "top center",
-                                      }
+                                        backgroundImage: `url(${bannerPreview})`,
+                                        backgroundSize: "cover",
+                                        backgroundPosition: "top center",
+                                    }
                                     : {
-                                          background:
-                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                      }
+                                        background:
+                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                    }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -492,7 +529,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                            defaultBanner,
+                                                        defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -593,7 +630,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none break-all",
                                             errors.description &&
-                                                "border-destructive",
+                                            "border-destructive",
                                         )}
                                     />
                                 </div>
@@ -636,7 +673,7 @@ export default function ClientDetail() {
                                                         )}
                                                         className={cn(
                                                             errors.location &&
-                                                                "border-destructive",
+                                                            "border-destructive",
                                                         )}
                                                     />
                                                     {errors.location && (
@@ -680,7 +717,7 @@ export default function ClientDetail() {
                                                         )}
                                                         className={cn(
                                                             errors.email &&
-                                                                "border-destructive",
+                                                            "border-destructive",
                                                         )}
                                                     />
                                                     {errors.email && (
@@ -722,7 +759,7 @@ export default function ClientDetail() {
                                                         }}
                                                         className={cn(
                                                             errors.contact_number &&
-                                                                "border-destructive",
+                                                            "border-destructive",
                                                         )}
                                                     />
                                                     {errors.contact_number && (
@@ -743,7 +780,7 @@ export default function ClientDetail() {
                                                     <p className="text-base font-semibold text-foreground">
                                                         {formatPhoneNumber(
                                                             client?.contact_number ||
-                                                                "",
+                                                            "",
                                                         )}
                                                     </p>
                                                 </Field>
@@ -954,6 +991,138 @@ export default function ClientDetail() {
                                     </div>
                                 </Tab.Item>
                             )}
+
+                            <Tab.Item icon={Banknote} title="Server Cost">
+                                <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-6">
+                                    {/* Summary Banner */}
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border/60">
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-foreground">
+                                                Server Costs & Full Deduction
+                                            </h3>
+                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                View accumulated server costs and record full deductions.
+                                            </p>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-primary/10 border border-primary/20 shrink-0">
+                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/15 text-primary shrink-0">
+                                                <Coins size={20} />
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground">
+                                                    Total Client Cost
+                                                </span>
+                                                <span className="text-lg font-bold text-foreground font-mono">
+                                                    ₱{servers.reduce((acc: number, s: any) => acc + (s.accumulated_cost ?? 0), 0).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Server List & Breakdown */}
+                                    {serversLoading ? (
+                                        <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+                                            <Loader2 size={18} className="animate-spin text-primary" />
+                                            <span className="text-sm">Loading server costs...</span>
+                                        </div>
+                                    ) : servers.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2 border border-dashed border-border/60 rounded-xl">
+                                            <Server size={28} className="opacity-30" />
+                                            <p className="text-sm font-medium">No servers registered for this client.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-x-auto rounded-xl border border-border/60">
+                                            <table className="w-full text-left text-sm">
+                                                <thead className="bg-muted/40 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/60">
+                                                    <tr>
+                                                        <th className="py-3 px-4">Server</th>
+                                                        <th className="py-3 px-4">Status</th>
+                                                        <th className="py-3 px-4">Monitored Online Time</th>
+                                                        <th className="py-3 px-4">Hourly Cost</th>
+                                                        <th className="py-3 px-4 text-right">Accumulated Cost</th>
+                                                        <th className="py-3 px-4 text-center">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-border/60">
+                                                    {servers.map((s: any) => {
+                                                        const isOnline = s.status === "online";
+                                                        const isDeducting = deductingServerUuid === s.uuid;
+                                                        const costVal = s.accumulated_cost ?? 0;
+                                                        return (
+                                                            <tr
+                                                                key={s.uuid}
+                                                                onClick={() => navigate(`/servers/${s.uuid}`)}
+                                                                className="hover:bg-muted/30 transition-colors cursor-pointer"
+                                                            >
+                                                                <td className="py-3.5 px-4 font-semibold text-foreground">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Server size={15} className="text-primary shrink-0" />
+                                                                        <span>{s.name}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="py-3.5 px-4">
+                                                                    <span className={cn(
+                                                                        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                                                                        isOnline
+                                                                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                                                                            : "bg-muted text-muted-foreground border-border"
+                                                                    )}>
+                                                                        <span className={cn("w-1.5 h-1.5 rounded-full", isOnline ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground")} />
+                                                                        {isOnline ? "Online" : s.status === "pending_installation" ? "Pending" : "Offline"}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="py-3.5 px-4 font-mono text-xs text-muted-foreground">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <Clock size={13} className="text-muted-foreground/70" />
+                                                                        <span>{formatUptime(s.uptime_seconds ?? 0)}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="py-3.5 px-4 font-mono text-foreground font-medium">
+                                                                    ₱{(s.hourly_cost ?? 0).toFixed(2)} / hr
+                                                                </td>
+                                                                <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-500">
+                                                                    ₱{costVal.toFixed(2)}
+                                                                </td>
+                                                                <td className="py-3.5 px-4 text-center">
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        disabled={isDeducting || costVal <= 0}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleFullDeduction(s.uuid, s.name);
+                                                                        }}
+                                                                        className="gap-1.5 text-xs text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer"
+                                                                    >
+                                                                        {isDeducting ? (
+                                                                            <Loader2 size={12} className="animate-spin" />
+                                                                        ) : (
+                                                                            <Coins size={12} />
+                                                                        )}
+                                                                        Full Deduction
+                                                                    </Button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                                <tfoot className="bg-muted/30 border-t border-border/60 text-sm font-semibold">
+                                                    <tr>
+                                                        <td colSpan={4} className="py-3.5 px-4 text-muted-foreground uppercase tracking-wider text-xs">
+                                                            Total (All Client Servers)
+                                                        </td>
+                                                        <td className="py-3.5 px-4 text-right font-mono text-base font-bold text-emerald-500">
+                                                            ₱{servers.reduce((acc: number, s: any) => acc + (s.accumulated_cost ?? 0), 0).toFixed(2)}
+                                                        </td>
+                                                        <td></td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            </Tab.Item>
                         </Tab>
 
                         {mode === "view" && client && (
@@ -1001,8 +1170,8 @@ export default function ClientDetail() {
                                                         ? "All"
                                                         : serverFilter ===
                                                             "online"
-                                                          ? "Online"
-                                                          : "Offline"}
+                                                            ? "Online"
+                                                            : "Offline"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -1029,9 +1198,9 @@ export default function ClientDetail() {
                                                         onClick={() =>
                                                             setServerFilter(
                                                                 opt.value as
-                                                                    | "all"
-                                                                    | "online"
-                                                                    | "offline",
+                                                                | "all"
+                                                                | "online"
+                                                                | "offline",
                                                             )
                                                         }
                                                         className={cn(

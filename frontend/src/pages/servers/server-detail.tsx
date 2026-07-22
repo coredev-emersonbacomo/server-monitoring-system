@@ -858,7 +858,7 @@ export default function ServerDetail() {
                                                         Accumulated Server Cost
                                                     </span>
                                                     <span className="text-base font-bold text-emerald-400 font-mono">
-                                                        ₱{((initial as any)?.gross_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        ₱{((initial as any)?.accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     </span>
                                                 </div>
                                             </div>
@@ -1643,7 +1643,7 @@ export default function ServerDetail() {
                                             Accumulated Server Cost
                                         </span>
                                         <span className="text-3xl font-extrabold text-emerald-400 font-mono">
-                                            ₱{((initial as any)?.gross_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            ₱{((initial as any)?.accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
                                         <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-2 border-t border-emerald-500/20 mt-1 font-mono">
                                             <span>Payment Due: ₱{((initial as any)?.net_cost ?? 0).toFixed(2)}</span>

@@ -29,14 +29,16 @@ class HeartbeatService
     {
         $agent = $identity->agent;
         $server = $agent->server;
+        $oldStatus = $server->status;
 
-        // Accumulate monitored online time OUTSIDE the transaction so it always persists
-        // even if the transaction rolls back due to other errors.
+        // Accumulate monitored online time OUTSIDE the transaction so it always persists.
+        // ONLY accumulate time if the server was ALREADY in Online status prior to this heartbeat.
+        // If it was offline, this first heartbeat transitions it back to online, so we do NOT add the offline gap to online_seconds.
         $offlineThresholdSeconds = (int) \App\Models\Setting::get('offline_threshold', '15');
-        if ($agent->last_seen_at) {
+        if ($oldStatus === ServerStatus::Online->value && $agent->last_seen_at) {
             $elapsedSeconds = (int) $agent->last_seen_at->diffInSeconds(now());
             $maxStepSeconds = max(5, $offlineThresholdSeconds + 5);
-            if ($elapsedSeconds > 0) {
+            if ($elapsedSeconds > 0 && $elapsedSeconds <= $maxStepSeconds) {
                 $incrementSeconds = min($elapsedSeconds, $maxStepSeconds);
                 $server->increment('online_seconds', $incrementSeconds);
                 $server->refresh();

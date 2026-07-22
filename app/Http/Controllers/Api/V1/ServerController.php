@@ -218,6 +218,7 @@ class ServerController extends Controller
                 'cost_reset_at'   => now(),
                 'rate_updated_at' => now(),
                 'historical_cost' => 0.0,
+                'accumulated_cost' => 0.0,
                 'cost_offset'     => 0.0,
                 'online_seconds'  => 0,
             ]);
