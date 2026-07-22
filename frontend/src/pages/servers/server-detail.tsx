@@ -57,7 +57,14 @@ import { Form, createFormStore, useForm } from "@/components/ui/form";
 const serverInfoSchema = z.object({
     name: z.string().min(1, "Server name is required."),
     description: z.string(),
-    hourly_cost: z.coerce.number().min(0, "Hourly cost must be at least 0."),
+    hourly_cost: z.preprocess(
+        (val) => {
+            if (val === "" || val === undefined || val === null) return 0;
+            const num = Number(val);
+            return isNaN(num) ? 0 : num;
+        },
+        z.number().min(0, "Hourly cost must be at least 0.")
+    ),
 });
 
 // ─── Server Alert Tab ────────────────────────────────────────────────────────

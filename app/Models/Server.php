@@ -114,55 +114,84 @@ class Server extends Model
 
     public function checkOfflineStatus(): void
     {
-        if ($this->status !== ServerStatus::Online->value) {
+        $agent = $this->agent;
+        if (!$agent) {
             return;
         }
 
-        $agent = $this->agent;
+        // Only run offline checks for servers that have completed installation and are active
+        $installationStatuses = [
+            ServerStatus::PendingInstallation->value,
+            ServerStatus::WaitingForInstallation->value,
+            ServerStatus::WaitingForFirstHeartbeat->value,
+        ];
+        if (in_array($this->status, $installationStatuses)) {
+            return;
+        }
+
         $offlineThresholdSeconds = (int) Setting::get('offline_threshold', '15');
         $isOnline = $agent
             && $agent->last_seen_at
             && $agent->last_seen_at->greaterThan(now()->subSeconds($offlineThresholdSeconds));
 
         if (!$isOnline) {
-            $this->update(['status' => ServerStatus::Offline->value]);
+            $oldStatus = $this->status;
+            if ($oldStatus !== ServerStatus::Offline->value) {
+                $this->update(['status' => ServerStatus::Offline->value]);
 
-            Activity::create([
-                'server_id'   => $this->id,
-                'agent_id'    => $agent?->id,
-                'type'        => 'server_offline',
-                'description' => 'Server transitioned to Offline state.',
-            ]);
-
-            CustomActivityLog::create([
-                'logable_type' => get_class($this),
-                'logable_id'   => $this->id,
-                'user_id'      => null,
-                'user'         => 'System',
-                'action'       => 'Agent Offline',
-                'details'      => json_encode([
-                    'message'     => "Agent went offline for server: {$this->name}",
-                    'server_name' => $this->name,
-                ]),
-            ]);
-
-            // Real-time WebSocket push for status change (failsafe if Reverb is offline)
-            try {
-                ServerStatusUpdated::dispatch($this->uuid, ServerStatus::Offline->value, $this->name);
-                ServerStatsUpdated::dispatchSync($this->uuid, [
-                    'timestamp' => now()->timestamp,
-                    'c'         => 0.0,
-                    'm'         => 0.0,
-                    'd'         => 0.0,
-                    'netIn'     => 0.0,
-                    'netOut'    => 0.0,
+                Activity::create([
+                    'server_id'   => $this->id,
+                    'agent_id'    => $agent?->id,
+                    'type'        => 'server_offline',
+                    'description' => 'Server transitioned to Offline state.',
                 ]);
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('[broadcast] Failed to push offline update', ['error' => $e->getMessage()]);
+
+                CustomActivityLog::create([
+                    'logable_type' => get_class($this),
+                    'logable_id'   => $this->id,
+                    'user_id'      => null,
+                    'user'         => 'System',
+                    'action'       => 'Agent Offline',
+                    'details'      => json_encode([
+                        'message'     => "Agent went offline for server: {$this->name}",
+                        'server_name' => $this->name,
+                    ]),
+                ]);
+
+                // Real-time WebSocket push for status change (failsafe if Reverb is offline)
+                try {
+                    ServerStatusUpdated::dispatch($this->uuid, ServerStatus::Offline->value, $this->name);
+                    ServerStatsUpdated::dispatchSync($this->uuid, [
+                        'timestamp' => now()->timestamp,
+                        'c'         => 0.0,
+                        'm'         => 0.0,
+                        'd'         => 0.0,
+                        'netIn'     => 0.0,
+                        'netOut'    => 0.0,
+                    ]);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[broadcast] Failed to push offline update', ['error' => $e->getMessage()]);
+                }
+
+                // Discord offline alert — uses the NodeConfig's discord notification settings
+                $this->sendOfflineDiscordAlert();
             }
 
-            // Discord offline alert — uses the NodeConfig's discord notification settings
-            $this->sendOfflineDiscordAlert();
+            // Always ensure the ActionItem exists and is open if the server is offline
+            \App\Models\ActionItem::updateOrCreate(
+                [
+                    'action_type' => 'server_offline',
+                    'server_id'   => $this->id,
+                    'client_id'   => $this->client_id,
+                ],
+                [
+                    'message'     => "{$this->name} is offline",
+                    'severity'    => 'critical',
+                    'client_name' => $this->client?->name ?? 'Unknown',
+                    'server_name' => $this->name,
+                    'status'      => 'open',
+                ]
+            );
         }
     }
 

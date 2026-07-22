@@ -33,6 +33,8 @@ import {
     type ActionItem,
 } from "@/hooks/useDashboardActions";
 import { useAuthContext } from "@/hooks/useAuthContext";
+import { getEchoInstance } from "@/hooks/useServerSocket";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import IndexHeader from "@/components/IndexHeader";
@@ -206,6 +208,23 @@ export default function Dashboard() {
 
     const leftDivRef = useRef<HTMLDivElement>(null);
     const [leftDivHeight, setLeftDivHeight] = useState(0);
+
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        const echo = getEchoInstance();
+        const channel = echo.private("dashboard");
+
+        channel.listen(".ActionItemsUpdated", () => {
+            console.log("[WS] Action items updated. Invalidate queries.");
+            queryClient.invalidateQueries({ queryKey: ["dashboard", "actions"] });
+            queryClient.invalidateQueries({ queryKey: ["dashboard", "actions", "completed"] });
+        });
+
+        return () => {
+            channel.stopListening(".ActionItemsUpdated");
+        };
+    }, [queryClient]);
 
     useEffect(() => {
         if (leftDivRef.current) {

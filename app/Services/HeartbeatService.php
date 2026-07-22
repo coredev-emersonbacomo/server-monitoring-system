@@ -92,6 +92,12 @@ class HeartbeatService
                     ]),
                 ]);
 
+                // Resolve server offline problems on the Action Board
+                \App\Models\ActionItem::where('action_type', 'server_offline')
+                    ->where('server_id', $server->id)
+                    ->where('status', 'open')
+                    ->update(['status' => 'completed', 'completed_at' => now()]);
+
                 // Real-time push so UI immediately reflects online status (failsafe if Reverb is offline)
                 try {
                     ServerStatusUpdated::dispatch($server->uuid, ServerStatus::Online->value, $server->name);

@@ -18,6 +18,7 @@ class SystemMonitor extends Command
         $servers = \App\Models\Server::all();
         foreach ($servers as $server) {
             $server->checkTokenExpiration();
+            $server->checkOfflineStatus();
             MonitorServer::dispatch($server->uuid);
         }
 
