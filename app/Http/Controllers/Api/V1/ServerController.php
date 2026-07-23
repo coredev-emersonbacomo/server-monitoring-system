@@ -257,7 +257,14 @@ class ServerController extends Controller
 
         $logs = CustomActivityLog::where('logable_type', Server::class)
             ->where('logable_id', (string) $serverModel->uuid)
-            ->whereIn('action', ['Deduction', 'Payment Deduction', 'Reset Cost Baseline', 'Update Monthly Rate', 'Update Hourly Rate'])
+            ->whereIn('action', [
+                'Deduction', 
+                'Payment Deduction', 
+                'Reset Cost Baseline', 
+                'Update Monthly Rate', 
+                'Update Hourly Rate',
+                'Agent Uninstalled'
+            ])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -273,6 +280,12 @@ class ServerController extends Controller
         if ($serverModel->agent()->exists() && !$serverModel->agent_deleted) {
             return response()->json([
                 'message' => 'Cannot delete server while the agent is still running. Please run the uninstall script first.'
+            ], 422);
+        }
+
+        if ((float) ($serverModel->accumulated_cost ?? 0) > 0) {
+            return response()->json([
+                'message' => 'Cannot delete server with an outstanding cost balance. Please settle all deductions first before deleting.'
             ], 422);
         }
 
