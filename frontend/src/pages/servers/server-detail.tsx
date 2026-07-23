@@ -905,7 +905,7 @@ export default function ServerDetail() {
                                                 <Banknote size={17} />
                                             </div>
                                             <div className="flex flex-col min-w-0 gap-0.5">
-                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
+                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1.5">
                                                     Monthly Cost
                                                 </span>
                                                 <span className="text-sm font-semibold text-foreground font-mono">

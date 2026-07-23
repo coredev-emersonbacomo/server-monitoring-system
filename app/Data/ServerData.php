@@ -82,6 +82,8 @@ class ServerData extends Data
         public float $accumulated_cost = 0.0,
 
         public ?string $billing_date = null,
+
+        public ?float $pending_monthly_cost = null,
     ) {}
 
     public static function fromModel(Server $server): self
@@ -189,6 +191,10 @@ class ServerData extends Data
                 $calendarMonths += 1;
             }
             $billedMonths = max(1, max($monthsElapsed, $calendarMonths));
+
+            // Apply the active monthly cost directly
+            $monthlyRate = $hourlyCost;
+
             $grossCost = round($billedMonths * $monthlyRate, 4);
 
             // Next billing date is registration date + $billedMonths months
@@ -241,6 +247,7 @@ class ServerData extends Data
             net_cost: $netCost,
             accumulated_cost: $accumulatedCost,
             billing_date: $nextBillingDate ? $nextBillingDate->toIso8601String() : null,
+            pending_monthly_cost: $server->pending_monthly_cost,
         );
     }
 }
