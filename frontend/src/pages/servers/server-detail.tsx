@@ -168,6 +168,12 @@ const STATUS_CONFIG = {
         color: "text-slate-400",
         bg: "bg-slate-500/10 border-slate-500/20",
     },
+    pending_deletion: {
+        label: "Pending Deletion",
+        icon: Trash2,
+        color: "text-orange-400",
+        bg: "bg-orange-500/10 border-orange-500/20",
+    },
 } as const;
 
 const CHARTS = [
@@ -546,8 +552,10 @@ export default function ServerDetail() {
                 ? [...(initial.stats ?? []), ...history]
                 : initial.stats,
     };
-    const status =
-        (server.status as keyof typeof STATUS_CONFIG) || "pending_installation";
+    const status: keyof typeof STATUS_CONFIG =
+        server.agent_deleted
+            ? "pending_deletion"
+            : (server.status as keyof typeof STATUS_CONFIG) || "pending_installation";
     const { icon: StatusIcon, label, color, bg } = STATUS_CONFIG[status];
     const isInstalled =
         status === "online" || status === "warning" || status === "offline";
@@ -976,6 +984,24 @@ export default function ServerDetail() {
                                                         </strong>{" "}
                                                         and remove all collected metrics. This cannot be undone.
                                                     </p>
+
+                                                    {initial &&
+                                                        (initial as any).accumulated_cost > 0 && (
+                                                            <div className="flex items-start gap-2 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-600 dark:text-amber-400">
+                                                                <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                                                                <div>
+                                                                    <p className="font-semibold text-foreground">
+                                                                        Outstanding Cost Balance
+                                                                    </p>
+                                                                    <p className="text-muted-foreground mt-0.5">
+                                                                        This server has an outstanding balance of{" "}
+                                                                        <strong className="text-amber-600 dark:text-amber-400">
+                                                                            ₱{((initial as any).accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                        </strong>. You must settle all deductions before this server can be deleted.
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        )}
 
                                                     {initial &&
                                                         !initial.agent_deleted && (

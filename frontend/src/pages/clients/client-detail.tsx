@@ -19,7 +19,6 @@ import {
     Bell,
     Banknote,
     Coins,
-    Clock,
     History,
     Calendar,
 } from "lucide-react";
@@ -1021,7 +1020,7 @@ export default function ClientDetail() {
                                 </Tab.Item>
                             )}
 
-                            <Tab.Item icon={Banknote} title="Server Cost">
+                            <Tab.Item icon={Banknote} title="Billing">
                                 <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-6">
                                     {/* Summary Banner */}
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border/60">
@@ -1089,15 +1088,25 @@ export default function ClientDetail() {
                                                                     </div>
                                                                 </td>
                                                                 <td className="py-3.5 px-4">
-                                                                    <span className={cn(
-                                                                        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border",
-                                                                        isOnline
-                                                                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                                                                            : "bg-muted text-muted-foreground border-border"
-                                                                    )}>
-                                                                        <span className={cn("w-1.5 h-1.5 rounded-full", isOnline ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground")} />
-                                                                        {isOnline ? "Online" : s.status === "pending_installation" ? "Pending" : "Offline"}
-                                                                    </span>
+                                                                    {(() => {
+                                                                        const isPendingDeletion = s.agent_deleted;
+                                                                        const isOnline = !isPendingDeletion && s.status === "online";
+                                                                        return (
+                                                                            <span className={cn(
+                                                                                "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                                                                                isPendingDeletion
+                                                                                    ? "bg-orange-500/10 text-orange-500 border-orange-500/20"
+                                                                                    : isOnline
+                                                                                        ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                                                                                        : "bg-muted text-muted-foreground border-border"
+                                                                            )}>
+                                                                                <span className={cn("w-1.5 h-1.5 rounded-full",
+                                                                                    isPendingDeletion ? "bg-orange-500" : isOnline ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"
+                                                                                )} />
+                                                                                {isPendingDeletion ? "Pending Deletion" : isOnline ? "Online" : s.status === "pending_installation" ? "Pending" : "Offline"}
+                                                                            </span>
+                                                                        );
+                                                                    })()}
                                                                 </td>
                                                                 <td className="py-3.5 px-4 font-mono text-xs text-muted-foreground">
                                                                     <div className="flex items-center gap-1.5">
@@ -1105,10 +1114,10 @@ export default function ClientDetail() {
                                                                         <span>
                                                                             {s.billing_date
                                                                                 ? new Date(s.billing_date).toLocaleDateString(undefined, {
-                                                                                      month: "short",
-                                                                                      day: "numeric",
-                                                                                      year: "numeric",
-                                                                                  })
+                                                                                    month: "short",
+                                                                                    day: "numeric",
+                                                                                    year: "numeric",
+                                                                                })
                                                                                 : "N/A"}
                                                                         </span>
                                                                     </div>

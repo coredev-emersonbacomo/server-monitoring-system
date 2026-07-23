@@ -174,15 +174,16 @@ class ServerData extends Data
 
         $uptimeSeconds = $dbOnlineSeconds + $pendingSeconds;
 
-        // Monthly billing based on registration date (or server creation date)
-        $registrationDate = $agent?->registered_at ?? $server->created_at;
+        // Monthly billing only starts once the agent is installed (registered_at set).
+        // If no agent has registered yet, cost is 0 and billing date is null.
+        $registrationDate = $agent?->registered_at ?? null;
         $monthlyRate = $hourlyCost;
         $nextBillingDate = null;
 
         if ($registrationDate) {
             // Full or partial months elapsed since registration
             $monthsElapsed = max(1, (int) ceil(now()->diffInDays($registrationDate) / 30.0));
-            // Or exact month diff if created today vs next month
+            // Or exact calendar month diff
             $calendarMonths = (now()->year - $registrationDate->year) * 12 + (now()->month - $registrationDate->month);
             if (now()->day >= $registrationDate->day) {
                 $calendarMonths += 1;
@@ -226,7 +227,7 @@ class ServerData extends Data
             processes: $processes,
             uninstall_linux_command: $uninstallLinux,
             uninstall_windows_command: $uninstallWindows,
-            agent_deleted: $agent ? (bool) $server->agent_deleted : true,
+            agent_deleted: $agent && $agent->registered_at ? (bool) $server->agent_deleted : false,
             activities: $activities,
             agent: $agentData,
             alert_scope: $server->alert_scope ?? 'global',
