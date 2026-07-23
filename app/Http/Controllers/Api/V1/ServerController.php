@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Server;
 use App\Models\ServerUpdate;
+use App\Models\ActionItem;
 use App\Models\CustomActivityLog;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\Request;
@@ -114,9 +115,6 @@ class ServerController extends Controller
         if (!($data->hourly_cost instanceof \Spatie\LaravelData\Optional) && $data->hourly_cost !== null) {
             $newRate = (float) $data->hourly_cost;
             if (abs($newRate - (float) ($serverModel->hourly_cost ?? 0.0)) > 0.0001) {
-                $dataBefore = ServerData::fromModel($serverModel);
-                $updatePayload['historical_cost'] = $dataBefore->gross_cost;
-                $updatePayload['rate_updated_at'] = now();
                 $updatePayload['hourly_cost'] = $newRate;
             }
         }
@@ -127,44 +125,50 @@ class ServerController extends Controller
             $serverModel->update($updatePayload);
         }
 
-        if ($serverModel->wasChanged()) {
-            $changes = $serverModel->getChanges();
+        $actor = auth()->user();
+        $actorName = $actor ? "{$actor->first_name} {$actor->last_name}" : 'System';
 
-            unset(
-                $changes['updated_at']
-            );
+        if (isset($updatePayload['hourly_cost'])) {
+            $oldRate = number_format((float) ($originalAttributes['hourly_cost'] ?? 0.0), 2);
+            $newRate = number_format((float) $updatePayload['hourly_cost'], 2);
+
+            CustomActivityLog::create([
+                'logable_type' => Server::class,
+                'logable_id'   => (string) $serverModel->uuid,
+                'user_id'      => $actor?->id,
+                'user'         => $actorName,
+                'action'       => 'Update Monthly Rate',
+                'details'      => [
+                    'message'     => "Monthly cost updated from ₱{$oldRate}/mo to ₱{$newRate}/mo for server: {$serverModel->name}",
+                    'server_name' => $serverModel->name,
+                    'before'      => ['hourly_cost' => $oldRate],
+                    'after'       => ['hourly_cost' => $newRate],
+                ],
+            ]);
+        } elseif ($serverModel->wasChanged()) {
+            $changes = $serverModel->getChanges();
+            unset($changes['updated_at']);
 
             $before = [];
             $after = [];
-
             foreach (array_keys($changes) as $field) {
                 $before[$field] = $originalAttributes[$field] ?? null;
                 $after[$field] = $serverModel->{$field};
             }
 
-            $details = [
-                'message' => "Updated server: {$serverModel->name}",
-                'before' => $before,
-                'after' => $after,
-            ];
-        } else {
-            $details = [
-                'message' => "Saved server configurations without modifications for {$serverModel->name}",
-                'before' => [],
-                'after' => [],
-            ];
+            CustomActivityLog::create([
+                'logable_type' => Server::class,
+                'logable_id'   => (string) $serverModel->uuid,
+                'user_id'      => $actor?->id,
+                'user'         => $actorName,
+                'action'       => 'Update Server',
+                'details'      => [
+                    'message' => "Updated server: {$serverModel->name}",
+                    'before'  => $before,
+                    'after'   => $after,
+                ],
+            ]);
         }
-
-        $actor = auth()->user();
-
-        CustomActivityLog::create([
-            'logable_type' => Server::class,
-            'logable_id' => (string) $serverModel->uuid,
-            'user_id' => $actor?->id,
-            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
-            'action' => 'Update Server',
-            'details' => $details,
-        ]);
 
         \App\Events\ServerStatusUpdated::dispatch(
             $serverModel->uuid,
@@ -178,7 +182,7 @@ class ServerController extends Controller
     public function adjustCost(Request $request, string $clientUuid, string $serverUuid): ServerData
     {
         $request->validate([
-            'action' => ['required', 'string', 'in:full_payment,deduction,add_funds,add_credit,reset_usage'],
+            'action' => ['required', 'string', 'in:deduction,add_funds,add_credit,reset_usage'],
             'amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
@@ -191,29 +195,7 @@ class ServerController extends Controller
         $actionType = $request->input('action');
         $amount = (float) ($request->input('amount') ?? 0.0);
 
-        if ($actionType === 'full_payment') {
-            $serverDataBefore = ServerData::fromModel($serverModel);
-            $paidAmount = $serverDataBefore->net_cost;
-            $newOffset = (float) $serverModel->cost_offset + $paidAmount;
-            $serverModel->update([
-                'cost_offset' => $newOffset,
-            ]);
-
-            $formatted = number_format($paidAmount, 2);
-
-            CustomActivityLog::create([
-                'logable_type' => Server::class,
-                'logable_id'   => (string) $serverModel->uuid,
-                'user_id'      => $actor?->id,
-                'user'         => $actorName,
-                'action'       => 'Full Payment',
-                'details'      => [
-                    'message'     => "Full payment of ₱{$formatted} recorded for server: {$serverModel->name}",
-                    'paid_amount' => $paidAmount,
-                    'server_name' => $serverModel->name,
-                ],
-            ]);
-        } elseif ($actionType === 'reset_usage') {
+        if ($actionType === 'reset_usage') {
             $serverModel->update([
                 'cost_reset_at'   => now(),
                 'rate_updated_at' => now(),
@@ -235,7 +217,7 @@ class ServerController extends Controller
                 ],
             ]);
         } else {
-            // Partial payment / deduction / credit allocation
+            // Payment deduction
             $newOffset = (float) $serverModel->cost_offset + $amount;
             $serverModel->update([
                 'cost_offset' => $newOffset,
@@ -248,9 +230,9 @@ class ServerController extends Controller
                 'logable_id'   => (string) $serverModel->uuid,
                 'user_id'      => $actor?->id,
                 'user'         => $actorName,
-                'action'       => 'Payment Deduction',
+                'action'       => 'Deduction',
                 'details'      => [
-                    'message'         => "Payment / credit of ₱{$formatted} applied to server: {$serverModel->name}",
+                    'message'         => "Payment deduction of ₱{$formatted} applied to server: {$serverModel->name}",
                     'payment_amount'  => $amount,
                     'total_payments'  => $newOffset,
                     'server_name'     => $serverModel->name,
@@ -265,6 +247,21 @@ class ServerController extends Controller
         );
 
         return ServerData::fromModel($serverModel->fresh());
+    }
+
+    public function costLogs(string $clientUuid, string $serverUuid)
+    {
+        $serverModel = Server::where('uuid', $serverUuid)
+            ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
+            ->firstOrFail();
+
+        $logs = CustomActivityLog::where('logable_type', Server::class)
+            ->where('logable_id', (string) $serverModel->uuid)
+            ->whereIn('action', ['Deduction', 'Payment Deduction', 'Reset Cost Baseline', 'Update Monthly Rate', 'Update Hourly Rate'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($logs);
     }
 
     public function destroy(string $clientUuid, string $serverUuid)
@@ -293,6 +290,10 @@ class ServerController extends Controller
                 'host_name' => $serverModel->host_name,
             ],
         ]);
+
+        // Clean up all action items tied to this server so they are
+        // removed from the Action Board immediately after deletion.
+        ActionItem::where('server_id', $serverModel->id)->delete();
 
         $serverModel->delete();
 

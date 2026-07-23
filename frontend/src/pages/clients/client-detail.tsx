@@ -20,7 +20,11 @@ import {
     Banknote,
     Coins,
     Clock,
+    History,
+    Calendar,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Input } from "@/components/ui/input";
 
 function formatUptime(seconds: number): string {
     if (!seconds || seconds <= 0) return "0s";
@@ -179,27 +183,52 @@ export default function ClientDetail() {
     const [serverFilter, setServerFilter] = useState<
         "all" | "online" | "offline"
     >("all");
-    const [deductingServerUuid, setDeductingServerUuid] = useState<string | null>(null);
+    const [selectedServerForCost, setSelectedServerForCost] = useState<any | null>(null);
+    const [deductAmount, setDeductAmount] = useState("");
+    const [submittingPayment, setSubmittingPayment] = useState(false);
 
-    const handleFullDeduction = async (serverUuid: string, serverName: string) => {
-        if (!clientUuid) return;
-        setDeductingServerUuid(serverUuid);
+    const { data: costLogs = [], isLoading: isLoadingCostLogs } = useQuery({
+        queryKey: ["server-cost-logs", selectedServerForCost?.uuid],
+        queryFn: async () => {
+            if (!clientUuid || !selectedServerForCost?.uuid) return [];
+            const { data, error } = await api.GET(
+                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-logs" as any,
+                {
+                    params: {
+                        path: {
+                            clientUuid,
+                            serverUuid: selectedServerForCost.uuid,
+                        },
+                    },
+                },
+            );
+            if (error) return [];
+            return (data as any[]) ?? [];
+        },
+        enabled: !!clientUuid && !!selectedServerForCost?.uuid,
+    });
+
+    const handleCostAdjustment = async (amount: number) => {
+        if (!clientUuid || !selectedServerForCost?.uuid) return;
+        setSubmittingPayment(true);
         try {
             const { error } = await api.POST(
                 "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-adjustment",
                 {
-                    params: { path: { clientUuid, serverUuid } },
-                    body: { action: "full_payment" },
+                    params: { path: { clientUuid, serverUuid: selectedServerForCost.uuid } },
+                    body: { action: "deduction" as any, amount },
                 },
             );
             if (error) throw error;
-            toast.success(`Full deduction recorded for ${serverName}.`);
+            toast.success(`Deduction applied to ${selectedServerForCost.name}.`);
+            setSelectedServerForCost(null);
+            setDeductAmount("");
             queryClient.invalidateQueries({ queryKey: ["clients", clientUuid, "servers"] });
             queryClient.invalidateQueries({ queryKey: ["clients", clientUuid] });
         } catch (err: any) {
-            toast.error(err?.message || "Failed to process full deduction.");
+            toast.error(err?.message || "Failed to apply deduction.");
         } finally {
-            setDeductingServerUuid(null);
+            setSubmittingPayment(false);
         }
     };
 
@@ -998,10 +1027,10 @@ export default function ClientDetail() {
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border/60">
                                         <div>
                                             <h3 className="text-lg font-semibold text-foreground">
-                                                Server Costs & Full Deduction
+                                                Server Costs & Deductions
                                             </h3>
                                             <p className="text-xs text-muted-foreground mt-0.5">
-                                                View accumulated server costs and record full deductions.
+                                                View server costs and manage deductions per server.
                                             </p>
                                         </div>
 
@@ -1024,7 +1053,6 @@ export default function ClientDetail() {
                                     {serversLoading ? (
                                         <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
                                             <Loader2 size={18} className="animate-spin text-primary" />
-                                            <span className="text-sm">Loading server costs...</span>
                                         </div>
                                     ) : servers.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2 border border-dashed border-border/60 rounded-xl">
@@ -1038,16 +1066,15 @@ export default function ClientDetail() {
                                                     <tr>
                                                         <th className="py-3 px-4">Server</th>
                                                         <th className="py-3 px-4">Status</th>
-                                                        <th className="py-3 px-4">Monitored Online Time</th>
-                                                        <th className="py-3 px-4">Hourly Cost</th>
-                                                        <th className="py-3 px-4 text-right">Accumulated Cost</th>
+                                                        <th className="py-3 px-4">Next Billing Date</th>
+                                                        <th className="py-3 px-4">Monthly Rate</th>
+                                                        <th className="py-3 px-4 text-right">Cost</th>
                                                         <th className="py-3 px-4 text-center">Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-border/60">
                                                     {servers.map((s: any) => {
                                                         const isOnline = s.status === "online";
-                                                        const isDeducting = deductingServerUuid === s.uuid;
                                                         const costVal = s.accumulated_cost ?? 0;
                                                         return (
                                                             <tr
@@ -1074,12 +1101,20 @@ export default function ClientDetail() {
                                                                 </td>
                                                                 <td className="py-3.5 px-4 font-mono text-xs text-muted-foreground">
                                                                     <div className="flex items-center gap-1.5">
-                                                                        <Clock size={13} className="text-muted-foreground/70" />
-                                                                        <span>{formatUptime(s.uptime_seconds ?? 0)}</span>
+                                                                        <Calendar size={13} className="text-muted-foreground/70" />
+                                                                        <span>
+                                                                            {s.billing_date
+                                                                                ? new Date(s.billing_date).toLocaleDateString(undefined, {
+                                                                                      month: "short",
+                                                                                      day: "numeric",
+                                                                                      year: "numeric",
+                                                                                  })
+                                                                                : "N/A"}
+                                                                        </span>
                                                                     </div>
                                                                 </td>
                                                                 <td className="py-3.5 px-4 font-mono text-foreground font-medium">
-                                                                    ₱{(s.hourly_cost ?? 0).toFixed(2)} / hr
+                                                                    ₱{(s.hourly_cost ?? 0).toFixed(2)} / mo
                                                                 </td>
                                                                 <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-500">
                                                                     ₱{costVal.toFixed(2)}
@@ -1088,19 +1123,14 @@ export default function ClientDetail() {
                                                                     <Button
                                                                         size="sm"
                                                                         variant="outline"
-                                                                        disabled={isDeducting || costVal <= 0}
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            handleFullDeduction(s.uuid, s.name);
+                                                                            setSelectedServerForCost(s);
                                                                         }}
                                                                         className="gap-1.5 text-xs text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer"
                                                                     >
-                                                                        {isDeducting ? (
-                                                                            <Loader2 size={12} className="animate-spin" />
-                                                                        ) : (
-                                                                            <Coins size={12} />
-                                                                        )}
-                                                                        Full Deduction
+                                                                        <Coins size={12} />
+                                                                        Manage Deductions
                                                                     </Button>
                                                                 </td>
                                                             </tr>
@@ -1439,6 +1469,129 @@ export default function ClientDetail() {
                                     label="Close"
                                     onClick={() => setShowSecopDialog(false)}
                                 />
+                            </DialogClose>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog open={!!selectedServerForCost} onOpenChange={(open) => !open && setSelectedServerForCost(null)}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2 text-foreground">
+                                <Coins size={18} className="text-emerald-400" />
+                                Server Cost & Deduction Management
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        <div className="flex flex-col gap-4 py-2">
+                            <div className="flex flex-col gap-2 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                                <span className="text-xs uppercase tracking-wider font-semibold text-emerald-400/90">
+                                    Cost ({selectedServerForCost?.name})
+                                </span>
+                                <span className="text-3xl font-extrabold text-emerald-400 font-mono">
+                                    ₱{(selectedServerForCost?.accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                                <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-2 border-t border-emerald-500/20 mt-1 font-mono">
+                                    <span>Payment Due: ₱{(selectedServerForCost?.net_cost ?? selectedServerForCost?.accumulated_cost ?? 0).toFixed(2)}</span>
+                                    <span>Payments Recorded: ₱{(selectedServerForCost?.cost_offset ?? 0).toFixed(2)}</span>
+                                </div>
+                            </div>
+
+                            {/* Action: Payment Deduction */}
+                            <div className="flex flex-col gap-2 p-3.5 rounded-lg border border-border/60 bg-card">
+                                <p className="text-xs font-semibold text-foreground">Deduction</p>
+                                <p className="text-[11px] text-muted-foreground">
+                                    Enter a payment amount to deduct directly from the total accumulated server cost.
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="e.g. 500.00"
+                                        value={deductAmount}
+                                        onChange={(e) => setDeductAmount(e.target.value)}
+                                        className="text-sm font-mono"
+                                    />
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        label={submittingPayment ? "Applying…" : "Deduct"}
+                                        onClick={() => {
+                                            const val = parseFloat(deductAmount);
+                                            if (isNaN(val) || val <= 0) {
+                                                toast.error("Please enter a valid positive payment amount.");
+                                                return;
+                                            }
+                                            handleCostAdjustment(val);
+                                        }}
+                                        disabled={submittingPayment || !deductAmount || parseFloat(deductAmount) <= 0}
+                                        className="shrink-0"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Cost Activity Logs */}
+                            <div className="flex flex-col gap-2 pt-2 border-t border-border/60">
+                                <div className="flex items-center gap-2">
+                                    <History size={14} className="text-muted-foreground" />
+                                    <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                                        Cost & Payment Activity Logs
+                                    </h4>
+                                </div>
+
+                                <div className="max-h-44 overflow-y-auto flex flex-col gap-2 pr-1">
+                                    {isLoadingCostLogs ? (
+                                        <p className="text-xs text-muted-foreground py-3 text-center">Loading logs…</p>
+                                    ) : costLogs.length === 0 ? (
+                                        <p className="text-xs text-muted-foreground py-3 text-center">No cost activity logs recorded yet.</p>
+                                    ) : (
+                                        costLogs.map((log: any) => {
+                                            const msg = log.details?.message || log.action;
+                                            return (
+                                                <div key={log.id} className="p-2.5 rounded-lg bg-muted/20 border border-border/40 flex flex-col gap-1">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-xs font-medium text-foreground">
+                                                            {log.action}
+                                                        </span>
+                                                        {log.created_at && (
+                                                            <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                                                                {new Date(log.created_at).toLocaleString(undefined, {
+                                                                    month: "short",
+                                                                    day: "numeric",
+                                                                    year: "numeric",
+                                                                    hour: "2-digit",
+                                                                    minute: "2-digit",
+                                                                })}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[11px] text-muted-foreground">
+                                                        {msg}
+                                                    </p>
+                                                    {log.details?.before?.hourly_cost && log.details?.after?.hourly_cost && (
+                                                        <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
+                                                            <span>Before: ₱{log.details.before.hourly_cost}/mo</span>
+                                                            <span>→</span>
+                                                            <span>After: ₱{log.details.after.hourly_cost}/mo</span>
+                                                        </div>
+                                                    )}
+                                                    {log.user && (
+                                                        <p className="text-[10px] text-muted-foreground/70">
+                                                            By: {log.user}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end pt-2">
+                            <DialogClose asChild>
+                                <Button variant="outline" label="Close" onClick={() => setSelectedServerForCost(null)} />
                             </DialogClose>
                         </div>
                     </DialogContent>
