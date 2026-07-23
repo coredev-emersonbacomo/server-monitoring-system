@@ -49,6 +49,7 @@ class Server extends Model
             'online_seconds' => 'integer',
             'historical_cost' => 'float',
             'accumulated_cost' => 'float',
+            'pending_monthly_cost' => 'float',
             'rate_updated_at' => 'datetime',
         ];
     }
