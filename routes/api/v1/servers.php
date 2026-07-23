@@ -13,6 +13,7 @@ Route::middleware('auth:jwt')->group(function () {
         Route::patch('/servers/{serverUuid}', [ServerController::class, 'update']);
         Route::patch('/servers/{serverUuid}/alert-scope', [ServerController::class, 'updateAlertScope']);
         Route::post('/servers/{serverUuid}/cost-adjustment', [ServerController::class, 'adjustCost']);
+        Route::get('/servers/{serverUuid}/cost-logs', [ServerController::class, 'costLogs']);
         Route::delete('/servers/{serverUuid}', [ServerController::class, 'destroy']);
     });
 

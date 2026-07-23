@@ -9,10 +9,7 @@ import React, {
 import { twMerge } from "tailwind-merge";
 import { toLabelCase } from "@/utils/helpers";
 
-export interface InputProps extends Omit<
-    InputHTMLAttributes<HTMLInputElement>,
-    "onChange"
-> {
+export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     label?: React.ReactNode;
     sublabel?: string;
     showLabel?: boolean;
@@ -67,15 +64,12 @@ export const FloatingInput = forwardRef<InputRef, InputProps>(
             (passedValue ?? defaultValue)?.toString() || "",
         );
 
-        // Keep internalValue in sync with external value updates
+        // Keep internalValue in sync with external value updates when passedValue changes externally
         useEffect(() => {
-            if (
-                passedValue !== undefined &&
-                passedValue.toString() !== internalValue
-            ) {
+            if (passedValue !== undefined) {
                 setInternalValue(passedValue.toString());
             }
-        }, [internalValue, passedValue]);
+        }, [passedValue]);
 
         label ??= toLabelCase(props.name ?? "");
 
@@ -91,6 +85,7 @@ export const FloatingInput = forwardRef<InputRef, InputProps>(
             setErrorLabel(undefined);
             setErrorType(undefined);
             onValueChange?.(newValue, props.name ?? "");
+            props.onChange?.(e);
 
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
@@ -127,21 +122,19 @@ export const FloatingInput = forwardRef<InputRef, InputProps>(
             <div
                 ref={divRef}
                 className={twMerge(
-                    "relative group w-full cursor-text",
-                    "h-12 peer text-base text-anti-primary rounded-md pt-0.5 px-4",
+                    "relative group w-full cursor-text transition-colors",
+                    "h-12 text-base text-foreground rounded-md pt-0.5 px-4",
                     inputBg,
-                    "outline rounded-md",
-                    "flex items-center",
-                    !errorLabel && !errorType && "outline-gray-400",
+                    "border border-input rounded-md",
+                    "flex items-center shadow-sm",
                     divClassName,
-                    "focus-within:outline-1 focus-within:outline-gray-200",
+                    "focus-within:border-ring focus-within:ring-1 focus-within:ring-ring",
                     errorType === "error" &&
-                        "outline-red-500 focus-within:outline-red-600",
+                        "border-destructive focus-within:border-destructive focus-within:ring-destructive",
                     errorType === "warning" &&
-                        "outline-orange-500 focus-within:outline-orange-600",
+                        "border-amber-500 focus-within:border-amber-500 focus-within:ring-amber-500",
                     disableInput &&
-                        "outline-gray-300 pointer-events-none cursor-not-allowed",
-                    "hover:outline",
+                        "opacity-50 pointer-events-none cursor-not-allowed",
                 )}
                 onClick={() => {
                     inputRef.current?.focus();
@@ -151,7 +144,7 @@ export const FloatingInput = forwardRef<InputRef, InputProps>(
                 {prefix && (
                     <span
                         className={twMerge(
-                            "select-none pointer-events-none",
+                            "select-none pointer-events-none text-muted-foreground",
                             icon && "ml-2",
                         )}
                     >
@@ -168,7 +161,7 @@ export const FloatingInput = forwardRef<InputRef, InputProps>(
                         onChange={handleChange}
                         value={internalValue}
                         className={twMerge(
-                            "relative flex-1 outline-none bg-transparent text-ellipsis",
+                            "relative flex-1 outline-none bg-transparent text-ellipsis text-foreground placeholder:text-muted-foreground/50",
                             className,
                             icon && "ml-2",
                         )}
@@ -192,36 +185,36 @@ export const FloatingInput = forwardRef<InputRef, InputProps>(
                 {showLabel && label && (
                     <label
                         className={twMerge(
-                            "absolute text-md transition-all duration-200 pointer-events-none px-1",
+                            "absolute text-md transition-all duration-200 pointer-events-none px-1 rounded-sm",
                             inputBg,
                             icon ? "left-10" : "left-2",
-                            "top-1/2 -translate-y-1/2 text-base text-gray-500",
+                            "top-1/2 -translate-y-1/2 text-base text-muted-foreground",
                             errorLabel || errorType
                                 ? errorType === "error"
                                     ? twMerge(
-                                          "group-focus-within:text-red-600",
-                                          internalValue && "text-red-600",
+                                          "group-focus-within:text-destructive",
+                                          internalValue && "text-destructive",
                                       )
                                     : twMerge(
-                                          "group-focus-within:text-orange-600",
-                                          internalValue && "text-orange-600",
+                                          "group-focus-within:text-amber-500",
+                                          internalValue && "text-amber-500",
                                       )
-                                : "group-focus-within:text-gray-200",
-                            "group-focus-within:top-0 group-focus-within:text-sm",
-                            (internalValue || disableInput) && "top-0 text-sm",
-                            disableInput && "text-gray-300",
+                                : "group-focus-within:text-foreground",
+                            "group-focus-within:top-0 group-focus-within:text-xs group-focus-within:font-medium",
+                            (internalValue || disableInput) && "top-0 text-xs font-medium",
+                            disableInput && "text-muted-foreground/50",
                         )}
                     >
                         {label}
                         {sublabel && (
-                            <span className="text-gray-400"> {sublabel}</span>
+                            <span className="text-muted-foreground/70"> {sublabel}</span>
                         )}
                         {errorLabel && (
                             <span
                                 className={
                                     errorType === "error"
-                                        ? "text-red-500"
-                                        : "text-orange-500"
+                                        ? "text-destructive"
+                                        : "text-amber-500"
                                 }
                             >
                                 {" "}

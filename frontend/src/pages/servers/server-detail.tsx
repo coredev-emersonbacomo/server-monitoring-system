@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import api from "@/api/api";
 import {
     Wifi,
@@ -24,8 +24,8 @@ import {
     Link2,
     Banknote,
     Coins,
-    CreditCard,
-    Clock,
+    History,
+    Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useServer } from "@/hooks/useServer";
@@ -57,14 +57,11 @@ import { Form, createFormStore, useForm } from "@/components/ui/form";
 const serverInfoSchema = z.object({
     name: z.string().min(1, "Server name is required."),
     description: z.string(),
-    hourly_cost: z.preprocess(
-        (val) => {
-            if (val === "" || val === undefined || val === null) return 0;
-            const num = Number(val);
-            return isNaN(num) ? 0 : num;
-        },
-        z.number().min(0, "Hourly cost must be at least 0.")
-    ),
+    hourly_cost: z.union([z.string(), z.number()]).transform((val) => {
+        if (val === "" || val === undefined || val === null) return 0;
+        const num = Number(val);
+        return isNaN(num) ? 0 : num;
+    }),
 });
 
 // ─── Server Alert Tab ────────────────────────────────────────────────────────
@@ -263,7 +260,7 @@ export default function ServerDetail() {
         if (initial && mode === "view") {
             store.set("name")(initial.name);
             store.set("description")(initial.description ?? "");
-            store.set("hourly_cost")((initial as any).hourly_cost ?? 0);
+            store.set("hourly_cost")(String((initial as any).hourly_cost ?? 0));
         }
     }, [initial?.name, initial?.description, (initial as any)?.hourly_cost, mode, store]);
     const [confirmText, setConfirmText] = useState("");
@@ -273,6 +270,27 @@ export default function ServerDetail() {
     const [showCostModal, setShowCostModal] = useState(false);
     const [deductAmount, setDeductAmount] = useState("");
     const [submittingPayment, setSubmittingPayment] = useState(false);
+
+    const { data: costLogs = [], isLoading: isLoadingCostLogs } = useQuery({
+        queryKey: ["server-cost-logs", initial?.uuid],
+        queryFn: async () => {
+            if (!initial?.client_uuid || !initial?.uuid) return [];
+            const { data, error } = await api.GET(
+                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-logs" as any,
+                {
+                    params: {
+                        path: {
+                            clientUuid: initial.client_uuid,
+                            serverUuid: initial.uuid,
+                        },
+                    },
+                },
+            );
+            if (error) return [];
+            return (data as any[]) ?? [];
+        },
+        enabled: !!initial?.client_uuid && !!initial?.uuid && showCostModal,
+    });
 
     const handleCostAdjustment = async (type: "full_payment" | "deduction" | "top_up" | "add_funds" | "reset_usage", amount?: number) => {
         if (!initial?.client_uuid || !initial?.uuid) return;
@@ -290,6 +308,7 @@ export default function ServerDetail() {
             setShowCostModal(false);
             setDeductAmount("");
             queryClient.invalidateQueries({ queryKey: ["server", initial.uuid] });
+            queryClient.invalidateQueries({ queryKey: ["server-cost-logs", initial.uuid] });
         } catch (err: any) {
             toast.error(err?.message || "Failed to update server credits.");
         } finally {
@@ -320,20 +339,7 @@ export default function ServerDetail() {
         return () => clearInterval(timer);
     }, [initial?.status, initial?.cost_reset_at]);
 
-    const formatRuntime = (seconds: number): string => {
-        if (!seconds || seconds <= 0) return "0s";
-        const d = Math.floor(seconds / (3600 * 24));
-        const h = Math.floor((seconds % (3600 * 24)) / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        const s = Math.floor(seconds % 60);
 
-        const parts = [];
-        if (d > 0) parts.push(`${d}d`);
-        if (h > 0 || d > 0) parts.push(`${h}h`);
-        if (m > 0 || h > 0 || d > 0) parts.push(`${m}m`);
-        parts.push(`${s}s`);
-        return parts.join(" ");
-    };
 
     useServerSocket(uuid!, setWsStatus, () => {
         toast.success("Agent successfully uninstalled!");
@@ -801,13 +807,13 @@ export default function ServerDetail() {
                                             <>
                                                 <div>
                                                     <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                        Hourly Cost (₱ / hr)
+                                                        Monthly Cost (₱ / mo)
                                                     </label>
                                                     <Input
                                                         type="number"
                                                         step="0.01"
                                                         min="0"
-                                                        value={form.hourly_cost}
+                                                        value={form.hourly_cost ?? ""}
                                                         onChange={(e) =>
                                                             store.set(
                                                                 "hourly_cost",
@@ -835,65 +841,13 @@ export default function ServerDetail() {
                                             </>
                                         )}
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
-                                        {/* Costing Cards */}
-                                        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-primary/5 border border-primary/20 shadow-sm">
-                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
-                                                <Banknote size={17} />
-                                            </div>
-                                            <div className="flex flex-col min-w-0 gap-0.5">
-                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
-                                                    Hourly Cost
-                                                </span>
-                                                <span className="text-sm font-semibold text-foreground font-mono">
-                                                    ₱{((initial as any)?.hourly_cost ?? 0).toFixed(2)} / hr
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            onClick={() => setShowCostModal(true)}
-                                            className="group flex items-center justify-between gap-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 shadow-sm hover:border-emerald-500/60 hover:bg-emerald-500/15 transition-all cursor-pointer"
-                                            title="Click to view details or manage payments"
-                                        >
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
-                                                    <Coins size={17} />
-                                                </div>
-                                                <div className="flex flex-col min-w-0 gap-0.5">
-                                                    <span className="text-[10.5px] font-medium uppercase tracking-wider text-emerald-400/90">
-                                                        Accumulated Server Cost
-                                                    </span>
-                                                    <span className="text-base font-bold text-emerald-400 font-mono">
-                                                        ₱{((initial as any)?.accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 group-hover:bg-emerald-500/30 transition-colors">
-                                                Manage Payment
-                                            </span>
-                                        </div>
-
-                                        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm" title="Active cumulative duration confirmed online by heartbeats">
-                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
-                                                <Clock size={17} />
-                                            </div>
-                                            <div className="flex flex-col min-w-0 gap-0.5">
-                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
-                                                    Monitored Online Time
-                                                </span>
-                                                <span className="text-sm font-semibold text-foreground font-mono">
-                                                    {formatRuntime(liveUptimeSeconds)}
-                                                </span>
-                                            </div>
-                                        </div>
+                                    <div className="flex flex-wrap items-start gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
                                         {[
                                             {
                                                 icon: Cpu,
                                                 label: "CPU Model",
-                                                value:
-                                                    server.cpu_model ?? "Unknown",
-                                                span: true,
+                                                value: server.cpu_model ?? "Unknown",
+                                                wide: true,
                                             },
                                             {
                                                 icon: Cpu,
@@ -903,52 +857,94 @@ export default function ServerDetail() {
                                             {
                                                 icon: MemoryStick,
                                                 label: "Memory",
-                                                value: server.ram
-                                                    ? `${server.ram} GB`
-                                                    : "Waiting for Agent",
+                                                value: server.ram ? `${server.ram} GB` : "Waiting for Agent",
                                             },
                                             {
                                                 icon: HardDrive,
                                                 label: "Disk",
-                                                value: server.disk
-                                                    ? `${server.disk} GB`
-                                                    : "Waiting for Agent",
+                                                value: server.disk ? `${server.disk} GB` : "Waiting for Agent",
                                             },
                                             {
                                                 icon: Monitor,
                                                 label: "OS",
-                                                value:
-                                                    server.operating_system ??
-                                                    "Waiting for Agent",
+                                                value: server.operating_system ?? "Waiting for Agent",
                                             },
-                                        ].map(
-                                            ({
-                                                icon: ItemIcon,
-                                                label,
-                                                value,
-                                                span,
-                                            }) => (
-                                                <div
-                                                    key={label}
-                                                    className={cn(
-                                                        "group flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all",
-                                                        span && "sm:col-span-2",
-                                                    )}
-                                                >
-                                                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
-                                                        <ItemIcon size={17} />
-                                                    </div>
-                                                    <div className="flex flex-col min-w-0 gap-0.5">
-                                                        <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
-                                                            {label}
-                                                        </span>
-                                                        <span className="text-sm font-semibold text-foreground wrap-break-word">
-                                                            {value}
-                                                        </span>
-                                                    </div>
+                                        ].map(({ icon: ItemIcon, label, value, wide }) => (
+                                            <div
+                                                key={label}
+                                                className={cn(
+                                                    "group flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all",
+                                                    wide ? "flex-[2_2_320px] min-w-[320px]" : "flex-1 min-w-[200px]",
+                                                )}
+                                            >
+                                                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
+                                                    <ItemIcon size={17} />
                                                 </div>
-                                            ),
-                                        )}
+                                                <div className="flex flex-col min-w-0 gap-0.5">
+                                                    <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
+                                                        {label}
+                                                    </span>
+                                                    <span className="text-sm font-semibold text-foreground wrap-break-word whitespace-nowrap overflow-hidden text-ellipsis">
+                                                        {value}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        {/* Monthly Cost Card */}
+                                        <div className="flex-1 min-w-[200px] flex items-center gap-3 p-3.5 rounded-xl bg-primary/5 border border-primary/20 shadow-sm hover:shadow-md transition-all">
+                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
+                                                <Banknote size={17} />
+                                            </div>
+                                            <div className="flex flex-col min-w-0 gap-0.5">
+                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
+                                                    Monthly Cost
+                                                </span>
+                                                <span className="text-sm font-semibold text-foreground font-mono">
+                                                    ₱{((initial as any)?.hourly_cost ?? 0).toFixed(2)} / mo
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Cost Card (Clickable) */}
+                                        <div
+                                            onClick={() => setShowCostModal(true)}
+                                            className="flex-1 min-w-[200px] group flex items-center gap-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 shadow-sm hover:border-emerald-500/60 hover:bg-emerald-500/15 transition-all cursor-pointer"
+                                            title="Click to view details or manage deductions"
+                                        >
+                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
+                                                <Coins size={17} />
+                                            </div>
+                                            <div className="flex flex-col min-w-0 gap-0.5">
+                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-emerald-400/90">
+                                                    Cost
+                                                </span>
+                                                <span className="text-sm font-bold text-emerald-400 font-mono">
+                                                    ₱{((initial as any)?.accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Next Billing Date Card */}
+                                        <div className="flex-1 min-w-[200px] flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all">
+                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
+                                                <Calendar size={17} />
+                                            </div>
+                                            <div className="flex flex-col min-w-0 gap-0.5">
+                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
+                                                    Next Billing Date
+                                                </span>
+                                                <span className="text-sm font-semibold text-foreground wrap-break-word">
+                                                    {(initial as any)?.billing_date
+                                                        ? new Date((initial as any).billing_date).toLocaleDateString(undefined, {
+                                                            month: "short",
+                                                            day: "numeric",
+                                                            year: "numeric",
+                                                        })
+                                                        : "N/A"}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="mt-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5">
@@ -1640,14 +1636,14 @@ export default function ServerDetail() {
                                 <DialogHeader>
                                     <DialogTitle className="flex items-center gap-2 text-foreground">
                                         <Coins size={18} className="text-emerald-400" />
-                                        Server Cost & Payment Management
+                                        Server Cost & Deduction Management
                                     </DialogTitle>
                                 </DialogHeader>
 
                                 <div className="flex flex-col gap-4 py-2">
                                     <div className="flex flex-col gap-2 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
                                         <span className="text-xs uppercase tracking-wider font-semibold text-emerald-400/90">
-                                            Accumulated Server Cost
+                                            Cost
                                         </span>
                                         <span className="text-3xl font-extrabold text-emerald-400 font-mono">
                                             ₱{((initial as any)?.accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1658,32 +1654,11 @@ export default function ServerDetail() {
                                         </div>
                                     </div>
 
-                                    {/* Action 1: Full Payment */}
+                                    {/* Action: Payment Deduction */}
                                     <div className="flex flex-col gap-2 p-3.5 rounded-lg border border-border/60 bg-card">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-xs font-semibold text-foreground">Full Payment</p>
-                                                <p className="text-[11px] text-muted-foreground">
-                                                    Pay off current balance in full (₱{((initial as any)?.net_cost ?? 0).toFixed(2)}) and log transaction.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <Button
-                                            size="sm"
-                                            variant="default"
-                                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium mt-1 w-full"
-                                            icon={<CreditCard size={14} />}
-                                            label={submittingPayment ? "Processing…" : `Full Payment (₱${((initial as any)?.net_cost ?? 0).toFixed(2)})`}
-                                            onClick={() => handleCostAdjustment("full_payment")}
-                                            disabled={submittingPayment || ((initial as any)?.net_cost ?? 0) <= 0}
-                                        />
-                                    </div>
-
-                                    {/* Action 2: Partial Payment / Deduction */}
-                                    <div className="flex flex-col gap-2 p-3.5 rounded-lg border border-border/60 bg-card">
-                                        <p className="text-xs font-semibold text-foreground">Partial Payment / Deduction</p>
+                                        <p className="text-xs font-semibold text-foreground">Deduction</p>
                                         <p className="text-[11px] text-muted-foreground">
-                                            Enter a custom payment amount to apply toward the total accumulated server cost.
+                                            Enter a payment amount to deduct directly from the total accumulated server cost.
                                         </p>
                                         <div className="flex items-center gap-2 mt-1">
                                             <Input
@@ -1710,6 +1685,63 @@ export default function ServerDetail() {
                                                 disabled={submittingPayment || !deductAmount || parseFloat(deductAmount) <= 0}
                                                 className="shrink-0"
                                             />
+                                        </div>
+                                    </div>
+
+                                    {/* Cost Activity Logs */}
+                                    <div className="flex flex-col gap-2 pt-2 border-t border-border/60">
+                                        <div className="flex items-center gap-2">
+                                            <History size={14} className="text-muted-foreground" />
+                                            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                                                Cost & Payment Activity Logs
+                                            </h4>
+                                        </div>
+
+                                        <div className="max-h-44 overflow-y-auto flex flex-col gap-2 pr-1">
+                                            {isLoadingCostLogs ? (
+                                                <p className="text-xs text-muted-foreground py-3 text-center">Loading logs…</p>
+                                            ) : costLogs.length === 0 ? (
+                                                <p className="text-xs text-muted-foreground py-3 text-center">No cost activity logs recorded yet.</p>
+                                            ) : (
+                                                costLogs.map((log: any) => {
+                                                    const msg = log.details?.message || log.action;
+                                                    return (
+                                                        <div key={log.id} className="p-2.5 rounded-lg bg-muted/20 border border-border/40 flex flex-col gap-1">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <span className="text-xs font-medium text-foreground">
+                                                                    {log.action}
+                                                                </span>
+                                                                {log.created_at && (
+                                                                    <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                                                                        {new Date(log.created_at).toLocaleString(undefined, {
+                                                                            month: "short",
+                                                                            day: "numeric",
+                                                                            year: "numeric",
+                                                                            hour: "2-digit",
+                                                                            minute: "2-digit",
+                                                                        })}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-[11px] text-muted-foreground">
+                                                                {msg}
+                                                            </p>
+                                                            {log.details?.before?.hourly_cost && log.details?.after?.hourly_cost && (
+                                                                <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
+                                                                    <span>Before: ₱{log.details.before.hourly_cost}/hr</span>
+                                                                    <span>→</span>
+                                                                    <span>After: ₱{log.details.after.hourly_cost}/hr</span>
+                                                                </div>
+                                                            )}
+                                                            {log.user && (
+                                                                <p className="text-[10px] text-muted-foreground/70">
+                                                                    By: {log.user}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
                                         </div>
                                     </div>
                                 </div>

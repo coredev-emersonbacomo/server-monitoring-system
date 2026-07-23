@@ -175,13 +175,13 @@ export default function CreateServer() {
 
                             <div>
                                 <FloatingInput
-                                    label="Hourly Cost (₱ / hr)"
-                                    labelBg="bg-card"
+                                    label="Monthly Cost (₱ / mo)"
+                                    inputBg="bg-card"
                                     type="number"
                                     step="0.01"
                                     min="0"
                                     value={hourlyCost}
-                                    onChange={(e) => setHourlyCost(e.target.value)}
+                                    onValueChange={(val) => setHourlyCost(val)}
                                 />
                             </div>
 

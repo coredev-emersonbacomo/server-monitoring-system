@@ -80,6 +80,8 @@ class ServerData extends Data
         public float $net_cost = 0.0,
 
         public float $accumulated_cost = 0.0,
+
+        public ?string $billing_date = null,
     ) {}
 
     public static function fromModel(Server $server): self
@@ -105,15 +107,17 @@ class ServerData extends Data
 
         $agent = $server->agent;
 
-        $ports = $agent ? $agent->ports->map(fn($p) => new PortsData(
-            id: $p->id,
-            port: $p->port,
-            protocol: $p->protocol,
-            state: $p->state,
-            process: $p->process_name,
-            ping_status: $p->ping_status,
-            ping_time: $p->ping_time,
-        ))->values()->all() : null;
+        $ports = $agent ? $agent->ports
+            ->filter(fn($p) => strtoupper($p->state) === 'LISTENING')
+            ->map(fn($p) => new PortsData(
+                id: $p->id,
+                port: $p->port,
+                protocol: $p->protocol,
+                state: $p->state,
+                process: $p->process_name,
+                ping_status: $p->ping_status,
+                ping_time: $p->ping_time,
+            ))->values()->all() : null;
 
         $processes = $agent ? $agent->processes()->orderByDesc('cpu')->get()->map(fn($pr) => new ProcessesData(
             pid: $pr->pid,
@@ -170,28 +174,33 @@ class ServerData extends Data
 
         $uptimeSeconds = $dbOnlineSeconds + $pendingSeconds;
 
-        if ($server->rate_updated_at !== null) {
-            $secondsSinceRateUpdate = max(0, time() - $server->rate_updated_at->timestamp);
-            if ($secondsSinceRateUpdate < 3600) {
-                $currentBilledHours = 0;
-            } else {
-                $currentBilledHours = (int) floor($secondsSinceRateUpdate / 3600.0);
+        // Monthly billing based on registration date (or server creation date)
+        $registrationDate = $agent?->registered_at ?? $server->created_at;
+        $monthlyRate = $hourlyCost;
+        $nextBillingDate = null;
+
+        if ($registrationDate) {
+            // Full or partial months elapsed since registration
+            $monthsElapsed = max(1, (int) ceil(now()->diffInDays($registrationDate) / 30.0));
+            // Or exact month diff if created today vs next month
+            $calendarMonths = (now()->year - $registrationDate->year) * 12 + (now()->month - $registrationDate->month);
+            if (now()->day >= $registrationDate->day) {
+                $calendarMonths += 1;
             }
+            $billedMonths = max(1, max($monthsElapsed, $calendarMonths));
+            $grossCost = round($billedMonths * $monthlyRate, 4);
+
+            // Next billing date is registration date + $billedMonths months
+            $nextBillingDate = $registrationDate->copy()->addMonths($billedMonths);
         } else {
-            if ($uptimeSeconds > 0 || $server->status === 'online') {
-                $currentBilledHours = max(1, (int) ceil(max(1, $uptimeSeconds) / 3600.0));
-            } else {
-                $currentBilledHours = 0;
-            }
+            $grossCost = 0.0;
         }
 
-        $currentPeriodCost = round($currentBilledHours * $hourlyCost, 4);
-        $grossCost = round($historicalCost + $currentPeriodCost, 4);
-        // Accumulated server cost minus recorded payments/offsets = net payment due
+        // Net cost after deductions
         $netCost = max(0.0, round($grossCost - $costOffset, 4));
         $accumulatedCost = $netCost;
 
-        // Sync database column so accumulated_cost is saved directly in the servers table (minused by cost_offset)
+        // Sync database column so accumulated_cost is saved directly in the servers table
         if (abs((float) ($server->accumulated_cost ?? 0.0) - $accumulatedCost) > 0.0001) {
             $server->updateQuietly(['accumulated_cost' => $accumulatedCost]);
         }
@@ -230,6 +239,7 @@ class ServerData extends Data
             gross_cost: $grossCost,
             net_cost: $netCost,
             accumulated_cost: $accumulatedCost,
+            billing_date: $nextBillingDate ? $nextBillingDate->toIso8601String() : null,
         );
     }
 }
