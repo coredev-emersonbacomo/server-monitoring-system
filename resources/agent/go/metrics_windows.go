@@ -410,6 +410,15 @@ func (m *metricsCollector) GetOpenDatabasePorts() []PortInfo {
 			process = pidMap[pid]
 		}
 
+		// Only collect LISTENING sockets
+		state := ""
+		if len(fields) >= 4 {
+			state = strings.ToUpper(fields[3])
+		}
+		if state != "LISTENING" && state != "LISTEN" {
+			continue
+		}
+
 		if addr == "127.0.0.1" || addr == "[::1]" || addr == "::1" || addr == "localhost" {
 			continue
 		}

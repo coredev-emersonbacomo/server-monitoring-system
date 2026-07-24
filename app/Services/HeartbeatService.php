@@ -364,10 +364,36 @@ class HeartbeatService
     private function updatePorts(Agent $agent, array $ports): void
     {
         $portsList = [];
+        $ignoredPorts = [
+            135, 137, 138, 139, 445, 500, 4500, 5353, 5355, 7680, 5985, 5986
+        ];
+        $ignoredProcessPatterns = [
+            'svchost', 'lsass', 'services', 'system', 'spoolsv', 'smss', 'csrss', 'wininit', 'alg', 'dashost',
+            'systemd', 'rpcbind', 'avahi', 'dbus'
+        ];
+
         foreach ($ports as $port) {
-            $portNum = $port['port'] ?? null;
+            $portNum = isset($port['port']) ? (int)$port['port'] : null;
             $proto = $port['protocol'] ?? 'tcp';
             if (is_null($portNum)) continue;
+
+            // Reject noise ports and ephemeral RPC ports (>= 49152)
+            if (in_array($portNum, $ignoredPorts, true) || $portNum >= 49152) {
+                continue;
+            }
+
+            // Reject OS internal process noise
+            $procName = strtolower($port['process'] ?? '');
+            if ($procName !== '') {
+                $isNoise = false;
+                foreach ($ignoredProcessPatterns as $pattern) {
+                    if (str_contains($procName, $pattern)) {
+                        $isNoise = true;
+                        break;
+                    }
+                }
+                if ($isNoise) continue;
+            }
 
             $portsList[] = ['port' => $portNum, 'proto' => $proto];
 
