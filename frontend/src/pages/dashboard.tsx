@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import PageLayout from "@/components/PageLayout";
 import {
     Activity,
@@ -18,9 +18,6 @@ import {
     ScrollText,
     X,
     Link2Off,
-    Cpu,
-    Database,
-    HardDrive,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useDashboardStats } from "@/hooks/useDashboard";
@@ -35,8 +32,8 @@ import { useAuthContext } from "@/hooks/useAuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import IndexHeader from "@/components/IndexHeader";
-import UsageSection from "@/components/dashboard/UsageSection";
-import type { TimeUnit } from "@/types/dashboard";
+import { DashboardChartsSection } from "@/components/dashboard/DashboardMetricChart";
+import { ChartZoomProvider } from "@/contexts/ChartZoomContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -170,22 +167,6 @@ function CompletedModal({
 export default function Dashboard() {
     const { user } = useAuthContext();
     const [completedOpen, setCompletedOpen] = useState(false);
-    const [searchParams, setSearchParams] = useSearchParams();
-    const unit = (searchParams.get("unit") as TimeUnit | null) ?? "hour";
-    const setUnit = (next: string) => {
-        setSearchParams(
-            (prev) => {
-                const params = new URLSearchParams(prev);
-                if (next === "hour") {
-                    params.delete("unit");
-                } else {
-                    params.set("unit", next);
-                }
-                return params;
-            },
-            { replace: true },
-        );
-    };
 
     const {
         data: stats,
@@ -529,7 +510,7 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* ── Usage Section ── */}
+                {/* ── Charts Section ── */}
                 <div className="mt-8">
                     <div className="flex items-center gap-2 mb-4">
                         <Gauge className="w-4 h-4 text-muted-foreground" />
@@ -537,29 +518,9 @@ export default function Dashboard() {
                             Usage
                         </h2>
                     </div>
-                    <div className="grid grid-cols-1 gap-6">
-                        <UsageSection
-                            title="CPU"
-                            metric="cpu"
-                            icon={<Cpu size={14} />}
-                            unit={unit}
-                            onUnitChange={setUnit}
-                        />
-                        <UsageSection
-                            title="Memory"
-                            metric="memory"
-                            icon={<Database size={14} />}
-                            unit={unit}
-                            onUnitChange={setUnit}
-                        />
-                        <UsageSection
-                            title="Disk"
-                            metric="disk"
-                            icon={<HardDrive size={14} />}
-                            unit={unit}
-                            onUnitChange={setUnit}
-                        />
-                    </div>
+                    <ChartZoomProvider>
+                        <DashboardChartsSection />
+                    </ChartZoomProvider>
                 </div>
             </main>
 

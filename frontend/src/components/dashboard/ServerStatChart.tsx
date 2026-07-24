@@ -66,8 +66,7 @@ export const ServerStatChart = memo(function ServerStatChart({
 }: ServerStatChartProps) {
     const { domain } = useChartZoomContext();
     const allTimestamps = data.map((d) => d.timestamp);
-    const { onWheel, onTouchStart, onTouchMove } =
-        useZoomHandlers(allTimestamps);
+    const { containerRef } = useZoomHandlers(allTimestamps);
 
     const zoomedData = domain
         ? data.filter(
@@ -96,10 +95,8 @@ export const ServerStatChart = memo(function ServerStatChart({
                 {title}
             </span>
             <div
+                ref={containerRef}
                 className="touch-none select-none overflow-visible"
-                onWheel={onWheel}
-                onTouchStart={onTouchStart}
-                onTouchMove={onTouchMove}
             >
                 {displayData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={200}>
