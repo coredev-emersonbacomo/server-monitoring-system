@@ -9,6 +9,7 @@ import {
     AlertTriangle,
     Trash2,
     Cpu,
+    Building2,
     MemoryStick,
     HardDrive,
     Monitor,
@@ -788,9 +789,22 @@ export default function ServerDetail() {
                                                     </div>
                                                 ) : (
                                                     <div>
-                                                        <h3 className="text-2xl font-semibold text-foreground">
-                                                            {form.name}
-                                                        </h3>
+                                                        <div className="flex flex-col gap-1.5">
+                                                            <h3 className="text-2xl font-semibold text-foreground">
+                                                                {form.name}
+                                                            </h3>
+                                                            {initial?.client_uuid && initial?.client_name && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => navigate(`/clients/${initial.client_uuid}`)}
+                                                                    className="inline-flex items-center gap-1.5 w-fit text-xs font-medium text-muted-foreground border-b border-transparent hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
+                                                                    title={`Go to ${initial.client_name}`}
+                                                                >
+                                                                    <Building2 size={11} className="shrink-0 opacity-70" />
+                                                                    {initial.client_name}
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                         {form.description && (
                                                             <p className="text-sm text-muted-foreground mt-1">
                                                                 {form.description}
