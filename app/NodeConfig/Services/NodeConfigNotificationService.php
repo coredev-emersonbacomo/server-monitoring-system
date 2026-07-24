@@ -32,6 +32,7 @@ class NodeConfigNotificationService
             'runtime' => [
                 'metricName' => $context['metric_name'] ?? 'Unknown Metric',
                 'sustainValue' => $context['sustain_value'] ?? '',
+                'timestamp' => now()->format('Y-m-d H:i:s'),
                 'offlineDuration' => $server?->agent?->last_seen_at
                     ? now()->diffForHumans($server->agent->last_seen_at, true) . ' ago'
                     : 'unknown',

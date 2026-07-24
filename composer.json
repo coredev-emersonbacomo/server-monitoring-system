@@ -19,6 +19,7 @@
         "pjadanowski/scramble-extras": "*",
         "predis/predis": "*",
         "spatie/laravel-data": "^4.23",
+        "team-reflex/discord-php": "^10.52",
         "tpetry/laravel-postgresql-enhanced": "*"
     },
     "require-dev": {
