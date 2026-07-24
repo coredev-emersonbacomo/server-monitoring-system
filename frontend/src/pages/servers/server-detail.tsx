@@ -4,24 +4,24 @@ import { z } from "zod";
 import { useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
 import {
-Wifi,
-WifiOff,
-AlertTriangle,
-Trash2,
-Cpu,
-MemoryStick,
-HardDrive,
-Monitor,
-Info,
-BarChart3,
-Bell,
-Terminal,
-Copy,
-Check,
-RefreshCw,
-ArrowLeft,
-Loader2,
-Link2,
+    Wifi,
+    WifiOff,
+    AlertTriangle,
+    Trash2,
+    Cpu,
+    MemoryStick,
+    HardDrive,
+    Monitor,
+    Info,
+    BarChart3,
+    Bell,
+    Terminal,
+    Copy,
+    Check,
+    RefreshCw,
+    ArrowLeft,
+    Loader2,
+    Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useServer } from "@/hooks/useServer";
@@ -35,9 +35,9 @@ import { ServerStatChart } from "@/components/dashboard/ServerStatChart";
 import type { ProvisionDetailData } from "@/types/models";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import {
-DialogContent,
-DialogHeader,
-DialogTitle,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useDeleteServer } from "@/hooks/useDeleteServer";
@@ -45,421 +45,450 @@ import { NodeConfigEditor } from "@/components/node-config/NodeConfigEditor";
 import { Form, createFormStore, useForm } from "@/components/ui/form";
 
 const serverInfoSchema = z.object({
-name: z.string().min(1, "Server name is required."),
-description: z.string(),
+    name: z.string().min(1, "Server name is required."),
+    description: z.string(),
 });
 
 // ─── Server Alert Tab ────────────────────────────────────────────────────────
 
 function useServerAlertTab(
-serverUuid: string,
-serverName: string,
-clientUuid: string | null,
-clientName: string | null,
-initialScope?: string,
+    serverUuid: string,
+    serverName: string,
+    clientUuid: string | null,
+    clientName: string | null,
+    initialScope?: string,
 ) {
-const queryClient = useQueryClient();
-const [alertScope, setAlertScopeState] = useState<
-    "global" | "client" | "server"
->("global");
-const hydratedRef = useRef(false);
-useEffect(() => {
-    if (!hydratedRef.current && initialScope) {
-        hydratedRef.current = true;
-        setAlertScopeState(initialScope as "global" | "client" | "server");
-    }
-}, [initialScope]);
+    const queryClient = useQueryClient();
+    const [alertScope, setAlertScopeState] = useState<
+        "global" | "client" | "server"
+    >("global");
+    const hydratedRef = useRef(false);
+    useEffect(() => {
+        if (!hydratedRef.current && initialScope) {
+            hydratedRef.current = true;
+            setAlertScopeState(initialScope as "global" | "client" | "server");
+        }
+    }, [initialScope]);
 
-const configKey =
-    alertScope === "server"
-        ? `server_${serverUuid}`
-        : alertScope === "client" && clientUuid
-          ? `client_${clientUuid}`
-          : "alerts";
-const scopeLabel =
-    alertScope === "global"
-        ? "Global"
-        : alertScope === "client"
-          ? `Client: ${clientName ?? "Unknown"}`
-          : `Server: ${serverName}`;
+    const configKey =
+        alertScope === "server"
+            ? `server_${serverUuid}`
+            : alertScope === "client" && clientUuid
+              ? `client_${clientUuid}`
+              : "alerts";
+    const scopeLabel =
+        alertScope === "global"
+            ? "Global"
+            : alertScope === "client"
+              ? `Client: ${clientName ?? "Unknown"}`
+              : `Server: ${serverName}`;
 
-const setAlertScope = useCallback(
-    (scope: "global" | "client" | "server") => {
-        setAlertScopeState(scope);
-        api.PATCH(
-            "/v1/clients/{clientUuid}/servers/{serverUuid}/alert-scope",
-            {
-                params: { path: { clientUuid: clientUuid!, serverUuid } },
-                body: { alert_scope: scope },
-            },
-        ).then(() => {
-            queryClient.invalidateQueries({
-                queryKey: ["server", serverUuid],
+    const setAlertScope = useCallback(
+        (scope: "global" | "client" | "server") => {
+            setAlertScopeState(scope);
+            api.PATCH(
+                "/v1/clients/{clientUuid}/servers/{serverUuid}/alert-scope",
+                {
+                    params: { path: { clientUuid: clientUuid!, serverUuid } },
+                    body: { alert_scope: scope },
+                },
+            ).then(() => {
+                queryClient.invalidateQueries({
+                    queryKey: ["server", serverUuid],
+                });
             });
-        });
-    },
-    [serverUuid, clientUuid, queryClient],
-);
+        },
+        [serverUuid, clientUuid, queryClient],
+    );
 
-return {
-    alertScope,
-    setAlertScope,
-    configKey,
-    scopeLabel,
-    clientUuid,
-};
+    return {
+        alertScope,
+        setAlertScope,
+        configKey,
+        scopeLabel,
+        clientUuid,
+    };
 }
 
 const STATUS_CONFIG = {
-online: {
-    label: "Online",
-    icon: Wifi,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10 border-emerald-500/20",
-},
-warning: {
-    label: "Warning",
-    icon: AlertTriangle,
-    color: "text-amber-400",
-    bg: "bg-amber-500/10 border-amber-500/20",
-},
-offline: {
-    label: "Offline",
-    icon: WifiOff,
-    color: "text-red-400",
-    bg: "bg-red-500/10 border-red-500/20",
-},
-pending_installation: {
-    label: "Pending Installation",
-    icon: AlertTriangle,
-    color: "text-zinc-400",
-    bg: "bg-zinc-500/10 border-zinc-500/20",
-},
-waiting_for_installation: {
-    label: "Waiting for Installation",
-    icon: AlertTriangle,
-    color: "text-amber-400",
-    bg: "bg-amber-500/10 border-amber-500/20",
-},
-waiting_for_first_heartbeat: {
-    label: "Waiting for Heartbeat",
-    icon: WifiOff,
-    color: "text-blue-400",
-    bg: "bg-blue-500/10 border-blue-500/20",
-},
-archived: {
-    label: "Archived",
-    icon: WifiOff,
-    color: "text-slate-400",
-    bg: "bg-slate-500/10 border-slate-500/20",
-},
+    online: {
+        label: "Online",
+        icon: Wifi,
+        color: "text-emerald-400",
+        bg: "bg-emerald-500/10 border-emerald-500/20",
+    },
+    warning: {
+        label: "Warning",
+        icon: AlertTriangle,
+        color: "text-amber-400",
+        bg: "bg-amber-500/10 border-amber-500/20",
+    },
+    offline: {
+        label: "Offline",
+        icon: WifiOff,
+        color: "text-red-400",
+        bg: "bg-red-500/10 border-red-500/20",
+    },
+    pending_installation: {
+        label: "Pending Installation",
+        icon: AlertTriangle,
+        color: "text-zinc-400",
+        bg: "bg-zinc-500/10 border-zinc-500/20",
+    },
+    waiting_for_installation: {
+        label: "Waiting for Installation",
+        icon: AlertTriangle,
+        color: "text-amber-400",
+        bg: "bg-amber-500/10 border-amber-500/20",
+    },
+    waiting_for_first_heartbeat: {
+        label: "Waiting for Heartbeat",
+        icon: WifiOff,
+        color: "text-blue-400",
+        bg: "bg-blue-500/10 border-blue-500/20",
+    },
+    archived: {
+        label: "Archived",
+        icon: WifiOff,
+        color: "text-slate-400",
+        bg: "bg-slate-500/10 border-slate-500/20",
+    },
 } as const;
 
 const CHARTS = [
-{
-    title: "CPU",
-    dataKey: "cpu" as const,
-    color: "#8b5cf6",
-    unit: "%",
-    yDomain: [0, 100] as [number | "auto", number | "auto"],
-},
-{
-    title: "Memory",
-    dataKey: "memory" as const,
-    color: "#10b981",
-    unit: "%",
-    yDomain: [0, 100] as [number | "auto", number | "auto"],
-},
-{
-    title: "Net In",
-    dataKey: "netIn" as const,
-    color: "#f59e0b",
-    unit: " MB/s",
-},
-{
-    title: "Net Out",
-    dataKey: "netOut" as const,
-    color: "#f43f5e",
-    unit: " MB/s",
-},
-{
-    title: "Disk",
-    dataKey: "disk" as const,
-    color: "#3b82f6",
-    unit: "%",
-    yDomain: [0, 100] as [number | "auto", number | "auto"],
-},
+    {
+        title: "CPU",
+        dataKey: "cpu" as const,
+        color: "#8b5cf6",
+        unit: "%",
+        yDomain: [0, 100] as [number | "auto", number | "auto"],
+    },
+    {
+        title: "Memory",
+        dataKey: "memory" as const,
+        color: "#10b981",
+        unit: "%",
+        yDomain: [0, 100] as [number | "auto", number | "auto"],
+    },
+    {
+        title: "Net In",
+        dataKey: "netIn" as const,
+        color: "#f59e0b",
+        unit: " MB/s",
+    },
+    {
+        title: "Net Out",
+        dataKey: "netOut" as const,
+        color: "#f43f5e",
+        unit: " MB/s",
+    },
+    {
+        title: "Disk",
+        dataKey: "disk" as const,
+        color: "#3b82f6",
+        unit: "%",
+        yDomain: [0, 100] as [number | "auto", number | "auto"],
+    },
 ];
 
 export default function ServerDetail() {
-const { uuid } = useParams<{ uuid: string }>();
-const navigate = useNavigate();
-const [searchParams] = useSearchParams();
-const allClient = searchParams.get("client") === "all";
+    const { uuid } = useParams<{ uuid: string }>();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const allClient = searchParams.get("client") === "all";
 
-type TimeSpan = "1H" | "1D" | "1W" | "1M" | "3M" | "6M" | "1Y" | "3Y" | "6Y" | "9Y" | "12Y" | "Custom";
-const [timeSpan, setTimeSpan] = useState<TimeSpan>("1H");
+    type TimeSpan =
+        | "1H"
+        | "1D"
+        | "1W"
+        | "1M"
+        | "3M"
+        | "6M"
+        | "1Y"
+        | "3Y"
+        | "6Y"
+        | "9Y"
+        | "12Y"
+        | "Custom";
+    const [timeSpan, setTimeSpan] = useState<TimeSpan>("1H");
 
-// For Custom range
-const [customFrom, setCustomFrom] = useState<string>("");
-const [customTo, setCustomTo] = useState<string>("");
-const [customUnitStr, setCustomUnitStr] = useState<string>("auto");
+    // For Custom range
+    const [customFrom, setCustomFrom] = useState<string>("");
+    const [customTo, setCustomTo] = useState<string>("");
+    const [customUnitStr, setCustomUnitStr] = useState<string>("auto");
 
-const timeSpanArgs = useMemo(() => {
-    if (timeSpan === "Custom") {
-        if (!customFrom || !customTo) return { subtract: "-1 hour", unit: 1 };
+    const timeSpanArgs = useMemo(() => {
+        if (timeSpan === "Custom") {
+            if (!customFrom || !customTo)
+                return { subtract: "-1 hour", unit: 1 };
 
-        const fromTime = new Date(customFrom).getTime();
-        const toTime = new Date(customTo).getTime();
-        const diffHours = (toTime - fromTime) / (1000 * 60 * 60);
+            const fromTime = new Date(customFrom).getTime();
+            const toTime = new Date(customTo).getTime();
+            const diffHours = (toTime - fromTime) / (1000 * 60 * 60);
 
-        let minUnit = 1; // Minute
-        if (diffHours > 24 * 365) minUnit = 5; // Month
-        else if (diffHours > 24 * 31) minUnit = 4; // Week
-        else if (diffHours > 48) minUnit = 3; // Day
-        else if (diffHours > 2) minUnit = 2; // Hour
+            let minUnit = 1; // Minute
+            if (diffHours > 24 * 365)
+                minUnit = 5; // Month
+            else if (diffHours > 24 * 31)
+                minUnit = 4; // Week
+            else if (diffHours > 48)
+                minUnit = 3; // Day
+            else if (diffHours > 2) minUnit = 2; // Hour
 
-        let unit = customUnitStr === "auto" ? minUnit : parseInt(customUnitStr, 10);
-        if (unit < minUnit) unit = minUnit;
+            let unit =
+                customUnitStr === "auto"
+                    ? minUnit
+                    : parseInt(customUnitStr, 10);
+            if (unit < minUnit) unit = minUnit;
 
-        return {
-            subtract: undefined,
-            unit,
-            minUnit,
-            fromTime: new Date(customFrom).toISOString(),
-            toTime: new Date(customTo).toISOString(),
-        };
-    }
+            return {
+                subtract: undefined,
+                unit,
+                minUnit,
+                fromTime: new Date(customFrom).toISOString(),
+                toTime: new Date(customTo).toISOString(),
+            };
+        }
 
-    switch (timeSpan) {
-        case "1H":
-            return { subtract: "-1 hour", unit: 1 };   // Minute data points
-        case "1D":
-            return { subtract: "-1 day", unit: 2 };    // Hour data points
-        case "1W":
-            return { subtract: "-1 week", unit: 3 };   // Day data points
-        case "1M":
-            return { subtract: "-1 month", unit: 4 };  // Week data points
-        case "3M":
-            return { subtract: "-3 months", unit: 4 }; // Week data points
-        case "6M":
-            return { subtract: "-6 months", unit: 4 }; // Week data points
-        case "1Y":
-            return { subtract: "-1 year", unit: 5 };   // Month data points
-        case "3Y":
-            return { subtract: "-3 years", unit: 5 };  // Month data points
-        case "6Y":
-            return { subtract: "-6 years", unit: 5 };  // Month data points
-        case "9Y":
-            return { subtract: "-9 years", unit: 5 };  // Month data points
-        case "12Y":
-            return { subtract: "-12 years", unit: 5 }; // Month data points
-    }
-}, [timeSpan, customFrom, customTo, customUnitStr]);
+        switch (timeSpan) {
+            case "1H":
+                return { subtract: "-1 hour", unit: 1 }; // Minute data points
+            case "1D":
+                return { subtract: "-1 day", unit: 2 }; // Hour data points
+            case "1W":
+                return { subtract: "-1 week", unit: 3 }; // Day data points
+            case "1M":
+                return { subtract: "-1 month", unit: 4 }; // Week data points
+            case "3M":
+                return { subtract: "-3 months", unit: 4 }; // Week data points
+            case "6M":
+                return { subtract: "-6 months", unit: 4 }; // Week data points
+            case "1Y":
+                return { subtract: "-1 year", unit: 5 }; // Month data points
+            case "3Y":
+                return { subtract: "-3 years", unit: 5 }; // Month data points
+            case "6Y":
+                return { subtract: "-6 years", unit: 5 }; // Month data points
+            case "9Y":
+                return { subtract: "-9 years", unit: 5 }; // Month data points
+            case "12Y":
+                return { subtract: "-12 years", unit: 5 }; // Month data points
+        }
+    }, [timeSpan, customFrom, customTo, customUnitStr]);
 
-const { data: initial, isLoading, isError } = useServer(
-    uuid!, {
+    const {
+        data: initial,
+        isLoading,
+        isError,
+    } = useServer(uuid!, {
         timeSubtract: timeSpanArgs?.subtract,
         timeUnit: timeSpanArgs?.unit,
         fromTime: (timeSpanArgs as any)?.fromTime,
         toTime: (timeSpanArgs as any)?.toTime,
-    }
-);
+    });
 
-
-const queryClient = useQueryClient();
-const serverAlertTab = useServerAlertTab(
-    uuid!,
-    initial?.name ?? "Unknown",
-    initial?.client_uuid ?? null,
-    initial?.client_name ?? null,
-    (initial as Record<string, unknown>)?.alert_scope as string | undefined,
-);
-const [provisionDetails, setProvisionDetails] =
-    useState<ProvisionDetailData | null>(
-        initial?.activeProvisionDetails ?? null,
+    const queryClient = useQueryClient();
+    const serverAlertTab = useServerAlertTab(
+        uuid!,
+        initial?.name ?? "Unknown",
+        initial?.client_uuid ?? null,
+        initial?.client_name ?? null,
+        (initial as Record<string, unknown>)?.alert_scope as string | undefined,
     );
-const [generating, setGenerating] = useState(false);
-const [copiedKey, setCopiedKey] = useState<
-    "linux" | "windows" | "uninstall_linux" | "uninstall_windows" | null
->(null);
-const [timeLeft, setTimeLeft] = useState<string>("");
-
-const store = useMemo(
-    () =>
-        createFormStore({
-            schema: serverInfoSchema,
-            originalData: initial
-                ? {
-                      name: initial.name,
-                      description: initial.description ?? "",
-                  }
-                : null,
-            initialMode: "view",
-        }),
-    [initial],
-);
-
-const form = useForm(
-    store,
-    (s) => s.form as z.infer<typeof serverInfoSchema>,
-);
-const mode = useForm(store, (s) => s.mode);
-const [confirmText, setConfirmText] = useState("");
-const deleteServer = useDeleteServer();
-const isConfirmed = initial ? confirmText.trim() === initial.name : false;
-
-
-
-const { setTrail } = useBreadcrumb();
-useEffect(() => {
-    if (!initial) {
-        if (allClient) {
-            setTrail([{ label: "" }, { label: "" }], true);
-        } else {
-            setTrail([{ label: "" }, { label: "" }, { label: "" }], true);
-        }
-        return;
-    }
-
-    if (allClient) {
-        setTrail(
-            [
-                { label: "Servers", href: "/servers" },
-                { label: initial.name },
-            ],
-            false,
+    const [provisionDetails, setProvisionDetails] =
+        useState<ProvisionDetailData | null>(
+            initial?.activeProvisionDetails ?? null,
         );
-    } else {
-        setTrail(
-            [
-                { label: "Clients", href: "/clients" },
-                {
-                    label: initial.client_name,
-                    href: `/clients/${initial.client_uuid}`,
-                },
-                { label: initial.name },
-            ],
-            false,
-        );
-    }
-}, [initial, setTrail, uuid, allClient]);
+    const [generating, setGenerating] = useState(false);
+    const [copiedKey, setCopiedKey] = useState<
+        "linux" | "windows" | "uninstall_linux" | "uninstall_windows" | null
+    >(null);
+    const [timeLeft, setTimeLeft] = useState<string>("");
 
-useEffect(() => {
-    setProvisionDetails(initial?.activeProvisionDetails ?? null);
-}, [initial?.activeProvisionDetails]);
+    const store = useMemo(
+        () =>
+            createFormStore({
+                schema: serverInfoSchema,
+                originalData: initial
+                    ? {
+                          name: initial.name,
+                          description: initial.description ?? "",
+                      }
+                    : null,
+                initialMode: "view",
+            }),
+        [initial],
+    );
 
-useEffect(() => {
-    if (!provisionDetails?.expires_at) {
-        setTimeLeft("");
-        return;
-    }
+    const form = useForm(
+        store,
+        (s) => s.form as z.infer<typeof serverInfoSchema>,
+    );
+    const mode = useForm(store, (s) => s.mode);
+    const [confirmText, setConfirmText] = useState("");
+    const deleteServer = useDeleteServer();
+    const isConfirmed = initial ? confirmText.trim() === initial.name : false;
 
-    const updateCountdown = () => {
-        const expires = new Date(provisionDetails.expires_at!).getTime();
-        const now = new Date().getTime();
-        const diff = expires - now;
-
-        if (diff <= 0) {
-            setTimeLeft("Expired");
+    const { setTrail } = useBreadcrumb();
+    useEffect(() => {
+        if (!initial) {
+            if (allClient) {
+                setTrail([{ label: "" }, { label: "" }], true);
+            } else {
+                setTrail([{ label: "" }, { label: "" }, { label: "" }], true);
+            }
             return;
         }
 
-        const minutes = Math.floor(diff / 60000);
-        const seconds = Math.floor((diff % 60000) / 1000);
-
-        setTimeLeft(`(${minutes}m ${seconds}s remaining)`);
-    };
-
-    updateCountdown();
-    const intervalId = setInterval(updateCountdown, 1000);
-    return () => clearInterval(intervalId);
-}, [provisionDetails?.expires_at]);
-
-const generateProvisionToken = async () => {
-    if (!initial) return;
-    setGenerating(true);
-    try {
-        const { data, error, response } = await api.POST(
-            "/v1/servers/{uuid}/provision",
-            {
-                params: { path: { uuid: initial.uuid } },
-            },
-        );
-        if (error) {
-            if (response?.status === 409) {
-                setProvisionDetails(
-                    error as unknown as ProvisionDetailData,
-                );
-            } else {
-                toast.error("Failed to generate provision token.");
-            }
-        } else if (data) {
-            setProvisionDetails(data);
-            toast.success("Provision token generated successfully!");
-            queryClient.setQueryData(["server", initial.uuid], (old: typeof initial) =>
-            old ? { ...old, activeProvisionDetails: data } : old
-           );
-        }
-    } catch {
-        toast.error("An error occurred.");
-    } finally {
-        setGenerating(false);
-    }
-};
-
-const regenerateProvisionToken = async () => {
-    if (!initial) return;
-    setGenerating(true);
-    try {
-        const { data, error } = await api.POST(
-            "/v1/servers/{uuid}/provision/regenerate",
-            {
-                params: { path: { uuid: initial.uuid } },
-            },
-        );
-        if (error) {
-            toast.error("Failed to regenerate token.");
-        } else if (data) {
-            setProvisionDetails(data);
-            toast.success("Provision token regenerated!");
-            queryClient.setQueryData(["server", initial.uuid], (old: typeof initial) =>
-                old ? { ...old, activeProvisionDetails: data } : old
+        if (allClient) {
+            setTrail(
+                [
+                    { label: "Servers", href: "/servers" },
+                    { label: initial.name },
+                ],
+                false,
+            );
+        } else {
+            setTrail(
+                [
+                    { label: "Clients", href: "/clients" },
+                    {
+                        label: initial.client_name,
+                        href: `/clients/${initial.client_uuid}`,
+                    },
+                    { label: initial.name },
+                ],
+                false,
             );
         }
-    } catch {
-        toast.error("An error occurred.");
-    } finally {
-        setGenerating(false);
-    }
-};
+    }, [initial, setTrail, uuid, allClient]);
 
-const copyToClipboard = (
-    text: string,
-    type: "linux" | "windows" | "uninstall_linux" | "uninstall_windows",
-) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(type);
-    toast.success("Command copied to clipboard!");
-    setTimeout(() => setCopiedKey(null), 2000);
-};
+    useEffect(() => {
+        setProvisionDetails(initial?.activeProvisionDetails ?? null);
+    }, [initial?.activeProvisionDetails]);
 
-const handleDeletePort = async (portId: number) => {
-    if (!initial) return;
-    if (!confirm("Are you sure you want to delete this tracked port?"))
-        return;
-    try {
-        await api.DELETE("/v1/ports/{id}", {
-            params: { path: { id: portId } },
-        });
-        toast.success("Tracked port deleted successfully!");
-        queryClient.setQueryData(["server", initial.uuid], (old: typeof initial) =>
-            old ? { ...old, ports: old.ports?.filter((p) => p.id !== portId) } : old
-        );
-    } catch {
-        toast.error("Failed to delete port.");
-    }
-};
+    useEffect(() => {
+        if (!provisionDetails?.expires_at) {
+            setTimeLeft("");
+            return;
+        }
+
+        const updateCountdown = () => {
+            const expires = new Date(provisionDetails.expires_at!).getTime();
+            const now = new Date().getTime();
+            const diff = expires - now;
+
+            if (diff <= 0) {
+                setTimeLeft("Expired");
+                return;
+            }
+
+            const minutes = Math.floor(diff / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+
+            setTimeLeft(`(${minutes}m ${seconds}s remaining)`);
+        };
+
+        updateCountdown();
+        const intervalId = setInterval(updateCountdown, 1000);
+        return () => clearInterval(intervalId);
+    }, [provisionDetails?.expires_at]);
+
+    const generateProvisionToken = async () => {
+        if (!initial) return;
+        setGenerating(true);
+        try {
+            const { data, error, response } = await api.POST(
+                "/v1/servers/{uuid}/provision",
+                {
+                    params: { path: { uuid: initial.uuid } },
+                },
+            );
+            if (error) {
+                if (response?.status === 409) {
+                    setProvisionDetails(
+                        error as unknown as ProvisionDetailData,
+                    );
+                } else {
+                    toast.error("Failed to generate provision token.");
+                }
+            } else if (data) {
+                setProvisionDetails(data);
+                toast.success("Provision token generated successfully!");
+                queryClient.setQueryData(
+                    ["server", initial.uuid],
+                    (old: typeof initial) =>
+                        old ? { ...old, activeProvisionDetails: data } : old,
+                );
+            }
+        } catch {
+            toast.error("An error occurred.");
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const regenerateProvisionToken = async () => {
+        if (!initial) return;
+        setGenerating(true);
+        try {
+            const { data, error } = await api.POST(
+                "/v1/servers/{uuid}/provision/regenerate",
+                {
+                    params: { path: { uuid: initial.uuid } },
+                },
+            );
+            if (error) {
+                toast.error("Failed to regenerate token.");
+            } else if (data) {
+                setProvisionDetails(data);
+                toast.success("Provision token regenerated!");
+                queryClient.setQueryData(
+                    ["server", initial.uuid],
+                    (old: typeof initial) =>
+                        old ? { ...old, activeProvisionDetails: data } : old,
+                );
+            }
+        } catch {
+            toast.error("An error occurred.");
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const copyToClipboard = (
+        text: string,
+        type: "linux" | "windows" | "uninstall_linux" | "uninstall_windows",
+    ) => {
+        navigator.clipboard.writeText(text);
+        setCopiedKey(type);
+        toast.success("Command copied to clipboard!");
+        setTimeout(() => setCopiedKey(null), 2000);
+    };
+
+    const handleDeletePort = async (portId: number) => {
+        if (!initial) return;
+        if (!confirm("Are you sure you want to delete this tracked port?"))
+            return;
+        try {
+            await api.DELETE("/v1/ports/{id}", {
+                params: { path: { id: portId } },
+            });
+            toast.success("Tracked port deleted successfully!");
+            queryClient.setQueryData(
+                ["server", initial.uuid],
+                (old: typeof initial) =>
+                    old
+                        ? {
+                              ...old,
+                              ports: old.ports?.filter((p) => p.id !== portId),
+                          }
+                        : old,
+            );
+        } catch {
+            toast.error("Failed to delete port.");
+        }
+    };
 
     const startEditInfo = () => {
         if (!initial) return;
@@ -504,16 +533,19 @@ const handleDeletePort = async (portId: number) => {
             } else {
                 toast.success("Server info updated.");
                 setIsEditingInfo(false);
-                queryClient.setQueryData(["server", initial.uuid], (old: typeof initial) =>
-                    old
-                        ? {
-                              ...old,
-                              name: editName.trim(),
-                              description: editDescription.trim() || undefined,
-                          }
-                        : old
+                queryClient.setQueryData(
+                    ["server", initial.uuid],
+                    (old: typeof initial) =>
+                        old
+                            ? {
+                                  ...old,
+                                  name: editName.trim(),
+                                  description:
+                                      editDescription.trim() || undefined,
+                              }
+                            : old,
                 );
-          }
+            }
         } catch {
             toast.error("An error occurred.");
         } finally {
@@ -778,8 +810,11 @@ const handleDeletePort = async (portId: number) => {
                                                         <Input
                                                             value={form.name}
                                                             onChange={(e) =>
-                                                                store.set("name")(
-                                                                    e.target.value,
+                                                                store.set(
+                                                                    "name",
+                                                                )(
+                                                                    e.target
+                                                                        .value,
                                                                 )
                                                             }
                                                             className="text-sm"
@@ -828,251 +863,304 @@ const handleDeletePort = async (portId: number) => {
                                                 </p>
                                             )
                                         )}
-
                                     </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
-                                    {[
-                                        {
-                                            icon: Cpu,
-                                            label: "CPU Model",
-                                            value:
-                                                server.cpu_model ?? "Unknown",
-                                            span: true,
-                                        },
-                                        {
-                                            icon: Cpu,
-                                            label: "CPU Cores",
-                                            value: `${server.cpu_cores ?? "?"} cores`,
-                                        },
-                                        {
-                                            icon: MemoryStick,
-                                            label: "Memory",
-                                            value: server.ram
-                                                ? `${server.ram} GB`
-                                                : "Waiting for Agent",
-                                        },
-                                        {
-                                            icon: HardDrive,
-                                            label: "Disk",
-                                            value: server.disk
-                                                ? `${server.disk} GB`
-                                                : "Waiting for Agent",
-                                        },
-                                        {
-                                            icon: Monitor,
-                                            label: "OS",
-                                            value:
-                                                server.operating_system ??
-                                                "Waiting for Agent",
-                                        },
-                                    ].map(
-                                        ({
-                                            icon: ItemIcon,
-                                            label,
-                                            value,
-                                            span,
-                                        }) => (
-                                            <div
-                                                key={label}
-                                                className={cn(
-                                                    "group flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all",
-                                                    span && "sm:col-span-2",
-                                                )}
-                                            >
-                                                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
-                                                    <ItemIcon size={17} />
-                                                </div>
-                                                <div className="flex flex-col min-w-0 gap-0.5">
-                                                    <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
-                                                        {label}
-                                                    </span>
-                                                    <span className="text-sm font-semibold text-foreground wrap-break-word">
-                                                        {value}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ),
-                                    )}
-                                </div>
-
-                                <div className="mt-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5">
-                                    <p className="text-xs font-semibold text-destructive uppercase tracking-wider mb-3">
-                                        Danger Zone
-                                    </p>
-                                    <Form.DeleteModal
-                                        buttonProps={{
-                                            variant: "danger",
-                                            size: "sm",
-                                            icon: <Trash2 size={13} />,
-                                        }}
-                                        onOpenChange={(open) => {
-                                            if (!open) setConfirmText("");
-                                        }}
-                                        modal={(show) => (
-                                            <DialogContent className="sm:max-w-md">
-                                                <DialogHeader>
-                                                    <DialogTitle className="flex items-center gap-2 text-destructive">
-                                                        <Trash2 size={16} />
-                                                        Delete server
-                                                    </DialogTitle>
-                                                </DialogHeader>
-
-                                                <p className="text-sm text-muted-foreground">
-                                                    This will permanently stop monitoring{" "}
-                                                    <strong className="text-foreground">
-                                                        {initial?.name}
-                                                    </strong>{" "}
-                                                    and remove all collected metrics. This cannot be undone.
-                                                </p>
-
-                                                {initial &&
-                                                    !initial.agent_deleted && (
-                                                        <div className="flex flex-col gap-3 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
-                                                            <div className="flex items-start gap-2">
-                                                                <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-                                                                <div>
-                                                                    <p className="font-semibold text-foreground">
-                                                                        Agent Uninstallation Required
-                                                                    </p>
-                                                                    <p className="text-muted-foreground mt-0.5">
-                                                                        You must uninstall the agent service from the target machine before you can delete this server. Run the command for your operating system:
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="flex flex-col gap-2.5 mt-1 text-foreground">
-                                                                <div>
-                                                                    <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                                                        Linux (bash)
-                                                                    </label>
-                                                                    <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
-                                                                        <span className="flex-1 whitespace-pre-wrap break-all">
-                                                                            {initial.uninstall_linux_command}
-                                                                        </span>
-                                                                        <button
-                                                                            onClick={() =>
-                                                                                copyToClipboard(
-                                                                                    initial.uninstall_linux_command!,
-                                                                                    "uninstall_linux",
-                                                                                )
-                                                                            }
-                                                                            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                                        >
-                                                                            {copiedKey === "uninstall_linux" ? (
-                                                                                <Check className="size-3.5 text-emerald-400" />
-                                                                            ) : (
-                                                                                <Copy className="size-3.5" />
-                                                                            )}
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div>
-                                                                    <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                                                        Windows (PowerShell)
-                                                                    </label>
-                                                                    <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
-                                                                        <span className="flex-1 whitespace-pre-wrap break-all">
-                                                                            {initial.uninstall_windows_command}
-                                                                        </span>
-                                                                        <button
-                                                                            onClick={() =>
-                                                                                copyToClipboard(
-                                                                                    initial.uninstall_windows_command!,
-                                                                                    "uninstall_windows",
-                                                                                )
-                                                                            }
-                                                                            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                                        >
-                                                                            {copiedKey === "uninstall_windows" ? (
-                                                                                <Check className="size-3.5 text-emerald-400" />
-                                                                            ) : (
-                                                                                <Copy className="size-3.5" />
-                                                                            )}
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
+                                        {[
+                                            {
+                                                icon: Cpu,
+                                                label: "CPU Model",
+                                                value:
+                                                    server.cpu_model ??
+                                                    "Unknown",
+                                                span: true,
+                                            },
+                                            {
+                                                icon: Cpu,
+                                                label: "CPU Cores",
+                                                value: `${server.cpu_cores ?? "?"} cores`,
+                                            },
+                                            {
+                                                icon: MemoryStick,
+                                                label: "Memory",
+                                                value: server.ram
+                                                    ? `${server.ram} GB`
+                                                    : "Waiting for Agent",
+                                            },
+                                            {
+                                                icon: HardDrive,
+                                                label: "Disk",
+                                                value: server.disk
+                                                    ? `${server.disk} GB`
+                                                    : "Waiting for Agent",
+                                            },
+                                            {
+                                                icon: Monitor,
+                                                label: "OS",
+                                                value:
+                                                    server.operating_system ??
+                                                    "Waiting for Agent",
+                                            },
+                                        ].map(
+                                            ({
+                                                icon: ItemIcon,
+                                                label,
+                                                value,
+                                                span,
+                                            }) => (
+                                                <div
+                                                    key={label}
+                                                    className={cn(
+                                                        "group flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all",
+                                                        span && "sm:col-span-2",
                                                     )}
+                                                >
+                                                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
+                                                        <ItemIcon size={17} />
+                                                    </div>
+                                                    <div className="flex flex-col min-w-0 gap-0.5">
+                                                        <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
+                                                            {label}
+                                                        </span>
+                                                        <span className="text-sm font-semibold text-foreground wrap-break-word">
+                                                            {value}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ),
+                                        )}
+                                    </div>
 
-                                                <div className="flex flex-col gap-2 pt-1">
-                                                    <label className="text-xs text-muted-foreground">
-                                                        Type{" "}
-                                                        <strong className="text-foreground font-mono">
+                                    <div className="mt-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5">
+                                        <p className="text-xs font-semibold text-destructive uppercase tracking-wider mb-3">
+                                            Danger Zone
+                                        </p>
+                                        <Form.DeleteModal
+                                            buttonProps={{
+                                                variant: "danger",
+                                                size: "sm",
+                                                icon: <Trash2 size={13} />,
+                                            }}
+                                            onOpenChange={(open) => {
+                                                if (!open) setConfirmText("");
+                                            }}
+                                            modal={(show) => (
+                                                <DialogContent className="sm:max-w-md">
+                                                    <DialogHeader>
+                                                        <DialogTitle className="flex items-center gap-2 text-destructive">
+                                                            <Trash2 size={16} />
+                                                            Delete server
+                                                        </DialogTitle>
+                                                    </DialogHeader>
+
+                                                    <p className="text-sm text-muted-foreground">
+                                                        This will permanently
+                                                        stop monitoring{" "}
+                                                        <strong className="text-foreground">
                                                             {initial?.name}
                                                         </strong>{" "}
-                                                        to confirm
-                                                    </label>
-                                                    <Input
-                                                        value={confirmText}
-                                                        onChange={(e) =>
-                                                            setConfirmText(e.target.value)
-                                                        }
-                                                        placeholder={initial?.name}
-                                                        autoFocus
-                                                        className="font-mono text-sm"
-                                                    />
-                                                </div>
+                                                        and remove all collected
+                                                        metrics. This cannot be
+                                                        undone.
+                                                    </p>
 
-                                                <div className="flex justify-end gap-3 pt-2">
-                                                    <Form.Buttons.Cancel
-                                                        onClick={() => {
-                                                            show(false);
-                                                            setConfirmText("");
-                                                        }}
-                                                    />
-                                                    <Form.Button
-                                                        variant="danger"
-                                                        disabled={
-                                                            !isConfirmed ||
-                                                            deleteServer.isPending
-                                                        }
-                                                        onClick={async () => {
-                                                            if (
-                                                                !initial ||
-                                                                !isConfirmed ||
-                                                                !initial.client_uuid
-                                                            )
-                                                                return;
-                                                            try {
-                                                                await deleteServer.mutateAsync({
-                                                                    clientUuid: initial.client_uuid,
-                                                                    serverUuid: initial.uuid,
-                                                                });
-                                                                toast.success(
-                                                                    `${initial.name} has been deleted.`,
+                                                    {initial &&
+                                                        !initial.agent_deleted && (
+                                                            <div className="flex flex-col gap-3 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
+                                                                <div className="flex items-start gap-2">
+                                                                    <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                                                                    <div>
+                                                                        <p className="font-semibold text-foreground">
+                                                                            Agent
+                                                                            Uninstallation
+                                                                            Required
+                                                                        </p>
+                                                                        <p className="text-muted-foreground mt-0.5">
+                                                                            You
+                                                                            must
+                                                                            uninstall
+                                                                            the
+                                                                            agent
+                                                                            service
+                                                                            from
+                                                                            the
+                                                                            target
+                                                                            machine
+                                                                            before
+                                                                            you
+                                                                            can
+                                                                            delete
+                                                                            this
+                                                                            server.
+                                                                            Run
+                                                                            the
+                                                                            command
+                                                                            for
+                                                                            your
+                                                                            operating
+                                                                            system:
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex flex-col gap-2.5 mt-1 text-foreground">
+                                                                    <div>
+                                                                        <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                                                            Linux
+                                                                            (bash)
+                                                                        </label>
+                                                                        <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
+                                                                            <span className="flex-1 whitespace-pre-wrap break-all">
+                                                                                {
+                                                                                    initial.uninstall_linux_command
+                                                                                }
+                                                                            </span>
+                                                                            <button
+                                                                                onClick={() =>
+                                                                                    copyToClipboard(
+                                                                                        initial.uninstall_linux_command!,
+                                                                                        "uninstall_linux",
+                                                                                    )
+                                                                                }
+                                                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                                            >
+                                                                                {copiedKey ===
+                                                                                "uninstall_linux" ? (
+                                                                                    <Check className="size-3.5 text-emerald-400" />
+                                                                                ) : (
+                                                                                    <Copy className="size-3.5" />
+                                                                                )}
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div>
+                                                                        <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                                                            Windows
+                                                                            (PowerShell)
+                                                                        </label>
+                                                                        <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
+                                                                            <span className="flex-1 whitespace-pre-wrap break-all">
+                                                                                {
+                                                                                    initial.uninstall_windows_command
+                                                                                }
+                                                                            </span>
+                                                                            <button
+                                                                                onClick={() =>
+                                                                                    copyToClipboard(
+                                                                                        initial.uninstall_windows_command!,
+                                                                                        "uninstall_windows",
+                                                                                    )
+                                                                                }
+                                                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                                            >
+                                                                                {copiedKey ===
+                                                                                "uninstall_windows" ? (
+                                                                                    <Check className="size-3.5 text-emerald-400" />
+                                                                                ) : (
+                                                                                    <Copy className="size-3.5" />
+                                                                                )}
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                    <div className="flex flex-col gap-2 pt-1">
+                                                        <label className="text-xs text-muted-foreground">
+                                                            Type{" "}
+                                                            <strong className="text-foreground font-mono">
+                                                                {initial?.name}
+                                                            </strong>{" "}
+                                                            to confirm
+                                                        </label>
+                                                        <Input
+                                                            value={confirmText}
+                                                            onChange={(e) =>
+                                                                setConfirmText(
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            placeholder={
+                                                                initial?.name
+                                                            }
+                                                            autoFocus
+                                                            className="font-mono text-sm"
+                                                        />
+                                                    </div>
+
+                                                    <div className="flex justify-end gap-3 pt-2">
+                                                        <Form.Buttons.Cancel
+                                                            onClick={() => {
+                                                                show(false);
+                                                                setConfirmText(
+                                                                    "",
                                                                 );
-                                                                if (allClient) {
-                                                                    navigate("/servers");
-                                                                } else {
-                                                                    navigate(
-                                                                        `/clients/${initial.client_uuid}`,
+                                                            }}
+                                                        />
+                                                        <Form.Button
+                                                            variant="danger"
+                                                            disabled={
+                                                                !isConfirmed ||
+                                                                deleteServer.isPending
+                                                            }
+                                                            onClick={async () => {
+                                                                if (
+                                                                    !initial ||
+                                                                    !isConfirmed ||
+                                                                    !initial.client_uuid
+                                                                )
+                                                                    return;
+                                                                try {
+                                                                    await deleteServer.mutateAsync(
+                                                                        {
+                                                                            clientUuid:
+                                                                                initial.client_uuid,
+                                                                            serverUuid:
+                                                                                initial.uuid,
+                                                                        },
+                                                                    );
+                                                                    toast.success(
+                                                                        `${initial.name} has been deleted.`,
+                                                                    );
+                                                                    if (
+                                                                        allClient
+                                                                    ) {
+                                                                        navigate(
+                                                                            "/servers",
+                                                                        );
+                                                                    } else {
+                                                                        navigate(
+                                                                            `/clients/${initial.client_uuid}`,
+                                                                        );
+                                                                    }
+                                                                } catch (err: unknown) {
+                                                                    const msg =
+                                                                        (
+                                                                            err as {
+                                                                                message?: string;
+                                                                            }
+                                                                        )
+                                                                            ?.message ||
+                                                                        "Failed to delete server. Please try again.";
+                                                                    toast.error(
+                                                                        msg,
                                                                     );
                                                                 }
-                                                            } catch (err: unknown) {
-                                                                const msg =
-                                                                    (
-                                                                        err as {
-                                                                            message?: string;
-                                                                        }
-                                                                    )?.message ||
-                                                                    "Failed to delete server. Please try again.";
-                                                                toast.error(msg);
-                                                            }
-                                                        }}
-                                                    >
-                                                        {deleteServer.isPending
-                                                            ? "Deleting…"
-                                                            : "Delete server"}
-                                                    </Form.Button>
-                                                </div>
-                                            </DialogContent>
-                                        )}
-                                    >
-                                        Delete this server
-                                    </Form.DeleteModal>
-                                </div>
+                                                            }}
+                                                        >
+                                                            {deleteServer.isPending
+                                                                ? "Deleting…"
+                                                                : "Delete server"}
+                                                        </Form.Button>
+                                                    </div>
+                                                </DialogContent>
+                                            )}
+                                        >
+                                            Delete this server
+                                        </Form.DeleteModal>
+                                    </div>
                                 </Form.Root>
                             </Tab.Item>
                             {isInstalled && mode === "view" && (
@@ -1279,24 +1367,47 @@ const handleDeletePort = async (portId: number) => {
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        icon={<RefreshCw size={13} />}
+                                                        icon={
+                                                            <RefreshCw
+                                                                size={13}
+                                                            />
+                                                        }
                                                         label="Refresh"
                                                         onClick={() =>
-                                                            queryClient.invalidateQueries({
-                                                                queryKey: ["server", uuid],
-                                                            })
+                                                            queryClient.invalidateQueries(
+                                                                {
+                                                                    queryKey: [
+                                                                        "server",
+                                                                        uuid,
+                                                                    ],
+                                                                },
+                                                            )
                                                         }
                                                     />
                                                     <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
-                                                        {(["1H", "1D", "1W", "1M", "3M", "6M"] as TimeSpan[]).map((span) => (
+                                                        {(
+                                                            [
+                                                                "1H",
+                                                                "1D",
+                                                                "1W",
+                                                                "1M",
+                                                                "3M",
+                                                                "6M",
+                                                            ] as TimeSpan[]
+                                                        ).map((span) => (
                                                             <button
                                                                 key={span}
-                                                                onClick={() => setTimeSpan(span)}
+                                                                onClick={() =>
+                                                                    setTimeSpan(
+                                                                        span,
+                                                                    )
+                                                                }
                                                                 className={cn(
                                                                     "px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer",
-                                                                    timeSpan === span
+                                                                    timeSpan ===
+                                                                        span
                                                                         ? "bg-background text-foreground shadow-sm border border-border"
-                                                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                                                                 )}
                                                             >
                                                                 {span}
@@ -1304,15 +1415,29 @@ const handleDeletePort = async (portId: number) => {
                                                         ))}
                                                     </div>
                                                     <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
-                                                        {(["1Y", "3Y", "6Y", "9Y", "12Y", "Custom"] as TimeSpan[]).map((span) => (
+                                                        {(
+                                                            [
+                                                                "1Y",
+                                                                "3Y",
+                                                                "6Y",
+                                                                "9Y",
+                                                                "12Y",
+                                                                "Custom",
+                                                            ] as TimeSpan[]
+                                                        ).map((span) => (
                                                             <button
                                                                 key={span}
-                                                                onClick={() => setTimeSpan(span)}
+                                                                onClick={() =>
+                                                                    setTimeSpan(
+                                                                        span,
+                                                                    )
+                                                                }
                                                                 className={cn(
                                                                     "px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer",
-                                                                    timeSpan === span
+                                                                    timeSpan ===
+                                                                        span
                                                                         ? "bg-background text-foreground shadow-sm border border-border"
-                                                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                                                                 )}
                                                             >
                                                                 {span}
@@ -1325,36 +1450,111 @@ const handleDeletePort = async (portId: number) => {
                                             {timeSpan === "Custom" && (
                                                 <div className="flex flex-wrap items-center gap-4 mb-6 bg-muted/20 p-3 rounded-lg border border-border/50">
                                                     <div className="flex items-center gap-2">
-                                                        <label className="text-xs text-muted-foreground font-medium">From:</label>
+                                                        <label className="text-xs text-muted-foreground font-medium">
+                                                            From:
+                                                        </label>
                                                         <input
                                                             type="datetime-local"
                                                             value={customFrom}
-                                                            onChange={(e) => setCustomFrom(e.target.value)}
+                                                            onChange={(e) =>
+                                                                setCustomFrom(
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 dark:[&::-webkit-calendar-picker-indicator]:invert"
                                                         />
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <label className="text-xs text-muted-foreground font-medium">Until:</label>
+                                                        <label className="text-xs text-muted-foreground font-medium">
+                                                            Until:
+                                                        </label>
                                                         <input
                                                             type="datetime-local"
                                                             value={customTo}
-                                                            onChange={(e) => setCustomTo(e.target.value)}
+                                                            onChange={(e) =>
+                                                                setCustomTo(
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 dark:[&::-webkit-calendar-picker-indicator]:invert"
                                                         />
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <label className="text-xs text-muted-foreground font-medium">Unit:</label>
+                                                        <label className="text-xs text-muted-foreground font-medium">
+                                                            Unit:
+                                                        </label>
                                                         <select
-                                                            value={customUnitStr}
-                                                            onChange={(e) => setCustomUnitStr(e.target.value)}
+                                                            value={
+                                                                customUnitStr
+                                                            }
+                                                            onChange={(e) =>
+                                                                setCustomUnitStr(
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
                                                         >
-                                                            <option value="auto">Auto</option>
-                                                            <option value="1" disabled={(timeSpanArgs as any)?.minUnit > 1}>Minute</option>
-                                                            <option value="2" disabled={(timeSpanArgs as any)?.minUnit > 2}>Hour</option>
-                                                            <option value="3" disabled={(timeSpanArgs as any)?.minUnit > 3}>Day</option>
-                                                            <option value="4" disabled={(timeSpanArgs as any)?.minUnit > 4}>Week</option>
-                                                            <option value="5" disabled={(timeSpanArgs as any)?.minUnit > 5}>Month</option>
+                                                            <option value="auto">
+                                                                Auto
+                                                            </option>
+                                                            <option
+                                                                value="1"
+                                                                disabled={
+                                                                    (
+                                                                        timeSpanArgs as any
+                                                                    )?.minUnit >
+                                                                    1
+                                                                }
+                                                            >
+                                                                Minute
+                                                            </option>
+                                                            <option
+                                                                value="2"
+                                                                disabled={
+                                                                    (
+                                                                        timeSpanArgs as any
+                                                                    )?.minUnit >
+                                                                    2
+                                                                }
+                                                            >
+                                                                Hour
+                                                            </option>
+                                                            <option
+                                                                value="3"
+                                                                disabled={
+                                                                    (
+                                                                        timeSpanArgs as any
+                                                                    )?.minUnit >
+                                                                    3
+                                                                }
+                                                            >
+                                                                Day
+                                                            </option>
+                                                            <option
+                                                                value="4"
+                                                                disabled={
+                                                                    (
+                                                                        timeSpanArgs as any
+                                                                    )?.minUnit >
+                                                                    4
+                                                                }
+                                                            >
+                                                                Week
+                                                            </option>
+                                                            <option
+                                                                value="5"
+                                                                disabled={
+                                                                    (
+                                                                        timeSpanArgs as any
+                                                                    )?.minUnit >
+                                                                    5
+                                                                }
+                                                            >
+                                                                Month
+                                                            </option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -1364,7 +1564,9 @@ const handleDeletePort = async (portId: number) => {
                                                     <ServerStatChart
                                                         key={cfg.dataKey}
                                                         title={cfg.title}
-                                                        data={server?.stats || []}
+                                                        data={
+                                                            server?.stats || []
+                                                        }
                                                         dataKey={cfg.dataKey}
                                                         color={cfg.color}
                                                         unit={cfg.unit}
