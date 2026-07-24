@@ -30,7 +30,7 @@ class NodeConfigCache
                 self::storeConfig($config);
             }
 
-            Log::info('[node-config-cache] Warmed cache with ' . $configs->count() . ' configs');
+            Log::debug('[node-config-cache] Warmed cache with ' . $configs->count() . ' configs');
         } catch (\Throwable $e) {
             Log::warning('[node-config-cache] Failed to warm cache: ' . $e->getMessage());
         }

@@ -18,6 +18,7 @@ class SustainedNode extends BaseNode
     {
         return [
             ['key' => 'duration', 'label' => 'Duration (MM:DD:HH:MM:SS)', 'type' => 'string', 'required' => true, 'default' => '00:00:05:00:00'],
+            ['key' => 'min_match_percent', 'label' => 'Min Match %', 'type' => 'number', 'default' => 100, 'description' => 'Minimum % of samples that must violate the threshold within the sustain window'],
         ];
     }
 
@@ -27,41 +28,107 @@ class SustainedNode extends BaseNode
         $requiredSeconds = static::parseDurationToSeconds($settings['duration'] ?? '00:00:05:00:00');
         $extraSeconds = (int) ($state['extra_sustain_seconds'] ?? 0);
         $requiredSeconds += $extraSeconds;
+        $minMatchPercent = (float) ($settings['min_match_percent'] ?? 100);
+
+        $isTimerFire = $state['timer_fire'] ?? false;
+        $timerPending = $state['timer_pending'] ?? false;
+        $alreadyFired = $state['already_fired'] ?? false;
 
         $serverId = $state['server_id'] ?? null;
         $metricType = $state['metric_type'] ?? null;
         $threshold = $state['threshold'] ?? null;
         $operator = $state['operator'] ?? 'greater_than';
 
+        // Timer fire: re-check historical condition after sustain duration elapsed
+        if ($isTimerFire) {
+            if ($serverId && $metricType) {
+                $conditionMet = $this->checkHistoricalCondition(
+                    $serverId,
+                    $metricType,
+                    $threshold,
+                    $operator,
+                    $requiredSeconds,
+                    $minMatchPercent,
+                );
+
+                if ($conditionMet) {
+                    return NodeResult::propagate(true, [
+                        'timer_pending' => false,
+                        'already_fired' => true,
+                    ]);
+                }
+
+                return NodeResult::propagate(false, [
+                    'timer_pending' => false,
+                    'already_fired' => false,
+                ]);
+            }
+
+            // Fallback: propagate whatever input was pending
+            $pendingInput = $state['pending_input'] ?? null;
+            return NodeResult::propagate($pendingInput, [
+                'timer_pending' => false,
+                'already_fired' => $pendingInput ? true : false,
+            ]);
+        }
+
+        // Historical DB path (server_id + metric_type available)
         if ($serverId && $metricType) {
             $conditionMet = $this->checkHistoricalCondition(
                 $serverId,
                 $metricType,
                 $threshold,
                 $operator,
-                $requiredSeconds
+                $requiredSeconds,
+                $minMatchPercent,
             );
 
-            $alreadyFired = $state['already_fired'] ?? false;
-
-            if ($conditionMet && !$alreadyFired) {
-                return NodeResult::propagate(true, ['already_fired' => true]);
-            }
-
-            if ($conditionMet && $alreadyFired) {
+            if ($alreadyFired) {
+                if (!$conditionMet) {
+                    return NodeResult::propagate(false, [
+                        'timer_pending' => false,
+                        'already_fired' => false,
+                    ]);
+                }
                 return NodeResult::noPropagate(null, $state);
             }
 
-            if (!$conditionMet) {
-                return NodeResult::propagate(false, ['already_fired' => false]);
+            if ($conditionMet && !$timerPending) {
+                // First time condition is true: schedule timer for sustain duration
+                $delayMs = $requiredSeconds * 1000;
+                return NodeResult::withTimer(true, new NodeTimer($delayMs, ['sustain_fire' => true]), [
+                    'timer_pending' => true,
+                    'pending_input' => true,
+                    'already_fired' => false,
+                ]);
+            }
+
+            if ($conditionMet && $timerPending) {
+                // Timer already dispatched, skip
+                return NodeResult::noPropagate(null, $state);
+            }
+
+            if (!$conditionMet && $timerPending) {
+                // Condition went false while timer pending: reset
+                return NodeResult::noPropagate(null, [
+                    'timer_pending' => false,
+                    'pending_input' => null,
+                    'already_fired' => false,
+                ]);
+            }
+
+            if (!$conditionMet && !$timerPending) {
+                return NodeResult::propagate(false, [
+                    'timer_pending' => false,
+                    'already_fired' => false,
+                ]);
             }
         }
 
-        $alreadyFired = $state['already_fired'] ?? false;
-
+        // Fallback: accumulated time path (no server_id/metric_type)
         if ($alreadyFired) {
             if (!$input) {
-                return NodeResult::propagate(false, ['already_fired' => false]);
+                return NodeResult::propagate(false, ['timer_pending' => false, 'already_fired' => false]);
             }
             return NodeResult::noPropagate(null, $state);
         }
@@ -89,7 +156,7 @@ class SustainedNode extends BaseNode
             return NodeResult::noPropagate(null, $newState);
         }
 
-        return NodeResult::propagate(false, ['accumulated_seconds' => 0, 'last_timestamp' => 0, 'already_fired' => false]);
+        return NodeResult::propagate(false, ['accumulated_seconds' => 0, 'last_timestamp' => 0, 'already_fired' => false, 'timer_pending' => false]);
     }
 
     private function checkHistoricalCondition(
@@ -97,7 +164,8 @@ class SustainedNode extends BaseNode
         string $metricType,
         ?float $threshold,
         string $operator,
-        int $requiredSeconds
+        int $requiredSeconds,
+        float $minMatchPercent = 100,
     ): bool {
         if ($metricType === 'server_status') {
             return $this->checkServerStatusCondition($serverId, $requiredSeconds);
@@ -107,7 +175,7 @@ class SustainedNode extends BaseNode
             return false;
         }
 
-        return $this->checkMetricCondition($serverId, $metricType, $threshold, $operator, $requiredSeconds);
+        return $this->checkMetricCondition($serverId, $metricType, $threshold, $operator, $requiredSeconds, $minMatchPercent);
     }
 
     private function checkServerStatusCondition(int $serverId, int $requiredSeconds): bool
@@ -129,7 +197,8 @@ class SustainedNode extends BaseNode
         string $metricType,
         float $threshold,
         string $operator,
-        int $requiredSeconds
+        int $requiredSeconds,
+        float $minMatchPercent = 100,
     ): bool {
         $since = now()->subSeconds($requiredSeconds);
 
@@ -181,6 +250,6 @@ class SustainedNode extends BaseNode
         })
         ->count();
 
-        return $sampleCount > 0 && $violatingCount === $sampleCount;
+        return $sampleCount > 0 && ($violatingCount / $sampleCount) * 100 >= $minMatchPercent;
     }
 }

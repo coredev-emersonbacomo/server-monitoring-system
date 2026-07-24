@@ -108,31 +108,41 @@ function fromFlow(nodes: Node[], edges: Edge[]): NodeConfigGraph {
 }
 
 interface NodeConfigEditorProps {
-    configKey: string;
+    configKey?: string;
     scopeLabel?: string;
     maximized?: boolean;
     alwaysMaximized?: boolean;
     showControls?: boolean;
     showMinimap?: boolean;
     showNodeTypesSidebar?: boolean;
+    previewOnly?: boolean;
+    config?: NodeConfigGraph;
 }
 
 export function NodeConfigEditor({
-    configKey,
+    configKey = "alerts",
     scopeLabel = "Global",
     maximized: controlledMaximized,
     alwaysMaximized = false,
     showControls = true,
     showMinimap = true,
     showNodeTypesSidebar = true,
+    previewOnly = false,
+    config: externalConfig,
 }: NodeConfigEditorProps) {
     const { data: definitions = [], isLoading: defsLoading } = useNodeTypes();
+    const shouldFetch = !externalConfig && !!configKey;
     const { data: savedConfig, isLoading: configLoading } =
-        useConfigByKey(configKey);
+        useConfigByKey(shouldFetch ? configKey : null);
     const upsertMutation = useUpsertConfigByKey();
     const previewMutation = usePreviewConfig();
     const { theme } = useTheme();
     const { portalRef } = useOutletLayout();
+
+    const effectiveConfig = useMemo(() => {
+        if (externalConfig) return { config: externalConfig, name: "" };
+        return savedConfig;
+    }, [externalConfig, savedConfig]);
 
     const [searchParams, setSearchParams] = useSearchParams();
     const internalMaximized = searchParams.get("editor") === "maximized";
@@ -156,9 +166,8 @@ export function NodeConfigEditor({
         [setSearchParams],
     );
     const isOutletMaximized =
-        alwaysMaximized ||
-        (controlledMaximized !== undefined && controlledMaximized);
-    const isMaximized = isOutletMaximized || internalMaximized;
+        !previewOnly && (alwaysMaximized || (controlledMaximized !== undefined && controlledMaximized));
+    const isMaximized = !previewOnly && (isOutletMaximized || internalMaximized);
 
     useOutletFullScreen(isOutletMaximized);
 
@@ -189,14 +198,14 @@ export function NodeConfigEditor({
 
     const initialNodes = useMemo(
         () =>
-            savedConfig
-                ? toFlowNodes(savedConfig.config.nodes, definitions)
+            effectiveConfig
+                ? toFlowNodes(effectiveConfig.config.nodes, definitions)
                 : [],
-        [savedConfig, definitions],
+        [effectiveConfig, definitions],
     );
     const initialEdges = useMemo(
-        () => (savedConfig ? toFlowEdges(savedConfig.config.edges) : []),
-        [savedConfig],
+        () => (effectiveConfig ? toFlowEdges(effectiveConfig.config.edges) : []),
+        [effectiveConfig],
     );
 
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -246,12 +255,12 @@ export function NodeConfigEditor({
     }, [configKey]);
 
     useEffect(() => {
-        if (savedConfig && !hydrated) {
+        if (effectiveConfig && !hydrated) {
             const flowNodes = toFlowNodes(
-                savedConfig.config.nodes,
+                effectiveConfig.config.nodes,
                 definitions,
             );
-            const flowEdges = toFlowEdges(savedConfig.config.edges);
+            const flowEdges = toFlowEdges(effectiveConfig.config.edges);
             setNodes(flowNodes);
             setEdges(flowEdges);
             savedSnapshotRef.current = JSON.stringify({
@@ -260,7 +269,7 @@ export function NodeConfigEditor({
             });
             setHydrated(true);
         }
-    }, [savedConfig, definitions, hydrated, setNodes, setEdges]);
+    }, [effectiveConfig, definitions, hydrated, setNodes, setEdges]);
 
     const onConnect: OnConnect = useCallback(
         (connection: Connection) => {
@@ -437,12 +446,12 @@ export function NodeConfigEditor({
     }, [nodes, edges, previewMutation]);
 
     const previewNodes = useMemo(
-        () => toFlowNodes(savedConfig?.config.nodes ?? [], definitions),
-        [savedConfig, definitions],
+        () => toFlowNodes(effectiveConfig?.config.nodes ?? [], definitions),
+        [effectiveConfig, definitions],
     );
     const previewEdges = useMemo(
-        () => toFlowEdges(savedConfig?.config.edges ?? []),
-        [savedConfig],
+        () => toFlowEdges(effectiveConfig?.config.edges ?? []),
+        [effectiveConfig],
     );
     const isEmpty = previewNodes.length === 0 && previewEdges.length === 0;
 
@@ -451,7 +460,7 @@ export function NodeConfigEditor({
         return savedSnapshotRef.current !== JSON.stringify({ nodes, edges });
     }, [hydrated, nodes, edges]);
 
-    if (defsLoading || configLoading) {
+    if (defsLoading || (!externalConfig && configLoading)) {
         return (
             <div className="flex-1 flex items-center justify-center">
                 <Loader2
@@ -477,7 +486,7 @@ export function NodeConfigEditor({
                     stroke-width: 20 !important;
                 }
             `}</style>
-            <div className="flex-1 flex flex-col min-h-0">
+            <div className={`${previewOnly ? "h-full" : "flex-1"} flex flex-col min-h-0`}>
                 <NodeConfigToolbar
                     name={displayName}
                     isSaving={upsertMutation.isPending}
@@ -607,8 +616,8 @@ export function NodeConfigEditor({
     if (!isOutletMaximized && !internalMaximized) {
         return (
             <NodeConfigGraphProvider isPreview={true}>
-                <div className="relative rounded-xl border border-border/40 bg-background overflow-hidden">
-                    <div className="h-70 preview-nodes-disabled">
+                <div className={`relative w-full rounded-xl bg-background overflow-hidden ${previewOnly ? "h-full" : ""}`}>
+                    <div className={`w-full ${previewOnly ? "h-full" : "h-70"} preview-nodes-disabled`}>
                         {isEmpty ? (
                             <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
                                 No alerts configured. Maximize to edit.
@@ -637,13 +646,15 @@ export function NodeConfigEditor({
                             </ReactFlow>
                         )}
                     </div>
-                    <button
-                        onClick={() => setInternalMaximized(true)}
-                        className="absolute top-2 right-2 p-1.5 rounded-md bg-card/80 backdrop-blur border border-border/40 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                        title="Open full editor"
-                    >
-                        <Maximize2 size={14} />
-                    </button>
+                    {!previewOnly && (
+                        <button
+                            onClick={() => setInternalMaximized(true)}
+                            className="absolute top-2 right-2 p-1.5 rounded-md bg-card/80 backdrop-blur border border-border/40 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                            title="Open full editor"
+                        >
+                            <Maximize2 size={14} />
+                        </button>
+                    )}
                 </div>
             </NodeConfigGraphProvider>
         );

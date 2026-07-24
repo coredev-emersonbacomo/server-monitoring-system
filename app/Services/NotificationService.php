@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Mail;
+use Discord\Discord;
+use Discord\Builders\MessageBuilder;
 
 class NotificationService
 {
@@ -16,11 +18,11 @@ class NotificationService
      */
     public function sendDiscordAlert(string $tokenId, string $roleId, string $message, string $channelId)
     {
-        $discord = new \Discord\Discord([
+        $discord = new Discord([
             'token' => $tokenId,
         ]);
 
-        $discord->on('ready', function (\Discord\Discord $discord) use ($roleId, $message, $channelId) {
+        $discord->on('ready', function (Discord $discord) use ($roleId, $message, $channelId) {
             $channel = $discord->getChannel($channelId);
 
             if ($channel) {
@@ -28,14 +30,16 @@ class NotificationService
                     ? "<@&{$roleId}> ({$message})"
                     : $message;
 
-                $builder = \Discord\Builders\MessageBuilder::new()
+                $builder = MessageBuilder::new()
                     ->setContent($content);
 
                 if ($roleId) {
                     $builder->setAllowedMentions(['roles' => [$roleId]]);
                 }
 
-                $channel->sendMessage($builder)->done(function () use ($discord) {
+                $channel->sendMessage($builder)->then(function () use ($discord) {
+                    $discord->close();
+                }, function () use ($discord) {
                     $discord->close();
                 });
             } else {
