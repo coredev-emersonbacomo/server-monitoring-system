@@ -8,8 +8,6 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from "recharts";
-import { useChartZoomContext } from "@/hooks/useChartZoomContext";
-import { useZoomHandlers } from "@/hooks/useZoomHandlers";
 import type { StatPoint } from "@/types/stats";
 
 const YEARLY_SPANS = new Set(["1Y", "3Y", "6Y", "9Y", "12Y"]);
@@ -64,29 +62,13 @@ export const ServerStatChart = memo(function ServerStatChart({
     yDomain = ["auto", "auto"],
     timeSpan = "1H",
 }: ServerStatChartProps) {
-    const { domain } = useChartZoomContext();
-    const allTimestamps = data.map((d) => d.timestamp);
-    const { containerRef } = useZoomHandlers(allTimestamps);
-
-    const zoomedData = domain
-        ? data.filter(
-              (d) => d.timestamp >= domain[0] && d.timestamp <= domain[1],
-          )
-        : data;
-
-    const windowSize = 100;
-    const displayData =
-        zoomedData.length <= windowSize
-            ? zoomedData
-            : zoomedData.slice(zoomedData.length - windowSize);
-
-    const last = displayData[displayData.length - 1];
+    const last = data[data.length - 1];
     const currentValue = last?.[dataKey];
 
-    const tsValues = displayData.map((d) => d.timestamp);
+    const tsValues = data.map((d) => d.timestamp);
     const xDomain: [number, number] =
         tsValues.length < 2
-            ? [tsValues[0] - 60000, tsValues[0] + 60000]
+            ? [(tsValues[0] ?? 0) - 60000, (tsValues[0] ?? 0) + 60000]
             : [Math.min(...tsValues), Math.max(...tsValues)];
 
     return (
@@ -94,14 +76,11 @@ export const ServerStatChart = memo(function ServerStatChart({
             <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
                 {title}
             </span>
-            <div
-                ref={containerRef}
-                className="touch-none select-none overflow-visible"
-            >
-                {displayData.length > 0 ? (
+            <div>
+                {data.length > 0 ? (
                     <ResponsiveContainer width="100%" height={200}>
                         <LineChart
-                            data={displayData}
+                            data={data}
                             margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
                         >
                             <CartesianGrid
