@@ -109,8 +109,54 @@ class ServerData extends Data
 
         $agent = $server->agent;
 
+        $ignoredPorts = [
+            135,   // MS RPC / EPMAP
+            137,   // NetBIOS Name Service
+            138,   // NetBIOS Datagram
+            139,   // NetBIOS Session
+            445,   // SMB / Microsoft-DS
+            500,   // ISAKMP / IPsec
+            4500,  // IPsec NAT Traversal
+            5353,  // mDNS (Multicast DNS)
+            5355,  // LLMNR (Link-Local Multicast Name Resolution)
+            7680,  // Windows Delivery Optimization / WUDO
+            5985,  // WinRM HTTP
+            5986,  // WinRM HTTPS
+            49152, 49153, 49154, 49155, 49156, 49157, 49158, 49159, 49160, // Windows RPC Ephemeral Dynamic Port range
+        ];
+
+        $ignoredProcessPatterns = [
+            'svchost', 'lsass', 'services', 'system', 'spoolsv', 'smss', 'csrss', 'wininit', 'alg', 'dashost'
+        ];
+
         $ports = $agent ? $agent->ports
-            ->filter(fn($p) => strtoupper($p->state) === 'LISTENING')
+            ->filter(function ($p) use ($ignoredPorts, $ignoredProcessPatterns) {
+                if (strtoupper($p->state) !== 'LISTENING') {
+                    return false;
+                }
+
+                // Ignore ports in explicit exclusion list
+                if (in_array((int) $p->port, $ignoredPorts, true)) {
+                    return false;
+                }
+
+                // Ignore dynamic RPC high ports (49152-65535) unless explicitly assigned to a recognized DB/service
+                if ((int) $p->port >= 49152) {
+                    return false;
+                }
+
+                // Ignore ports bound to internal OS system background processes
+                if ($p->process_name) {
+                    $procName = strtolower($p->process_name);
+                    foreach ($ignoredProcessPatterns as $pattern) {
+                        if (str_contains($procName, $pattern)) {
+                            return false;
+                        }
+                    }
+                }
+
+                return true;
+            })
             ->map(fn($p) => new PortsData(
                 id: $p->id,
                 port: $p->port,
