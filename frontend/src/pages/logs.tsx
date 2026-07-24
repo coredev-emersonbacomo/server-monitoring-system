@@ -46,6 +46,19 @@ function actionBadgeClass(action: string): string {
     );
 }
 
+function getLogSubjectLabel(log: ActivityLogData): string {
+    if (log.details) {
+        try {
+            let obj = JSON.parse(log.details);
+            if (typeof obj === "string") obj = JSON.parse(obj);
+            if (obj && typeof obj === "object" && (obj.server_name || obj.name)) {
+                return obj.server_name || obj.name;
+            }
+        } catch {}
+    }
+    return shortModel(log.logable_type);
+}
+
 function shortModel(fqcn: string): string {
     if (!fqcn) return "—";
     const parts = fqcn.split("\\");
@@ -153,7 +166,7 @@ function LogDetailModal({
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <span
                             className={cn(
-                                "inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold uppercase tracking-wider border",
+                                "inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold uppercase tracking-wider border-0",
                                 actionBadgeClass(log.action),
                             )}
                         >
@@ -413,7 +426,7 @@ function LogTable({
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap">
                                         <span className="text-foreground font-medium">
-                                            {shortModel(log.logable_type)}
+                                            {getLogSubjectLabel(log)}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-foreground">
@@ -421,7 +434,7 @@ function LogTable({
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-foreground">
                                         <span className={cn(
-                                            "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border",
+                                            "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border-0",
                                             actionBadgeClass(log.action)
                                         )}>
                                             {log.action}
