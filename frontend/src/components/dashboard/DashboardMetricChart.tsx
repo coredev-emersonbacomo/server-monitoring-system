@@ -93,7 +93,6 @@ function DashboardMetricChartInner({
     yDomain = ["auto", "auto"],
     timeSpan,
 }: DashboardMetricChartInnerProps) {
-    const { domain } = useChartZoomContext();
     const apiUnit = TIME_SPAN_TO_UNIT[timeSpan];
 
     const { data, isLoading } = useDashboardUsage(metric, apiUnit);
@@ -120,22 +119,10 @@ function DashboardMetricChartInner({
         });
     }, [series]);
 
-    const allTimestamps = mergedData.map((d) => d.timestamp);
-    const { containerRef } = useZoomHandlers(allTimestamps);
-
-    const zoomedData = domain
-        ? mergedData.filter(
-              (d) => d.timestamp >= domain[0] && d.timestamp <= domain[1],
-          )
-        : mergedData;
-
-    const tsValues = zoomedData.map((d) => d.timestamp);
+    const tsValues = mergedData.map((d) => d.timestamp);
     const xDomain: [number, number] =
         tsValues.length < 2
-            ? [
-                  (tsValues[0] ?? Date.now()) - 60000,
-                  (tsValues[0] ?? Date.now()) + 60000,
-              ]
+            ? [(tsValues[0] ?? 0) - 60000, (tsValues[0] ?? 0) + 60000]
             : [Math.min(...tsValues), Math.max(...tsValues)];
 
     if (isLoading) {
@@ -148,7 +135,7 @@ function DashboardMetricChartInner({
         );
     }
 
-    if (!series.length || !zoomedData.length) {
+    if (!series.length || !mergedData.length) {
         return (
             <div
                 className="flex items-center justify-center w-full"
@@ -188,13 +175,10 @@ function DashboardMetricChartInner({
 
     return (
         <div className="flex flex-col gap-3">
-            <div
-                ref={containerRef}
-                className="touch-none select-none overflow-visible"
-            >
+            <div >
                 <ResponsiveContainer width="100%" height={200}>
                     <LineChart
-                        data={zoomedData}
+                        data={mergedData}
                         margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
                         syncId={`dashboard-${metric}`}
                     >
