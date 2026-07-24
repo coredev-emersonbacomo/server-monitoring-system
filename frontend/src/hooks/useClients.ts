@@ -56,7 +56,7 @@ export const useUpdateClient = (clientUuid: string) => {
 
     return useMutation({
         mutationFn: async (formData: FormData) => {
-            const { data, error } = await api.POST("/v1/clients/{clientUuid}", {
+            const { data, error } = await api.PUT("/v1/clients/{clientUuid}", {
                 params: { path: { clientUuid } },
                 body: formData as never,
             });
