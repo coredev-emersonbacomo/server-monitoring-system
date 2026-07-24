@@ -231,18 +231,28 @@ function LogDetailModal({
                                         Subject
                                     </p>
                                     {isServerSubject ? (
-                                        <Link
-                                            to={`/servers/${log.logable_id}`}
-                                            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-                                        >
-                                            <Server size={14} className="shrink-0" />
-                                            <span className="truncate">{serverName || log.logable_id}</span>
-                                            <span className="text-[10px]">→</span>
-                                        </Link>
+                                        <div className="flex flex-col gap-1">
+                                            <Link
+                                                to={`/servers/${log.logable_id}`}
+                                                className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                                            >
+                                                <Server size={14} className="shrink-0" />
+                                                <span className="truncate">{serverName || shortModel(log.logable_type)}</span>
+                                                <span className="text-[10px]">→</span>
+                                            </Link>
+                                            <span className="text-xs text-muted-foreground font-mono pl-5">
+                                                UUID: {log.logable_id}
+                                            </span>
+                                        </div>
                                     ) : (
-                                        <div className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
-                                            <Server size={14} className="shrink-0 text-muted-foreground" />
-                                            <span className="truncate">{shortModel(log.logable_type)} (#{log.logable_id})</span>
+                                        <div className="flex flex-col gap-1 text-sm font-medium text-foreground">
+                                            <div className="inline-flex items-center gap-2">
+                                                <Server size={14} className="shrink-0 text-muted-foreground" />
+                                                <span className="truncate">{shortModel(log.logable_type)}</span>
+                                            </div>
+                                            <span className="text-xs text-muted-foreground font-mono pl-5">
+                                                ID / UUID: {log.logable_id}
+                                            </span>
                                         </div>
                                     )}
                                 </div>
@@ -313,6 +323,129 @@ function LogDetailModal({
     );
 }
 
+// ─── Shared Log Table ──────────────────────────────────────────────────────────
+
+function LogTable({
+    logs,
+    isLoading,
+    emptyMessage,
+    sortField,
+    sortDir,
+    onSort,
+    onSelectLog,
+}: {
+    logs: ActivityLogData[];
+    isLoading: boolean;
+    emptyMessage: string;
+    sortField: SortableKey;
+    sortDir: "asc" | "desc";
+    onSort: (key: SortableKey) => void;
+    onSelectLog: (log: ActivityLogData) => void;
+}) {
+    return (
+        <div className="rounded-b-xl border border-border/60 bg-card overflow-hidden">
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="border-b border-border/60 bg-muted/20">
+                            {COLUMNS.map((col) => {
+                                const isActive = sortField === col.key;
+                                return (
+                                    <th
+                                        key={col.key}
+                                        onClick={() => onSort(col.key)}
+                                        className="px-4 py-3 text-left cursor-pointer select-none group"
+                                    >
+                                        <span
+                                            className={cn(
+                                                "flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-colors",
+                                                isActive
+                                                    ? "text-foreground"
+                                                    : "text-muted-foreground group-hover:text-foreground",
+                                            )}
+                                        >
+                                            {col.label}
+                                            {isActive ? (
+                                                sortDir === "asc" ? (
+                                                    <ArrowUp size={12} />
+                                                ) : (
+                                                    <ArrowDown size={12} />
+                                                )
+                                            ) : (
+                                                <ArrowUpDown
+                                                    size={12}
+                                                    className="opacity-0 group-hover:opacity-50 transition-opacity"
+                                                />
+                                            )}
+                                        </span>
+                                    </th>
+                                );
+                            })}
+                            <th className="px-4 py-3 text-right">
+                                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                    Details
+                                </span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                        {isLoading ? (
+                            Array.from({ length: 6 }).map((_, i) => (
+                                <RowSkeleton key={i} />
+                            ))
+                        ) : logs.length === 0 ? (
+                            <tr>
+                                <td
+                                    colSpan={COLUMNS.length + 1}
+                                    className="px-4 py-12 text-center text-sm text-muted-foreground"
+                                >
+                                    {emptyMessage}
+                                </td>
+                            </tr>
+                        ) : (
+                            logs.map((log) => (
+                                <tr
+                                    key={log.id}
+                                    className="hover:bg-muted/20 transition-colors"
+                                >
+                                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                                        {formatDate(log.created_at)}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                        <span className="text-foreground font-medium">
+                                            {shortModel(log.logable_type)}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-foreground">
+                                        {log.user ?? "System"}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-foreground">
+                                        <span className={cn(
+                                            "inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border",
+                                            actionBadgeClass(log.action)
+                                        )}>
+                                            {log.action}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-right">
+                                        <button
+                                            onClick={() => onSelectLog(log)}
+                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer"
+                                            title="View Details"
+                                        >
+                                            <span>View</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function LogsPage() {
@@ -331,8 +464,31 @@ export default function LogsPage() {
         }
     };
 
-    const sortedLogs = useMemo(() => {
-        const copy = [...logs];
+    // Filter categories
+    const isHealthAction = (action: string) => {
+        const act = action.toLowerCase();
+        return act.includes("online") || act.includes("offline") || act.includes("health");
+    };
+
+    const isAgentAction = (action: string) => {
+        const act = action.toLowerCase();
+        return act.includes("agent") && !isHealthAction(action);
+    };
+
+    const activityLogs = useMemo(() => {
+        return logs.filter((log) => !isHealthAction(log.action) && !isAgentAction(log.action));
+    }, [logs]);
+
+    const healthLogs = useMemo(() => {
+        return logs.filter((log) => isHealthAction(log.action));
+    }, [logs]);
+
+    const agentLogs = useMemo(() => {
+        return logs.filter((log) => isAgentAction(log.action));
+    }, [logs]);
+
+    const sortFn = (list: ActivityLogData[]) => {
+        const copy = [...list];
         copy.sort((a, b) => {
             const aVal = a[sortField] ?? "";
             const bVal = b[sortField] ?? "";
@@ -351,7 +507,11 @@ export default function LogsPage() {
             return 0;
         });
         return copy;
-    }, [logs, sortField, sortDir]);
+    };
+
+    const sortedActivity = useMemo(() => sortFn(activityLogs), [activityLogs, sortField, sortDir]);
+    const sortedHealth = useMemo(() => sortFn(healthLogs), [healthLogs, sortField, sortDir]);
+    const sortedAgent = useMemo(() => sortFn(agentLogs), [agentLogs, sortField, sortDir]);
 
     return (
         <PageLayout>
@@ -360,120 +520,39 @@ export default function LogsPage() {
             <main className="py-6 w-full flex-1 min-h-0">
                 <Tab>
                     <Tab.Item icon={Terminal} title="Activity">
-                        <div className="rounded-b-xl border border-border/60 bg-card overflow-hidden">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="border-b border-border/60 bg-muted/20">
-                                            {COLUMNS.map((col) => {
-                                                const isActive = sortField === col.key;
-                                                return (
-                                                    <th
-                                                        key={col.key}
-                                                        onClick={() =>
-                                                            handleSort(col.key)
-                                                        }
-                                                        className="px-4 py-3 text-left cursor-pointer select-none group"
-                                                    >
-                                                        <span
-                                                            className={cn(
-                                                                "flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-colors",
-                                                                isActive
-                                                                    ? "text-foreground"
-                                                                    : "text-muted-foreground group-hover:text-foreground",
-                                                            )}
-                                                        >
-                                                            {col.label}
-                                                            {isActive ? (
-                                                                sortDir === "asc" ? (
-                                                                    <ArrowUp
-                                                                        size={12}
-                                                                    />
-                                                                ) : (
-                                                                    <ArrowDown
-                                                                        size={12}
-                                                                    />
-                                                                )
-                                                            ) : (
-                                                                <ArrowUpDown
-                                                                    size={12}
-                                                                    className="opacity-0 group-hover:opacity-50 transition-opacity"
-                                                                />
-                                                            )}
-                                                        </span>
-                                                    </th>
-                                                );
-                                            })}
-                                            <th className="px-4 py-3 text-right">
-                                                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                                    Details
-                                                </span>
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border/60">
-                                        {isLoading ? (
-                                            Array.from({ length: 6 }).map((_, i) => (
-                                                <RowSkeleton key={i} />
-                                            ))
-                                        ) : sortedLogs.length === 0 ? (
-                                            <tr>
-                                                <td
-                                                    colSpan={COLUMNS.length + 1}
-                                                    className="px-4 py-12 text-center text-sm text-muted-foreground"
-                                                >
-                                                    No activity logs recorded yet.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            sortedLogs.map((log) => (
-                                                <tr
-                                                    key={log.id}
-                                                    className="hover:bg-muted/20 transition-colors"
-                                                >
-                                                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                                                        {formatDate(log.created_at)}
-                                                    </td>
-                                                    <td className="px-4 py-3 whitespace-nowrap">
-                                                        <span className="text-foreground">
-                                                            {shortModel(
-                                                                log.logable_type,
-                                                            )}
-                                                        </span>
-                                                        <span className="text-muted-foreground font-mono text-xs ml-1">
-                                                            #{log.logable_id}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-3 whitespace-nowrap text-foreground">
-                                                        {log.user ?? "System"}
-                                                    </td>
-                                                    <td className="px-4 py-3 whitespace-nowrap text-foreground">
-                                                        <span>{log.action}</span>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        <button
-                                                            onClick={() =>
-                                                                setSelectedLog(log)
-                                                            }
-                                                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors cursor-pointer"
-                                                            title="View Details"
-                                                        >
-                                                            <span>View</span>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        <LogTable
+                            logs={sortedActivity}
+                            isLoading={isLoading}
+                            emptyMessage="No general activity logs recorded yet."
+                            sortField={sortField}
+                            sortDir={sortDir}
+                            onSort={handleSort}
+                            onSelectLog={setSelectedLog}
+                        />
                     </Tab.Item>
 
-                    <Tab.Item icon={FileText} title="Server Health">
-                        <div className="rounded-b-xl border border-border/60 bg-card p-12 text-center text-sm text-muted-foreground">
-                            Server Health feature coming soon.
-                        </div>
+                    <Tab.Item icon={Server} title="Server Health">
+                        <LogTable
+                            logs={sortedHealth}
+                            isLoading={isLoading}
+                            emptyMessage="No server health status logs recorded yet."
+                            sortField={sortField}
+                            sortDir={sortDir}
+                            onSort={handleSort}
+                            onSelectLog={setSelectedLog}
+                        />
+                    </Tab.Item>
+
+                    <Tab.Item icon={FileText} title="Agent">
+                        <LogTable
+                            logs={sortedAgent}
+                            isLoading={isLoading}
+                            emptyMessage="No agent installation/update logs recorded yet."
+                            sortField={sortField}
+                            sortDir={sortDir}
+                            onSort={handleSort}
+                            onSelectLog={setSelectedLog}
+                        />
                     </Tab.Item>
                 </Tab>
             </main>
