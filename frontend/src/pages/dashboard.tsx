@@ -33,7 +33,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import IndexHeader from "@/components/IndexHeader";
 import { DashboardChartsSection } from "@/components/dashboard/DashboardMetricChart";
-import { ChartZoomProvider } from "@/contexts/ChartZoomContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -518,9 +517,7 @@ export default function Dashboard() {
                             Usage
                         </h2>
                     </div>
-                    <ChartZoomProvider>
-                        <DashboardChartsSection />
-                    </ChartZoomProvider>
+                    <DashboardChartsSection />
                 </div>
             </main>
 

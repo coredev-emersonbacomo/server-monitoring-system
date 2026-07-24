@@ -9,10 +9,11 @@ import {
     ResponsiveContainer,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import { useChartZoomContext } from "@/hooks/useChartZoomContext";
-import { useZoomHandlers } from "@/hooks/useZoomHandlers";
 import { useDashboardUsage } from "@/hooks/useDashboardUsage";
 import type { MetricKey, TimeUnit } from "@/types/dashboard";
+import { RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useQueryClient } from "@tanstack/react-query";
 
 type TimeSpan = "1H" | "1D" | "1W";
 
@@ -24,18 +25,9 @@ const TIME_SPAN_TO_UNIT: Record<TimeSpan, TimeUnit> = {
 
 // Distinct colors for up to ~12 servers
 const SERIES_COLORS = [
-    "#8b5cf6",
-    "#10b981",
-    "#f59e0b",
-    "#3b82f6",
-    "#f43f5e",
-    "#06b6d4",
-    "#a78bfa",
-    "#34d399",
-    "#fbbf24",
-    "#60a5fa",
-    "#fb7185",
-    "#22d3ee",
+    "#8b5cf6", "#10b981", "#f59e0b", "#3b82f6", "#f43f5e",
+    "#06b6d4", "#a78bfa", "#34d399", "#fbbf24", "#60a5fa",
+    "#fb7185", "#22d3ee",
 ];
 
 function fmtTime(ts: number, timeSpan: TimeSpan): string {
@@ -344,25 +336,39 @@ const TIME_SPANS: TimeSpan[] = ["1H", "1D", "1W"];
 
 export function DashboardChartsSection() {
     const [timeSpan, setTimeSpan] = useState<TimeSpan>("1H");
+    const queryClient = useQueryClient();
 
     return (
         <div>
             <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
-                    {TIME_SPANS.map((span) => (
-                        <button
-                            key={span}
-                            onClick={() => setTimeSpan(span)}
-                            className={cn(
-                                "px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer",
-                                timeSpan === span
-                                    ? "bg-background text-foreground shadow-sm border border-border"
-                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                            )}
-                        >
-                            {span}
-                        </button>
-                    ))}
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        icon={<RefreshCw size={13} />}
+                        label="Refresh"
+                        onClick={() =>
+                            queryClient.invalidateQueries({
+                                queryKey: ["dashboard", "usage"],
+                            })
+                        }
+                    />
+                    <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
+                        {TIME_SPANS.map((span) => (
+                            <button
+                                key={span}
+                                onClick={() => setTimeSpan(span)}
+                                className={cn(
+                                    "px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer",
+                                    timeSpan === span
+                                        ? "bg-background text-foreground shadow-sm border border-border"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                                )}
+                            >
+                                {span}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
