@@ -27,7 +27,7 @@ return new class extends Migration
         });
     }
 
-    public function down(): void
+    public function cdown(): void
     {
         Schema::dropIfExists('upload_intents');
     }

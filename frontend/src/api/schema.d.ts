@@ -1365,6 +1365,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.server.costLogs_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/servers/{serverUuid}": {
         parameters: {
             query?: never;
@@ -1455,6 +1471,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["v1.server.adjustCost_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clients/{clientUuid}/servers/{serverUuid}/cost-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.server.costLogs_0"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1930,6 +1962,7 @@ export interface components {
             assigned_to_uuid?: string | null;
             assigned_to_name?: string | null;
             status: string;
+            created_at?: string | null;
         };
         /** ActivityLog */
         ActivityLog: {
@@ -1984,6 +2017,20 @@ export interface components {
             created_at: string;
             updated_at: string;
             alert_scope?: string;
+        };
+        /** CustomActivityLog */
+        CustomActivityLog: {
+            id: number;
+            logable_type: string | null;
+            logable_id: string | null;
+            user_id: number | null;
+            user: string | null;
+            action: string;
+            details: unknown[] | null;
+            /** Format: date-time */
+            created_at: string | null;
+            /** Format: date-time */
+            updated_at: string | null;
         };
         /** DashboardStatsData */
         DashboardStatsData: {
@@ -2133,6 +2180,9 @@ export interface components {
             uptime_seconds?: number;
             gross_cost?: number;
             net_cost?: number;
+            accumulated_cost?: number;
+            billing_date?: string | null;
+            pending_monthly_cost?: number | null;
         };
         /** StatPointData */
         StatPointData: {
@@ -5726,6 +5776,9 @@ export interface operations {
                 content: {
                     "application/json": {
                         /** @constant */
+                        message: "Cannot delete server with an outstanding cost balance. Please settle all deductions first before deleting.";
+                    } | {
+                        /** @constant */
                         message: "Cannot delete server while the agent is still running. Please run the uninstall script first.";
                     };
                 };
@@ -5808,7 +5861,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    action: "full_payment" | "deduction";
+                    action: "deduction" | "add_funds" | "add_credit" | "reset_usage";
                     amount?: number | null;
                 };
             };
@@ -5825,6 +5878,29 @@ export interface operations {
             };
             401: components["responses"]["AuthenticationException"];
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.server.costLogs_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomActivityLog"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
         };
     };
     "v1.server.showWithStats_0": {
@@ -5951,6 +6027,9 @@ export interface operations {
                 content: {
                     "application/json": {
                         /** @constant */
+                        message: "Cannot delete server with an outstanding cost balance. Please settle all deductions first before deleting.";
+                    } | {
+                        /** @constant */
                         message: "Cannot delete server while the agent is still running. Please run the uninstall script first.";
                     };
                 };
@@ -6033,7 +6112,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    action: "full_payment" | "deduction";
+                    action: "deduction" | "add_funds" | "add_credit" | "reset_usage";
                     amount?: number | null;
                 };
             };
@@ -6050,6 +6129,29 @@ export interface operations {
             };
             401: components["responses"]["AuthenticationException"];
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.server.costLogs_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomActivityLog"][];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
         };
     };
     "v1.server.showWithStats_0": {
