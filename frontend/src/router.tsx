@@ -20,6 +20,8 @@ import UserDetail from "./pages/users/user-detail";
 import SystemSettings from "./pages/settings/system";
 import AgentSettings from "./pages/settings/agent";
 import { NodeConfigEditor } from "./components/node-config/NodeConfigEditor";
+import Docs from "./pages/docs/index";
+import DocsAlerts from "./pages/docs/alerts";
 
 const router = createBrowserRouter([
     {
@@ -118,6 +120,14 @@ const router = createBrowserRouter([
                     {
                         path: "/profile",
                         element: <Profile />,
+                    },
+                    {
+                        path: "/docs",
+                        element: <Docs />,
+                    },
+                    {
+                        path: "/docs/alerts",
+                        element: <DocsAlerts />,
                     },
                 ],
             },

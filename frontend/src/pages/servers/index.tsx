@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import PageLayout from "@/components/PageLayout";
-import { Server, Wifi, WifiOff, AlertTriangle, Search } from "lucide-react";
+import { Server, Wifi, WifiOff, AlertTriangle, Search, Trash2 } from "lucide-react";
 import { useServers } from "@/hooks/useServers";
 import { cn } from "@/lib/utils";
 import IndexToolbar from "@/components/IndexToolbar";
@@ -35,6 +35,7 @@ const STATUS_META: Record<
         bg: "bg-blue-500/10",
     },
     archived: { icon: WifiOff, color: "text-slate-400", bg: "bg-slate-500/10" },
+    pending_deletion: { icon: Trash2, color: "text-orange-400", bg: "bg-orange-500/10" },
 };
 
 export default function ServersIndex() {
@@ -62,7 +63,9 @@ export default function ServersIndex() {
     const filtered = useMemo(() => {
         if (!servers) return [];
         const result = statusFilter
-            ? servers.filter((s) => s.status === statusFilter)
+            ? statusFilter === "pending_deletion"
+                ? servers.filter((s) => s.agent_deleted)
+                : servers.filter((s) => s.status === statusFilter && !s.agent_deleted)
             : [...servers];
         return result.sort((a, b) => {
             const cmp = (() => {
@@ -87,6 +90,7 @@ export default function ServersIndex() {
             offline: servers.filter((s) => s.status === "offline").length,
             pending_installation: servers.filter((s) => s.status === "pending_installation").length,
             waiting_for_installation: servers.filter((s) => s.status === "waiting_for_installation").length,
+            pending_deletion: servers.filter((s) => s.agent_deleted).length,
         };
     }, [servers]);
 
@@ -133,6 +137,12 @@ export default function ServersIndex() {
                             value: "waiting_for_installation",
                             count: counts.waiting_for_installation,
                             icon: <AlertTriangle className="size-3 text-amber-400 animate-pulse" />,
+                        },
+                        {
+                            label: "Pending Deletion",
+                            value: "pending_deletion",
+                            count: counts.pending_deletion,
+                            icon: <Trash2 className="size-3 text-orange-400" />,
                         },
                     ]}
                     filter={statusFilter ?? ""}
@@ -190,7 +200,8 @@ export default function ServersIndex() {
                 ) : (
                     <div className="space-y-2">
                         {filtered.map((server) => {
-                            const meta = STATUS_META[server.status ?? "offline"] ?? STATUS_META.offline;
+                            const effectiveStatus = server.agent_deleted ? "pending_deletion" : (server.status ?? "offline");
+                            const meta = STATUS_META[effectiveStatus] ?? STATUS_META.offline;
                             const Icon = meta.icon;
                             return (
                                 <Link
@@ -219,29 +230,11 @@ export default function ServersIndex() {
                                     <span
                                         className={cn(
                                             "text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded text-center min-w-15",
-                                            server.status === "online" &&
-                                                "text-emerald-400 bg-emerald-500/10",
-                                            server.status === "warning" &&
-                                                "text-amber-400 bg-amber-500/10",
-                                            server.status === "offline" &&
-                                                "text-red-400 bg-red-500/10",
-                                            server.status ===
-                                                "pending_installation" &&
-                                                "text-zinc-400 bg-zinc-500/10",
-                                            server.status ===
-                                                "waiting_for_installation" &&
-                                                "text-amber-400 bg-amber-500/10",
-                                            server.status ===
-                                                "waiting_for_first_heartbeat" &&
-                                                "text-blue-400 bg-blue-500/10",
-                                            server.status === "archived" &&
-                                                "text-slate-400 bg-slate-500/10",
+                                            meta.color,
+                                            meta.bg,
                                         )}
                                     >
-                                        {(server.status || "pending").replace(
-                                            /_/g,
-                                            " ",
-                                        )}
+                                        {effectiveStatus.replace(/_/g, " ")}
                                     </span>
                                 </Link>
                             );

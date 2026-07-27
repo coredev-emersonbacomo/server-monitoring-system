@@ -124,6 +124,13 @@ export function useServerSocket(
                     // queryClient.invalidateQueries({ queryKey: ["servers"] });
                 },
             )
+            .listen(
+                ".ServerStatusUpdated",
+                () => {
+                    queryClient.invalidateQueries({ queryKey: ["server", serverUuid] });
+                    queryClient.invalidateQueries({ queryKey: ["servers"] });
+                },
+            )
             .listen(".ProvisionTokenGenerated", () => {
                 // Handled by the caller's queryClient.invalidateQueries(...) instead —
                 // no full reload needed.

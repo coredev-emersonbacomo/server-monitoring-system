@@ -18,6 +18,10 @@ import {
     ScrollText,
     X,
     Link2Off,
+    Cpu,
+    Database,
+    HardDrive,
+    Clock,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useDashboardStats } from "@/hooks/useDashboard";
@@ -29,6 +33,8 @@ import {
     type ActionItem,
 } from "@/hooks/useDashboardActions";
 import { useAuthContext } from "@/hooks/useAuthContext";
+import { getEchoInstance } from "@/hooks/useServerSocket";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import IndexHeader from "@/components/IndexHeader";
@@ -151,6 +157,19 @@ function CompletedModal({
                                         {action.assigned_to_name &&
                                             ` · ${action.assigned_to_name}`}
                                     </p>
+                                    {action.created_at && (
+                                        <p className="flex items-center gap-1 text-[11px] text-muted-foreground/70 mt-0.5">
+                                            <Clock className="size-3" />
+                                            {new Date(
+                                                action.created_at,
+                                            ).toLocaleString(undefined, {
+                                                month: "short",
+                                                day: "numeric",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                            })}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         ))
@@ -179,6 +198,27 @@ export default function Dashboard() {
 
     const leftDivRef = useRef<HTMLDivElement>(null);
     const [leftDivHeight, setLeftDivHeight] = useState(0);
+
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        const echo = getEchoInstance();
+        const channel = echo.private("dashboard");
+
+        channel.listen(".ActionItemsUpdated", () => {
+            console.log("[WS] Action items updated. Invalidate queries.");
+            queryClient.invalidateQueries({
+                queryKey: ["dashboard", "actions"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["dashboard", "actions", "completed"],
+            });
+        });
+
+        return () => {
+            channel.stopListening(".ActionItemsUpdated");
+        };
+    }, [queryClient]);
 
     useEffect(() => {
         if (leftDivRef.current) {
@@ -450,6 +490,24 @@ export default function Dashboard() {
                                                                 {
                                                                     action.assigned_to_name
                                                                 }
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {action.created_at && (
+                                                        <div className="flex items-center gap-1 mt-1.5">
+                                                            <Clock className="size-3 text-muted-foreground/60" />
+                                                            <span className="text-[11px] text-muted-foreground/70">
+                                                                {new Date(
+                                                                    action.created_at,
+                                                                ).toLocaleString(
+                                                                    undefined,
+                                                                    {
+                                                                        month: "short",
+                                                                        day: "numeric",
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                    },
+                                                                )}
                                                             </span>
                                                         </div>
                                                     )}

@@ -49,7 +49,7 @@ export const ActionNode = memo(({ id, data, type, selected }: NodeProps) => {
                 <NodeSocket type="target" position={Position.Left} id="input" def={inDef}
                     label={inDef?.label || 'Trigger'} />
                 <div className="flex-1" />
-                <NodeSocket type="source" position={Position.Right} id="out" def={outDef}
+                <NodeSocket type="source" position={Position.Right} id="output" def={outDef}
                     label={outDef?.label || 'Out'} />
             </div>
 

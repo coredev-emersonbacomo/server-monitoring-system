@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Monitor, Network, Globe, Cpu, MemoryStick, Wifi, WifiOff, AlertTriangle } from "lucide-react";
+import { Monitor, Network, Globe, Cpu, MemoryStick, Wifi, WifiOff, AlertTriangle, Trash2 } from "lucide-react";
 import type { ServerData } from "@/types/models";
 
 const STATUS_CONFIG = {
@@ -45,14 +45,22 @@ const STATUS_CONFIG = {
         color: "text-slate-400",
         bg: "bg-slate-500/10 border-slate-500/20",
     },
+    pending_deletion: {
+        label: "Pending Deletion",
+        icon: Trash2,
+        color: "text-orange-400",
+        bg: "bg-orange-500/10 border-orange-500/20",
+    },
 } as const;
 
 type StatusKey = keyof typeof STATUS_CONFIG;
 
 export default function ServerCard({ server }: { server: ServerData }) {
-    const statusKey = (server.status as StatusKey) in STATUS_CONFIG
-        ? (server.status as StatusKey)
-        : "pending_installation";
+    const statusKey: StatusKey = server.agent_deleted
+        ? "pending_deletion"
+        : (server.status as StatusKey) in STATUS_CONFIG
+            ? (server.status as StatusKey)
+            : "pending_installation";
     const { label, icon: StatusIcon, color, bg } = STATUS_CONFIG[statusKey];
 
     return (

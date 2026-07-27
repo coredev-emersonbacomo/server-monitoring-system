@@ -62,6 +62,28 @@ class ServerData extends Data
         public ?AgentData $agent = null,
 
         public string $alert_scope = 'global',
+
+        public float $hourly_cost = 0.0,
+
+        public float $cost_offset = 0.0,
+
+        public ?string $cost_reset_at = null,
+
+        public float $historical_cost = 0.0,
+
+        public ?string $rate_updated_at = null,
+
+        public int $uptime_seconds = 0,
+
+        public float $gross_cost = 0.0,
+
+        public float $net_cost = 0.0,
+
+        public float $accumulated_cost = 0.0,
+
+        public ?string $billing_date = null,
+
+        public ?float $pending_monthly_cost = null,
     ) {}
 
     public static function fromModel(Server $server): self
@@ -87,15 +109,63 @@ class ServerData extends Data
 
         $agent = $server->agent;
 
-        $ports = $agent ? $agent->ports->map(fn($p) => new PortsData(
-            id: $p->id,
-            port: $p->port,
-            protocol: $p->protocol,
-            state: $p->state,
-            process: $p->process_name,
-            ping_status: $p->ping_status,
-            ping_time: $p->ping_time,
-        ))->values()->all() : null;
+        $ignoredPorts = [
+            135,   // MS RPC / EPMAP
+            137,   // NetBIOS Name Service
+            138,   // NetBIOS Datagram
+            139,   // NetBIOS Session
+            445,   // SMB / Microsoft-DS
+            500,   // ISAKMP / IPsec
+            4500,  // IPsec NAT Traversal
+            5353,  // mDNS (Multicast DNS)
+            5355,  // LLMNR (Link-Local Multicast Name Resolution)
+            7680,  // Windows Delivery Optimization / WUDO
+            5985,  // WinRM HTTP
+            5986,  // WinRM HTTPS
+            49152, 49153, 49154, 49155, 49156, 49157, 49158, 49159, 49160, // Windows RPC Ephemeral Dynamic Port range
+        ];
+
+        $ignoredProcessPatterns = [
+            'svchost', 'lsass', 'services', 'system', 'spoolsv', 'smss', 'csrss', 'wininit', 'alg', 'dashost'
+        ];
+
+        $ports = $agent ? $agent->ports
+            ->filter(function ($p) use ($ignoredPorts, $ignoredProcessPatterns) {
+                if (strtoupper($p->state) !== 'LISTENING') {
+                    return false;
+                }
+
+                // Ignore ports in explicit exclusion list
+                if (in_array((int) $p->port, $ignoredPorts, true)) {
+                    return false;
+                }
+
+                // Ignore dynamic RPC high ports (49152-65535) unless explicitly assigned to a recognized DB/service
+                if ((int) $p->port >= 49152) {
+                    return false;
+                }
+
+                // Ignore ports bound to internal OS system background processes
+                if ($p->process_name) {
+                    $procName = strtolower($p->process_name);
+                    foreach ($ignoredProcessPatterns as $pattern) {
+                        if (str_contains($procName, $pattern)) {
+                            return false;
+                        }
+                    }
+                }
+
+                return true;
+            })
+            ->map(fn($p) => new PortsData(
+                id: $p->id,
+                port: $p->port,
+                protocol: $p->protocol,
+                state: $p->state,
+                process: $p->process_name,
+                ping_status: $p->ping_status,
+                ping_time: $p->ping_time,
+            ))->values()->all() : null;
 
         $processes = $agent ? $agent->processes()->orderByDesc('cpu')->get()->map(fn($pr) => new ProcessesData(
             pid: $pr->pid,
@@ -133,6 +203,61 @@ class ServerData extends Data
             );
         }
 
+        $hourlyCost = (float) ($server->hourly_cost ?? 0.0);
+        $costOffset = (float) ($server->cost_offset ?? 0.0);
+        $costResetAtStr = $server->cost_reset_at ? $server->cost_reset_at->toIso8601String() : null;
+        $historicalCost = (float) ($server->historical_cost ?? 0.0);
+        $rateUpdatedAtStr = $server->rate_updated_at ? $server->rate_updated_at->toIso8601String() : null;
+
+        $dbOnlineSeconds = (int) ($server->online_seconds ?? 0);
+        $offlineThreshold = (int) \App\Models\Setting::get('offline_threshold', '15');
+
+        $pendingSeconds = 0;
+        if ($server->status === 'online' && $agent && $agent->last_seen_at) {
+            $elapsedSinceHeartbeat = (int) $agent->last_seen_at->diffInSeconds(now());
+            if ($elapsedSinceHeartbeat > 0 && $elapsedSinceHeartbeat <= ($offlineThreshold + 5)) {
+                $pendingSeconds = $elapsedSinceHeartbeat;
+            }
+        }
+
+        $uptimeSeconds = $dbOnlineSeconds + $pendingSeconds;
+
+        // Monthly billing only starts once the agent is installed (registered_at set).
+        // If no agent has registered yet, cost is 0 and billing date is null.
+        $registrationDate = $agent?->registered_at ?? null;
+        $monthlyRate = $hourlyCost;
+        $nextBillingDate = null;
+
+        if ($registrationDate) {
+            // Full or partial months elapsed since registration
+            $monthsElapsed = max(1, (int) ceil(now()->diffInDays($registrationDate) / 30.0));
+            // Or exact calendar month diff
+            $calendarMonths = (now()->year - $registrationDate->year) * 12 + (now()->month - $registrationDate->month);
+            if (now()->day >= $registrationDate->day) {
+                $calendarMonths += 1;
+            }
+            $billedMonths = max(1, max($monthsElapsed, $calendarMonths));
+
+            // Apply the active monthly cost directly
+            $monthlyRate = $hourlyCost;
+
+            $grossCost = round($billedMonths * $monthlyRate, 4);
+
+            // Next billing date is registration date + $billedMonths months
+            $nextBillingDate = $registrationDate->copy()->addMonths($billedMonths);
+        } else {
+            $grossCost = 0.0;
+        }
+
+        // Net cost after deductions
+        $netCost = max(0.0, round($grossCost - $costOffset, 4));
+        $accumulatedCost = $netCost;
+
+        // Sync database column so accumulated_cost is saved directly in the servers table
+        if (abs((float) ($server->accumulated_cost ?? 0.0) - $accumulatedCost) > 0.0001) {
+            $server->updateQuietly(['accumulated_cost' => $accumulatedCost]);
+        }
+
         return new self(
             uuid: $server->uuid,
             description: $server->description,
@@ -154,10 +279,21 @@ class ServerData extends Data
             processes: $processes,
             uninstall_linux_command: $uninstallLinux,
             uninstall_windows_command: $uninstallWindows,
-            agent_deleted: $agent ? (bool) $server->agent_deleted : true,
+            agent_deleted: $agent && $agent->registered_at ? (bool) $server->agent_deleted : false,
             activities: $activities,
             agent: $agentData,
             alert_scope: $server->alert_scope ?? 'global',
+            hourly_cost: $hourlyCost,
+            cost_offset: $costOffset,
+            cost_reset_at: $costResetAtStr,
+            historical_cost: $historicalCost,
+            rate_updated_at: $rateUpdatedAtStr,
+            uptime_seconds: $uptimeSeconds,
+            gross_cost: $grossCost,
+            net_cost: $netCost,
+            accumulated_cost: $accumulatedCost,
+            billing_date: $nextBillingDate ? $nextBillingDate->toIso8601String() : null,
+            pending_monthly_cost: $server->pending_monthly_cost,
         );
     }
 }
