@@ -19,6 +19,17 @@ class ActionItem extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(function ($actionItem) {
+            event(new \App\Events\ActionItemsUpdated());
+        });
+
+        static::deleted(function ($actionItem) {
+            event(new \App\Events\ActionItemsUpdated());
+        });
+    }
+
     public function assignedUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');

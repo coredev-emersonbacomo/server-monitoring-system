@@ -95,8 +95,12 @@ class NodeConfigEngine
             foreach ($upstreamEdges as $edgeInfo) {
                 $upstreamId = $edgeInfo['source'];
                 $sourceHandle = $edgeInfo['sourceHandle'];
-                if (isset($outputs[$upstreamId][$sourceHandle])) {
-                    $inputValues[] = $outputs[$upstreamId][$sourceHandle];
+                $handleKey = $sourceHandle;
+                if (!array_key_exists($handleKey, $outputs[$upstreamId] ?? []) && $sourceHandle === 'out') {
+                    $handleKey = 'output';
+                }
+                if (array_key_exists($handleKey, $outputs[$upstreamId] ?? [])) {
+                    $inputValues[] = $outputs[$upstreamId][$handleKey];
                 } elseif (isset($outputs[$upstreamId])) {
                     $inputValues[] = $outputs[$upstreamId];
                 } else {
@@ -111,6 +115,8 @@ class NodeConfigEngine
 
             if ($nodeId === $sourceNodeId) {
                 $currentState['metric_value'] = $value;
+            } else {
+                unset($currentState['metric_value']);
             }
             $currentState = array_merge($currentState, $extraState);
 
@@ -311,8 +317,12 @@ class NodeConfigEngine
             foreach ($upstreamEdges as $edgeInfo) {
                 $upstreamId = $edgeInfo['source'];
                 $sourceHandle = $edgeInfo['sourceHandle'];
-                if (isset($outputs[$upstreamId][$sourceHandle])) {
-                    $inputValues[] = $outputs[$upstreamId][$sourceHandle];
+                $handleKey = $sourceHandle;
+                if (!array_key_exists($handleKey, $outputs[$upstreamId] ?? []) && $sourceHandle === 'out') {
+                    $handleKey = 'output';
+                }
+                if (array_key_exists($handleKey, $outputs[$upstreamId] ?? [])) {
+                    $inputValues[] = $outputs[$upstreamId][$handleKey];
                 } elseif (isset($outputs[$upstreamId])) {
                     $inputValues[] = $outputs[$upstreamId];
                 } else {
@@ -391,10 +401,22 @@ class NodeConfigEngine
             if (($sourceNode['type'] ?? '') !== 'condition') continue;
             if (($targetNode['type'] ?? '') !== 'sustained') continue;
 
-            $contexts[$edge['target']] = [
+            $ctx = [
                 'threshold' => $sourceNode['settings']['threshold'] ?? null,
                 'operator' => $sourceNode['settings']['operator'] ?? 'greater_than',
             ];
+
+            foreach ($edges as $innerEdge) {
+                if ($innerEdge['target'] === $edge['source']) {
+                    $upstreamNode = $nodeMap[$innerEdge['source']] ?? null;
+                    if ($upstreamNode && ($upstreamNode['type'] ?? '') === 'metric') {
+                        $ctx['metric_type'] = $upstreamNode['settings']['metric_type'] ?? null;
+                        break;
+                    }
+                }
+            }
+
+            $contexts[$edge['target']] = $ctx;
         }
 
         return $contexts;

@@ -1,7 +1,7 @@
 import { Outlet, useParams, useSearchParams, Link } from "react-router-dom";
 import { useServers } from "@/hooks/useServers";
 import { cn } from "@/lib/utils";
-import { Wifi, WifiOff, AlertTriangle, Search } from "lucide-react";
+import { Wifi, WifiOff, AlertTriangle, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 const STATUS_META = {
@@ -12,6 +12,7 @@ const STATUS_META = {
         bg: "bg-amber-500/10",
     },
     offline: { icon: WifiOff, color: "text-red-400", bg: "bg-red-500/10" },
+    pending_deletion: { icon: Trash2, color: "text-orange-400", bg: "bg-orange-500/10" },
     unknown: {
         icon: AlertTriangle,
         color: "text-muted-foreground",
@@ -77,9 +78,10 @@ export default function ServerLayout() {
                     ) : (
                         filtered?.map((server) => {
                             const isActive = server.uuid === uuid;
-                            const meta =
-                                STATUS_META[server.status] ??
-                                STATUS_META.unknown;
+                            const statusKey = server.agent_deleted
+                                ? "pending_deletion"
+                                : (server.status in STATUS_META ? server.status : "unknown");
+                            const meta = STATUS_META[statusKey as keyof typeof STATUS_META] ?? STATUS_META.unknown;
                             const Icon = meta.icon;
                             return (
                                 <Link

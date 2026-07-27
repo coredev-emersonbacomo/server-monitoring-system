@@ -48,7 +48,11 @@ class DashboardUsageBroadcast implements ShouldBroadcastNow
         Cache::put($lockKey, microtime(true), 10);
 
         $event = new self($data);
-        broadcast($event);
+        try {
+            broadcast($event);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[broadcast] DashboardUsageBroadcast broadcast failed', ['error' => $e->getMessage()]);
+        }
 
         return $event;
     }

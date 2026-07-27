@@ -8,6 +8,7 @@ import {
     Settings as SettingsIcon,
     GitBranch,
     Cpu,
+    BookOpen,
 } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
@@ -75,6 +76,13 @@ function Settings() {
                 "Build visual alert configurations with conditions, delays, and notifications.",
             icon: GitBranch,
             href: "/settings/alerts",
+        },
+        {
+            title: "Docs",
+            description:
+                "System documentation and reference guides.",
+            icon: BookOpen,
+            href: "/docs",
         },
     ];
 

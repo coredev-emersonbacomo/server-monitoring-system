@@ -49,7 +49,11 @@ class BroadcastServerStats implements ShouldQueue
             'd' => $stats['disk'],
         ];
 
-        ServerStatsUpdated::dispatchSync($this->serverUuid, $broadcast);
+        try {
+            ServerStatsUpdated::dispatchSync($this->serverUuid, $broadcast);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[broadcast] Failed to push stats update in job', ['error' => $e->getMessage()]);
+        }
 
         BroadcastDashboardUsage::dispatch();
     }

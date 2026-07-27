@@ -81,6 +81,12 @@ class DashboardController extends Controller
     {
         $actions = ActionItem::with(['assignedUser', 'server', 'client'])
             ->where('status', '!=', 'completed')
+            ->where(function ($q) {
+                // Keep action items that have no server (e.g. client-level) OR
+                // that reference an existing server (excludes orphaned items from deleted servers).
+                $q->whereNull('server_id')
+                  ->orWhereHas('server');
+            })
             ->get()
             ->sort(function ($a, $b) {
                 $severityOrder = [

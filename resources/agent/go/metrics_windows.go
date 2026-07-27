@@ -410,13 +410,39 @@ func (m *metricsCollector) GetOpenDatabasePorts() []PortInfo {
 			process = pidMap[pid]
 		}
 
+		// Only collect LISTENING sockets
+		state := ""
+		if len(fields) >= 4 {
+			state = strings.ToUpper(fields[3])
+		}
+		if state != "LISTENING" && state != "LISTEN" {
+			continue
+		}
+
 		if addr == "127.0.0.1" || addr == "[::1]" || addr == "::1" || addr == "localhost" {
 			continue
 		}
 
-		if addr == "0.0.0.0" || addr == "::" || addr == "*" {
-			addr = "0.0.0.0"
+		// Filter out internal OS noise ports & RPC dynamic high ports
+		ignoredPorts := map[int]bool{
+			135: true, 137: true, 138: true, 139: true, 445: true, 500: true, 4500: true,
+			5353: true, 5355: true, 7680: true, 5985: true, 5986: true,
 		}
+		if ignoredPorts[port] || port >= 49152 {
+			continue
+		}
+
+		if process != "" {
+			procLower := strings.ToLower(process)
+			if strings.Contains(procLower, "svchost") || strings.Contains(procLower, "lsass") ||
+				strings.Contains(procLower, "services") || strings.Contains(procLower, "system") ||
+				strings.Contains(procLower, "spoolsv") || strings.Contains(procLower, "smss") ||
+				strings.Contains(procLower, "csrss") || strings.Contains(procLower, "wininit") ||
+				strings.Contains(procLower, "alg") || strings.Contains(procLower, "dashost") {
+				continue
+			}
+		}
+
 		if process == "" {
 			if name, ok := dbPortNames[port]; ok {
 				process = name

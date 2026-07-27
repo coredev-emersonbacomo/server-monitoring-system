@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import api from "@/api/api";
 import {
     Wifi,
@@ -9,6 +9,7 @@ import {
     AlertTriangle,
     Trash2,
     Cpu,
+    Building2,
     MemoryStick,
     HardDrive,
     Monitor,
@@ -22,6 +23,10 @@ import {
     ArrowLeft,
     Loader2,
     Link2,
+    Banknote,
+    Coins,
+    History,
+    Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useServer } from "@/hooks/useServer";
@@ -35,6 +40,8 @@ import { ServerStatChart } from "@/components/dashboard/ServerStatChart";
 import type { ProvisionDetailData } from "@/types/models";
 import { useBreadcrumb } from "@/hooks/useBreadcrumb";
 import {
+    Dialog,
+    DialogClose,
     DialogContent,
     DialogHeader,
     DialogTitle,
@@ -47,6 +54,11 @@ import { Form, createFormStore, useForm } from "@/components/ui/form";
 const serverInfoSchema = z.object({
     name: z.string().min(1, "Server name is required."),
     description: z.string(),
+    hourly_cost: z.union([z.string(), z.number()]).transform((val) => {
+        if (val === "" || val === undefined || val === null) return 0;
+        const num = Number(val);
+        return isNaN(num) ? 0 : num;
+    }),
 });
 
 // ─── Server Alert Tab ────────────────────────────────────────────────────────
@@ -74,14 +86,14 @@ function useServerAlertTab(
         alertScope === "server"
             ? `server_${serverUuid}`
             : alertScope === "client" && clientUuid
-              ? `client_${clientUuid}`
-              : "alerts";
+                ? `client_${clientUuid}`
+                : "alerts";
     const scopeLabel =
         alertScope === "global"
             ? "Global"
             : alertScope === "client"
-              ? `Client: ${clientName ?? "Unknown"}`
-              : `Server: ${serverName}`;
+                ? `Client: ${clientName ?? "Unknown"}`
+                : `Server: ${serverName}`;
 
     const setAlertScope = useCallback(
         (scope: "global" | "client" | "server") => {
@@ -152,6 +164,12 @@ const STATUS_CONFIG = {
         icon: WifiOff,
         color: "text-slate-400",
         bg: "bg-slate-500/10 border-slate-500/20",
+    },
+    pending_deletion: {
+        label: "Pending Deletion",
+        icon: Trash2,
+        color: "text-orange-400",
+        bg: "bg-orange-500/10 border-orange-500/20",
     },
 } as const;
 
@@ -311,13 +329,14 @@ export default function ServerDetail() {
                 schema: serverInfoSchema,
                 originalData: initial
                     ? {
-                          name: initial.name,
-                          description: initial.description ?? "",
-                      }
+                        name: initial.name,
+                        description: initial.description ?? "",
+                        hourly_cost: (initial as any).hourly_cost ?? 0,
+                    }
                     : null,
                 initialMode: "view",
             }),
-        [initial],
+        [initial?.uuid],
     );
 
     const form = useForm(
@@ -325,9 +344,89 @@ export default function ServerDetail() {
         (s) => s.form as z.infer<typeof serverInfoSchema>,
     );
     const mode = useForm(store, (s) => s.mode);
+
+    useEffect(() => {
+        if (initial && mode === "view") {
+            store.set("name")(initial.name);
+            store.set("description")(initial.description ?? "");
+            store.set("hourly_cost")(String((initial as any).hourly_cost ?? 0));
+        }
+    }, [initial?.name, initial?.description, (initial as any)?.hourly_cost, mode, store]);
     const [confirmText, setConfirmText] = useState("");
     const deleteServer = useDeleteServer();
     const isConfirmed = initial ? confirmText.trim() === initial.name : false;
+
+    const [showCostModal, setShowCostModal] = useState(false);
+    const [deductAmount, setDeductAmount] = useState("");
+    const [submittingPayment, setSubmittingPayment] = useState(false);
+
+    const { data: costLogs = [], isLoading: isLoadingCostLogs } = useQuery({
+        queryKey: ["server-cost-logs", initial?.uuid],
+        queryFn: async () => {
+            if (!initial?.client_uuid || !initial?.uuid) return [];
+            const { data, error } = await api.GET(
+                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-logs" as any,
+                {
+                    params: {
+                        path: {
+                            clientUuid: initial.client_uuid,
+                            serverUuid: initial.uuid,
+                        },
+                    },
+                },
+            );
+            if (error) return [];
+            return (data as any[]) ?? [];
+        },
+        enabled: !!initial?.client_uuid && !!initial?.uuid && showCostModal,
+    });
+
+    const handleCostAdjustment = async (type: "full_payment" | "deduction" | "top_up" | "add_funds" | "reset_usage", amount?: number) => {
+        if (!initial?.client_uuid || !initial?.uuid) return;
+        setSubmittingPayment(true);
+        try {
+            const { error } = await api.POST(
+                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-adjustment",
+                {
+                    params: { path: { clientUuid: initial.client_uuid, serverUuid: initial.uuid } },
+                    body: { action: type as any, amount },
+                },
+            );
+            if (error) throw error;
+            toast.success(type === "reset_usage" ? "Server usage baseline reset successfully." : "Server credits added successfully.");
+            setShowCostModal(false);
+            setDeductAmount("");
+            queryClient.invalidateQueries({ queryKey: ["server", initial.uuid] });
+            queryClient.invalidateQueries({ queryKey: ["server-cost-logs", initial.uuid] });
+        } catch (err: any) {
+            toast.error(err?.message || "Failed to update server credits.");
+        } finally {
+            setSubmittingPayment(false);
+        }
+    };
+
+    const [liveUptimeSeconds, setLiveUptimeSeconds] = useState(0);
+
+    useEffect(() => {
+        if (initial) {
+            const serverUptime = (initial as any).uptime_seconds ?? 0;
+            setLiveUptimeSeconds((prev) => Math.max(prev, serverUptime));
+        }
+    }, [initial?.uptime_seconds]);
+
+    useEffect(() => {
+        if (initial?.cost_reset_at) {
+            setLiveUptimeSeconds((initial as any).uptime_seconds ?? 0);
+        }
+    }, [initial?.cost_reset_at]);
+
+    useEffect(() => {
+        if (!initial || initial.status !== "online") return;
+        const timer = setInterval(() => {
+            setLiveUptimeSeconds((prev) => prev + 1);
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [initial?.status, initial?.cost_reset_at]);
 
     const { setTrail } = useBreadcrumb();
     useEffect(() => {
@@ -583,11 +682,19 @@ export default function ServerDetail() {
         );
     }
 
+    const liveGrossCost = (initial as any)?.gross_cost ?? 0;
+    const liveNetCost = (initial as any)?.net_cost ?? 0;
+
     const server = {
         ...initial,
+        uptime_seconds: liveUptimeSeconds,
+        gross_cost: liveGrossCost,
+        net_cost: liveNetCost,
     };
-    const status =
-        (server.status as keyof typeof STATUS_CONFIG) || "pending_installation";
+    const status: keyof typeof STATUS_CONFIG =
+        server.agent_deleted
+            ? "pending_deletion"
+            : (server.status as keyof typeof STATUS_CONFIG) || "pending_installation";
     const { icon: StatusIcon, label, color, bg } = STATUS_CONFIG[status];
     const isInstalled =
         status === "online" || status === "warning" || status === "offline";
@@ -637,102 +744,102 @@ export default function ServerDetail() {
                                 {(status === "waiting_for_installation" ||
                                     status === "waiting_for_first_heartbeat" ||
                                     provisionDetails) && (
-                                    <div className="space-y-5">
-                                        <p className="text-sm text-muted-foreground">
-                                            Run the appropriate command directly
-                                            on your server.
-                                        </p>
+                                        <div className="space-y-5">
+                                            <p className="text-sm text-muted-foreground">
+                                                Run the appropriate command directly
+                                                on your server.
+                                            </p>
 
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                    Linux (cURL + bash)
-                                                </label>
-                                                <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
-                                                    <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
-                                                        {provisionDetails?.linux_command ||
-                                                            `sudo curl -fsSL ${window.location.origin}/install/linux | sudo bash -s -- <token>`}
-                                                    </span>
-                                                    {provisionDetails?.linux_command && (
-                                                        <button
-                                                            onClick={() =>
-                                                                copyToClipboard(
-                                                                    provisionDetails.linux_command!,
-                                                                    "linux",
-                                                                )
-                                                            }
-                                                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                        >
-                                                            {copiedKey ===
-                                                            "linux" ? (
-                                                                <Check className="size-4 text-emerald-400" />
-                                                            ) : (
-                                                                <Copy className="size-4" />
-                                                            )}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                    Windows (PowerShell)
-                                                </label>
-                                                <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
-                                                    <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
-                                                        {provisionDetails?.windows_command ||
-                                                            `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
-                                                    </span>
-                                                    {provisionDetails?.windows_command && (
-                                                        <button
-                                                            onClick={() =>
-                                                                copyToClipboard(
-                                                                    provisionDetails.windows_command!,
-                                                                    "windows",
-                                                                )
-                                                            }
-                                                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                        >
-                                                            {copiedKey ===
-                                                            "windows" ? (
-                                                                <Check className="size-4 text-emerald-400" />
-                                                            ) : (
-                                                                <Copy className="size-4" />
-                                                            )}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/40 text-xs text-muted-foreground">
-                                            <div>
-                                                {provisionDetails?.expires_at && (
-                                                    <span>
-                                                        Token expires at:{" "}
-                                                        <strong>
-                                                            {new Date(
-                                                                provisionDetails.expires_at,
-                                                            ).toLocaleString()}
-                                                        </strong>{" "}
-                                                        <span className="text-amber-500 font-mono ml-1.5">
-                                                            {timeLeft}
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                                        Linux (cURL + bash)
+                                                    </label>
+                                                    <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
+                                                        <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
+                                                            {provisionDetails?.linux_command ||
+                                                                `curl -fsSL ${window.location.origin}/install/linux | bash -s -- <token>`}
                                                         </span>
-                                                    </span>
-                                                )}
+                                                        {provisionDetails?.linux_command && (
+                                                            <button
+                                                                onClick={() =>
+                                                                    copyToClipboard(
+                                                                        provisionDetails.linux_command!,
+                                                                        "linux",
+                                                                    )
+                                                                }
+                                                                className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                            >
+                                                                {copiedKey ===
+                                                                    "linux" ? (
+                                                                    <Check className="size-4 text-emerald-400" />
+                                                                ) : (
+                                                                    <Copy className="size-4" />
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                                        Windows (PowerShell)
+                                                    </label>
+                                                    <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
+                                                        <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
+                                                            {provisionDetails?.windows_command ||
+                                                                `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
+                                                        </span>
+                                                        {provisionDetails?.windows_command && (
+                                                            <button
+                                                                onClick={() =>
+                                                                    copyToClipboard(
+                                                                        provisionDetails.windows_command!,
+                                                                        "windows",
+                                                                    )
+                                                                }
+                                                                className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                            >
+                                                                {copiedKey ===
+                                                                    "windows" ? (
+                                                                    <Check className="size-4 text-emerald-400" />
+                                                                ) : (
+                                                                    <Copy className="size-4" />
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <button
-                                                onClick={
-                                                    regenerateProvisionToken
-                                                }
-                                                className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-medium cursor-pointer"
-                                            >
-                                                <RefreshCw size={12} />
-                                                Regenerate Token
-                                            </button>
+
+                                            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/40 text-xs text-muted-foreground">
+                                                <div>
+                                                    {provisionDetails?.expires_at && (
+                                                        <span>
+                                                            Token expires at:{" "}
+                                                            <strong>
+                                                                {new Date(
+                                                                    provisionDetails.expires_at,
+                                                                ).toLocaleString()}
+                                                            </strong>{" "}
+                                                            <span className="text-amber-500 font-mono ml-1.5">
+                                                                {timeLeft}
+                                                            </span>
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    onClick={
+                                                        regenerateProvisionToken
+                                                    }
+                                                    className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-medium cursor-pointer"
+                                                >
+                                                    <RefreshCw size={12} />
+                                                    Regenerate Token
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
                             </div>
                         )}
 
@@ -743,6 +850,7 @@ export default function ServerDetail() {
                                         handler={async (
                                             data: Record<string, unknown>,
                                         ) => {
+                                            console.log("[server-detail] submitHandler called", { data });
                                             if (!initial?.client_uuid) {
                                                 toast.error(
                                                     "Missing client reference for this server.",
@@ -750,6 +858,10 @@ export default function ServerDetail() {
                                                 return;
                                             }
                                             try {
+                                                const nameStr = data.name ? String(data.name).trim() : "";
+                                                const descStr = data.description && String(data.description).trim() !== "undefined" && String(data.description).trim() !== "null" ? String(data.description).trim() : "";
+                                                const costNum = data.hourly_cost !== undefined && data.hourly_cost !== null && data.hourly_cost !== "" ? Number(data.hourly_cost) : 0;
+
                                                 const { error } =
                                                     await api.PATCH(
                                                         "/v1/clients/{clientUuid}/servers/{serverUuid}",
@@ -763,14 +875,9 @@ export default function ServerDetail() {
                                                                 },
                                                             },
                                                             body: {
-                                                                name: String(
-                                                                    data.name,
-                                                                ).trim(),
-                                                                description:
-                                                                    String(
-                                                                        data.description,
-                                                                    ).trim() ||
-                                                                    undefined,
+                                                                name: nameStr,
+                                                                description: descStr || undefined,
+                                                                hourly_cost: isNaN(costNum) ? 0 : costNum,
                                                             },
                                                         },
                                                     );
@@ -799,7 +906,7 @@ export default function ServerDetail() {
                                             }
                                         }}
                                     />
-                                    <div className="flex flex-col gap-1 p-4 bg-card border border-t-0 border-b-0 border-border/60">
+                                    <div className="flex flex-col gap-3 p-4 bg-card border border-t-0 border-b-0 border-border/60">
                                         <div className="flex items-start justify-between gap-4">
                                             <div className="min-w-0 flex-1">
                                                 {mode !== "view" ? (
@@ -822,9 +929,29 @@ export default function ServerDetail() {
                                                         />
                                                     </div>
                                                 ) : (
-                                                    <h3 className="text-2xl font-semibold text-foreground">
-                                                        {form.name}
-                                                    </h3>
+                                                    <div>
+                                                        <div className="flex flex-col gap-1.5">
+                                                            <h3 className="text-2xl font-semibold text-foreground">
+                                                                {form.name}
+                                                            </h3>
+                                                            {initial?.client_uuid && initial?.client_name && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => navigate(`/clients/${initial.client_uuid}`)}
+                                                                    className="inline-flex items-center gap-1.5 w-fit text-xs font-medium text-muted-foreground border-b border-transparent hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
+                                                                    title={`Go to ${initial.client_name}`}
+                                                                >
+                                                                    <Building2 size={11} className="shrink-0 opacity-70" />
+                                                                    {initial.client_name}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        {form.description && (
+                                                            <p className="text-sm text-muted-foreground mt-1">
+                                                                {form.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
@@ -839,40 +966,51 @@ export default function ServerDetail() {
                                             </div>
                                         </div>
 
-                                        {mode !== "view" ? (
-                                            <div>
-                                                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                    Description
-                                                </label>
-                                                <textarea
-                                                    value={form.description}
-                                                    onChange={(e) =>
-                                                        store.set(
-                                                            "description",
-                                                        )(e.target.value)
-                                                    }
-                                                    rows={2}
-                                                    maxLength={255}
-                                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                                                />
-                                            </div>
-                                        ) : (
-                                            form.description && (
-                                                <p className="text-sm text-muted-foreground">
-                                                    {form.description}
-                                                </p>
-                                            )
+                                        {mode !== "view" && (
+                                            <>
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                                        Monthly Cost (₱ / mo)
+                                                    </label>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        value={form.hourly_cost ?? ""}
+                                                        onChange={(e) =>
+                                                            store.set(
+                                                                "hourly_cost",
+                                                            )(e.target.value)
+                                                        }
+                                                        className="text-sm font-mono"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                                        Description
+                                                    </label>
+                                                    <textarea
+                                                        value={form.description}
+                                                        onChange={(e) =>
+                                                            store.set(
+                                                                "description",
+                                                            )(e.target.value)
+                                                        }
+                                                        rows={2}
+                                                        maxLength={255}
+                                                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                                                    />
+                                                </div>
+                                            </>
                                         )}
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
+                                    <div className="flex flex-wrap items-start gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
                                         {[
                                             {
                                                 icon: Cpu,
                                                 label: "CPU Model",
-                                                value:
-                                                    server.cpu_model ??
-                                                    "Unknown",
-                                                span: true,
+                                                value: server.cpu_model ?? "Unknown",
+                                                wide: true,
                                             },
                                             {
                                                 icon: Cpu,
@@ -882,52 +1020,94 @@ export default function ServerDetail() {
                                             {
                                                 icon: MemoryStick,
                                                 label: "Memory",
-                                                value: server.ram
-                                                    ? `${server.ram} GB`
-                                                    : "Waiting for Agent",
+                                                value: server.ram ? `${server.ram} GB` : "Waiting for Agent",
                                             },
                                             {
                                                 icon: HardDrive,
                                                 label: "Disk",
-                                                value: server.disk
-                                                    ? `${server.disk} GB`
-                                                    : "Waiting for Agent",
+                                                value: server.disk ? `${server.disk} GB` : "Waiting for Agent",
                                             },
                                             {
                                                 icon: Monitor,
                                                 label: "OS",
-                                                value:
-                                                    server.operating_system ??
-                                                    "Waiting for Agent",
+                                                value: server.operating_system ?? "Waiting for Agent",
                                             },
-                                        ].map(
-                                            ({
-                                                icon: ItemIcon,
-                                                label,
-                                                value,
-                                                span,
-                                            }) => (
-                                                <div
-                                                    key={label}
-                                                    className={cn(
-                                                        "group flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all",
-                                                        span && "sm:col-span-2",
-                                                    )}
-                                                >
-                                                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
-                                                        <ItemIcon size={17} />
-                                                    </div>
-                                                    <div className="flex flex-col min-w-0 gap-0.5">
-                                                        <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
-                                                            {label}
-                                                        </span>
-                                                        <span className="text-sm font-semibold text-foreground wrap-break-word">
-                                                            {value}
-                                                        </span>
-                                                    </div>
+                                        ].map(({ icon: ItemIcon, label, value, wide }) => (
+                                            <div
+                                                key={label}
+                                                className={cn(
+                                                    "group flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all",
+                                                    wide ? "flex-[2_2_320px] min-w-[320px]" : "flex-1 min-w-[200px]",
+                                                )}
+                                            >
+                                                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
+                                                    <ItemIcon size={17} />
                                                 </div>
-                                            ),
-                                        )}
+                                                <div className="flex flex-col min-w-0 gap-0.5">
+                                                    <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
+                                                        {label}
+                                                    </span>
+                                                    <span className="text-sm font-semibold text-foreground wrap-break-word whitespace-nowrap overflow-hidden text-ellipsis">
+                                                        {value}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        {/* Monthly Cost Card */}
+                                        <div className="flex-1 min-w-[200px] flex items-center gap-3 p-3.5 rounded-xl bg-primary/5 border border-primary/20 shadow-sm hover:shadow-md transition-all">
+                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
+                                                <Banknote size={17} />
+                                            </div>
+                                            <div className="flex flex-col min-w-0 gap-0.5">
+                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1.5">
+                                                    Monthly Cost
+                                                </span>
+                                                <span className="text-sm font-semibold text-foreground font-mono">
+                                                    ₱{((initial as any)?.hourly_cost ?? 0).toFixed(2)} / mo
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Cost Card (Clickable) */}
+                                        <div
+                                            onClick={() => setShowCostModal(true)}
+                                            className="flex-1 min-w-[200px] group flex items-center gap-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 shadow-sm hover:border-emerald-500/60 hover:bg-emerald-500/15 transition-all cursor-pointer"
+                                            title="Click to view details or manage deductions"
+                                        >
+                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
+                                                <Coins size={17} />
+                                            </div>
+                                            <div className="flex flex-col min-w-0 gap-0.5">
+                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-emerald-400/90">
+                                                    Cost
+                                                </span>
+                                                <span className="text-sm font-bold text-emerald-400 font-mono">
+                                                    ₱{((initial as any)?.accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Next Billing Date Card */}
+                                        <div className="flex-1 min-w-[200px] flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all">
+                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
+                                                <Calendar size={17} />
+                                            </div>
+                                            <div className="flex flex-col min-w-0 gap-0.5">
+                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
+                                                    Next Billing Date
+                                                </span>
+                                                <span className="text-sm font-semibold text-foreground wrap-break-word">
+                                                    {(initial as any)?.billing_date
+                                                        ? new Date((initial as any).billing_date).toLocaleDateString(undefined, {
+                                                            month: "short",
+                                                            day: "numeric",
+                                                            year: "numeric",
+                                                        })
+                                                        : "N/A"}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div className="mt-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5">
@@ -953,15 +1133,30 @@ export default function ServerDetail() {
                                                     </DialogHeader>
 
                                                     <p className="text-sm text-muted-foreground">
-                                                        This will permanently
-                                                        stop monitoring{" "}
+                                                        This will permanently stop monitoring{" "}
                                                         <strong className="text-foreground">
                                                             {initial?.name}
                                                         </strong>{" "}
-                                                        and remove all collected
-                                                        metrics. This cannot be
-                                                        undone.
+                                                        and remove all collected metrics. This cannot be undone.
                                                     </p>
+
+                                                    {initial &&
+                                                        (initial as any).accumulated_cost > 0 && (
+                                                            <div className="flex items-start gap-2 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-600 dark:text-amber-400">
+                                                                <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                                                                <div>
+                                                                    <p className="font-semibold text-foreground">
+                                                                        Outstanding Cost Balance
+                                                                    </p>
+                                                                    <p className="text-muted-foreground mt-0.5">
+                                                                        This server has an outstanding balance of{" "}
+                                                                        <strong className="text-amber-600 dark:text-amber-400">
+                                                                            ₱{((initial as any).accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                        </strong>. You must settle all deductions before this server can be deleted.
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        )}
 
                                                     {initial &&
                                                         !initial.agent_deleted && (
@@ -970,34 +1165,10 @@ export default function ServerDetail() {
                                                                     <AlertTriangle className="size-4 shrink-0 mt-0.5" />
                                                                     <div>
                                                                         <p className="font-semibold text-foreground">
-                                                                            Agent
-                                                                            Uninstallation
-                                                                            Required
+                                                                            Agent Uninstallation Required
                                                                         </p>
                                                                         <p className="text-muted-foreground mt-0.5">
-                                                                            You
-                                                                            must
-                                                                            uninstall
-                                                                            the
-                                                                            agent
-                                                                            service
-                                                                            from
-                                                                            the
-                                                                            target
-                                                                            machine
-                                                                            before
-                                                                            you
-                                                                            can
-                                                                            delete
-                                                                            this
-                                                                            server.
-                                                                            Run
-                                                                            the
-                                                                            command
-                                                                            for
-                                                                            your
-                                                                            operating
-                                                                            system:
+                                                                            You must uninstall the agent service from the target machine before you can delete this server. Run the command for your operating system:
                                                                         </p>
                                                                     </div>
                                                                 </div>
@@ -1005,14 +1176,11 @@ export default function ServerDetail() {
                                                                 <div className="flex flex-col gap-2.5 mt-1 text-foreground">
                                                                     <div>
                                                                         <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                                                            Linux
-                                                                            (bash)
+                                                                            Linux (bash)
                                                                         </label>
                                                                         <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
                                                                             <span className="flex-1 whitespace-pre-wrap break-all">
-                                                                                {
-                                                                                    initial.uninstall_linux_command
-                                                                                }
+                                                                                {initial.uninstall_linux_command}
                                                                             </span>
                                                                             <button
                                                                                 onClick={() =>
@@ -1023,8 +1191,7 @@ export default function ServerDetail() {
                                                                                 }
                                                                                 className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
                                                                             >
-                                                                                {copiedKey ===
-                                                                                "uninstall_linux" ? (
+                                                                                {copiedKey === "uninstall_linux" ? (
                                                                                     <Check className="size-3.5 text-emerald-400" />
                                                                                 ) : (
                                                                                     <Copy className="size-3.5" />
@@ -1035,14 +1202,11 @@ export default function ServerDetail() {
 
                                                                     <div>
                                                                         <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                                                            Windows
-                                                                            (PowerShell)
+                                                                            Windows (PowerShell)
                                                                         </label>
                                                                         <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
                                                                             <span className="flex-1 whitespace-pre-wrap break-all">
-                                                                                {
-                                                                                    initial.uninstall_windows_command
-                                                                                }
+                                                                                {initial.uninstall_windows_command}
                                                                             </span>
                                                                             <button
                                                                                 onClick={() =>
@@ -1053,8 +1217,7 @@ export default function ServerDetail() {
                                                                                 }
                                                                                 className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
                                                                             >
-                                                                                {copiedKey ===
-                                                                                "uninstall_windows" ? (
+                                                                                {copiedKey === "uninstall_windows" ? (
                                                                                     <Check className="size-3.5 text-emerald-400" />
                                                                                 ) : (
                                                                                     <Copy className="size-3.5" />
@@ -1077,14 +1240,9 @@ export default function ServerDetail() {
                                                         <Input
                                                             value={confirmText}
                                                             onChange={(e) =>
-                                                                setConfirmText(
-                                                                    e.target
-                                                                        .value,
-                                                                )
+                                                                setConfirmText(e.target.value)
                                                             }
-                                                            placeholder={
-                                                                initial?.name
-                                                            }
+                                                            placeholder={initial?.name}
                                                             autoFocus
                                                             className="font-mono text-sm"
                                                         />
@@ -1094,9 +1252,7 @@ export default function ServerDetail() {
                                                         <Form.Buttons.Cancel
                                                             onClick={() => {
                                                                 show(false);
-                                                                setConfirmText(
-                                                                    "",
-                                                                );
+                                                                setConfirmText("");
                                                             }}
                                                         />
                                                         <Form.Button
@@ -1113,23 +1269,15 @@ export default function ServerDetail() {
                                                                 )
                                                                     return;
                                                                 try {
-                                                                    await deleteServer.mutateAsync(
-                                                                        {
-                                                                            clientUuid:
-                                                                                initial.client_uuid,
-                                                                            serverUuid:
-                                                                                initial.uuid,
-                                                                        },
-                                                                    );
+                                                                    await deleteServer.mutateAsync({
+                                                                        clientUuid: initial.client_uuid,
+                                                                        serverUuid: initial.uuid,
+                                                                    });
                                                                     toast.success(
                                                                         `${initial.name} has been deleted.`,
                                                                     );
-                                                                    if (
-                                                                        allClient
-                                                                    ) {
-                                                                        navigate(
-                                                                            "/servers",
-                                                                        );
+                                                                    if (allClient) {
+                                                                        navigate("/servers");
                                                                     } else {
                                                                         navigate(
                                                                             `/clients/${initial.client_uuid}`,
@@ -1141,12 +1289,9 @@ export default function ServerDetail() {
                                                                             err as {
                                                                                 message?: string;
                                                                             }
-                                                                        )
-                                                                            ?.message ||
+                                                                        )?.message ||
                                                                         "Failed to delete server. Please try again.";
-                                                                    toast.error(
-                                                                        msg,
-                                                                    );
+                                                                    toast.error(msg);
                                                                 }
                                                             }}
                                                         >
@@ -1178,7 +1323,7 @@ export default function ServerDetail() {
                                                     Top Processes
                                                 </h3>
                                                 {server?.processes &&
-                                                server.processes.length > 0 ? (
+                                                    server.processes.length > 0 ? (
                                                     <div className="overflow-x-auto">
                                                         <table className="w-full text-left text-xs">
                                                             <thead>
@@ -1223,13 +1368,13 @@ export default function ServerDetail() {
                                                                             </td>
                                                                             <td className="py-2 text-right text-foreground">
                                                                                 {p.cpu !=
-                                                                                null
+                                                                                    null
                                                                                     ? `${p.cpu.toFixed(1)}%`
                                                                                     : "-"}
                                                                             </td>
                                                                             <td className="py-2 text-right text-foreground">
                                                                                 {p.memory !=
-                                                                                null
+                                                                                    null
                                                                                     ? `${p.memory.toFixed(1)} MB`
                                                                                     : "-"}
                                                                             </td>
@@ -1256,7 +1401,7 @@ export default function ServerDetail() {
                                                     Exposed Ports
                                                 </h3>
                                                 {server?.ports &&
-                                                server.ports.length > 0 ? (
+                                                    server.ports.length > 0 ? (
                                                     <div className="overflow-x-auto">
                                                         <table className="w-full text-left text-xs">
                                                             <thead>
@@ -1306,12 +1451,11 @@ export default function ServerDetail() {
                                                                             </td>
                                                                             <td className="py-2 text-right flex items-center justify-end gap-1.5">
                                                                                 <span
-                                                                                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
-                                                                                        p.state ===
+                                                                                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${p.state ===
                                                                                         "listening"
-                                                                                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                                                                            : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-                                                                                    }`}
+                                                                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                                                                        : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                                                                                        }`}
                                                                                 >
                                                                                     {
                                                                                         p.state
@@ -1337,12 +1481,12 @@ export default function ServerDetail() {
                                                                             </td>
                                                                             <td className="py-2 text-right text-foreground">
                                                                                 {p.ping_status ===
-                                                                                "offline"
+                                                                                    "offline"
                                                                                     ? "offline"
                                                                                     : p.ping_status ===
                                                                                         "online"
-                                                                                      ? `${p.ping_time}ms`
-                                                                                      : "-"}
+                                                                                        ? `${p.ping_time}ms`
+                                                                                        : "-"}
                                                                             </td>
                                                                         </tr>
                                                                     ),
@@ -1660,13 +1804,13 @@ export default function ServerDetail() {
                                             configKey={serverAlertTab.configKey}
                                             scopeLabel={
                                                 serverAlertTab.alertScope ===
-                                                "server"
+                                                    "server"
                                                     ? (initial?.name ?? "")
                                                     : serverAlertTab.alertScope ===
                                                         "client"
-                                                      ? (initial?.client_name ??
-                                                        "")
-                                                      : ""
+                                                        ? (initial?.client_name ??
+                                                            "")
+                                                        : ""
                                             }
                                             showControls={false}
                                             showMinimap={false}
@@ -1689,12 +1833,11 @@ export default function ServerDetail() {
                                             </h3>
                                             {server?.agent && (
                                                 <span
-                                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${
-                                                        server.agent.status ===
+                                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${server.agent.status ===
                                                         "online"
-                                                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                                            : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-                                                    }`}
+                                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                                        : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                                                        }`}
                                                 >
                                                     {server.agent.status}
                                                 </span>
@@ -1755,10 +1898,9 @@ export default function ServerDetail() {
                                                             value: server.agent
                                                                 .last_seen_at
                                                                 ? new Date(
-                                                                      server
-                                                                          .agent
-                                                                          .last_seen_at,
-                                                                  ).toLocaleString()
+                                                                    server.agent
+                                                                        .last_seen_at,
+                                                                ).toLocaleString()
                                                                 : "Never",
                                                         },
                                                     ].map((prop, idx) => (
@@ -1787,8 +1929,7 @@ export default function ServerDetail() {
                                                         Agent Activity History
                                                     </h4>
                                                     {server?.activities &&
-                                                    server.activities.length >
-                                                        0 ? (
+                                                        server.activities.length > 0 ? (
                                                         <div className="flex flex-col gap-2 max-h-62.5 overflow-y-auto pr-1">
                                                             {server.activities.map(
                                                                 (
@@ -1796,42 +1937,57 @@ export default function ServerDetail() {
                                                                     idx: number,
                                                                 ) => (
                                                                     <div
-                                                                        key={
-                                                                            idx
-                                                                        }
-                                                                        className="flex items-start gap-3 p-2.5 rounded-lg bg-card border border-border/30 hover:bg-muted/5 transition-colors"
+                                                                        key={idx}
+                                                                        className="flex items-start justify-between gap-3 p-2.5 rounded-lg bg-card border border-border/30 hover:bg-muted/5 transition-colors"
                                                                     >
-                                                                        <div
-                                                                            className={cn(
-                                                                                "w-2 h-2 rounded-full mt-1.5 shrink-0",
-                                                                                act.type ===
-                                                                                    "agent_uninstalled"
-                                                                                    ? "bg-red-500"
-                                                                                    : act.type ===
-                                                                                        "agent_updated"
-                                                                                      ? "bg-blue-500"
-                                                                                      : act.type ===
-                                                                                          "server_online"
-                                                                                        ? "bg-emerald-500"
+                                                                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                                                                            <div
+                                                                                className={cn(
+                                                                                    "w-2 h-2 rounded-full mt-1.5 shrink-0",
+                                                                                    act.type ===
+                                                                                        "agent_uninstalled"
+                                                                                        ? "bg-red-500"
                                                                                         : act.type ===
-                                                                                            "registration_completed"
-                                                                                          ? "bg-purple-500"
-                                                                                          : "bg-primary",
-                                                                            )}
-                                                                        />
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <p className="text-[11px] font-semibold text-foreground capitalize">
-                                                                                {act.type.replace(
-                                                                                    /_/g,
-                                                                                    " ",
+                                                                                            "agent_updated"
+                                                                                            ? "bg-blue-500"
+                                                                                            : act.type ===
+                                                                                                "server_online"
+                                                                                                ? "bg-emerald-500"
+                                                                                                : act.type ===
+                                                                                                    "registration_completed"
+                                                                                                    ? "bg-purple-500"
+                                                                                                    : "bg-primary",
                                                                                 )}
-                                                                            </p>
-                                                                            <p className="text-[11px] text-muted-foreground mt-0.5">
-                                                                                {
-                                                                                    act.description
-                                                                                }
-                                                                            </p>
+                                                                            />
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <p className="text-[11px] font-semibold text-foreground capitalize">
+                                                                                    {act.type.replace(
+                                                                                        /_/g,
+                                                                                        " ",
+                                                                                    )}
+                                                                                </p>
+                                                                                <p className="text-[11px] text-muted-foreground mt-0.5">
+                                                                                    {
+                                                                                        act.description
+                                                                                    }
+                                                                                </p>
+                                                                            </div>
                                                                         </div>
+                                                                        {act.created_at && (
+                                                                            <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5 whitespace-nowrap">
+                                                                                {new Date(
+                                                                                    act.created_at,
+                                                                                ).toLocaleString(
+                                                                                    undefined,
+                                                                                    {
+                                                                                        month: "short",
+                                                                                        day: "numeric",
+                                                                                        hour: "2-digit",
+                                                                                        minute: "2-digit",
+                                                                                    },
+                                                                                )}
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                 ),
                                                             )}
@@ -1860,9 +2016,132 @@ export default function ServerDetail() {
                                 </Tab.Item>
                             )}
                         </Tab>
+
+                        <Dialog open={showCostModal} onOpenChange={setShowCostModal}>
+                            <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                    <DialogTitle className="flex items-center gap-2 text-foreground">
+                                        <Coins size={18} className="text-emerald-400" />
+                                        Server Cost & Deduction Management
+                                    </DialogTitle>
+                                </DialogHeader>
+
+                                <div className="flex flex-col gap-4 py-2">
+                                    <div className="flex flex-col gap-2 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                                        <span className="text-xs uppercase tracking-wider font-semibold text-emerald-400/90">
+                                            Cost
+                                        </span>
+                                        <span className="text-3xl font-extrabold text-emerald-400 font-mono">
+                                            ₱{((initial as any)?.accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                        <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-2 border-t border-emerald-500/20 mt-1 font-mono">
+                                            <span>Payment Due: ₱{((initial as any)?.net_cost ?? 0).toFixed(2)}</span>
+                                            <span>Payments Recorded: ₱{((initial as any)?.cost_offset ?? 0).toFixed(2)}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Action: Payment Deduction */}
+                                    <div className="flex flex-col gap-2 p-3.5 rounded-lg border border-border/60 bg-card">
+                                        <p className="text-xs font-semibold text-foreground">Deduction</p>
+                                        <p className="text-[11px] text-muted-foreground">
+                                            Enter a payment amount to deduct directly from the total accumulated server cost.
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                placeholder="e.g. 500.00"
+                                                value={deductAmount}
+                                                onChange={(e) => setDeductAmount(e.target.value)}
+                                                className="text-sm font-mono"
+                                            />
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                label={submittingPayment ? "Applying…" : "Deduct"}
+                                                onClick={() => {
+                                                    const val = parseFloat(deductAmount);
+                                                    if (isNaN(val) || val <= 0) {
+                                                        toast.error("Please enter a valid positive payment amount.");
+                                                        return;
+                                                    }
+                                                    handleCostAdjustment("deduction", val);
+                                                }}
+                                                disabled={submittingPayment || !deductAmount || parseFloat(deductAmount) <= 0}
+                                                className="shrink-0"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Cost Activity Logs */}
+                                    <div className="flex flex-col gap-2 pt-2 border-t border-border/60">
+                                        <div className="flex items-center gap-2">
+                                            <History size={14} className="text-muted-foreground" />
+                                            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                                                Cost & Payment Activity Logs
+                                            </h4>
+                                        </div>
+
+                                        <div className="max-h-44 overflow-y-auto flex flex-col gap-2 pr-1">
+                                            {isLoadingCostLogs ? (
+                                                <p className="text-xs text-muted-foreground py-3 text-center">Loading logs…</p>
+                                            ) : costLogs.length === 0 ? (
+                                                <p className="text-xs text-muted-foreground py-3 text-center">No cost activity logs recorded yet.</p>
+                                            ) : (
+                                                costLogs.map((log: any) => {
+                                                    const msg = log.details?.message || log.action;
+                                                    return (
+                                                        <div key={log.id} className="p-2.5 rounded-lg bg-muted/20 border border-border/40 flex flex-col gap-1">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <span className="text-xs font-medium text-foreground">
+                                                                    {log.action}
+                                                                </span>
+                                                                {log.created_at && (
+                                                                    <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                                                                        {new Date(log.created_at).toLocaleString(undefined, {
+                                                                            month: "short",
+                                                                            day: "numeric",
+                                                                            year: "numeric",
+                                                                            hour: "2-digit",
+                                                                            minute: "2-digit",
+                                                                        })}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-[11px] text-muted-foreground">
+                                                                {msg}
+                                                            </p>
+                                                            {log.details?.before?.hourly_cost && log.details?.after?.hourly_cost && (
+                                                                <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
+                                                                    <span>Before: ₱{log.details.before.hourly_cost}/hr</span>
+                                                                    <span>→</span>
+                                                                    <span>After: ₱{log.details.after.hourly_cost}/hr</span>
+                                                                </div>
+                                                            )}
+                                                            {log.user && (
+                                                                <p className="text-[10px] text-muted-foreground/70">
+                                                                    By: {log.user}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end pt-2">
+                                    <DialogClose asChild>
+                                        <Button variant="outline" label="Close" />
+                                    </DialogClose>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                     </div>
-                </main>
-            </PageLayout>
-        </ChartZoomProvider>
+                </main >
+            </PageLayout >
+        </ChartZoomProvider >
     );
 }

@@ -15,7 +15,9 @@ use App\Models\AgentCommand;
 use App\Models\CommandResult;
 use App\Models\Activity;
 use App\Events\ServerStatsUpdated;
+use App\Events\ServerStatusUpdated;
 use App\Enums\ServerStatus;
+use App\NodeConfig\Cache\NodeConfigCache;
 use App\NodeConfig\Jobs\EvaluateNodeConfig;
 use App\NodeConfig\Models\NodeConfig;
 use Illuminate\Support\Facades\DB;
@@ -27,8 +29,23 @@ class HeartbeatService
     {
         $agent = $identity->agent;
         $server = $agent->server;
+        $oldStatus = $server->status;
 
-        return DB::transaction(function () use ($identity, $agent, $server, $payload) {
+        // Accumulate monitored online time OUTSIDE the transaction so it always persists.
+        // ONLY accumulate time if the server was ALREADY in Online status prior to this heartbeat.
+        // If it was offline, this first heartbeat transitions it back to online, so we do NOT add the offline gap to online_seconds.
+        $offlineThresholdSeconds = (int) \App\Models\Setting::get('offline_threshold', '15');
+        if ($oldStatus === ServerStatus::Online->value && $agent->last_seen_at) {
+            $elapsedSeconds = (int) $agent->last_seen_at->diffInSeconds(now());
+            $maxStepSeconds = max(5, $offlineThresholdSeconds + 5);
+            if ($elapsedSeconds > 0 && $elapsedSeconds <= $maxStepSeconds) {
+                $incrementSeconds = min($elapsedSeconds, $maxStepSeconds);
+                $server->increment('online_seconds', $incrementSeconds);
+                $server->refresh();
+            }
+        }
+
+        return DB::transaction(function () use ($identity, $agent, $server, $payload, $offlineThresholdSeconds) {
             // Update last_used_at on identity
             $identity->update(['last_used_at' => now()]);
 
@@ -48,9 +65,8 @@ class HeartbeatService
                 'version' => $newVersion,
             ]);
 
-            $offlineThresholdSeconds = (int) \App\Models\Setting::get('offline_threshold', '15');
             \App\Jobs\CheckServerOffline::dispatch($server->uuid)
-                ->delay(now()->addSeconds($offlineThresholdSeconds));
+                ->delay(now()->addSeconds($offlineThresholdSeconds + 2));
 
             // Transition server to online if needed
             $oldStatus = $server->status;
@@ -76,27 +92,26 @@ class HeartbeatService
                     ]),
                 ]);
 
-                // Real-time push so UI immediately reflects online status
-                \App\Events\ServerStatsUpdated::dispatchSync($server->uuid, [
-                    'timestamp' => now()->timestamp,
-                    'c'         => 0.0,
-                    'm'         => 0.0,
-                    'd'         => 0.0,
-                    'netIn'     => 0.0,
-                    'netOut'    => 0.0,
-                ]);
+                // Resolve server offline problems on the Action Board
+                \App\Models\ActionItem::where('action_type', 'server_offline')
+                    ->where('server_id', $server->id)
+                    ->where('status', 'open')
+                    ->update(['status' => 'completed', 'completed_at' => now()]);
 
-                $this->triggerNodeConfigForServer($server, 'online');
-
-                // Real-time push so the frontend immediately shows Online
-                \App\Events\ServerStatsUpdated::dispatchSync($server->uuid, [
-                    'timestamp' => now()->timestamp,
-                    'c'         => 0.0,
-                    'm'         => 0.0,
-                    'd'         => 0.0,
-                    'netIn'     => 0.0,
-                    'netOut'    => 0.0,
-                ]);
+                // Real-time push so UI immediately reflects online status (failsafe if Reverb is offline)
+                try {
+                    ServerStatusUpdated::dispatch($server->uuid, ServerStatus::Online->value, $server->name);
+                    ServerStatsUpdated::dispatchSync($server->uuid, [
+                        'timestamp' => now()->timestamp,
+                        'c'         => 0.0,
+                        'm'         => 0.0,
+                        'd'         => 0.0,
+                        'netIn'     => 0.0,
+                        'netOut'    => 0.0,
+                    ]);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[broadcast] Failed to push online update', ['error' => $e->getMessage()]);
+                }
             }
 
             // Create Heartbeat
@@ -312,8 +327,12 @@ class HeartbeatService
             'netOut' => 0.0,
         ];
 
-        // Trigger real-time stats update broadcast
-        ServerStatsUpdated::dispatchSync($agent->server->uuid, $uiStats);
+        // Trigger real-time stats update broadcast (failsafe if Reverb is offline)
+        try {
+            ServerStatsUpdated::dispatchSync($agent->server->uuid, $uiStats);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[broadcast] Failed to push stats update', ['error' => $e->getMessage()]);
+        }
     }
 
     private function updateServices(Agent $agent, array $services): void
@@ -345,10 +364,36 @@ class HeartbeatService
     private function updatePorts(Agent $agent, array $ports): void
     {
         $portsList = [];
+        $ignoredPorts = [
+            135, 137, 138, 139, 445, 500, 4500, 5353, 5355, 7680, 5985, 5986
+        ];
+        $ignoredProcessPatterns = [
+            'svchost', 'lsass', 'services', 'system', 'spoolsv', 'smss', 'csrss', 'wininit', 'alg', 'dashost',
+            'systemd', 'rpcbind', 'avahi', 'dbus'
+        ];
+
         foreach ($ports as $port) {
-            $portNum = $port['port'] ?? null;
+            $portNum = isset($port['port']) ? (int)$port['port'] : null;
             $proto = $port['protocol'] ?? 'tcp';
             if (is_null($portNum)) continue;
+
+            // Reject noise ports and ephemeral RPC ports (>= 49152)
+            if (in_array($portNum, $ignoredPorts, true) || $portNum >= 49152) {
+                continue;
+            }
+
+            // Reject OS internal process noise
+            $procName = strtolower($port['process'] ?? '');
+            if ($procName !== '') {
+                $isNoise = false;
+                foreach ($ignoredProcessPatterns as $pattern) {
+                    if (str_contains($procName, $pattern)) {
+                        $isNoise = true;
+                        break;
+                    }
+                }
+                if ($isNoise) continue;
+            }
 
             $portsList[] = ['port' => $portNum, 'proto' => $proto];
 
@@ -445,7 +490,7 @@ class HeartbeatService
 
     private function triggerNodeConfigForServer(Server $server, string $status): void
     {
-        $config = NodeConfig::where('slug', 'alerts')->where('enabled', true)->first();
+        $config = NodeConfigCache::findBySlug('alerts');
         if (!$config) return;
 
         $configData = $config->getParsedConfig();

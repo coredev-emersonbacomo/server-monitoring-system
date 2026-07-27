@@ -25,13 +25,14 @@ class NodeConfigNotificationService
         $context = $action['upstream_context'] ?? [];
 
         $serverId = $context['server_id'] ?? null;
-        $server = $serverId ? Server::with('client.secopclients.agent')->find($serverId) : null;
+        $server = $serverId ? Server::with('client.secopclients')->find($serverId) : null;
 
         $templateData = [
             'server' => $server,
             'runtime' => [
                 'metricName' => $context['metric_name'] ?? 'Unknown Metric',
                 'sustainValue' => $context['sustain_value'] ?? '',
+                'timestamp' => now()->format('Y-m-d H:i:s'),
                 'offlineDuration' => $server?->agent?->last_seen_at
                     ? now()->diffForHumans($server->agent->last_seen_at, true) . ' ago'
                     : 'unknown',

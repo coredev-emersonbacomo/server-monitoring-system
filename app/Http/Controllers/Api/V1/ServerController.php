@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Client;
 use App\Models\Server;
 use App\Models\ServerUpdate;
+use App\Models\ActionItem;
 use App\Models\CustomActivityLog;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\Request;
@@ -40,6 +41,7 @@ class ServerController extends Controller
                 'name'         => $data->name,
                 'description' => $data->description,
                 'host_name'    => $data->host_name ?? $data->name,
+                'hourly_cost'  => $data->hourly_cost ?? 0.0,
             ]);
 
             $actor = auth()->user();
@@ -56,6 +58,7 @@ class ServerController extends Controller
                     'host_name' => $server->host_name,
                     'client_uuid' => $clientModel->uuid,
                     'client_name' => $clientModel->name,
+                    'hourly_cost' => $server->hourly_cost,
                 ],
             ]);
 
@@ -102,60 +105,197 @@ class ServerController extends Controller
             ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
             ->firstOrFail();
 
-        $updateData = $data->toArray();
+        $updatePayload = [];
 
-        if ($data->description !== null) {
-            $updateData['description'] = $data->description;
+        if ($data->name !== null && !($data->name instanceof \Spatie\LaravelData\Optional)) {
+            $updatePayload['name'] = $data->name;
         }
 
-        if (!($data->alert_scope instanceof \Spatie\LaravelData\Optional)) {
-            $updateData['alert_scope'] = $data->alert_scope ?? 'global';
+        if ($data->description !== null && !($data->description instanceof \Spatie\LaravelData\Optional)) {
+            $updatePayload['description'] = $data->description;
+        }
+
+        if (!($data->hourly_cost instanceof \Spatie\LaravelData\Optional) && $data->hourly_cost !== null) {
+            $newRate = (float) $data->hourly_cost;
+            $oldRate = (float) ($serverModel->hourly_cost ?? 0.0);
+            if (abs($newRate - $oldRate) > 0.0001) {
+                $updatePayload['hourly_cost'] = $newRate;
+
+                // Adjust cost_offset so the active accumulated_cost remains unaffected.
+                // Accumulated cost is: max(0, billedMonths * rate - costOffset)
+                // If rate increases by $diff, we increase costOffset by (billedMonths * $diff)
+                // so the net result (billedMonths * newRate - newOffset) is exactly the same.
+                $agent = $serverModel->agent;
+                $registrationDate = $agent?->registered_at ?? null;
+                if ($registrationDate) {
+                    $monthsElapsed = max(1, (int) ceil(now()->diffInDays($registrationDate) / 30.0));
+                    $calendarMonths = (now()->year - $registrationDate->year) * 12 + (now()->month - $registrationDate->month);
+                    if (now()->day >= $registrationDate->day) {
+                        $calendarMonths += 1;
+                    }
+                    $billedMonths = max(1, max($monthsElapsed, $calendarMonths));
+                } else {
+                    $billedMonths = 0;
+                }
+
+                if ($billedMonths > 0) {
+                    $diff = $newRate - $oldRate;
+                    $offsetAdjustment = $billedMonths * $diff;
+                    $updatePayload['cost_offset'] = (float) $serverModel->cost_offset + $offsetAdjustment;
+                }
+            }
         }
 
         $originalAttributes = $serverModel->getRawOriginal();
 
-        $serverModel->update($updateData);
+        if (!empty($updatePayload)) {
+            $serverModel->update($updatePayload);
+        }
 
-        if ($serverModel->wasChanged()) {
+        $actor = auth()->user();
+        $actorName = $actor ? "{$actor->first_name} {$actor->last_name}" : 'System';
+
+        if (isset($updatePayload['hourly_cost'])) {
+            $oldRateFmt = number_format((float) ($originalAttributes['hourly_cost'] ?? 0.0), 2);
+            $newRateFmt = number_format((float) $updatePayload['hourly_cost'], 2);
+
+            CustomActivityLog::create([
+                'logable_type' => Server::class,
+                'logable_id'   => (string) $serverModel->uuid,
+                'user_id'      => $actor?->id,
+                'user'         => $actorName,
+                'action'       => 'Update Monthly Rate',
+                'details'      => [
+                    'message'     => "Monthly cost updated from ₱{$oldRateFmt}/mo to ₱{$newRateFmt}/mo (accumulated cost preserved) for server: {$serverModel->name}",
+                    'server_name' => $serverModel->name,
+                    'before'      => ['hourly_cost' => $oldRateFmt],
+                    'after'       => ['hourly_cost' => $newRateFmt],
+                ],
+            ]);
+        } elseif ($serverModel->wasChanged()) {
             $changes = $serverModel->getChanges();
-
-            unset(
-                $changes['updated_at']
-            );
+            unset($changes['updated_at']);
 
             $before = [];
             $after = [];
-
             foreach (array_keys($changes) as $field) {
                 $before[$field] = $originalAttributes[$field] ?? null;
                 $after[$field] = $serverModel->{$field};
             }
 
-            $details = [
-                'message' => "Updated server: {$serverModel->name}",
-                'before' => $before,
-                'after' => $after,
-            ];
-        } else {
-            $details = [
-                'message' => "Saved server configurations without modifications for {$serverModel->name}",
-                'before' => [],
-                'after' => [],
-            ];
+            CustomActivityLog::create([
+                'logable_type' => Server::class,
+                'logable_id'   => (string) $serverModel->uuid,
+                'user_id'      => $actor?->id,
+                'user'         => $actorName,
+                'action'       => 'Update Server',
+                'details'      => [
+                    'message' => "Updated server: {$serverModel->name}",
+                    'before'  => $before,
+                    'after'   => $after,
+                ],
+            ]);
         }
 
-        $actor = auth()->user();
-
-        CustomActivityLog::create([
-            'logable_type' => Server::class,
-            'logable_id' => (string) $serverModel->uuid,
-            'user_id' => $actor?->id,
-            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
-            'action' => 'Update Server',
-            'details' => $details,
-        ]);
+        \App\Events\ServerStatusUpdated::dispatch(
+            $serverModel->uuid,
+            $serverModel->status ?? 'online',
+            $serverModel->name
+        );
 
         return ServerData::fromModel($serverModel);
+    }
+
+    public function adjustCost(Request $request, string $clientUuid, string $serverUuid): ServerData
+    {
+        $request->validate([
+            'action' => ['required', 'string', 'in:deduction,add_funds,add_credit,reset_usage'],
+            'amount' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $serverModel = Server::where('uuid', $serverUuid)
+            ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
+            ->firstOrFail();
+
+        $actor = auth()->user();
+        $actorName = $actor ? "{$actor->first_name} {$actor->last_name}" : 'System';
+        $actionType = $request->input('action');
+        $amount = (float) ($request->input('amount') ?? 0.0);
+
+        if ($actionType === 'reset_usage') {
+            $serverModel->update([
+                'cost_reset_at'   => now(),
+                'rate_updated_at' => now(),
+                'historical_cost' => 0.0,
+                'accumulated_cost' => 0.0,
+                'cost_offset'     => 0.0,
+                'online_seconds'  => 0,
+            ]);
+
+            CustomActivityLog::create([
+                'logable_type' => Server::class,
+                'logable_id'   => (string) $serverModel->uuid,
+                'user_id'      => $actor?->id,
+                'user'         => $actorName,
+                'action'       => 'Reset Cost Baseline',
+                'details'      => [
+                    'message'     => "Reset cost usage & baseline for server: {$serverModel->name}",
+                    'server_name' => $serverModel->name,
+                ],
+            ]);
+        } else {
+            // Payment deduction
+            $newOffset = (float) $serverModel->cost_offset + $amount;
+            $serverModel->update([
+                'cost_offset' => $newOffset,
+            ]);
+
+            $formatted = number_format($amount, 2);
+
+            CustomActivityLog::create([
+                'logable_type' => Server::class,
+                'logable_id'   => (string) $serverModel->uuid,
+                'user_id'      => $actor?->id,
+                'user'         => $actorName,
+                'action'       => 'Deduction',
+                'details'      => [
+                    'message'         => "Payment deduction of ₱{$formatted} applied to server: {$serverModel->name}",
+                    'payment_amount'  => $amount,
+                    'total_payments'  => $newOffset,
+                    'server_name'     => $serverModel->name,
+                ],
+            ]);
+        }
+
+        \App\Events\ServerStatusUpdated::dispatch(
+            $serverModel->uuid,
+            $serverModel->status ?? 'online',
+            $serverModel->name
+        );
+
+        return ServerData::fromModel($serverModel->fresh());
+    }
+
+    public function costLogs(string $clientUuid, string $serverUuid)
+    {
+        $serverModel = Server::where('uuid', $serverUuid)
+            ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
+            ->firstOrFail();
+
+        $logs = CustomActivityLog::where('logable_type', Server::class)
+            ->where('logable_id', (string) $serverModel->uuid)
+            ->whereIn('action', [
+                'Deduction', 
+                'Payment Deduction', 
+                'Reset Cost Baseline', 
+                'Update Monthly Rate', 
+                'Update Hourly Rate',
+                'Agent Uninstalled'
+            ])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($logs);
     }
 
     public function destroy(string $clientUuid, string $serverUuid)
@@ -167,6 +307,12 @@ class ServerController extends Controller
         if ($serverModel->agent()->exists() && !$serverModel->agent_deleted) {
             return response()->json([
                 'message' => 'Cannot delete server while the agent is still running. Please run the uninstall script first.'
+            ], 422);
+        }
+
+        if ((float) ($serverModel->accumulated_cost ?? 0) > 0) {
+            return response()->json([
+                'message' => 'Cannot delete server with an outstanding cost balance. Please settle all deductions first before deleting.'
             ], 422);
         }
 
@@ -184,6 +330,10 @@ class ServerController extends Controller
                 'host_name' => $serverModel->host_name,
             ],
         ]);
+
+        // Clean up all action items tied to this server so they are
+        // removed from the Action Board immediately after deletion.
+        ActionItem::where('server_id', $serverModel->id)->delete();
 
         $serverModel->delete();
 
@@ -207,30 +357,7 @@ class ServerController extends Controller
             $server->checkTokenExpiration();
         }
 
-        return ServerData::collect($servers->map(function (Server $server) {
-            $tokenModel = $server->provisionTokens()->latest()->first();
-            $token = $tokenModel ? $tokenModel->token : '';
-            return ServerData::from([
-                'uuid'             => $server->uuid,
-                'name'             => $server->name,
-                'host_name'        => $server->host_name,
-                'client_uuid'      => $server->client->uuid,
-                'client_name'      => $server->client->name,
-                'created_at'       => $server->created_at->toIso8601String(),
-                'updated_at'       => $server->updated_at->toIso8601String(),
-                'cpu_cores'        => $server->cpu_cores,
-                'description' => $server->description,
-                'ram'              => $server->ram,
-                'disk'             => $server->disk,
-                'operating_system' => $server->operating_system,
-                'record_status' => $server->record_status->value,
-                'status' => $server->status,
-                'uninstall_linux_command' => 'sudo curl -fsSL ' . url('/uninstall/linux') . ' | sudo bash -s -- ' . $token,
-                'uninstall_windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/uninstall/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl `$APP_URL"',
-                'agent_deleted' => $server->agent ? (bool) $server->agent_deleted : true,
-                'alert_scope' => $server->alert_scope ?? 'global',
-            ]);
-        }));
+        return ServerData::collect($servers->map(fn(Server $s) => ServerData::fromModel($s)));
     }
 
     public function showWithStats(string $serverUuid, \App\Data\ServerDataRequest $requestData): ServerData
@@ -250,113 +377,12 @@ class ServerController extends Controller
 
         $stats = $updates->map(
             fn($row) => StatPointData::from(self::computeStatPointFromAgg($row, $tableUnit))
-        )->values()->toArray();
+        )->values()->all();
 
-        $client = $server->client;
+        $data = ServerData::fromModel($server);
+        $data->stats = $stats;
 
-        $activeDetails = null;
-        if (in_array($server->status, ['pending_installation', 'waiting_for_installation'])) {
-            $activeToken = $server->activeProvisionToken;
-            if ($activeToken && !$activeToken->isExpired()) {
-                $token = $activeToken->token;
-                $activeDetails = [
-                    'token' => $token,
-                    'expires_at' => $activeToken->expires_at->copy()->utc()->toIso8601String(),
-                    'linux_command' => 'sudo curl -fsSL ' . url('/install/linux') . ' | sudo bash -s -- ' . $token,
-                    'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/install/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl `$APP_URL"',
-                ];
-            }
-        }
-
-        $tokenModel = $server->provisionTokens()->latest()->first();
-        $token = $tokenModel ? $tokenModel->token : '';
-
-        $agent = $server->agent;
-        $agentData = null;
-        if ($agent) {
-            $config = $agent->currentConfiguration;
-            $agentData = [
-                'version' => $agent->version, // Source of truth for version is what agent reports
-                'status' => $agent->status,
-                'registered_at' => $agent->registered_at->toIso8601String(),
-                'last_seen_at' => $agent->last_seen_at?->toIso8601String(),
-                'heartbeat_interval' => $config ? $config->heartbeat_interval : 5,
-                'metrics_interval' => $config ? $config->metrics_interval : 5,
-                'port_scan_interval' => $config ? $config->port_scan_interval : 60,
-                'service_scan_interval' => $config ? $config->service_scan_interval : 60,
-                'process_scan_interval' => $config ? $config->process_scan_interval : 60,
-                'update_channel' => $config ? $config->update_channel : 'stable',
-                'auto_update' => $config ? (bool) $config->auto_update : true,
-            ];
-        }
-
-        $activities = $server->activities()
-            ->orderBy('created_at', 'desc')
-            ->limit(50)
-            ->get()
-            ->map(fn($a) => [
-                'type' => $a->type,
-                'description' => $a->description,
-                'created_at' => $a->created_at->toIso8601String(),
-            ])
-            ->toArray();
-
-        return ServerData::from([
-            'uuid'                   => $server->uuid,
-            'name'                  => $server->name,
-            'description' => $server->description,
-            'host_name'              => $server->host_name,
-            'created_at'             => $server->created_at->toIso8601String(),
-            'updated_at'             => $server->updated_at->toIso8601String(),
-            'cpu_model'              => $server->cpu_model,
-            'cpu_cores'              => $server->cpu_cores ?? null,
-            'ram'                    => $server->ram ?? null,
-            'disk'                   => $server->disk ?? null,
-            'operating_system'       => $server->operating_system ?? null,
-            'client_id'              => $server->client_id,
-            'client_uuid'            => $client?->uuid ?? '',
-            'client_name'            => $client?->name ?? 'Unknown',
-            'record_status'          => $server->record_status->value,
-            'status'                 => $server->status,
-            'stats'                  => $stats,
-            'activeProvisionDetails' => $activeDetails,
-
-            'ports' => $server->agent?->ports->map(fn($p) => [
-                'id'          => $p->id,
-                'port'        => $p->port,
-                'protocol'    => $p->protocol,
-                'state'       => $p->state,
-                'process'     => $p->process_name,
-                'ping_status' => $p->ping_status,
-                'ping_time'   => $p->ping_time
-            ])->toArray(),
-
-            'processes' => $server->agent?->processes()
-                ->orderByDesc('cpu')
-                ->get()
-                ->map(fn($pr) => [
-                    'pid'    => $pr->pid,
-                    'name'   => $pr->name,
-                    'cpu'    => $pr->cpu,
-                    'memory' => $pr->memory
-                ])->toArray(),
-
-            'uninstall_linux_command' => sprintf(
-                'sudo curl -fsSL %s | sudo bash -s -- %s',
-                url('/uninstall/linux'),
-                $token
-            ),
-
-            'uninstall_windows_command' => sprintf(
-                'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'%s\'; & ([scriptblock]::Create((irm `$APP_URL/uninstall/windows.ps1))) -ProvisionToken \'%s\' -AppUrl `$APP_URL"',
-                url('/'),
-                $token
-            ),
-
-            'agent_deleted' => $server->agent ? (bool) $server->agent_deleted : true,
-            'agent' => $agentData,
-            'activities' => $activities,
-        ]);
+        return $data;
     }
 
     /** @internal Used by showWithStats and BroadcastServerStats */

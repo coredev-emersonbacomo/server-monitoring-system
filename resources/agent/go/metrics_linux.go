@@ -291,9 +291,23 @@ func getOpenDatabasePorts() []PortInfo {
 		if addr == "127.0.0.1" || addr == "[::1]" || addr == "::1" || addr == "localhost" {
 			continue
 		}
-		if addr == "0.0.0.0" || addr == "*" || addr == "::" {
-			addr = "0.0.0.0"
+		// Filter out internal OS noise ports & dynamic high ports
+		ignoredPorts := map[int]bool{
+			135: true, 137: true, 138: true, 139: true, 445: true, 500: true, 4500: true,
+			5353: true, 5355: true, 7680: true, 5985: true, 5986: true,
 		}
+		if ignoredPorts[port] || port >= 49152 {
+			continue
+		}
+
+		if process != "" {
+			procLower := strings.ToLower(process)
+			if strings.Contains(procLower, "systemd") || strings.Contains(procLower, "rpcbind") ||
+				strings.Contains(procLower, "avahi") || strings.Contains(procLower, "dbus") {
+				continue
+			}
+		}
+
 		if process == "" {
 			if name, ok := dbPortSet[port]; ok {
 				process = name

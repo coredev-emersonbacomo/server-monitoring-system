@@ -13,6 +13,7 @@ export interface ActionItem {
     assigned_to_uuid: string | null;
     assigned_to_name: string | null;
     status: "open" | "in_progress" | "completed";
+    created_at: string | null;
 }
 
 export const useDashboardActions = () => {
