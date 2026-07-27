@@ -209,6 +209,62 @@
         background: oklch(0.556 0 0);
     }
 }
+@media print {
+    @page {
+        size: A4;
+        margin: 0;
+    }
+
+    body * {
+        visibility: hidden;
+    }
+
+    #report-print-area,
+    #report-print-area * {
+        visibility: visible;
+    }
+
+    #report-print-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0;
+        padding: 20mm;
+        box-shadow: none;
+    }
+
+    .report-section {
+        break-inside: avoid;
+    }
+}
+
+/* Paged.js report pagination */
+.paged-output {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+}
+
+.pagedjs_page {
+    color: black;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.pagedjs_pagebox {
+    background: white;
+}
+
+.pagedjs_margin-bottom-center {
+    font-size: 10px;
+    color: #6b7280;
+}
+.paged-page-spacer {
+    height: 24px;
+}
 
 .preview-nodes-disabled .react-flow__node {
     pointer-events: none !important;

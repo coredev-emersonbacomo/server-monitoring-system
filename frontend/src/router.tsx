@@ -22,6 +22,9 @@ import AgentSettings from "./pages/settings/agent";
 import { NodeConfigEditor } from "./components/node-config/NodeConfigEditor";
 import Docs from "./pages/docs/index";
 import DocsAlerts from "./pages/docs/alerts";
+import ReportIndexPage from "./pages/reports/report-index.tsx";
+import { ReportsLayout } from "./layouts/ReportsLayout";
+import MultiReportsPreview from "./pages/reports/MultiReportsPreview.tsx";
 
 const router = createBrowserRouter([
     {
@@ -122,6 +125,30 @@ const router = createBrowserRouter([
                         element: <Profile />,
                     },
                     {
+                        element: <ReportsLayout />, children: [{
+                            path: "/report",
+                            element: <ReportIndexPage />,
+                        },
+                        {
+                            path: "/report/servers/:uuid",
+                            element: <ReportIndexPage />,
+                        },
+                        {
+                            path: "/report/clients/:uuid",
+                            element: <ReportIndexPage />,
+                        },
+                        {
+                            path: "/report/servers",
+                            element: <MultiReportsPreview />,
+                        },
+                        {
+                            path: "/report/clients",
+                            element: <MultiReportsPreview />,
+                        },
+                        ]
+                    },
+
+                    {
                         path: "/docs",
                         element: <Docs />,
                     },
@@ -132,6 +159,11 @@ const router = createBrowserRouter([
                 ],
             },
         ],
+
+    },
+    {
+        path: "/printReport",
+        element: <ReportIndexPage />,
     },
 ]);
 
