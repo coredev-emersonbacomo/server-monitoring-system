@@ -414,15 +414,28 @@ class ServerController extends Controller
             'cpu'       => round((float) $row->cpu, 1),
             'memory'    => round((float) $row->memory, 1),
             'disk'      => round((float) $row->disk, 1),
-            'netIn'     => round(((float) $row->netin / 1_000_000) / $bucketSeconds, 2),
-            'netOut'    => round(((float) $row->netout / 1_000_000) / $bucketSeconds, 2),
+            'netIn'     => round(((float) $row->netIn / 1_000_000) / $bucketSeconds, 2),
+            'netOut'    => round(((float) $row->netOut / 1_000_000) / $bucketSeconds, 2),
         ];
     }
 
     public function getData(int $serverId, string $tableUnit, Carbon $subTime, ?Carbon $endTime = null): Collection
     {
+        try {
+            return $this->queryAggTable($serverId, $tableUnit, $subTime, $endTime);
+        } catch (\Throwable $e) {
+            if (str_contains($e->getMessage(), 'has not been populated')) {
+                DB::statement("REFRESH MATERIALIZED VIEW {$tableUnit}");
+                return $this->queryAggTable($serverId, $tableUnit, $subTime, $endTime);
+            }
+            throw $e;
+        }
+    }
+
+    private function queryAggTable(int $serverId, string $tableUnit, Carbon $subTime, ?Carbon $endTime = null): Collection
+    {
         $query = DB::table($tableUnit)
-            ->selectRaw('timestamp, cpu, memory, disk, netin, netout')
+            ->selectRaw('timestamp, cpu, memory, disk, "netIn", "netOut"')
             ->where('server_id', $serverId)
             ->where('timestamp', '>=', $subTime);
 
