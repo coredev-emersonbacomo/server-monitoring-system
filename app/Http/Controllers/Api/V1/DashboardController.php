@@ -239,15 +239,31 @@ class DashboardController extends Controller
             ];
         }
 
-        // Query the TimescaleDB continuous aggregate table directly
-        $rows = DB::table($table)
-            ->select('server_id', 'timestamp', $metric)
-            ->whereIn('server_id', $serverIds)
-            ->where('timestamp', '>=', $startTime)
-            ->where('timestamp', '<', $endTime)
-            ->orderBy('server_id')
-            ->orderBy('timestamp')
-            ->get();
+        // Query the aggregate table, auto-refresh if unpopulated
+        try {
+            $rows = DB::table($table)
+                ->select('server_id', 'timestamp', $metric)
+                ->whereIn('server_id', $serverIds)
+                ->where('timestamp', '>=', $startTime)
+                ->where('timestamp', '<', $endTime)
+                ->orderBy('server_id')
+                ->orderBy('timestamp')
+                ->get();
+        } catch (\Throwable $e) {
+            if (str_contains($e->getMessage(), 'has not been populated')) {
+                DB::statement("REFRESH MATERIALIZED VIEW {$table}");
+                $rows = DB::table($table)
+                    ->select('server_id', 'timestamp', $metric)
+                    ->whereIn('server_id', $serverIds)
+                    ->where('timestamp', '>=', $startTime)
+                    ->where('timestamp', '<', $endTime)
+                    ->orderBy('server_id')
+                    ->orderBy('timestamp')
+                    ->get();
+            } else {
+                throw $e;
+            }
+        }
 
         // Group rows by server, parse timestamps with UTC fix (same as ServerController)
         $seriesMap = [];

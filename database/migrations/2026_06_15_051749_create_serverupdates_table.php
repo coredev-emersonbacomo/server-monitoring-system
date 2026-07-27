@@ -180,6 +180,17 @@ return new class extends Migration
                 new CreateColumnstorePolicy('3 months'),
             );
         });
+        // Initial populate so views are queryable immediately after migration
+        $views = [
+            'server_updates_agg_minute',
+            'server_updates_agg_hour',
+            'server_updates_agg_day',
+            'server_updates_agg_week',
+            'server_updates_agg_month',
+        ];
+        foreach ($views as $view) {
+            DB::statement("REFRESH MATERIALIZED VIEW {$view}");
+        }
     }
 
     public function down(): void
