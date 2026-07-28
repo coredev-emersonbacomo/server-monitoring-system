@@ -238,7 +238,7 @@ class AgentController extends Controller
             'description' => "Agent started download and update to v{$validated['version']}.",
         ]);
 
-        \App\Models\CustomActivityLog::create([
+        \App\Models\AgentLog::create([
             'logable_type' => Server::class,
             'logable_id' => (string) $agent->server->uuid,
             'user_id' => null,
@@ -289,7 +289,7 @@ class AgentController extends Controller
              'description' => "Agent encountered error: " . substr($validated['error'], 0, 150),
          ]);
  
-         \App\Models\CustomActivityLog::create([
+         \App\Models\AgentLog::create([
              'logable_type' => Server::class,
              'logable_id' => (string) $agent->server->uuid,
              'user_id' => null,
@@ -353,7 +353,7 @@ class AgentController extends Controller
             'description' => 'Agent service has been uninstalled from the host.',
         ]);
 
-        \App\Models\CustomActivityLog::create([
+        \App\Models\AgentLog::create([
             'logable_type' => Server::class,
             'logable_id' => (string) $server->uuid,
             'user_id' => null,

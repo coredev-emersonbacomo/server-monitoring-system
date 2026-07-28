@@ -63,7 +63,7 @@ class ServerData extends Data
 
         public string $alert_scope = 'global',
 
-        public float $hourly_cost = 0.0,
+        public float $monthly_cost = 0.0,
 
         public float $cost_offset = 0.0,
 
@@ -203,7 +203,7 @@ class ServerData extends Data
             );
         }
 
-        $hourlyCost = (float) ($server->hourly_cost ?? 0.0);
+        $monthlyCost = (float) ($server->monthly_cost ?? 0.0);
         $costOffset = (float) ($server->cost_offset ?? 0.0);
         $costResetAtStr = $server->cost_reset_at ? $server->cost_reset_at->toIso8601String() : null;
         $historicalCost = (float) ($server->historical_cost ?? 0.0);
@@ -226,7 +226,7 @@ class ServerData extends Data
         // Monthly billing only starts once the agent is installed (registered_at set).
         // If no agent has registered yet, cost is 0 and billing date is null.
         $registrationDate = $agent?->registered_at ?? null;
-        $monthlyRate = $hourlyCost;
+        $monthlyRate = $monthlyCost;
         $nextBillingDate = null;
 
         if ($registrationDate) {
@@ -240,7 +240,7 @@ class ServerData extends Data
             $billedMonths = max(1, max($monthsElapsed, $calendarMonths));
 
             // Apply the active monthly cost directly
-            $monthlyRate = $hourlyCost;
+            $monthlyRate = $monthlyCost;
 
             $grossCost = round($billedMonths * $monthlyRate, 4);
 
@@ -284,7 +284,7 @@ class ServerData extends Data
             activities: $activities,
             agent: $agentData,
             alert_scope: $server->alert_scope ?? 'global',
-            hourly_cost: $hourlyCost,
+            monthly_cost: $monthlyCost,
             cost_offset: $costOffset,
             cost_reset_at: $costResetAtStr,
             historical_cost: $historicalCost,

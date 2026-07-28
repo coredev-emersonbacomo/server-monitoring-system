@@ -18,6 +18,6 @@ class CreateServerData extends Data
         public ?string $description = null,
 
         #[Numeric]
-        public ?float $hourly_cost = 0.0,
+        public ?float $monthly_cost = 0.0,
     ) {}
 }
