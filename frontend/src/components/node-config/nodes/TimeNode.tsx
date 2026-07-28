@@ -1,10 +1,11 @@
 import { memo, useCallback, useState } from 'react';
-import { type NodeProps, Position, useReactFlow } from '@xyflow/react';
+import { Handle, type NodeProps, Position, useReactFlow } from '@xyflow/react';
 import { Timer, Clock, Repeat } from 'lucide-react';
 import { getInputType, getOutputType } from './socketTypes';
 import { NodeSocket } from './node-socket';
 import { DurationInput } from './DurationInput';
 import { BaseNode } from './BaseNode';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const TIME_CONFIGS: Record<string, { icon: React.ComponentType<{ size?: number }>; label: string; color: string }> = {
     check_after: { icon: Clock, label: 'Check After', color: '#10b981' },
@@ -64,8 +65,27 @@ export const TimeNode = memo(({ id, data, type, selected }: NodeProps) => {
         }
     }, []);
 
+    const isSustained = type === 'sustained';
+
     return (
         <BaseNode width="w-[220px]" borderColor={`${color}99`} selected={selected}>
+            {isSustained && (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Handle
+                            type="target"
+                            position={Position.Top}
+                            id="chain-in"
+                            className="w-3! h-3! border-2! border-card!"
+                            style={{ backgroundColor: '#06b6d4' }}
+                        />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="font-mono text-[10px]">
+                        <span>Chain In</span>
+                    </TooltipContent>
+                </Tooltip>
+            )}
+
             <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5 border-b" style={{ borderColor: `${color}15` }}>
                 <div className="p-1.5 rounded-lg shrink-0" style={{ backgroundColor: `${color}20`, color }}>
                     <Icon size={14} />
@@ -85,6 +105,23 @@ export const TimeNode = memo(({ id, data, type, selected }: NodeProps) => {
                 <NodeSocket type="source" position={Position.Right} id="output" def={outDef}
                     label={outDef?.label || 'Out'} />
             </div>
+
+            {isSustained && (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Handle
+                            type="source"
+                            position={Position.Bottom}
+                            id="chain-out"
+                            className="w-3! h-3! border-2! border-card!"
+                            style={{ backgroundColor: '#06b6d4' }}
+                        />
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="font-mono text-[10px]">
+                        <span>Chain Out</span>
+                    </TooltipContent>
+                </Tooltip>
+            )}
 
             <div className="px-3 pb-2.5">
                 <div className="flex flex-col gap-1.5 w-full">

@@ -50,7 +50,7 @@ class NodeConfigCompiler
             $flatRules = array_merge($flatRules, $pathRules);
         }
 
-        $branches = $this->groupByMetric($flatRules);
+        $branches = $this->groupByMetric($flatRules, $forwardAdj);
 
         return ['branches' => $branches];
     }
@@ -166,8 +166,9 @@ class NodeConfigCompiler
 
     /**
      * Group flat rules by metric_node_id, merging sub-branches.
+     * Also resolves chain ordering (chain_prev/chain_next) for stacked timing nodes.
      */
-    private function groupByMetric(array $flatRules): array
+    private function groupByMetric(array $flatRules, array $forwardAdj = []): array
     {
         $branches = [];
 
@@ -191,10 +192,154 @@ class NodeConfigCompiler
                 'action' => $rule['action'],
                 'action_node_id' => $rule['action_node_id'],
                 'post_action' => $rule['post_action'] ?? null,
+                'chain_prev' => null,
+                'chain_next' => null,
             ];
         }
 
+        // Resolve chain ordering then collapse into single timing_chain sub_branches
+        foreach ($branches as &$branch) {
+            $this->resolveChainOrder($branch, $forwardAdj);
+            $this->mergeChainedSubBranches($branch);
+        }
+        unset($branch);
+
         return array_values($branches);
+    }
+
+    /**
+     * Collapse sub_branches connected via chain-out → chain-in into a single sub_branch
+     * with a `timing_chain` steps array. This means the whole chain shares one task ID,
+     * so cancellation, guards, and state all operate as a single unit.
+     */
+    private function mergeChainedSubBranches(array &$branch): void
+    {
+        $subBranches = $branch['sub_branches'];
+
+        // Check if any chain connections were detected
+        $hasChains = false;
+        foreach ($subBranches as $sb) {
+            if (!empty($sb['chain_next'])) {
+                $hasChains = true;
+                break;
+            }
+        }
+
+        if (!$hasChains) {
+            // No chains — just strip the chain fields and leave sub_branches as-is
+            foreach ($branch['sub_branches'] as &$sb) {
+                unset($sb['chain_prev'], $sb['chain_next']);
+            }
+            unset($sb);
+            return;
+        }
+
+        $merged = [];
+        foreach ($subBranches as $sb) {
+            // Skip downstream chain nodes; they are included under their root
+            if (!empty($sb['chain_prev'])) {
+                continue;
+            }
+
+            if (!empty($sb['chain_next'])) {
+                // Chain root — walk forward and collect all steps
+                $chain = [];
+                $current = $sb;
+                while ($current !== null) {
+                    $chain[] = [
+                        'step'           => count($chain),
+                        'timing_node_id' => $current['timing_node_id'],
+                        'timing'         => $current['timing'],
+                        'action_node_id' => $current['action_node_id'],
+                        'action'         => $current['action'],
+                        'post_action'    => $current['post_action'],
+                    ];
+                    if (!empty($current['chain_next'])) {
+                        $nextId = $current['chain_next'];
+                        $current = null;
+                        foreach ($subBranches as $nextSb) {
+                            if ($nextSb['timing_node_id'] === $nextId) {
+                                $current = $nextSb;
+                                break;
+                            }
+                        }
+                    } else {
+                        $current = null;
+                    }
+                }
+
+                // Derive a synthetic ID for the compiled chain node from all step IDs
+                $chainNodeId = 'chain:' . implode(':', array_column($chain, 'timing_node_id'));
+
+                // Max duration = last step's absolute duration_ms — used as single timer delay
+                $maxDurationMs = end($chain)['timing']['duration_ms'] ?? 0;
+                $lastStep      = end($chain);
+
+                $merged[] = [
+                    'timing_node_id' => $chainNodeId,                        // Synthetic compiled chain node ID
+                    'timing'         => $sb['timing'],                       // first step timing (heartbeat ref)
+                    'action'         => $lastStep['action'] ?? null,         // last step action
+                    'action_node_id' => $lastStep['action_node_id'] ?? null,  // last step action node ID
+                    'post_action'    => $lastStep['post_action'] ?? null,    // last step post_action (repeat)
+                    'timing_chain'   => $chain,
+                    'max_duration_ms' => $maxDurationMs,                     // ONE timer fires at this delay
+                ];
+            } else {
+                // Standalone sub_branch (not part of any chain)
+                unset($sb['chain_prev'], $sb['chain_next']);
+                $merged[] = $sb;
+            }
+        }
+
+        $branch['sub_branches'] = $merged;
+    }
+
+    /**
+     * Sort sub_branches by timing duration_ms ascending and wire up chain_prev/chain_next
+     * based on `chain-out` → `chain-in` edges between timing nodes.
+     *
+     * This ensures heartbeat evaluation only starts at the first (shortest) sustained node,
+     * and each fired node schedules the next one in sequence rather than all firing in parallel.
+     */
+    private function resolveChainOrder(array &$branch, array $forwardAdj): void
+    {
+        $subBranches = &$branch['sub_branches'];
+
+        if (count($subBranches) <= 1) {
+            return;
+        }
+
+        // Sort ascending by duration_ms (nodes without a duration sort to the end)
+        usort($subBranches, function ($a, $b) {
+            $da = $a['timing']['duration_ms'] ?? PHP_INT_MAX;
+            $db = $b['timing']['duration_ms'] ?? PHP_INT_MAX;
+            return $da <=> $db;
+        });
+
+        // Build a map: timing_node_id → index in sub_branches
+        $nodeIndex = [];
+        foreach ($subBranches as $i => $sb) {
+            if ($sb['timing_node_id']) {
+                $nodeIndex[$sb['timing_node_id']] = $i;
+            }
+        }
+
+        // Detect chain-out → chain-in connections in forwardAdj
+        foreach ($subBranches as &$sb) {
+            if (!$sb['timing_node_id']) {
+                continue;
+            }
+            foreach ($forwardAdj[$sb['timing_node_id']] ?? [] as $edge) {
+                if (($edge['sourceHandle'] ?? 'output') === 'chain-out') {
+                    $nextNodeId = $edge['target'];
+                    if (isset($nodeIndex[$nextNodeId])) {
+                        $sb['chain_next'] = $nextNodeId;
+                        $subBranches[$nodeIndex[$nextNodeId]]['chain_prev'] = $sb['timing_node_id'];
+                    }
+                }
+            }
+        }
+        unset($sb);
     }
 
     private function extractCondition(array $node): array
