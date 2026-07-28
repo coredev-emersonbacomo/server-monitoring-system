@@ -81,7 +81,7 @@ class HeartbeatService
                     'description' => 'Server transitioned to Online state.',
                 ]);
 
-                \App\Models\CustomActivityLog::create([
+                \App\Models\ServerHealthLog::create([
                     'logable_type' => get_class($server),
                     'logable_id' => $server->id,
                     'user_id' => null,

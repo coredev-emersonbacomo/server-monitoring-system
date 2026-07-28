@@ -56,10 +56,16 @@ import { useDeleteServer } from "@/hooks/useDeleteServer";
 import { NodeConfigEditor } from "@/components/node-config/NodeConfigEditor";
 import { Form, createFormStore, useForm } from "@/components/ui/form";
 
+export type CopyKey =
+    | "linux"
+    | "windows"
+    | "uninstall_linux"
+    | "uninstall_windows";
+
 const serverInfoSchema = z.object({
     name: z.string().min(1, "Server name is required."),
     description: z.string(),
-    hourly_cost: z.union([z.string(), z.number()]).transform((val) => {
+    monthly_cost: z.union([z.string(), z.number()]).transform((val) => {
         if (val === "" || val === undefined || val === null) return 0;
         const num = Number(val);
         return isNaN(num) ? 0 : num;
@@ -91,14 +97,14 @@ function useServerAlertTab(
         alertScope === "server"
             ? `server_${serverUuid}`
             : alertScope === "client" && clientUuid
-              ? `client_${clientUuid}`
-              : "alerts";
+                ? `client_${clientUuid}`
+                : "alerts";
     const scopeLabel =
         alertScope === "global"
             ? "Global"
             : alertScope === "client"
-              ? `Client: ${clientName ?? "Unknown"}`
-              : `Server: ${serverName}`;
+                ? `Client: ${clientName ?? "Unknown"}`
+                : `Server: ${serverName}`;
 
     const setAlertScope = useCallback(
         (scope: "global" | "client" | "server") => {
@@ -230,16 +236,14 @@ export default function ServerDetail() {
         initial?.name ?? "Unknown",
         initial?.client_uuid ?? null,
         initial?.client_name ?? null,
-        (initial as Record<string, unknown>)?.alert_scope as string | undefined,
+        initial?.alert_scope,
     );
     const [provisionDetails, setProvisionDetails] =
         useState<ProvisionDetailData | null>(
             initial?.activeProvisionDetails ?? null,
         );
     const [generating, setGenerating] = useState(false);
-    const [copiedKey, setCopiedKey] = useState<
-        "linux" | "windows" | "uninstall_linux" | "uninstall_windows" | null
-    >(null);
+    const [copiedKey, setCopiedKey] = useState<CopyKey | null>(null);
     const [timeLeft, setTimeLeft] = useState<string>("");
 
     const store = useMemo(
@@ -248,10 +252,10 @@ export default function ServerDetail() {
                 schema: serverInfoSchema,
                 originalData: initial
                     ? {
-                          name: initial.name,
-                          description: initial.description ?? "",
-                          hourly_cost: (initial as any).hourly_cost ?? 0,
-                      }
+                        name: initial.name,
+                        description: initial.description ?? "",
+                        monthly_cost: initial.monthly_cost ?? 0,
+                    }
                     : null,
                 initialMode: "view",
             }),
@@ -268,15 +272,9 @@ export default function ServerDetail() {
         if (initial && mode === "view") {
             store.set("name")(initial.name);
             store.set("description")(initial.description ?? "");
-            store.set("hourly_cost")(String((initial as any).hourly_cost ?? 0));
+            store.set("monthly_cost")(String(initial.monthly_cost ?? 0));
         }
-    }, [
-        initial?.name,
-        initial?.description,
-        (initial as any)?.hourly_cost,
-        mode,
-        store,
-    ]);
+    }, [initial?.name, initial?.description, mode, store, initial]);
     const [confirmText, setConfirmText] = useState("");
     const deleteServer = useDeleteServer();
     const isConfirmed = initial ? confirmText.trim() === initial.name : false;
@@ -290,7 +288,7 @@ export default function ServerDetail() {
         queryFn: async () => {
             if (!initial?.client_uuid || !initial?.uuid) return [];
             const { data, error } = await api.GET(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-logs" as any,
+                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-logs",
                 {
                     params: {
                         path: {
@@ -301,7 +299,7 @@ export default function ServerDetail() {
                 },
             );
             if (error) return [];
-            return (data as any[]) ?? [];
+            return (data as []) ?? [];
         },
         enabled: !!initial?.client_uuid && !!initial?.uuid && showCostModal,
     });
@@ -318,7 +316,12 @@ export default function ServerDetail() {
         if (!initial?.client_uuid || !initial?.uuid) return;
         setSubmittingPayment(true);
         try {
-            const { error } = await api.POST(
+            const { error } = await (
+                api.POST as unknown as (
+                    url: string,
+                    options: unknown,
+                ) => Promise<{ error?: { message?: string } }>
+            )(
                 "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-adjustment",
                 {
                     params: {
@@ -327,7 +330,7 @@ export default function ServerDetail() {
                             serverUuid: initial.uuid,
                         },
                     },
-                    body: { action: type as any, amount },
+                    body: { action: type, amount },
                 },
             );
             if (error) throw error;
@@ -355,14 +358,14 @@ export default function ServerDetail() {
 
     useEffect(() => {
         if (initial) {
-            const serverUptime = (initial as any).uptime_seconds ?? 0;
+            const serverUptime = initial.uptime_seconds ?? 0;
             setLiveUptimeSeconds((prev) => Math.max(prev, serverUptime));
         }
     }, [initial?.uptime_seconds]);
 
     useEffect(() => {
         if (initial?.cost_reset_at) {
-            setLiveUptimeSeconds((initial as any).uptime_seconds ?? 0);
+            setLiveUptimeSeconds(initial.uptime_seconds ?? 0);
         }
     }, [initial?.cost_reset_at]);
 
@@ -505,10 +508,7 @@ export default function ServerDetail() {
         }
     };
 
-    const copyToClipboard = (
-        text: string,
-        type: "linux" | "windows" | "uninstall_linux" | "uninstall_windows",
-    ) => {
+    const copyToClipboard = (text: string, type: CopyKey) => {
         navigator.clipboard.writeText(text);
         setCopiedKey(type);
         toast.success("Command copied to clipboard!");
@@ -557,8 +557,8 @@ export default function ServerDetail() {
         );
     }
 
-    const liveGrossCost = (initial as any)?.gross_cost ?? 0;
-    const liveNetCost = (initial as any)?.net_cost ?? 0;
+    const liveGrossCost = initial.gross_cost ?? 0;
+    const liveNetCost = initial.net_cost ?? 0;
 
     const server = {
         ...initial,
@@ -573,7 +573,7 @@ export default function ServerDetail() {
     const status: keyof typeof STATUS_CONFIG = server.agent_deleted
         ? "pending_deletion"
         : (server.status as keyof typeof STATUS_CONFIG) ||
-          "pending_installation";
+        "pending_installation";
     const { icon: StatusIcon, label, color, bg } = STATUS_CONFIG[status];
     const isInstalled =
         status === "online" || status === "warning" || status === "offline";
@@ -725,97 +725,97 @@ function AgentInstallationGuide({
             {(status === "waiting_for_installation" ||
                 status === "waiting_for_first_heartbeat" ||
                 provisionDetails) && (
-                <div className="space-y-5">
-                    <p className="text-sm text-muted-foreground">
-                        Run the appropriate command directly on your server.
-                    </p>
+                    <div className="space-y-5">
+                        <p className="text-sm text-muted-foreground">
+                            Run the appropriate command directly on your server.
+                        </p>
 
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                Linux (cURL + bash)
-                            </label>
-                            <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
-                                <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
-                                    {provisionDetails?.linux_command ||
-                                        `curl -fsSL ${window.location.origin}/install/linux | bash -s -- <token>`}
-                                </span>
-                                {provisionDetails?.linux_command && (
-                                    <button
-                                        onClick={() =>
-                                            copyToClipboard(
-                                                provisionDetails.linux_command!,
-                                                "linux",
-                                            )
-                                        }
-                                        className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                    >
-                                        {copiedKey === "linux" ? (
-                                            <Check className="size-4 text-emerald-400" />
-                                        ) : (
-                                            <Copy className="size-4" />
-                                        )}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                Windows (PowerShell)
-                            </label>
-                            <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
-                                <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
-                                    {provisionDetails?.windows_command ||
-                                        `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
-                                </span>
-                                {provisionDetails?.windows_command && (
-                                    <button
-                                        onClick={() =>
-                                            copyToClipboard(
-                                                provisionDetails.windows_command!,
-                                                "windows",
-                                            )
-                                        }
-                                        className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                    >
-                                        {copiedKey === "windows" ? (
-                                            <Check className="size-4 text-emerald-400" />
-                                        ) : (
-                                            <Copy className="size-4" />
-                                        )}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/40 text-xs text-muted-foreground">
-                        <div>
-                            {provisionDetails?.expires_at && (
-                                <span>
-                                    Token expires at:{" "}
-                                    <strong>
-                                        {new Date(
-                                            provisionDetails.expires_at,
-                                        ).toLocaleString()}
-                                    </strong>{" "}
-                                    <span className="text-amber-500 font-mono ml-1.5">
-                                        {timeLeft}
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                    Linux (cURL + bash)
+                                </label>
+                                <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
+                                    <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
+                                        {provisionDetails?.linux_command ||
+                                            `curl -fsSL ${window.location.origin}/install/linux | bash -s -- <token>`}
                                     </span>
-                                </span>
-                            )}
+                                    {provisionDetails?.linux_command && (
+                                        <button
+                                            onClick={() =>
+                                                copyToClipboard(
+                                                    provisionDetails.linux_command!,
+                                                    "linux",
+                                                )
+                                            }
+                                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                        >
+                                            {copiedKey === "linux" ? (
+                                                <Check className="size-4 text-emerald-400" />
+                                            ) : (
+                                                <Copy className="size-4" />
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                    Windows (PowerShell)
+                                </label>
+                                <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
+                                    <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
+                                        {provisionDetails?.windows_command ||
+                                            `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
+                                    </span>
+                                    {provisionDetails?.windows_command && (
+                                        <button
+                                            onClick={() =>
+                                                copyToClipboard(
+                                                    provisionDetails.windows_command!,
+                                                    "windows",
+                                                )
+                                            }
+                                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                        >
+                                            {copiedKey === "windows" ? (
+                                                <Check className="size-4 text-emerald-400" />
+                                            ) : (
+                                                <Copy className="size-4" />
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                        <button
-                            onClick={regenerateProvisionToken}
-                            className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-medium cursor-pointer"
-                        >
-                            <RefreshCw size={12} />
-                            Regenerate Token
-                        </button>
+
+                        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/40 text-xs text-muted-foreground">
+                            <div>
+                                {provisionDetails?.expires_at && (
+                                    <span>
+                                        Token expires at:{" "}
+                                        <strong>
+                                            {new Date(
+                                                provisionDetails.expires_at,
+                                            ).toLocaleString()}
+                                        </strong>{" "}
+                                        <span className="text-amber-500 font-mono ml-1.5">
+                                            {timeLeft}
+                                        </span>
+                                    </span>
+                                )}
+                            </div>
+                            <button
+                                onClick={regenerateProvisionToken}
+                                className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-medium cursor-pointer"
+                            >
+                                <RefreshCw size={12} />
+                                Regenerate Token
+                            </button>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
         </div>
     );
 }
@@ -866,15 +866,15 @@ function ServerInfoTab({
                             : "";
                         const descStr =
                             data.description &&
-                            String(data.description).trim() !== "undefined" &&
-                            String(data.description).trim() !== "null"
+                                String(data.description).trim() !== "undefined" &&
+                                String(data.description).trim() !== "null"
                                 ? String(data.description).trim()
                                 : "";
                         const costNum =
-                            data.hourly_cost !== undefined &&
-                            data.hourly_cost !== null &&
-                            data.hourly_cost !== ""
-                                ? Number(data.hourly_cost)
+                            data.monthly_cost !== undefined &&
+                                data.monthly_cost !== null &&
+                                data.monthly_cost !== ""
+                                ? Number(data.monthly_cost)
                                 : 0;
 
                         const { error } = await api.PATCH(
@@ -889,7 +889,7 @@ function ServerInfoTab({
                                 body: {
                                     name: nameStr,
                                     description: descStr || undefined,
-                                    hourly_cost: isNaN(costNum) ? 0 : costNum,
+                                    monthly_cost: isNaN(costNum) ? 0 : costNum,
                                 },
                             },
                         );
@@ -980,9 +980,9 @@ function ServerInfoTab({
                                 type="number"
                                 step="0.01"
                                 min="0"
-                                value={form.hourly_cost ?? ""}
+                                value={form.monthly_cost ?? ""}
                                 onChange={(e) =>
-                                    store.set("hourly_cost")(e.target.value)
+                                    store.set("monthly_cost")(e.target.value)
                                 }
                                 className="text-sm font-mono"
                             />
@@ -1069,7 +1069,7 @@ function ServerInfoTab({
                             Monthly Cost
                         </span>
                         <span className="text-sm font-semibold text-foreground font-mono">
-                            ₱{((initial as any)?.hourly_cost ?? 0).toFixed(2)} /
+                            ₱{(initial.monthly_cost ?? 0).toFixed(2)} /
                             mo
                         </span>
                     </div>
@@ -1090,7 +1090,7 @@ function ServerInfoTab({
                         <span className="text-sm font-bold text-emerald-400 font-mono">
                             ₱
                             {(
-                                (initial as any)?.accumulated_cost ?? 0
+                                initial?.accumulated_cost ?? 0
                             ).toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
@@ -1108,14 +1108,14 @@ function ServerInfoTab({
                             Next Billing Date
                         </span>
                         <span className="text-sm font-semibold text-foreground wrap-break-word">
-                            {(initial as any)?.billing_date
+                            {initial?.billing_date
                                 ? new Date(
-                                      (initial as any).billing_date,
-                                  ).toLocaleDateString(undefined, {
-                                      month: "short",
-                                      day: "numeric",
-                                      year: "numeric",
-                                  })
+                                    initial.billing_date,
+                                ).toLocaleDateString(undefined, {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                })
                                 : "N/A"}
                         </span>
                     </div>
@@ -1187,7 +1187,7 @@ function DeleteModalDangerZone({
                             undone.
                         </p>
 
-                        {initial && (initial as any).accumulated_cost > 0 && (
+                        {initial && (initial.accumulated_cost ?? 0) > 0 && (
                             <div className="flex items-start gap-2 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-600 dark:text-amber-400">
                                 <AlertTriangle className="size-4 shrink-0 mt-0.5" />
                                 <div>
@@ -1200,8 +1200,7 @@ function DeleteModalDangerZone({
                                         <strong className="text-amber-600 dark:text-amber-400">
                                             ₱
                                             {(
-                                                (initial as any)
-                                                    .accumulated_cost ?? 0
+                                                initial.accumulated_cost ?? 0
                                             ).toLocaleString(undefined, {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
@@ -1496,8 +1495,8 @@ function MetricsTab({
                                                 {p.ping_status === "offline"
                                                     ? "offline"
                                                     : p.ping_status === "online"
-                                                      ? `${p.ping_time}ms`
-                                                      : "-"}
+                                                        ? `${p.ping_time}ms`
+                                                        : "-"}
                                             </td>
                                         </tr>
                                     ))}
@@ -1589,8 +1588,8 @@ function AlertsTab({ serverAlertTab, initial }: { serverAlertTab; initial }) {
                     serverAlertTab.alertScope === "server"
                         ? (initial?.name ?? "")
                         : serverAlertTab.alertScope === "client"
-                          ? (initial?.client_name ?? "")
-                          : ""
+                            ? (initial?.client_name ?? "")
+                            : ""
                 }
                 showControls={false}
                 showMinimap={false}
@@ -1610,11 +1609,10 @@ function AgentTab({ server }: { server }) {
                 </h3>
                 {server?.agent && (
                     <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${
-                            server.agent.status === "online"
-                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-                        }`}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${server.agent.status === "online"
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                            }`}
                     >
                         {server.agent.status}
                     </span>
@@ -1668,8 +1666,8 @@ function AgentTab({ server }: { server }) {
                                 label: "Last Heartbeat",
                                 value: server.agent.last_seen_at
                                     ? new Date(
-                                          server.agent.last_seen_at,
-                                      ).toLocaleString()
+                                        server.agent.last_seen_at,
+                                    ).toLocaleString()
                                     : "Never",
                             },
                         ].map((prop, idx) => (
@@ -1710,14 +1708,14 @@ function AgentTab({ server }: { server }) {
                                                         ? "bg-red-500"
                                                         : act.type ===
                                                             "agent_updated"
-                                                          ? "bg-blue-500"
-                                                          : act.type ===
-                                                              "server_online"
-                                                            ? "bg-emerald-500"
+                                                            ? "bg-blue-500"
                                                             : act.type ===
-                                                                "registration_completed"
-                                                              ? "bg-purple-500"
-                                                              : "bg-primary",
+                                                                "server_online"
+                                                                ? "bg-emerald-500"
+                                                                : act.type ===
+                                                                    "registration_completed"
+                                                                    ? "bg-purple-500"
+                                                                    : "bg-primary",
                                                 )}
                                             />
                                             <div className="flex-1 min-w-0">
@@ -1813,7 +1811,7 @@ function CostModal({
                         <span className="text-3xl font-extrabold text-emerald-400 font-mono">
                             ₱
                             {(
-                                (initial as any)?.accumulated_cost ?? 0
+                                initial?.accumulated_cost ?? 0
                             ).toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
@@ -1822,11 +1820,11 @@ function CostModal({
                         <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-2 border-t border-emerald-500/20 mt-1 font-mono">
                             <span>
                                 Payment Due: ₱
-                                {((initial as any)?.net_cost ?? 0).toFixed(2)}
+                                {(initial?.net_cost ?? 0).toFixed(2)}
                             </span>
                             <span>
                                 Payments Recorded: ₱
-                                {((initial as any)?.cost_offset ?? 0).toFixed(
+                                {(initial?.cost_offset ?? 0).toFixed(
                                     2,
                                 )}
                             </span>
@@ -1932,18 +1930,17 @@ function CostModal({
                                             <p className="text-[11px] text-muted-foreground">
                                                 {msg}
                                             </p>
-                                            {log.details?.before?.hourly_cost &&
-                                                log.details?.after
-                                                    ?.hourly_cost && (
+                                            {(log.details?.before?.monthly_cost || log.details?.before?.hourly_cost) &&
+                                                (log.details?.after?.monthly_cost || log.details?.after?.hourly_cost) && (
                                                     <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
                                                         <span>
                                                             Before: ₱
                                                             {
                                                                 log.details
                                                                     .before
-                                                                    .hourly_cost
+                                                                    .monthly_cost ?? log.details.before.hourly_cost
                                                             }
-                                                            /hr
+                                                            /mo
                                                         </span>
                                                         <span>→</span>
                                                         <span>
@@ -1951,9 +1948,9 @@ function CostModal({
                                                             {
                                                                 log.details
                                                                     .after
-                                                                    .hourly_cost
+                                                                    .monthly_cost ?? log.details.after.hourly_cost
                                                             }
-                                                            /hr
+                                                            /mo
                                                         </span>
                                                     </div>
                                                 )}

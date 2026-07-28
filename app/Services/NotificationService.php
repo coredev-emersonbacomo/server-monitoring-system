@@ -5,51 +5,80 @@ namespace App\Services;
 use Illuminate\Support\Facades\Mail;
 use Discord\Discord;
 use Discord\Builders\MessageBuilder;
+use Discord\Builders\Components\ActionRow;
+use Discord\Builders\Components\Button;
 use Discord\Parts\Embed\Embed;
 
 class NotificationService
 {
     /**
-     * Send an alert to a Discord text channel using an embed card.
+     * Send an alert to a Discord text channel using an embed card with link buttons.
      *
      * @param string $tokenId The Bot Token
      * @param string $roleId The Discord Role ID to mention
      * @param string $message The message content
      * @param string $channelId The Channel ID to send the message to
      * @param string $title The embed title
-     * @param string|null $url Optional URL link shown on the embed
+     * @param string|null $url Optional URL link for View Server button
      * @param string $color Hex color for the embed sidebar (default: red)
+     * @param string|null $dashboardUrl Optional URL link for Go to Dashboard button
      */
     public function sendDiscordAlert(
         string $tokenId,
         string $roleId,
         string $message,
         string $channelId,
-        string $title = 'System Alert',
+        string $title = 'Server Monitor Alert',
         ?string $url = null,
         string $color = '#ED4245',
+        ?string $dashboardUrl = null,
     ) {
         $discord = new Discord([
             'token' => $tokenId,
         ]);
 
-        $discord->on('ready', function (Discord $discord) use ($roleId, $message, $channelId, $title, $url, $color) {
+        $discord->on('ready', function (Discord $discord) use ($roleId, $message, $channelId, $title, $url, $color, $dashboardUrl) {
             $channel = $discord->getChannel($channelId);
 
             if ($channel) {
-                $embed = new Embed($discord);
-                $embed->setTitle($title);
-                $embed->setDescription($message);
-                $embed->setColor($color);
-                $embed->setTimestamp(now()->timestamp);
-                $embed->setFooter('Server Monitoring System');
+                $embedTitle = (str_starts_with($title, '🔴') || str_starts_with($title, '🚨') || str_starts_with($title, '⚠️'))
+                    ? $title
+                    : "🔴 {$title}";
 
-                if ($url) {
-                    $embed->setURL($url);
-                }
+                $nowTimestamp = now()->timestamp;
+                $timestampStr = "<t:{$nowTimestamp}:f>";
+                $embedDescription = "{$message}\n\n{$timestampStr}";
+
+                $embed = new Embed($discord);
+                $embed->setTitle($embedTitle);
+                $embed->setDescription($embedDescription);
+
+                $hexColor = ltrim($color, '#');
+                $embed->setColor(hexdec($hexColor ?: 'ED4245'));
 
                 $builder = MessageBuilder::new()
                     ->addEmbed($embed);
+
+                $actionRow = ActionRow::new();
+
+                if ($url) {
+                    $actionRow->addComponent(
+                        Button::new(Button::STYLE_LINK)
+                            ->setLabel('View Server')
+                            ->setUrl($url)
+                            ->setEmoji('🔍')
+                    );
+                }
+
+                $dashUrl = $dashboardUrl ?? url('/dashboard');
+                $actionRow->addComponent(
+                    Button::new(Button::STYLE_LINK)
+                        ->setLabel('Go to Dashboard')
+                        ->setUrl($dashUrl)
+                        ->setEmoji('📊')
+                );
+
+                $builder->addComponent($actionRow);
 
                 if ($roleId) {
                     $builder->setContent("<@&{$roleId}>");

@@ -41,7 +41,7 @@ class Server extends Model
         return [
             'record_status' => RecordStatus::class,
             'archived_at' => 'datetime',
-            'hourly_cost' => 'float',
+            'monthly_cost' => 'float',
             'cost_offset' => 'float',
             'cost_reset_at' => 'datetime',
             'online_seconds' => 'integer',

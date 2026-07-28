@@ -76,7 +76,7 @@ class ProvisioningService
             'performed_by' => $user?->id,
         ]);
 
-        \App\Models\CustomActivityLog::create([
+        \App\Models\AgentLog::create([
             'logable_type' => Server::class,
             'logable_id' => (string) $server->uuid,
             'user_id' => $user?->id,
@@ -267,7 +267,7 @@ class ProvisioningService
                 'description' => 'Agent registration completed successfully.',
             ]);
 
-            \App\Models\CustomActivityLog::create([
+            \App\Models\AgentLog::create([
                 'logable_type' => get_class($server),
                 'logable_id' => $server->id,
                 'user_id' => null,

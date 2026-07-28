@@ -13,7 +13,12 @@ import {
     User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useActivityLogs, type ActivityLogData } from "@/hooks/useActivityLogs";
+import {
+    useActivityLogs,
+    useServerHealthLogs,
+    useAgentLogs,
+    type ActivityLogData,
+} from "@/hooks/useActivityLogs";
 import { Tab } from "@/components/ui/tab";
 import { Link } from "react-router-dom";
 
@@ -462,7 +467,9 @@ function LogTable({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function LogsPage() {
-    const { data: logs = [], isLoading } = useActivityLogs();
+    const { data: activityLogs = [], isLoading: isLoadingActivity } = useActivityLogs();
+    const { data: healthLogs = [], isLoading: isLoadingHealth } = useServerHealthLogs();
+    const { data: agentLogs = [], isLoading: isLoadingAgent } = useAgentLogs();
 
     const [sortField, setSortField] = useState<SortableKey>("created_at");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -476,29 +483,6 @@ export default function LogsPage() {
             setSortDir("asc");
         }
     };
-
-    // Filter categories
-    const isHealthAction = (action: string) => {
-        const act = action.toLowerCase();
-        return act.includes("online") || act.includes("offline") || act.includes("health");
-    };
-
-    const isAgentAction = (action: string) => {
-        const act = action.toLowerCase();
-        return act.includes("agent") && !isHealthAction(action);
-    };
-
-    const activityLogs = useMemo(() => {
-        return logs.filter((log) => !isHealthAction(log.action) && !isAgentAction(log.action));
-    }, [logs]);
-
-    const healthLogs = useMemo(() => {
-        return logs.filter((log) => isHealthAction(log.action));
-    }, [logs]);
-
-    const agentLogs = useMemo(() => {
-        return logs.filter((log) => isAgentAction(log.action));
-    }, [logs]);
 
     const sortFn = (list: ActivityLogData[]) => {
         const copy = [...list];
@@ -535,7 +519,7 @@ export default function LogsPage() {
                     <Tab.Item icon={Terminal} title="Activity">
                         <LogTable
                             logs={sortedActivity}
-                            isLoading={isLoading}
+                            isLoading={isLoadingActivity}
                             emptyMessage="No general activity logs recorded yet."
                             sortField={sortField}
                             sortDir={sortDir}
@@ -547,7 +531,7 @@ export default function LogsPage() {
                     <Tab.Item icon={Server} title="Server Health">
                         <LogTable
                             logs={sortedHealth}
-                            isLoading={isLoading}
+                            isLoading={isLoadingHealth}
                             emptyMessage="No server health status logs recorded yet."
                             sortField={sortField}
                             sortDir={sortDir}
@@ -559,7 +543,7 @@ export default function LogsPage() {
                     <Tab.Item icon={FileText} title="Agent">
                         <LogTable
                             logs={sortedAgent}
-                            isLoading={isLoading}
+                            isLoading={isLoadingAgent}
                             emptyMessage="No agent installation/update logs recorded yet."
                             sortField={sortField}
                             sortDir={sortDir}

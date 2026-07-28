@@ -21,7 +21,33 @@ export const useActivityLogs = () => {
                 params: {},
             });
             if (error) throw error;
-            return data ?? [];
+            return (data as ActivityLogData[]) ?? [];
+        },
+    });
+};
+
+export const useServerHealthLogs = () => {
+    return useQuery<ActivityLogData[]>({
+        queryKey: ["server-health-logs"],
+        queryFn: async () => {
+            const { data, error } = await api.GET("/v1/server-health-logs" as any, {
+                params: {},
+            });
+            if (error) throw error;
+            return (data as ActivityLogData[]) ?? [];
+        },
+    });
+};
+
+export const useAgentLogs = () => {
+    return useQuery<ActivityLogData[]>({
+        queryKey: ["agent-logs"],
+        queryFn: async () => {
+            const { data, error } = await api.GET("/v1/agent-logs" as any, {
+                params: {},
+            });
+            if (error) throw error;
+            return (data as ActivityLogData[]) ?? [];
         },
     });
 };

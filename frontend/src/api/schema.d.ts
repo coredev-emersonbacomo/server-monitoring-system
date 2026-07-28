@@ -2172,7 +2172,7 @@ export interface components {
             }[] | null;
             agent?: components["schemas"]["AgentData"] | null;
             alert_scope?: string;
-            hourly_cost?: number;
+            monthly_cost?: number;
             cost_offset?: number;
             cost_reset_at?: string | null;
             historical_cost?: number;
@@ -3459,7 +3459,7 @@ export interface operations {
                 "application/json": {
                     name: string;
                     description?: string | null;
-                    hourly_cost?: number | null;
+                    monthly_cost?: number | null;
                 };
             };
         };
@@ -3804,7 +3804,7 @@ export interface operations {
                 "application/json": {
                     name: string;
                     description?: string | null;
-                    hourly_cost?: number | null;
+                    monthly_cost?: number | null;
                 };
             };
         };
@@ -5801,7 +5801,7 @@ export interface operations {
                     name: string;
                     description?: string | null;
                     alert_scope?: string | null;
-                    hourly_cost?: number | null;
+                    monthly_cost?: number | null;
                 };
             };
         };
@@ -6052,7 +6052,7 @@ export interface operations {
                     name: string;
                     description?: string | null;
                     alert_scope?: string | null;
-                    hourly_cost?: number | null;
+                    monthly_cost?: number | null;
                 };
             };
         };

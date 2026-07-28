@@ -53,7 +53,7 @@ class NodeConfigNotificationService
         try {
             match ($channel) {
                 'email' => $this->sendEmail($server, $subject, $message, $serverUrl),
-                'discord' => $this->sendDiscord($settings, $message, $serverUrl),
+                'discord' => $this->sendDiscord($settings, $message, $serverUrl, $subject),
                 default => null,
             };
 
@@ -91,7 +91,7 @@ class NodeConfigNotificationService
         $this->notifications->sendEmailAlert($emails, $message, $subject, $url);
     }
 
-    private function sendDiscord(array $settings, string $message, ?string $url = null): void
+    private function sendDiscord(array $settings, string $message, ?string $url = null, ?string $subject = null): void
     {
         $botToken = $settings['bot_token'] ?? null;
         $channelId = $settings['channel_id'] ?? null;
@@ -99,7 +99,19 @@ class NodeConfigNotificationService
 
         if (!$botToken || !$channelId) return;
 
-        $this->notifications->sendDiscordAlert($botToken, $roleId ?? '', $message, $channelId, 'System Alert', $url);
+        $title = (!empty($subject) && $subject !== 'Alert triggered') ? $subject : 'Server Monitor Alert';
+        $dashboardUrl = url('/dashboard');
+
+        $this->notifications->sendDiscordAlert(
+            $botToken,
+            $roleId ?? '',
+            $message,
+            $channelId,
+            $title,
+            $url,
+            '#ED4245',
+            $dashboardUrl
+        );
     }
 
     public function resolveTemplates(string $text, array $data): string
