@@ -8,7 +8,7 @@ import type { ReportOutletContext } from "@/layouts/ReportsLayout";
 import { PagedPreview } from "./PagedPreview";
 
 export default function ReportIndexPage() {
-    const { view } = useOutletContext<ReportOutletContext>();
+    const { view, showLabel } = useOutletContext<ReportOutletContext>();
     const { uuid } = useParams<{ uuid?: string }>();
     const location = useLocation();
     const isServer = location.pathname.includes("/report/servers");
@@ -17,7 +17,7 @@ export default function ReportIndexPage() {
     if (uuid) {
         return (
             <div id="report-print-area" className="flex justify-center bg-muted/30 rounded-xl py-10 px-4">
-                <PagedPreview>
+                <PagedPreview label={showLabel ? (isServer ? "Server Report" : "Client Report") : undefined}>
                     {isServer ? <ServerReportPage /> : <ClientReportPage />}
                 </PagedPreview>
             </div>
