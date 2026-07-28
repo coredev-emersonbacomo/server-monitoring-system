@@ -5,7 +5,6 @@ namespace App\NodeConfig\Controllers;
 use App\NodeConfig\Data\NodeConfigRequestData;
 use App\NodeConfig\Engine\NodeRegistry;
 use App\NodeConfig\Engine\NodeConfigEngine;
-use App\NodeConfig\Engine\NodeConfigCompiler;
 use App\NodeConfig\Jobs\EvaluateNodeConfig;
 use App\NodeConfig\Models\NodeConfig;
 use App\NodeConfig\Models\NodeConfigState;
@@ -193,8 +192,6 @@ class NodeConfigController extends Controller
             ], 422);
         }
 
-        $compiler = new NodeConfigCompiler();
-        $compiledConfig = $compiler->compile($data['config']);
         $parsed = $this->parseSlug($slug);
 
         $query = NodeConfig::where('scope_type', $parsed['scope_type']);
@@ -208,7 +205,6 @@ class NodeConfigController extends Controller
             $config->update([
                 'name' => $data['name'],
                 'config' => $data['config'],
-                'compiled_config' => $compiledConfig,
                 'enabled' => $data['enabled'] ?? $config->enabled,
             ]);
         } else {
@@ -216,7 +212,6 @@ class NodeConfigController extends Controller
                 'slug' => $slug,
                 'name' => $data['name'],
                 'config' => $data['config'],
-                'compiled_config' => $compiledConfig,
                 'scope_type' => $parsed['scope_type'],
                 'scope_id' => $parsed['scope_id'],
                 'enabled' => $data['enabled'] ?? true,
@@ -235,9 +230,34 @@ class NodeConfigController extends Controller
             'config.edges' => ['required', 'array'],
         ]);
 
-        $compiler = new NodeConfigCompiler();
+        $compiler = new \App\NodeConfig\Engine\NodeConfigCompiler();
         $compiled = $compiler->compile($data['config']);
 
         return response()->json($compiled);
     }
+
+    public function telemetryState(): JsonResponse
+    {
+        $activeTasks = \App\NodeConfig\Engine\NodeTaskScheduler::getAllActiveTasks();
+        $states = NodeConfigState::all();
+        $serverNow = microtime(true);
+
+        // Real last sweep time anchored from cache (set by SystemMonitor command)
+        $lastSweepAt = \Illuminate\Support\Facades\Cache::get('last_monitor_sweep_at');
+
+        $snapshot = [
+            'server_now'               => $serverNow,
+            'active_tasks'             => array_values($activeTasks),
+            'states'                   => $states,
+            'last_monitor_sweep_at'    => $lastSweepAt,   // microtime float or null
+            'monitor_interval_seconds' => 60,             // everyMinute() in console.php
+        ];
+
+        // Push the full snapshot to the WebSocket channel so connecting clients
+        // receive it immediately without needing a second round-trip.
+        \App\Events\SystemTelemetryEvent::emit('state_snapshot', $snapshot);
+
+        return response()->json($snapshot);
+    }
 }
+

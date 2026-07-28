@@ -18,3 +18,6 @@ Broadcast::channel('agent.{serverUuid}', function ($user, $serverUuid) {
     // Allow authenticated dashboard users to listen too (for future use)
     return true;
 }, ['guards' => ['jwt']]);
+
+Broadcast::channel('system-telemetry', fn ($user) => true, ['guards' => ['jwt']]);
+

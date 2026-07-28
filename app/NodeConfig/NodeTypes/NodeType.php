@@ -8,6 +8,7 @@ interface NodeType
     public function getCategory(): string;
     public function getLabel(): string;
     public function acceptsUnlimitedInputs(): bool;
+    public function hasOutput(): bool;
     public function getSettingDefinitions(): array;
     public function evaluate(array $inputValues, array $settings, array $state): NodeResult;
 }

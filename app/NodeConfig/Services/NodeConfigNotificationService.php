@@ -32,10 +32,14 @@ class NodeConfigNotificationService
             'runtime' => [
                 'metricName' => $context['metric_name'] ?? 'Unknown Metric',
                 'sustainValue' => $context['sustain_value'] ?? '',
-                'timestamp' => now()->format('Y-m-d H:i:s'),
-                'offlineDuration' => $server?->agent?->last_seen_at
-                    ? now()->diffForHumans($server->agent->last_seen_at, true) . ' ago'
-                    : 'unknown',
+                'offlineTimestamp' => $context['offlineTimestamp']
+                    ?? $server?->went_offline_at?->format('Y-m-d H:i:s')
+                    ?? now()->format('Y-m-d H:i:s'),
+                'offlineDuration' => $server?->went_offline_at
+                    ? $server->went_offline_at->diffForHumans(now(), true)
+                    : ($server?->agent?->last_seen_at
+                        ? now()->diffForHumans($server->agent->last_seen_at, true) . ' ago'
+                        : 'unknown'),
             ],
         ];
 
@@ -44,10 +48,12 @@ class NodeConfigNotificationService
 
         $channel = $settings['channel'] ?? 'email';
 
+        $serverUrl = $server ? url('/servers/' . $server->uuid) : null;
+
         try {
             match ($channel) {
-                'email' => $this->sendEmail($server, $subject, $message),
-                'discord' => $this->sendDiscord($settings, $message),
+                'email' => $this->sendEmail($server, $subject, $message, $serverUrl),
+                'discord' => $this->sendDiscord($settings, $message, $serverUrl),
                 default => null,
             };
 
@@ -57,6 +63,14 @@ class NodeConfigNotificationService
                 'channel' => $channel,
                 'subject' => $subject,
                 'node' => $action['node_id'] ?? null,
+            ]);
+
+            \App\Events\SystemTelemetryEvent::emit('notification_dispatched', [
+                'server_id'   => $serverId,
+                'server_name' => $server?->name,
+                'channel'     => $channel,
+                'subject'     => $subject,
+                'node_id'     => $action['node_id'] ?? null,
             ]);
         } catch (\Throwable $e) {
             Log::error("[server-events] Notification failed", [
@@ -69,15 +83,15 @@ class NodeConfigNotificationService
         }
     }
 
-    private function sendEmail(?Server $server, string $subject, string $message): void
+    private function sendEmail(?Server $server, string $subject, string $message, ?string $url = null): void
     {
         $emails = $server?->client?->secopclients?->pluck('email')->filter()->values()->all();
         if (empty($emails)) return;
 
-        $this->notifications->sendEmailAlert($emails, $message, $subject);
+        $this->notifications->sendEmailAlert($emails, $message, $subject, $url);
     }
 
-    private function sendDiscord(array $settings, string $message): void
+    private function sendDiscord(array $settings, string $message, ?string $url = null): void
     {
         $botToken = $settings['bot_token'] ?? null;
         $channelId = $settings['channel_id'] ?? null;
@@ -85,7 +99,7 @@ class NodeConfigNotificationService
 
         if (!$botToken || !$channelId) return;
 
-        $this->notifications->sendDiscordAlert($botToken, $roleId ?? '', $message, $channelId);
+        $this->notifications->sendDiscordAlert($botToken, $roleId ?? '', $message, $channelId, 'System Alert', $url);
     }
 
     public function resolveTemplates(string $text, array $data): string

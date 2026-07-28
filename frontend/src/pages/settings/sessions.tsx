@@ -19,11 +19,9 @@ import {
     Terminal,
     UserCheck,
     Fingerprint,
-    ChevronLeft,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
-import { useBreadcrumb } from "@/hooks/useBreadcrumb";
+import IndexHeader from "@/components/IndexHeader";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -169,8 +167,6 @@ function ConfirmDialog({
 }
 
 export default function Sessions() {
-    const { setTrail } = useBreadcrumb();
-    const navigate = useNavigate();
     const {
         sessions,
         sessionsLoading,
@@ -188,13 +184,6 @@ export default function Sessions() {
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
     const [confirmLogoutOthers, setConfirmLogoutOthers] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
-
-    useEffect(() => {
-        setTrail([
-            { label: "Settings", href: "/settings" },
-            { label: "Sessions & Devices" },
-        ]);
-    }, [setTrail]);
 
     useEffect(() => {
         fetchSessions();
@@ -331,51 +320,39 @@ export default function Sessions() {
             />
 
             <PageLayout className="selection:bg-primary/10">
-                <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
-                    <div className="flex items-center justify-between gap-4 py-4 px-6 sm:px-8 lg:px-10 max-w-4xl mx-auto w-full">
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={() => navigate("/settings")}
-                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
-                                aria-label="Back to Settings"
-                            >
-                                <ChevronLeft className="w-4 h-4" />
-                            </button>
-                            <div className="space-y-0.5">
-                                <h1 className="text-xl font-semibold tracking-tight text-foreground flex items-center gap-2">
-                                    Sessions & Devices
-                                </h1>
-                                <p className="text-xs text-muted-foreground">
-                                    Manage active sessions across your hardware
-                                    profile.
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                onClick={handleRefresh}
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
-                                title="Refresh sessions"
-                            >
-                                <RefreshCw className="w-4 h-4" />
-                            </Button>
-                            {otherSessions.filter((s) => s.status === "active")
-                                .length > 0 && (
-                                <Button
-                                    onClick={() => setConfirmLogoutOthers(true)}
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 gap-1.5 hidden sm:flex text-xs font-medium cursor-pointer"
-                                >
-                                    <LogOut className="w-3.5 h-3.5" />
-                                    Sign Out Others
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                </header>
+                <IndexHeader
+                    icon={Smartphone}
+                    title="Sessions & Devices"
+                    description="Manage active sessions across your hardware profile."
+                    trail={[
+                        { label: "Settings", href: "/settings" },
+                        { label: "Sessions & Devices" },
+                    ]}
+                />
+
+                <div className="flex items-center justify-end gap-2">
+                    <Button
+                        onClick={handleRefresh}
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Refresh sessions"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                    </Button>
+                    {otherSessions.filter((s) => s.status === "active")
+                        .length > 0 && (
+                        <Button
+                            onClick={() => setConfirmLogoutOthers(true)}
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-1.5 text-xs font-medium cursor-pointer"
+                        >
+                            <LogOut className="w-3.5 h-3.5" />
+                            Sign Out Others
+                        </Button>
+                    )}
+                </div>
 
                 <main className="py-6 w-full flex-1">
                     <div className="max-w-4xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-6">

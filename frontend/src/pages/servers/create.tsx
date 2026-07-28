@@ -1,127 +1,67 @@
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { z } from "zod";
 import {
     AlertTriangle,
-    ArrowLeft,
     ArrowRight,
     ShieldCheck,
+    Server,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { useBreadcrumb } from "@/hooks/useBreadcrumb";
+import IndexHeader from "@/components/IndexHeader";
 import api from "@/api/api";
-function Field({
-    label,
-    required,
-    error,
-    hint,
-    children,
-}: {
-    label?: string;
-    required?: boolean;
-    error?: string;
-    hint?: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className="flex flex-col gap-1.5">
-            {label && (
-                <Label className="text-xs font-medium text-foreground/80">
-                    {label}
-                    {required && (
-                        <span className="text-destructive ml-0.5">*</span>
-                    )}
-                </Label>
-            )}
-            {children}
-            {hint && !error && (
-                <p className="text-[11px] text-muted-foreground">{hint}</p>
-            )}
-            {error && <p className="text-[11px] text-destructive">{error}</p>}
-        </div>
-    );
-}
+import { Form, createFormStore, useForm } from "@/components/ui/form";
+
+const schema = z.object({
+    name: z.string().min(1, "Server name is required"),
+    description: z.string().max(255, "Maximum 255 characters").optional().default(""),
+    hourly_cost: z.union([z.string(), z.number()]).transform((val) => {
+        if (val === "" || val === undefined || val === null) return 0;
+        const num = Number(val);
+        return isNaN(num) ? 0 : num;
+    }),
+});
 
 export default function CreateServer() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const clientUuid = searchParams.get("client_uuid") || null;
-    const { setTrail } = useBreadcrumb();
 
-    const [serverName, setServerName] = useState("");
-    const [serverDescription, setServerDescription] = useState("");
-    const [hourlyCost, setHourlyCost] = useState("0");
-    const [error, setError] = useState("");
-    const [loading, setLoading] = useState(false);
+    const store = useMemo(
+        () => createFormStore({
+            schema,
+            originalData: { name: "", description: "", hourly_cost: 0 },
+            initialMode: "create",
+        }),
+        [],
+    );
 
-    useEffect(() => {
-        setTrail([
-            { label: "Clients", href: "/clients" },
-            { label: "Add server" },
-        ]);
-    }, [setTrail, clientUuid]);
-
-    const handleSubmit = async () => {
-        if (!serverName.trim()) {
-            setError("Server name is required");
-            return;
-        }
-
-        if (!clientUuid) {
-            toast.error("No client selected.");
-            return;
-        }
-
-        setLoading(true);
-        setError("");
-
-        const { data, error: apiError } = await api.POST(
-            "/v1/clients/{clientUuid}/servers",
-            {
-                params: { path: { clientUuid } },
-                body: {
-                    name: serverName.trim(),
-                    description: serverDescription.trim() || "",
-                    hourly_cost: parseFloat(hourlyCost) || 0,
-                } as any,
-            },
-        );
-
-        setLoading(false);
-
-        if (apiError) {
-            setError(
-                (apiError as { message?: string }).message ??
-                    "Failed to create server. Please try again.",
-            );
-            toast.error("Failed to create server.");
-        } else {
-            toast.success("Server created successfully!");
-            navigate(`/servers/${data.uuid}?client=${clientUuid}`);
-        }
-    };
+    const trail = [
+        { label: "Clients", href: "/clients" },
+        { label: "Add server" },
+    ];
 
     if (!clientUuid) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-4 p-8">
                 <AlertTriangle size={32} className="opacity-40" />
                 <p className="text-sm">No client selected.</p>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    icon={<ArrowLeft size={14} />}
-                    label="Back to clients"
+                <button
                     onClick={() => navigate("/clients")}
-                />
+                    className="text-sm text-primary hover:underline cursor-pointer"
+                >
+                    Back to clients
+                </button>
             </div>
         );
     }
 
     return (
         <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
+            <IndexHeader icon={Server} trail={trail} />
             <div className="flex-1">
                 <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 flex flex-col gap-8">
                     <div>
@@ -135,7 +75,34 @@ export default function CreateServer() {
                         </p>
                     </div>
 
-                    <div className="bg-card border border-border/60 rounded-xl shadow-sm divide-y divide-border/60">
+                    <Form.Root store={store} className="bg-card border border-border/60 rounded-xl shadow-sm divide-y divide-border/60">
+                        <Form.SubmitHandler
+                            handler={async (data: Record<string, unknown>) => {
+                                if (!clientUuid) {
+                                    toast.error("No client selected.");
+                                    return;
+                                }
+                                const { data: result, error: apiError } = await api.POST(
+                                    "/v1/clients/{clientUuid}/servers",
+                                    {
+                                        params: { path: { clientUuid } },
+                                        body: {
+                                            name: String(data.name).trim(),
+                                            description: (String(data.description ?? "").trim()) || "",
+                                            hourly_cost: Number(data.hourly_cost) || 0,
+                                        } as any,
+                                    },
+                                );
+                                if (apiError) {
+                                    const msg = (apiError as { message?: string }).message;
+                                    toast.error(msg ?? "Failed to create server.");
+                                } else {
+                                    toast.success("Server created successfully!");
+                                    navigate(`/servers/${result.uuid}?client=${clientUuid}`);
+                                }
+                            }}
+                        />
+
                         <div className="p-6 flex flex-col gap-5">
                             <div className="flex items-start justify-between">
                                 <div>
@@ -153,74 +120,79 @@ export default function CreateServer() {
                                 </span>
                             </div>
 
-                            <div>
-                                <FloatingInput
-                                    label="Server name"
-
-                                    value={serverName}
-                                    onValueChange={(value) => {
-                                        setServerName(value);
-                                        setError("");
-                                    }}
-                                    className={cn(
-                                        error && "border-destructive",
-                                    )}
-                                />
-                                {error && (
-                                    <p className="text-[11px] text-destructive mt-1.5">
-                                        {error}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div>
-                                <FloatingInput
-                                    label="Monthly Cost (₱ / mo)"
-                                    inputBg="bg-card"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={hourlyCost}
-                                    onValueChange={(val) => setHourlyCost(val)}
-                                />
-                            </div>
-
-                            <Field
-                                label="Description"
-                                hint="Optional notes about this server's role or purpose."
-                            >
-                                <textarea
-                                    placeholder="e.g. Primary production web server"
-                                    value={serverDescription}
-                                    onChange={(e) =>
-                                        setServerDescription(e.target.value)
-                                    }
-                                    rows={3}
-                                    maxLength={255}
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                                />
-                            </Field>
+                            <CreateServerFields store={store} />
                         </div>
 
                         <div className="px-6 py-4 flex items-center justify-between bg-muted/30 rounded-b-xl">
                             <button
+                                type="button"
                                 onClick={() => navigate(-1)}
-                                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                             >
                                 Cancel
                             </button>
-                            <Button
+                            <Form.Button
+                                type="submit"
                                 icon={<ArrowRight size={14} />}
-                                label={
-                                    loading ? "Creating..." : "Create Server"
-                                }
-                                onClick={handleSubmit}
-                                disabled={loading}
-                            />
+                            >
+                                Create Server
+                            </Form.Button>
                         </div>
-                    </div>
+                    </Form.Root>
                 </div>
             </div>
         </div>
+    );
+}
+
+function CreateServerFields({ store }: { store: ReturnType<typeof createFormStore> }) {
+    const form = useForm(store, (s) => s.form as z.infer<typeof schema>);
+    const errors = useForm(store, (s) => s.errors);
+
+    return (
+        <>
+            <div>
+                <FloatingInput
+                    label="Server name"
+                    value={form.name}
+                    onValueChange={store.set("name")}
+                    className={cn(errors.name && "border-destructive")}
+                />
+                {errors.name && (
+                    <p className="text-[11px] text-destructive mt-1.5">
+                        {errors.name}
+                    </p>
+                )}
+            </div>
+
+            <div>
+                <FloatingInput
+                    label="Monthly Cost (₱ / mo)"
+                    inputBg="bg-card"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={String(form.hourly_cost ?? "")}
+                    onValueChange={store.set("hourly_cost")}
+                />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-medium text-foreground/80">
+                    Description
+                </Label>
+                <textarea
+                    placeholder="e.g. Primary production web server"
+                    value={form.description}
+                    onChange={(e) => store.set("description")(e.target.value)}
+                    rows={3}
+                    maxLength={255}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                    Optional notes about this server's role or purpose.
+                </p>
+            </div>
+        </>
     );
 }

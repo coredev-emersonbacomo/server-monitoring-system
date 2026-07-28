@@ -12,7 +12,6 @@ use App\NodeConfig\NodeTypes\CheckAfterNode;
 use App\NodeConfig\NodeTypes\LogicNode;
 use App\NodeConfig\NodeTypes\MetricNode;
 use App\NodeConfig\NodeTypes\NotificationNode;
-use App\NodeConfig\NodeTypes\RepeatNode;
 use App\NodeConfig\NodeTypes\SustainedNode;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
@@ -33,7 +32,6 @@ class AppServiceProvider extends ServiceProvider
         // Time nodes
         $registry->register(new CheckAfterNode);
         $registry->register(new SustainedNode);
-        $registry->register(new RepeatNode);
 
         // Action nodes (merged notification)
         $registry->register(new NotificationNode);
@@ -71,8 +69,6 @@ class AppServiceProvider extends ServiceProvider
             $schedule->command('uploads:consistency-check')->daily();
         });
 
-        if (!app()->runningInConsole() || app()->environment('production')) {
-            \App\NodeConfig\Cache\NodeConfigCache::warm();
-        }
+
     }
 }

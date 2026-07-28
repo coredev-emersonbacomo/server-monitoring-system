@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Server;
 use App\Models\User;
 use App\NodeConfig\Cache\NodeConfigCache;
+use App\NodeConfig\Engine\NodeConfigCompiler;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -26,6 +27,12 @@ class NodeConfig extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (NodeConfig $config) {
+            $graph = $config->config ?? ['nodes' => [], 'edges' => []];
+            $compiler = new NodeConfigCompiler();
+            $config->compiled_config = $compiler->compile($graph);
+        });
+
         static::saved(function (NodeConfig $config) {
             NodeConfigCache::refresh($config);
         });
@@ -33,6 +40,19 @@ class NodeConfig extends Model
         static::deleted(function (NodeConfig $config) {
             NodeConfigCache::invalidate($config);
         });
+    }
+
+    /**
+     * Compile the graph into per-metric rules and persist to DB.
+     */
+    public function compileAndStore(): void
+    {
+        $graph = $this->config ?? ['nodes' => [], 'edges' => []];
+        $compiler = new NodeConfigCompiler();
+        $compiled = $compiler->compile($graph);
+
+        $this->updateQuietly(['compiled_config' => $compiled]);
+        NodeConfigCache::refresh($this);
     }
 
     public function creator(): BelongsTo

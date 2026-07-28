@@ -20,6 +20,7 @@ import UserDetail from "./pages/users/user-detail";
 import SystemSettings from "./pages/settings/system";
 import AgentSettings from "./pages/settings/agent";
 import { NodeConfigEditor } from "./components/node-config/NodeConfigEditor";
+import AlertVisualizer from "./pages/settings/alert-visualizer";
 import Docs from "./pages/docs/index";
 import DocsAlerts from "./pages/docs/alerts";
 
@@ -116,6 +117,10 @@ const router = createBrowserRouter([
                                 alwaysMaximized
                             />
                         ),
+                    },
+                    {
+                        path: "/settings/alerts/visualizer",
+                        element: <AlertVisualizer />,
                     },
                     {
                         path: "/profile",

@@ -18,7 +18,6 @@ export const OUTPUT_TYPES: Record<string, HandleTypeDef> = {
     logic: { type: 'boolean', label: 'Result' },
     check_after: { type: 'boolean', label: 'Out' },
     sustained: { type: 'boolean', label: 'Out' },
-    repeat: { type: 'boolean', label: 'Out' },
     notification: { type: 'event', label: 'Out' },
 };
 
@@ -37,9 +36,6 @@ export const INPUT_TYPES: Record<string, Record<string, HandleTypeDef>> = {
     },
     sustained: {
         input: { type: 'any', label: 'In' },
-    },
-    repeat: {
-        input: { type: 'event', label: 'In' },
     },
     notification: {
         input: { type: 'boolean', label: 'Trigger' },
