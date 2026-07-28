@@ -211,7 +211,7 @@
 }
 @media print {
     @page {
-        size: A4;
+        size: 297mm 210mm;
         margin: 0;
     }
 
@@ -228,8 +228,8 @@
         position: absolute;
         top: 0;
         left: 0;
-        width: 210mm;
-        min-height: 297mm;
+        width: 297mm;
+        min-height: 210mm;
         margin: 0;
         padding: 20mm;
         box-shadow: none;

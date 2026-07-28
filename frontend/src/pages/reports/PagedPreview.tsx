@@ -8,7 +8,7 @@ interface PagedPreviewProps {
 
 const REPORT_STYLES = `
     @page {
-        size: A4;
+        size: 297mm 210mm;
         margin: 20mm;
         @bottom-center {
             content: "Page " counter(page) " of " counter(pages);
@@ -199,7 +199,7 @@ export function PagedPreview({ children }: PagedPreviewProps) {
                     position: "absolute",
                     top: 0,
                     left: "-9999px",
-                    width: "210mm",
+                    width: "297mm",
                     visibility: "hidden",
                 }}
             >

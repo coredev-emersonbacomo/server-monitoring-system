@@ -34,8 +34,8 @@ export default function ReportIndexPage() {
             )}
 
             {(view === "clients" || view === "servers") && (
-                <div className="w-full max-w-[51rem] min-h-[66rem] bg-white text-black shadow-lg rounded-sm p-12">
-                    <div className="flex flex-col items-center justify-center h-full min-h-[60rem] gap-3 text-center">
+                <div className="w-full max-w-[66rem] min-h-[51rem] bg-white text-black shadow-lg rounded-sm p-12">
+                    <div className="flex flex-col items-center justify-center h-full min-h-[45rem] gap-3 text-center">
                         <FileText className="w-10 h-10 text-gray-300" />
                         <p className="text-gray-500 font-medium">
                             No {view === "servers" ? "server" : "client"} selected
