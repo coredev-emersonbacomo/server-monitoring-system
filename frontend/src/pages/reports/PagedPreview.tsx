@@ -4,6 +4,7 @@ import { Previewer } from "pagedjs";
 
 interface PagedPreviewProps {
     children: React.ReactNode;
+    label?: string;
 }
 
 const REPORT_STYLES = `
@@ -14,6 +15,11 @@ const REPORT_STYLES = `
             content: "Page " counter(page) " of " counter(pages);
             font-size: 10px;
             color: #6b7280;
+        }
+        @bottom-right {
+            content: string(client-label);
+            font-size: 10px;
+            color: #ff0000;
         }
     }
 
@@ -111,9 +117,16 @@ const REPORT_STYLES = `
     .bg-white { background-color: #ffffff; }
 
     .md\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .report-client-label {
+        display: none;
+    }
+    .report-client-label.active {
+        string-set: client-label content();
+    }
 `;
 
-export function PagedPreview({ children }: PagedPreviewProps) {
+export function PagedPreview({ children, label }: PagedPreviewProps) {
     const sourceRef = useRef<HTMLDivElement>(null);
     const outputRef = useRef<HTMLDivElement>(null);
     const [rendering, setRendering] = useState(true);
@@ -174,7 +187,7 @@ export function PagedPreview({ children }: PagedPreviewProps) {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(paginate, 500);
         });
-        
+
         observer.observe(sourceRef.current, {
             childList: true,
             subtree: true,
@@ -203,6 +216,9 @@ export function PagedPreview({ children }: PagedPreviewProps) {
                     visibility: "hidden",
                 }}
             >
+                <span className={`report-client-label${label ? " active" : ""}`}>
+                    {label ?? ""}
+                </span>
                 {children}
             </div>
 

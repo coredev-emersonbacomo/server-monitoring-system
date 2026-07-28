@@ -10,6 +10,7 @@ export type ReportView = "global" | "clients" | "servers";
 export interface ReportOutletContext {
     view: ReportView;
     filters: string[];
+    showLabel: boolean;
 }
 
 const VIEWS: { key: ReportView; label: string }[] = [
@@ -30,6 +31,7 @@ export function ReportsLayout() {
     const [view, setView] = useState<ReportView>("global");
     const [pickerOpen, setPickerOpen] = useState(false);
     const [filters, setFilters] = useState<string[]>([]);
+    const [showLabel, setShowLabel] = useState(true);
     const navigate = useNavigate();
 
     const detailMatch = useMatch("/report/:type/:uuid");
@@ -107,6 +109,18 @@ export function ReportsLayout() {
                     onChange={setFilters}
                 />
 
+                {view !== "global" && (
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={showLabel}
+                            onChange={(e) => setShowLabel(e.target.checked)}
+                            className="rounded border-gray-300"
+                        />
+                        Show {view === "servers" ? "server" : "client"} counter
+                    </label>
+                )}
+
                 <button
                     onClick={handleGenerateReport}
                     className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm bg-primary text-primary-foreground hover:opacity-90"
@@ -116,7 +130,7 @@ export function ReportsLayout() {
                 </button>
             </div>
 
-            <Outlet context={{ view, filters }} />
+            <Outlet context={{ view, filters, showLabel }} />
 
             {pickerOpen && (
                 <EntityPickerModal
