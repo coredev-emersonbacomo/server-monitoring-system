@@ -7,6 +7,7 @@ import {
     type LucideProps,
     Server,
     ScrollText,
+    FileBarChart,
 } from "lucide-react";
 import { SidebarNav, type SidebarNavLink } from "@/components/SidebarNav";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -40,6 +41,7 @@ export function ProtectedRoute() {
         },
         { name: "Users", href: "/users", icon: Users },
         { name: "Logs", href: "/logs", icon: ScrollText },
+        { name: "Reports", href: "/report", icon: FileBarChart },
         { name: "Settings", href: "/settings", icon: Settings },
     ];
 
