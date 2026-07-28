@@ -1,6 +1,12 @@
 import React from "react";
-import { Mail, Phone } from "lucide-react";
+import { Mail, Phone, MoreVertical, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 interface ProfileCardProps {
     uuid: string;
@@ -25,15 +31,35 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
             className="block rounded-lg transition-transform duration-200 hover:-translate-y-1"
         >
             <div className="relative w-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans transition-shadow hover:shadow-md">
-                <button
-                    onClick={(e) => {
-                        e.preventDefault();
-                        onDelete?.(uuid);
-                    }}
-                    className="absolute top-4 right-4 text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded text-[11px] cursor-pointer"
-                >
-                    Remove
-                </button>
+                <div className="absolute top-3 right-3">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                }}
+                                className="text-muted-foreground hover:text-foreground transition-colors pl-1 pr-0 py-1 rounded-md cursor-pointer"
+                                tabIndex={-1}
+                            >
+                                <MoreVertical className="size-4" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" sideOffset={4}>
+                            <DropdownMenuItem
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onDelete(uuid);
+                                }}
+                                className="text-destructive focus:text-destructive cursor-pointer"
+                            >
+                                <Trash2 className="size-3.5" />
+                                Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
 
                 {/* ── Avatar ── */}
                 <div className="mt-4 mb-4">

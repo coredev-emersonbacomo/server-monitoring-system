@@ -1,42 +1,15 @@
-import { memo, useCallback, useMemo, useState } from 'react';
-import { type NodeProps, Position, useReactFlow, useStore } from '@xyflow/react';
-import { Timer, Repeat, Clock } from 'lucide-react';
+import { memo, useCallback, useState } from 'react';
+import { type NodeProps, Position, useReactFlow } from '@xyflow/react';
+import { Timer, Clock, Repeat } from 'lucide-react';
 import { getInputType, getOutputType } from './socketTypes';
 import { NodeSocket } from './node-socket';
 import { DurationInput } from './DurationInput';
-import { colonToSeconds, secondsToColon } from './duration-utils';
 import { BaseNode } from './BaseNode';
 
 const TIME_CONFIGS: Record<string, { icon: React.ComponentType<{ size?: number }>; label: string; color: string }> = {
     check_after: { icon: Clock, label: 'Check After', color: '#10b981' },
     sustained: { icon: Timer, label: 'Sustained', color: '#10b981' },
-    repeat: { icon: Repeat, label: 'Repeat', color: '#10b981' },
 };
-
-function hasAnyAncestor(nodeId: string, edges: any[]): boolean {
-    return edges.some(e => e.target === nodeId);
-}
-
-function hasSustainedAncestor(nodeId: string, nodeLookup: Map<string, any>, edges: any[]): boolean {
-    const visited = new Set<string>();
-    const queue = [nodeId];
-
-    while (queue.length > 0) {
-        const current = queue.shift()!;
-        if (visited.has(current)) continue;
-        visited.add(current);
-
-        const incomingEdges = edges.filter(e => e.target === current);
-        for (const edge of incomingEdges) {
-            const sourceNode = nodeLookup.get(edge.source);
-            if (!sourceNode) continue;
-            if (sourceNode.type === 'sustained') return true;
-            queue.push(edge.source);
-        }
-    }
-
-    return false;
-}
 
 function isValidMaxValue(v: string): boolean {
     if (v === 'inf') return true;
@@ -46,52 +19,29 @@ function isValidMaxValue(v: string): boolean {
 
 export const TimeNode = memo(({ id, data, type, selected }: NodeProps) => {
     const { updateNodeData } = useReactFlow();
-    const allNodes = useStore((s) => s.nodeLookup);
-    const allEdges = useStore((s) => s.edgeLookup);
     const config = TIME_CONFIGS[type] || TIME_CONFIGS.check_after;
     const Icon = config.icon;
     const color = config.color;
 
-    const isRepeat = type === 'repeat';
-
     const outDef = getOutputType(type);
     const inDef = getInputType(type, 'input');
 
-    const durationColon = (data.duration as string) || '00:00:00:10:00';
-    const intervalColon = (data.interval as string) || '00:00:00:10:00';
-    const maxRepeatsRaw = (data.max_repeats as number | string) ?? 0;
-    const isInfinite = maxRepeatsRaw === 0 || maxRepeatsRaw === 'inf';
-    const savedMax = isInfinite ? 'inf' : String(maxRepeatsRaw);
+    const durationMs = parseInt((data.duration as string) || '0', 10) || 0;
+    const repeatIntervalMs = parseInt((data.repeat_interval as string) || '0', 10) || 0;
+    const hasRepeat = repeatIntervalMs > 0;
+    const repeatMaxRepeatsRaw = (data.repeat_max_repeats as number | string) ?? 0;
+    const isInfinite = repeatMaxRepeatsRaw === 0 || repeatMaxRepeatsRaw === 'inf';
+    const savedMax = isInfinite ? 'inf' : String(repeatMaxRepeatsRaw);
 
     const [maxInputValue, setMaxInputValue] = useState(savedMax);
     const [maxHasError, setMaxHasError] = useState(false);
 
-    const durationSeconds = useMemo(() => colonToSeconds(durationColon), [durationColon]);
-    const intervalSeconds = useMemo(() => colonToSeconds(intervalColon), [intervalColon]);
-
-    const isAncestorSustained = useMemo(
-        () => isRepeat && hasSustainedAncestor(id, allNodes, Array.from(allEdges.values())),
-        [isRepeat, id, allNodes, allEdges]
-    );
-
-    const isConnected = useMemo(
-        () => isRepeat && hasAnyAncestor(id, Array.from(allEdges.values())),
-        [isRepeat, id, allEdges]
-    );
-
-    const dynamicLabel = useMemo(() => {
-        if (!isRepeat) return config.label;
-        if (isAncestorSustained) return 'Repeat (Sustained)';
-        if (isConnected) return 'Repeat (Check)';
-        return 'Repeat';
-    }, [isRepeat, isAncestorSustained, isConnected, config.label]);
-
-    const handleDurationChange = useCallback((seconds: number) => {
-        updateNodeData(id, { duration: secondsToColon(seconds) });
+    const handleDurationChange = useCallback((ms: number) => {
+        updateNodeData(id, { duration: String(ms) });
     }, [id, updateNodeData]);
 
-    const handleIntervalChange = useCallback((seconds: number) => {
-        updateNodeData(id, { interval: secondsToColon(seconds) });
+    const handleRepeatIntervalChange = useCallback((ms: number) => {
+        updateNodeData(id, { repeat_interval: String(ms) });
     }, [id, updateNodeData]);
 
     const handleMaxBlur = useCallback(() => {
@@ -102,9 +52,9 @@ export const TimeNode = memo(({ id, data, type, selected }: NodeProps) => {
         }
         setMaxHasError(false);
         if (v === 'inf') {
-            updateNodeData(id, { max_repeats: 0 });
+            updateNodeData(id, { repeat_max_repeats: 0 });
         } else {
-            updateNodeData(id, { max_repeats: parseInt(v) });
+            updateNodeData(id, { repeat_max_repeats: parseInt(v) });
         }
     }, [id, maxInputValue, updateNodeData]);
 
@@ -120,7 +70,12 @@ export const TimeNode = memo(({ id, data, type, selected }: NodeProps) => {
                 <div className="p-1.5 rounded-lg shrink-0" style={{ backgroundColor: `${color}20`, color }}>
                     <Icon size={14} />
                 </div>
-                <span className="text-sm font-semibold text-foreground">{dynamicLabel}</span>
+                <span className="text-sm font-semibold text-foreground">{config.label}</span>
+                {hasRepeat && (
+                    <div className="p-1 rounded-lg shrink-0" style={{ backgroundColor: `${color}20`, color }}>
+                        <Repeat size={10} />
+                    </div>
+                )}
             </div>
 
             <div className="flex">
@@ -132,41 +87,42 @@ export const TimeNode = memo(({ id, data, type, selected }: NodeProps) => {
             </div>
 
             <div className="px-3 pb-2.5">
-                {isRepeat ? (
-                    <div className="flex flex-col gap-1.5 w-full">
-                        <DurationInput
-                            label="Every"
-                            value={intervalSeconds}
-                            onChange={handleIntervalChange}
-                        />
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-medium uppercase text-muted-foreground shrink-0">Max</span>
-                            <input
-                                type="text"
-                                value={maxInputValue}
-                                onChange={(e) => {
-                                    setMaxInputValue(e.target.value);
-                                    if (maxHasError) setMaxHasError(false);
-                                }}
-                                onBlur={handleMaxBlur}
-                                onKeyDown={handleMaxKeyDown}
-                                onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
-                                className={`flex-1 min-w-0 w-full text-xs font-mono text-foreground bg-background border rounded px-1.5 py-1 focus:outline-none focus:ring-1 ${
-                                    maxHasError
-                                        ? 'border-red-500 focus:ring-red-500/50'
-                                        : 'border-input focus:ring-ring'
-                                }`}
-                            />
-                            <span className="text-[10px] text-muted-foreground font-medium">runs</span>
-                        </div>
-                    </div>
-                ) : (
+                <div className="flex flex-col gap-1.5 w-full">
                     <DurationInput
                         label="For"
-                        value={durationSeconds}
+                        value={durationMs}
                         onChange={handleDurationChange}
                     />
-                )}
+                    {hasRepeat && (
+                        <>
+                            <DurationInput
+                                label="Repeats after"
+                                value={repeatIntervalMs}
+                                onChange={handleRepeatIntervalChange}
+                            />
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-medium uppercase text-muted-foreground shrink-0">Max</span>
+                                <input
+                                    type="text"
+                                    value={maxInputValue}
+                                    onChange={(e) => {
+                                        setMaxInputValue(e.target.value);
+                                        if (maxHasError) setMaxHasError(false);
+                                    }}
+                                    onBlur={handleMaxBlur}
+                                    onKeyDown={handleMaxKeyDown}
+                                    onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
+                                    className={`flex-1 min-w-0 w-full text-xs font-mono text-foreground bg-background border rounded px-1.5 py-1 focus:outline-none focus:ring-1 ${
+                                        maxHasError
+                                            ? 'border-red-500 focus:ring-red-500/50'
+                                            : 'border-input focus:ring-ring'
+                                    }`}
+                                />
+                                <span className="text-[10px] text-muted-foreground font-medium">runs</span>
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
         </BaseNode>
     );

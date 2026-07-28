@@ -34,7 +34,8 @@ class HeartbeatService
         // Accumulate monitored online time OUTSIDE the transaction so it always persists.
         // ONLY accumulate time if the server was ALREADY in Online status prior to this heartbeat.
         // If it was offline, this first heartbeat transitions it back to online, so we do NOT add the offline gap to online_seconds.
-        $offlineThresholdSeconds = (int) \App\Models\Setting::get('offline_threshold', '15');
+        $offlineThresholdMs = (int) \App\Models\Setting::get('offline_threshold', '15000');
+        $offlineThresholdSeconds = intdiv($offlineThresholdMs, 1000);
         if ($oldStatus === ServerStatus::Online->value && $agent->last_seen_at) {
             $elapsedSeconds = (int) $agent->last_seen_at->diffInSeconds(now());
             $maxStepSeconds = max(5, $offlineThresholdSeconds + 5);
@@ -123,8 +124,23 @@ class HeartbeatService
                 'received_at' => now(),
             ]);
 
+            \App\Events\SystemTelemetryEvent::emit('agent_heartbeat', [
+                'server_id'   => $server->id,
+                'server_name' => $server->name,
+                'server_uuid' => $server->uuid,
+                'latency_ms'  => $payload['latency_ms'] ?? 0,
+                'cpu'         => $payload['cpu']['load1'] ?? ($payload['cpu'] ?? 0),
+                'memory'      => $payload['memory']['percent'] ?? ($payload['memory'] ?? 0),
+                'disk'        => $payload['disk']['percent'] ?? ($payload['disk'] ?? 0),
+            ]);
+
             // Ingest Metrics
             $this->ingestMetrics($heartbeat, $agent, $payload);
+
+
+            // Trigger node config evaluation: numeric metrics + online status
+            $this->evaluateMetricsForNodeConfig($server, $agent, $payload);
+            $this->triggerOnlineStatusEvaluation($server);
 
             // Update Current State: Services
             if (isset($payload['services']) && is_array($payload['services'])) {
@@ -166,7 +182,8 @@ class HeartbeatService
             $configVersion = $currentConfig ? $currentConfig->version : 1;
             $agentConfigVersion = (int) ($payload['configuration_version'] ?? 0);
 
-            $globalInterval = (int) \App\Models\Setting::get('heartbeat_interval');
+            $globalIntervalMs = (int) \App\Models\Setting::get('heartbeat_interval', '5000');
+            $globalInterval = intdiv($globalIntervalMs, 1000);
             $response = [
                 'heartbeat_interval' => $globalInterval ?: ($currentConfig ? $currentConfig->heartbeat_interval : 5),
                 'current_time'       => now()->timestamp,
@@ -243,43 +260,54 @@ class HeartbeatService
         // Parse CPU
         if (isset($payload['cpu'])) {
             $cpu = $payload['cpu'];
-            // CPU load specs
-            if (isset($cpu['load1'])) {
-                $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load1', 'value' => (double) $cpu['load1'], 'unit' => 'load'];
-            }
-            if (isset($cpu['load5'])) {
-                $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load5', 'value' => (double) $cpu['load5'], 'unit' => 'load'];
-            }
-            if (isset($cpu['load15'])) {
-                $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load15', 'value' => (double) $cpu['load15'], 'unit' => 'load'];
+            if (is_array($cpu)) {
+                if (isset($cpu['load1'])) {
+                    $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load1', 'value' => (double) $cpu['load1'], 'unit' => 'load'];
+                }
+                if (isset($cpu['load5'])) {
+                    $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load5', 'value' => (double) $cpu['load5'], 'unit' => 'load'];
+                }
+                if (isset($cpu['load15'])) {
+                    $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load15', 'value' => (double) $cpu['load15'], 'unit' => 'load'];
+                }
+            } else if (is_numeric($cpu)) {
+                $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load1', 'value' => (double) $cpu, 'unit' => 'load'];
             }
         }
 
         // Parse Memory
         if (isset($payload['memory'])) {
             $mem = $payload['memory'];
-            if (isset($mem['percent'])) {
-                $samples[] = ['metric_type' => 'memory', 'metric_name' => 'percent', 'value' => (double) $mem['percent'], 'unit' => '%'];
-            }
-            if (isset($mem['used_kb'])) {
-                $samples[] = ['metric_type' => 'memory', 'metric_name' => 'used', 'value' => (double) ($mem['used_kb'] / 1024), 'unit' => 'MB'];
-            }
-            if (isset($mem['total_kb'])) {
-                $samples[] = ['metric_type' => 'memory', 'metric_name' => 'total', 'value' => (double) ($mem['total_kb'] / 1024), 'unit' => 'MB'];
+            if (is_array($mem)) {
+                if (isset($mem['percent'])) {
+                    $samples[] = ['metric_type' => 'memory', 'metric_name' => 'percent', 'value' => (double) $mem['percent'], 'unit' => '%'];
+                }
+                if (isset($mem['used_kb'])) {
+                    $samples[] = ['metric_type' => 'memory', 'metric_name' => 'used', 'value' => (double) ($mem['used_kb'] / 1024), 'unit' => 'MB'];
+                }
+                if (isset($mem['total_kb'])) {
+                    $samples[] = ['metric_type' => 'memory', 'metric_name' => 'total', 'value' => (double) ($mem['total_kb'] / 1024), 'unit' => 'MB'];
+                }
+            } else if (is_numeric($mem)) {
+                $samples[] = ['metric_type' => 'memory', 'metric_name' => 'percent', 'value' => (double) $mem, 'unit' => '%'];
             }
         }
 
         // Parse Disk
         if (isset($payload['disk'])) {
             $disk = $payload['disk'];
-            if (isset($disk['percent'])) {
-                $samples[] = ['metric_type' => 'disk', 'metric_name' => 'percent', 'value' => (double) $disk['percent'], 'unit' => '%'];
-            }
-            if (isset($disk['used'])) {
-                $samples[] = ['metric_type' => 'disk', 'metric_name' => 'used', 'value' => (double) ($disk['used'] / (1024**3)), 'unit' => 'GB'];
-            }
-            if (isset($disk['total'])) {
-                $samples[] = ['metric_type' => 'disk', 'metric_name' => 'total', 'value' => (double) ($disk['total'] / (1024**3)), 'unit' => 'GB'];
+            if (is_array($disk)) {
+                if (isset($disk['percent'])) {
+                    $samples[] = ['metric_type' => 'disk', 'metric_name' => 'percent', 'value' => (double) $disk['percent'], 'unit' => '%'];
+                }
+                if (isset($disk['used'])) {
+                    $samples[] = ['metric_type' => 'disk', 'metric_name' => 'used', 'value' => (double) ($disk['used'] / (1024**3)), 'unit' => 'GB'];
+                }
+                if (isset($disk['total'])) {
+                    $samples[] = ['metric_type' => 'disk', 'metric_name' => 'total', 'value' => (double) ($disk['total'] / (1024**3)), 'unit' => 'GB'];
+                }
+            } else if (is_numeric($disk)) {
+                $samples[] = ['metric_type' => 'disk', 'metric_name' => 'percent', 'value' => (double) $disk, 'unit' => '%'];
             }
         }
 
@@ -488,29 +516,86 @@ class HeartbeatService
         }
     }
 
-    private function triggerNodeConfigForServer(Server $server, string $status): void
+    private function evaluateMetricsForNodeConfig(Server $server, Agent $agent, array $payload): void
     {
         $config = NodeConfigCache::findBySlug('alerts');
         if (!$config) return;
 
-        $configData = $config->getParsedConfig();
-        $nodes = $configData['nodes'] ?? [];
+        $metricMap = [
+            'cpu_usage'    => ['sample_type' => 'cpu',    'sample_name' => 'load1',  'payload_path' => ['cpu', 'load1']],
+            'memory_usage' => ['sample_type' => 'memory', 'sample_name' => 'percent', 'payload_path' => ['memory', 'percent']],
+            'disk_usage'   => ['sample_type' => 'disk',   'sample_name' => 'percent', 'payload_path' => ['disk', 'percent']],
+        ];
 
-        $sourceNodeId = null;
-        foreach ($nodes as $node) {
-            if (($node['type'] ?? '') === 'metric' && ($node['settings']['metric_type'] ?? '') === 'server_status') {
-                $sourceNodeId = $node['id'];
-                break;
-            }
+        foreach ($metricMap as $metricType => $info) {
+            $sourceNodeId = $this->findMetricNode($config, $metricType);
+            if (!$sourceNodeId) continue;
+
+            $value = $this->resolvePayloadValue($payload, $info['payload_path']);
+            if ($value === null) continue;
+
+            EvaluateNodeConfig::dispatch($config->id, $sourceNodeId, $value, [
+                'server_id'   => $server->id,
+                'server_name' => $server->name,
+                'client_name' => $server->client->name ?? 'Unknown',
+                'metric_type' => $metricType,
+            ]);
         }
+    }
 
+    private function triggerOnlineStatusEvaluation(Server $server): void
+    {
+        $config = NodeConfigCache::findBySlug('alerts');
+        if (!$config) return;
+
+        $sourceNodeId = $this->findMetricNode($config, 'server_status');
         if (!$sourceNodeId) return;
 
-        EvaluateNodeConfig::dispatch($config->id, $sourceNodeId, $status, [
-            'server_id' => $server->id,
+        EvaluateNodeConfig::dispatch($config->id, $sourceNodeId, 'online', [
+            'server_id'   => $server->id,
             'server_name' => $server->name,
             'client_name' => $server->client->name ?? 'Unknown',
             'metric_type' => 'server_status',
         ]);
+    }
+
+    private function resolvePayloadValue(array $payload, array $path): ?float
+    {
+        // 1. Try nested path (e.g. $payload['disk']['percent'])
+        $current = $payload;
+        $found = true;
+        foreach ($path as $key) {
+            if (is_array($current) && isset($current[$key])) {
+                $current = $current[$key];
+            } else {
+                $found = false;
+                break;
+            }
+        }
+        if ($found && is_numeric($current)) {
+            return (float) $current;
+        }
+
+        // 2. Try flat top-level key (e.g. $payload['disk'], $payload['cpu'], $payload['memory'])
+        $topLevelKey = $path[0];
+        if (isset($payload[$topLevelKey]) && is_numeric($payload[$topLevelKey])) {
+            return (float) $payload[$topLevelKey];
+        }
+
+        return null;
+    }
+
+    private function findMetricNode(NodeConfig $config, string $metricType): ?string
+    {
+        $configData = $config->getParsedConfig();
+        $nodes = $configData['nodes'] ?? [];
+
+        foreach ($nodes as $node) {
+            if (($node['type'] ?? '') === 'metric' && ($node['settings']['metric_type'] ?? '') === $metricType) {
+                return $node['id'];
+            }
+        }
+
+        return null;
     }
 }

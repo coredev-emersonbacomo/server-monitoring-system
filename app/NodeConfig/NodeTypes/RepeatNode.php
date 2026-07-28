@@ -11,78 +11,91 @@ class RepeatNode extends BaseNode
     public function getSettingDefinitions(): array
     {
         return [
-            ['key' => 'interval', 'label' => 'Interval (MM:DD:HH:MM:SS)', 'type' => 'string', 'required' => true, 'default' => '00:00:10:00:00'],
+            ['key' => 'interval', 'label' => 'Interval (ms)', 'type' => 'string', 'required' => true, 'default' => '600000'],
             ['key' => 'max_repeats', 'label' => 'Max Repeats (0 = infinite)', 'type' => 'number', 'default' => 0, 'description' => '0 = infinite'],
         ];
     }
 
     public function evaluate(array $inputValues, array $settings, array $state): NodeResult
     {
-        $repeatCount = (int) ($state['repeat_count'] ?? 0);
-        $maxRepeats = (int) ($settings['max_repeats'] ?? 0);
-        $isTimerFire = $state['timer_fire'] ?? false;
-        $hasSustainedAncestor = $state['has_sustained_ancestor'] ?? false;
-        $sustainDurationSeconds = (int) ($state['sustain_duration_seconds'] ?? 0);
+        $cfg = $this->parseConfig($settings);
 
-        $intervalSeconds = static::parseDurationToSeconds($settings['interval'] ?? '00:00:10:00:00');
+        return ($state['timer_fire'] ?? false)
+            ? $this->onTimerFire($cfg, $state)
+            : $this->onHeartbeat($cfg, $state, $inputValues[0] ?? null);
+    }
 
-        if (!$isTimerFire) {
-            $input = $inputValues[0] ?? null;
-            $isTruthy = $input === true || (is_numeric($input) && (float) $input > 0);
+    private function onHeartbeat(array $cfg, array $state, mixed $input): NodeResult
+    {
+        $phase = $state['phase'] ?? 'idle';
+        $isTruthy = $input === true || (is_numeric($input) && (float) $input > 0);
 
-            if ($isTruthy && $repeatCount === 0) {
-                $newCount = 1;
-                $scheduled = $this->scheduleNext($intervalSeconds, $newCount, $maxRepeats);
-
-                $newState = ['repeat_count' => $newCount, 'last_input' => $input];
-                if ($hasSustainedAncestor) {
-                    $newState['accumulated_extra_seconds'] = $intervalSeconds * $newCount;
-                }
-
-                return NodeResult::withTimer($input, $scheduled, $newState);
-            }
-
-            if (!$isTruthy && $repeatCount > 0) {
-                return NodeResult::propagate(false, ['repeat_count' => 0, 'last_input' => null, 'accumulated_extra_seconds' => 0]);
-            }
-
-            return NodeResult::noPropagate(null, $state);
+        if (!$isTruthy) {
+            return NodeResult::cancelTimers($this->idleState());
         }
 
+        if ($phase === 'idle') {
+            $newCount = 1;
+            $scheduled = $this->scheduleNext($cfg['interval_ms'], $newCount, $cfg['max_repeats']);
+
+            return NodeResult::withTimer($input, $scheduled, [
+                'phase' => 'repeating',
+                'repeat_count' => $newCount,
+                'last_input' => $input,
+            ]);
+        }
+
+        // Currently repeating: maintain existing state / wait for repeat timer
+        return NodeResult::noPropagate(null, $state);
+    }
+
+    private function onTimerFire(array $cfg, array $state): NodeResult
+    {
         $lastInput = $state['last_input'] ?? null;
         $isStillTruthy = $lastInput === true || (is_numeric($lastInput) && (float) $lastInput > 0);
 
         if (!$isStillTruthy) {
-            return NodeResult::propagate(false, ['repeat_count' => 0, 'last_input' => null, 'accumulated_extra_seconds' => 0]);
+            return NodeResult::propagate(false, $this->idleState());
         }
 
-        $newCount = $repeatCount + 1;
-        if ($maxRepeats > 0 && $newCount > $maxRepeats) {
+        $repeatCount = (int) ($state['repeat_count'] ?? 0) + 1;
+
+        if ($cfg['max_repeats'] > 0 && $repeatCount > $cfg['max_repeats']) {
             return NodeResult::propagate($lastInput, [
-                'repeat_count' => $newCount,
+                'phase' => 'idle',
+                'repeat_count' => $repeatCount,
                 'last_input' => $lastInput,
-                'accumulated_extra_seconds' => $intervalSeconds * $newCount,
             ]);
         }
 
-        $scheduled = $this->scheduleNext($intervalSeconds, $newCount, $maxRepeats);
+        $scheduled = $this->scheduleNext($cfg['interval_ms'], $repeatCount, $cfg['max_repeats']);
 
-        $newState = ['repeat_count' => $newCount, 'last_input' => $lastInput];
-        if ($hasSustainedAncestor) {
-            $newState['accumulated_extra_seconds'] = $intervalSeconds * $newCount;
-        }
-
-        return NodeResult::withTimer($lastInput, $scheduled, $newState);
+        return NodeResult::withTimer($lastInput, $scheduled, [
+            'phase' => 'repeating',
+            'repeat_count' => $repeatCount,
+            'last_input' => $lastInput,
+        ]);
     }
 
-    private function scheduleNext(int $intervalSeconds, int $currentCount, int $maxRepeats): ?NodeTimer
+    private function idleState(): array
+    {
+        return ['phase' => 'idle', 'repeat_count' => 0, 'last_input' => null];
+    }
+
+    private function parseConfig(array $settings): array
+    {
+        return [
+            'interval_ms' => static::parseDurationToMs($settings['interval'] ?? '600000'),
+            'max_repeats' => (int) ($settings['max_repeats'] ?? 0),
+        ];
+    }
+
+    private function scheduleNext(int $intervalMs, int $currentCount, int $maxRepeats): ?NodeTimer
     {
         if ($maxRepeats > 0 && $currentCount >= $maxRepeats) {
             return null;
         }
 
-        $delayMs = $intervalSeconds * 1000;
-
-        return new NodeTimer($delayMs, ['repeat_fire' => true]);
+        return new NodeTimer($intervalMs, ['repeat_fire' => true]);
     }
 }

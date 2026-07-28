@@ -30,14 +30,10 @@ function FormSubmitHandler() {
     const handleSubmit = useCallback(
         async (e: FormEvent) => {
             e.preventDefault();
-            console.log("[FormRoot] submit fired", { store });
             const st = store.getState();
-            console.log("[FormRoot] state", { submitHandler: !!st.submitHandler, mode: st.mode, hasChanges: st.hasChanges, form: st.form });
 
-            if (!st.submitHandler) { console.log("[FormRoot] no submitHandler, returning"); return; }
-            if (!store.validate()) { console.log("[FormRoot] validation failed"); return; }
-
-            console.log("[FormRoot] calling submitHandler");
+            if (!st.submitHandler) return;
+            if (!store.validate()) return;
             store.setState({ isSubmitting: true });
             try {
                 await st.submitHandler(st.form);

@@ -7,7 +7,7 @@ import { parseDuration, formatDuration } from './duration-utils';
 interface DurationInputProps {
     label: string;
     value: number;
-    onChange: (seconds: number) => void;
+    onChange: (milliseconds: number) => void;
     placeholder?: string;
     disabled?: boolean;
     required?: boolean;
@@ -65,9 +65,9 @@ export const DurationInput = memo(function DurationInput({
         }
 
         setParseError(null);
-        previousValue.current = formatDuration(result.seconds);
-        onChange(result.seconds);
-        setDisplayValue(formatDuration(result.seconds));
+        previousValue.current = formatDuration(result.milliseconds);
+        onChange(result.milliseconds);
+        setDisplayValue(formatDuration(result.milliseconds));
     }, [displayValue, onChange]);
 
     const handleBlur = useCallback(() => {

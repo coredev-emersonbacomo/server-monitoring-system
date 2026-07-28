@@ -24,6 +24,7 @@ import {
     SelectionMode,
     type ReactFlowInstance,
     type IsValidConnection,
+    type OnSelectionChangeFunc,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -212,9 +213,186 @@ export function NodeConfigEditor({
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
     const nodesRef = useRef(nodes);
+    const draggingNodeRef = useRef(false);
     useEffect(() => {
         nodesRef.current = nodes;
     });
+    const edgesRef = useRef(edges);
+    useEffect(() => {
+        edgesRef.current = edges;
+    });
+
+    // ── Undo / Redo ────────────────────────────────────────────
+    const historyRef = useRef<{ nodes: Node[]; edges: Edge[]; label: string }[]>([]);
+    const historyIndexRef = useRef(-1);
+    const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const suppressHistoryRef = useRef(false);
+    const pendingLabelRef = useRef<string>("");
+    const [canUndo, setCanUndo] = useState(false);
+    const [canRedo, setCanRedo] = useState(false);
+    const [historyLabels, setHistoryLabels] = useState<string[]>([]);
+    const [historyIdx, setHistoryIdx] = useState(-1);
+
+    const syncHistoryButtons = useCallback(() => {
+        setCanUndo(historyIndexRef.current > 0);
+        setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+        setHistoryLabels(historyRef.current.map((e) => e.label));
+        setHistoryIdx(historyIndexRef.current);
+    }, []);
+
+    const pushSnapshot = useCallback((label?: string) => {
+        if (suppressHistoryRef.current) return;
+        if (label) pendingLabelRef.current = label;
+        if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+        pushTimerRef.current = setTimeout(() => {
+            const snapshot = {
+                nodes: JSON.parse(JSON.stringify(nodesRef.current)),
+                edges: JSON.parse(JSON.stringify(edgesRef.current)),
+                label: pendingLabelRef.current || "Edit",
+            };
+            pendingLabelRef.current = "";
+            const idx = historyIndexRef.current;
+            const stack = historyRef.current;
+            const last = stack[idx];
+            if (last && JSON.stringify(last.nodes) === JSON.stringify(snapshot.nodes) && JSON.stringify(last.edges) === JSON.stringify(snapshot.edges)) return;
+            historyRef.current = [...stack.slice(0, idx + 1), snapshot];
+            historyIndexRef.current = historyRef.current.length - 1;
+            syncHistoryButtons();
+        }, 300);
+    }, [syncHistoryButtons]);
+
+    const jumpToHistory = useCallback((targetIdx: number) => {
+        const stack = historyRef.current;
+        if (targetIdx < 0 || targetIdx >= stack.length || targetIdx === historyIndexRef.current) return;
+        suppressHistoryRef.current = true;
+        const target = stack[targetIdx];
+        setNodes(target.nodes);
+        setEdges(target.edges);
+        historyIndexRef.current = targetIdx;
+        syncHistoryButtons();
+        requestAnimationFrame(() => { suppressHistoryRef.current = false; });
+    }, [setNodes, setEdges, syncHistoryButtons]);
+
+    const undo = useCallback(() => jumpToHistory(historyIndexRef.current - 1), [jumpToHistory]);
+    const redo = useCallback(() => jumpToHistory(historyIndexRef.current + 1), [jumpToHistory]);
+
+    const handleNodesChange = useCallback((changes: Parameters<typeof onNodesChange>[0]) => {
+        const hasDragStart = changes.some((c) => c.type === 'position' && c.dragging);
+        const hasDragEnd = changes.some((c) => c.type === 'position' && !c.dragging && c.dragging !== undefined);
+        if (hasDragStart) draggingNodeRef.current = true;
+        onNodesChange(changes);
+        if (hasDragEnd && draggingNodeRef.current) {
+            draggingNodeRef.current = false;
+            pushSnapshot("Move node");
+        }
+    }, [onNodesChange, pushSnapshot]);
+
+    const selectAll = useCallback(() => {
+        setNodes((nds) => nds.map((n) => ({ ...n, selected: true })));
+    }, [setNodes]);
+
+    // ── Right-drag selection box ──────────────────────────────
+    const [selBox, setSelBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+    const rightDragRef = useRef<{ startX: number; startY: number } | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    const onContextMenu = useCallback((e: React.MouseEvent) => {
+        if (rightDragRef.current) e.preventDefault();
+    }, []);
+
+    const onPaneMouseDown = useCallback((e: React.MouseEvent) => {
+        if (e.button === 2) {
+            e.preventDefault();
+            rightDragRef.current = { startX: e.clientX, startY: e.clientY };
+            setSelBox({ x: e.clientX, y: e.clientY, w: 0, h: 0 });
+        }
+    }, []);
+
+    useEffect(() => {
+        const onMove = (e: MouseEvent) => {
+            if (!rightDragRef.current) return;
+            const { startX, startY } = rightDragRef.current;
+            const x = Math.min(startX, e.clientX);
+            const y = Math.min(startY, e.clientY);
+            const w = Math.abs(e.clientX - startX);
+            const h = Math.abs(e.clientY - startY);
+            setSelBox({ x, y, w, h });
+        };
+        const onUp = (e: MouseEvent) => {
+            if (!rightDragRef.current) return;
+            const { startX, startY } = rightDragRef.current;
+            rightDragRef.current = null;
+
+            const w = Math.abs(e.clientX - startX);
+            const h = Math.abs(e.clientY - startY);
+
+            if (w > 5 && h > 5 && reactFlowInstance.current) {
+                const topLeft = reactFlowInstance.current.screenToFlowPosition({ x: Math.min(startX, e.clientX), y: Math.min(startY, e.clientY) });
+                const bottomRight = reactFlowInstance.current.screenToFlowPosition({ x: Math.max(startX, e.clientX), y: Math.max(startY, e.clientY) });
+
+                setNodes((nds) =>
+                    nds.map((n) => {
+                        const nx = n.position.x;
+                        const ny = n.position.y;
+                        const inBox = nx >= topLeft.x && nx <= bottomRight.x && ny >= topLeft.y && ny <= bottomRight.y;
+                        return { ...n, selected: inBox };
+                    }),
+                );
+            }
+
+            setSelBox(null);
+        };
+        window.addEventListener("mousemove", onMove);
+        window.addEventListener("mouseup", onUp);
+        return () => {
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", onUp);
+        };
+    }, [setNodes]);
+
+    // ── Keyboard shortcuts ────────────────────────────────────
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            const tag = (e.target as HTMLElement).tagName;
+            const isInput = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement).isContentEditable;
+
+            const key = e.key.toLowerCase();
+            if ((e.ctrlKey || e.metaKey) && key === "z" && !e.shiftKey) {
+                e.preventDefault();
+                undo();
+                return;
+            }
+            if ((e.ctrlKey || e.metaKey) && key === "z" && e.shiftKey) {
+                e.preventDefault();
+                redo();
+                return;
+            }
+            if ((e.ctrlKey || e.metaKey) && key === "y") {
+                e.preventDefault();
+                redo();
+                return;
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === "a" && !isInput) {
+                e.preventDefault();
+                selectAll();
+                return;
+            }
+            if (e.key === "Delete" || e.key === "Backspace") {
+                if (isInput) return;
+                const selected = nodesRef.current.filter((n) => n.selected);
+                if (selected.length === 0) return;
+                e.preventDefault();
+                const ids = new Set(selected.map((n) => n.id));
+                suppressHistoryRef.current = true;
+                setNodes((nds) => nds.filter((n) => !ids.has(n.id)));
+                setEdges((eds) => eds.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
+                setSelectedNode(null);
+                requestAnimationFrame(() => { suppressHistoryRef.current = false; pushSnapshot("Delete node"); });
+            }
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    }, [undo, redo, selectAll, setNodes, setEdges, pushSnapshot]);
 
     const [sidebarWidth, setSidebarWidth] = useState(192);
     const isDraggingSidebar = useRef(false);
@@ -267,6 +445,9 @@ export function NodeConfigEditor({
                 nodes: flowNodes,
                 edges: flowEdges,
             });
+            historyRef.current = [{ nodes: flowNodes, edges: flowEdges, label: "Load config" }];
+            historyIndexRef.current = 0;
+            syncHistoryButtons();
             setHydrated(true);
         }
     }, [effectiveConfig, definitions, hydrated, setNodes, setEdges]);
@@ -293,8 +474,9 @@ export function NodeConfigEditor({
                     eds,
                 ),
             );
+            pushSnapshot("Connect nodes");
         },
-        [nodes, setEdges],
+        [nodes, setEdges, pushSnapshot],
     );
 
     const isValidConnection: IsValidConnection = useCallback(
@@ -343,8 +525,9 @@ export function NodeConfigEditor({
                     ? { ...prev, data: { ...prev.data, ...settings } }
                     : prev,
             );
+            pushSnapshot("Update settings");
         },
-        [setNodes],
+        [setNodes, pushSnapshot],
     );
 
     const deleteNode = useCallback(
@@ -354,13 +537,149 @@ export function NodeConfigEditor({
                 eds.filter((e) => e.source !== nodeId && e.target !== nodeId),
             );
             setSelectedNode((prev) => (prev?.id === nodeId ? null : prev));
+            pushSnapshot("Delete node");
         },
-        [setNodes, setEdges],
+        [setNodes, setEdges, pushSnapshot],
+    );
+
+    const CAPABILITY_SETTINGS: Record<string, Record<string, unknown>> = {
+        repeat: {
+            repeat_interval: '10000',
+            repeat_max_repeats: 0,
+        },
+    };
+
+    const TIME_NODE_TYPES = new Set(['sustained', 'check_after']);
+    const capHighlightRef = useRef<string | null>(null);
+
+    const clearCapHighlight = useCallback(() => {
+        if (capHighlightRef.current) {
+            const el = document.querySelector(`.react-flow__node[data-id="${capHighlightRef.current}"]`);
+            if (el) {
+                const inner = el.querySelector('.react-flow__node-content') || el.firstElementChild;
+                if (inner) (inner as HTMLElement).style.boxShadow = '';
+                el.removeAttribute('data-cap-target');
+            }
+            capHighlightRef.current = null;
+        }
+    }, []);
+
+    const findNodeAtCursor = useCallback(
+        (clientX: number, clientY: number): Node | null => {
+            const elements = document.elementsFromPoint(clientX, clientY);
+            for (const el of elements) {
+                const nodeEl = el.closest('.react-flow__node[data-id]');
+                if (!nodeEl) continue;
+                const nodeId = nodeEl.getAttribute('data-id');
+                const node = nodes.find((n) => n.id === nodeId);
+                if (node && TIME_NODE_TYPES.has(node.type || '')) {
+                    return node;
+                }
+            }
+            return null;
+        },
+        [nodes],
+    );
+
+    const onDragOver = useCallback(
+        (event: DragEvent<HTMLDivElement>) => {
+            event.preventDefault();
+            const hasCap = event.dataTransfer.types.includes('application/capability');
+            event.dataTransfer.dropEffect = hasCap ? 'copy' : 'move';
+
+            if (!hasCap) {
+                clearCapHighlight();
+                return;
+            }
+
+            const node = findNodeAtCursor(event.clientX, event.clientY);
+            const newId = node?.id || null;
+
+            if (newId !== capHighlightRef.current) {
+                clearCapHighlight();
+                if (newId) {
+                    const el = document.querySelector(`.react-flow__node[data-id="${newId}"]`);
+                    if (el) {
+                        el.setAttribute('data-cap-target', 'true');
+                        const inner = el.querySelector('.react-flow__node-content') || el.firstElementChild;
+                        if (inner) {
+                            const computed = getComputedStyle(inner as HTMLElement);
+                            const existing = computed.boxShadow;
+                            const borderMatch = existing.match(/0 0 0 1px\s+(#[0-9a-fA-F]+)/);
+                            const color = borderMatch?.[1] || '#10b981';
+                            (inner as HTMLElement).style.boxShadow = `0 0 0 3px ${color}, 0 0 12px 4px ${color}40`;
+                        }
+                    }
+                    capHighlightRef.current = newId;
+                }
+            }
+        },
+        [findNodeAtCursor, clearCapHighlight],
+    );
+
+    const onDragLeave = useCallback(
+        (event: DragEvent<HTMLDivElement>) => {
+            const related = event.relatedTarget as HTMLElement | null;
+            if (related && event.currentTarget.contains(related)) return;
+            clearCapHighlight();
+        },
+        [clearCapHighlight],
+    );
+
+    const CAPABILITY_EXISTS: Record<string, (data: Record<string, unknown>) => boolean> = {
+        repeat: (data) => {
+            const ri = parseInt((data.repeat_interval as string) || '0', 10) || 0;
+            return ri > 0;
+        },
+    };
+
+    const applyCapability = useCallback(
+        (capId: string, targetNodeId: string | null) => {
+            if (!targetNodeId) {
+                toast.error("Drop onto a time node to apply");
+                return;
+            }
+            const node = nodes.find((n) => n.id === targetNodeId);
+            if (!node || !TIME_NODE_TYPES.has(node.type || '')) {
+                toast.error("Repeat can only be applied to time nodes");
+                return;
+            }
+            const existsCheck = CAPABILITY_EXISTS[capId];
+            if (existsCheck && existsCheck(node.data as Record<string, unknown>)) {
+                toast.error(`This node already has the ${capId} capability`);
+                return;
+            }
+            const capSettings = CAPABILITY_SETTINGS[capId] || {};
+            setNodes((nds) =>
+                nds.map((n) =>
+                    n.id === targetNodeId
+                        ? { ...n, data: { ...n.data, ...capSettings } }
+                        : n,
+                ),
+            );
+            setSelectedNode((prev) =>
+                prev?.id === targetNodeId
+                    ? { ...prev, data: { ...prev.data, ...capSettings } }
+                    : prev,
+            );
+            toast.success(`Applied ${capId} to ${node.data.label || node.type}`);
+            pushSnapshot("Apply capability");
+        },
+        [nodes, setNodes, setSelectedNode, pushSnapshot],
     );
 
     const onDrop = useCallback(
         (event: DragEvent<HTMLDivElement>) => {
             event.preventDefault();
+            clearCapHighlight();
+
+            const capId = event.dataTransfer.getData("application/capability");
+            if (capId) {
+                const node = findNodeAtCursor(event.clientX, event.clientY);
+                applyCapability(capId, node?.id || null);
+                return;
+            }
+
             const type = event.dataTransfer.getData("application/reactflow");
             if (!type || !reactFlowInstance.current) return;
 
@@ -377,14 +696,10 @@ export function NodeConfigEditor({
                 data: defaults,
             };
             setNodes((nds) => [...nds, newNode]);
+            pushSnapshot("Add node");
         },
-        [definitions, setNodes],
+        [definitions, setNodes, findNodeAtCursor, applyCapability, clearCapHighlight, pushSnapshot],
     );
-
-    const onDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
-    }, []);
 
     const addNodeByClick = useCallback(
         (type: string) => {
@@ -400,8 +715,9 @@ export function NodeConfigEditor({
                 data: defaults,
             };
             setNodes((nds) => [...nds, newNode]);
+            pushSnapshot("Add node");
         },
-        [definitions, setNodes],
+        [definitions, setNodes, pushSnapshot],
     );
 
     const selectedNodeDef = useMemo(() => {
@@ -493,6 +809,13 @@ export function NodeConfigEditor({
                     isDirty={isDirty}
                     onSave={handleSave}
                     onPreview={handlePreview}
+                    canUndo={canUndo}
+                    canRedo={canRedo}
+                    onUndo={undo}
+                    onRedo={redo}
+                    historyLabels={historyLabels}
+                    historyIndex={historyIdx}
+                    onJumpToHistory={jumpToHistory}
                     readOnly
                     onClose={
                         alwaysMaximized
@@ -520,24 +843,28 @@ export function NodeConfigEditor({
                         </div>
                     )}
                     <div
+                        ref={containerRef}
                         className="flex-1 relative"
-                        onDrop={onDrop}
                         onDragOver={onDragOver}
+                        onDragLeave={onDragLeave}
+                        onDrop={onDrop}
+                        onContextMenu={onContextMenu}
                     >
                         <ReactFlow
                             colorMode={theme}
                             nodes={nodes}
                             edges={edges}
-                            onNodesChange={onNodesChange}
+                            onNodesChange={handleNodesChange}
                             onEdgesChange={onEdgesChange}
                             onConnect={onConnect}
                             isValidConnection={isValidConnection}
                             onNodeClick={onNodeClick}
                             onPaneClick={onPaneClick}
+                            onPaneMouseDown={onPaneMouseDown}
                             nodeTypes={nodeTypes}
                             fitView
                             minZoom={0.3}
-                            deleteKeyCode={["Backspace", "Delete"]}
+                            deleteKeyCode={null}
                             multiSelectionKeyCode={["Meta", "Control", "Shift"]}
                             selectionMode={SelectionMode.Partial}
                             selectionOnDrag
@@ -581,6 +908,17 @@ export function NodeConfigEditor({
                                 />
                             )}
                         </ReactFlow>
+                        {selBox && selBox.w > 0 && (
+                            <div
+                                className="absolute pointer-events-none border border-dashed border-primary/60 bg-primary/10 rounded-sm z-50"
+                                style={{
+                                    left: selBox.x - (containerRef.current?.getBoundingClientRect().left ?? 0),
+                                    top: selBox.y - (containerRef.current?.getBoundingClientRect().top ?? 0),
+                                    width: selBox.w,
+                                    height: selBox.h,
+                                }}
+                            />
+                        )}
                         <div
                             className={`absolute top-4 right-4 z-10 transition-opacity duration-200 ${selectedNode ? "opacity-100" : "opacity-0 pointer-events-none"}`}
                         >
@@ -643,7 +981,7 @@ export function NodeConfigEditor({
                                     size={1}
                                     className="bg-background"
                                 />
-                            </ReactFlow>
+                        </ReactFlow>
                         )}
                     </div>
                     {!previewOnly && (

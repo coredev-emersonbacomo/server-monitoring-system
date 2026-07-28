@@ -15,14 +15,21 @@ class SystemMonitor extends Command
 
     public function handle(): int
     {
-        $servers = \App\Models\Server::all();
+        $servers = \App\Models\Server::whereHas('agent')->get();
         foreach ($servers as $server) {
             $server->checkTokenExpiration();
-            $server->checkOfflineStatus();
             MonitorServer::dispatch($server->uuid);
         }
 
         $this->syncNoSecOpsClients();
+
+        $sweepAt = microtime(true);
+        \Illuminate\Support\Facades\Cache::put('last_monitor_sweep_at', $sweepAt, now()->addMinutes(10));
+
+        \App\Events\SystemTelemetryEvent::emit('system_monitor_sweep', [
+            'server_count' => $servers->count(),
+            'swept_at'     => $sweepAt,
+        ]);
 
         $this->info("Dispatched " . $servers->count() . " server monitor jobs.");
         return self::SUCCESS;

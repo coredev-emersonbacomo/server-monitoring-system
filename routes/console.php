@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('system:monitor')->everyMinute();
 Schedule::command('tokens:cleanup')->hourly();
+Schedule::command('node-tasks:process')->everyFiveSeconds();

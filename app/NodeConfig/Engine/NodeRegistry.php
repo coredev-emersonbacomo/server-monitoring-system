@@ -32,6 +32,7 @@ class NodeRegistry
                 'category' => $type->getCategory(),
                 'label' => $type->getLabel(),
                 'unlimitedInputs' => $type->acceptsUnlimitedInputs(),
+                'hasOutput' => $type->hasOutput(),
                 'settings' => $type->getSettingDefinitions(),
             ];
         }

@@ -5,6 +5,7 @@ namespace App\NodeConfig\Jobs;
 use App\NodeConfig\Cache\NodeConfigCache;
 use App\NodeConfig\Engine\NodeRegistry;
 use App\NodeConfig\Engine\NodeConfigEngine;
+use App\NodeConfig\Engine\NodeTaskScheduler;
 use App\NodeConfig\Models\NodeConfig;
 use App\NodeConfig\Services\NodeConfigNotificationService;
 use Illuminate\Bus\Queueable;
@@ -34,19 +35,23 @@ class EvaluateNodeConfig implements ShouldQueue
             return;
         }
 
+        $serverId = $this->extraState['server_id'] ?? null;
+
         $engine = new NodeConfigEngine($registry);
-        $result = $engine->trigger($config, $this->sourceNodeId, $this->value, $this->extraState);
+        $result = $engine->trigger($config, $this->sourceNodeId, $this->value, $this->extraState, $serverId);
 
         if (!$result['success']) {
             return;
         }
 
         foreach ($result['timers'] as $timer) {
-            FireNodeTimer::dispatch(
+            NodeTaskScheduler::schedule(
                 $timer['node_config_id'],
                 $timer['node_id'],
+                $timer['delay_ms'],
                 array_merge($timer['context'], $this->extraState),
-            )->delay(now()->addMilliseconds($timer['delay_ms']));
+                $serverId,
+            );
         }
 
         $notifications->dispatchActions($result['actions']);

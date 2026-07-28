@@ -27,6 +27,7 @@ import {
     Coins,
     History,
     Calendar,
+    Server,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useServer } from "@/hooks/useServer";
@@ -42,7 +43,7 @@ import { Input } from "@/components/ui/input";
 import { Tab } from "@/components/ui/tab";
 import { ServerStatChart } from "@/components/dashboard/ServerStatChart";
 import type { StatPointData, ProvisionDetailData } from "@/types/models";
-import { useBreadcrumb } from "@/hooks/useBreadcrumb";
+import IndexHeader from "@/components/IndexHeader";
 import {
     Dialog,
     DialogClose,
@@ -90,14 +91,14 @@ function useServerAlertTab(
         alertScope === "server"
             ? `server_${serverUuid}`
             : alertScope === "client" && clientUuid
-                ? `client_${clientUuid}`
-                : "alerts";
+              ? `client_${clientUuid}`
+              : "alerts";
     const scopeLabel =
         alertScope === "global"
             ? "Global"
             : alertScope === "client"
-                ? `Client: ${clientName ?? "Unknown"}`
-                : `Server: ${serverName}`;
+              ? `Client: ${clientName ?? "Unknown"}`
+              : `Server: ${serverName}`;
 
     const setAlertScope = useCallback(
         (scope: "global" | "client" | "server") => {
@@ -247,10 +248,10 @@ export default function ServerDetail() {
                 schema: serverInfoSchema,
                 originalData: initial
                     ? {
-                        name: initial.name,
-                        description: initial.description ?? "",
-                        hourly_cost: (initial as any).hourly_cost ?? 0,
-                    }
+                          name: initial.name,
+                          description: initial.description ?? "",
+                          hourly_cost: (initial as any).hourly_cost ?? 0,
+                      }
                     : null,
                 initialMode: "view",
             }),
@@ -269,7 +270,13 @@ export default function ServerDetail() {
             store.set("description")(initial.description ?? "");
             store.set("hourly_cost")(String((initial as any).hourly_cost ?? 0));
         }
-    }, [initial?.name, initial?.description, (initial as any)?.hourly_cost, mode, store]);
+    }, [
+        initial?.name,
+        initial?.description,
+        (initial as any)?.hourly_cost,
+        mode,
+        store,
+    ]);
     const [confirmText, setConfirmText] = useState("");
     const deleteServer = useDeleteServer();
     const isConfirmed = initial ? confirmText.trim() === initial.name : false;
@@ -299,24 +306,45 @@ export default function ServerDetail() {
         enabled: !!initial?.client_uuid && !!initial?.uuid && showCostModal,
     });
 
-    const handleCostAdjustment = async (type: "full_payment" | "deduction" | "top_up" | "add_funds" | "reset_usage", amount?: number) => {
+    const handleCostAdjustment = async (
+        type:
+            | "full_payment"
+            | "deduction"
+            | "top_up"
+            | "add_funds"
+            | "reset_usage",
+        amount?: number,
+    ) => {
         if (!initial?.client_uuid || !initial?.uuid) return;
         setSubmittingPayment(true);
         try {
             const { error } = await api.POST(
                 "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-adjustment",
                 {
-                    params: { path: { clientUuid: initial.client_uuid, serverUuid: initial.uuid } },
+                    params: {
+                        path: {
+                            clientUuid: initial.client_uuid,
+                            serverUuid: initial.uuid,
+                        },
+                    },
                     body: { action: type as any, amount },
                 },
             );
             if (error) throw error;
-            toast.success(type === "reset_usage" ? "Server usage baseline reset successfully." : "Server credits added successfully.");
+            toast.success(
+                type === "reset_usage"
+                    ? "Server usage baseline reset successfully."
+                    : "Server credits added successfully.",
+            );
             setShowCostModal(false);
             setDeductAmount("");
-            queryClient.invalidateQueries({ queryKey: ["server", initial.uuid] });
-            queryClient.invalidateQueries({ queryKey: ["server-cost-logs", initial.uuid] });
-        } catch (err: any) {
+            queryClient.invalidateQueries({
+                queryKey: ["server", initial.uuid],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["server-cost-logs", initial.uuid],
+            });
+        } catch (err) {
             toast.error(err?.message || "Failed to update server credits.");
         } finally {
             setSubmittingPayment(false);
@@ -346,8 +374,6 @@ export default function ServerDetail() {
         return () => clearInterval(timer);
     }, [initial?.status, initial?.cost_reset_at]);
 
-
-
     useServerSocket(uuid!, setWsStatus, () => {
         toast.success("Agent successfully uninstalled!");
         queryClient.invalidateQueries({
@@ -365,39 +391,30 @@ export default function ServerDetail() {
         });
     }, [live]);
 
-    const { setTrail } = useBreadcrumb();
-    useEffect(() => {
+    const trail = useMemo(() => {
         if (!initial) {
-            if (allClient) {
-                setTrail([{ label: "" }, { label: "" }], true);
-            } else {
-                setTrail([{ label: "" }, { label: "" }, { label: "" }], true);
-            }
-            return;
+            return allClient
+                ? [{ label: "" }, { label: "" }]
+                : [{ label: "" }, { label: "" }, { label: "" }];
         }
 
         if (allClient) {
-            setTrail(
-                [
-                    { label: "Servers", href: "/servers" },
-                    { label: initial.name },
-                ],
-                false,
-            );
-        } else {
-            setTrail(
-                [
-                    { label: "Clients", href: "/clients" },
-                    {
-                        label: initial.client_name,
-                        href: `/clients/${initial.client_uuid}`,
-                    },
-                    { label: initial.name },
-                ],
-                false,
-            );
+            return [
+                { label: "Servers", href: "/servers" },
+                { label: initial.name },
+            ];
         }
-    }, [initial, setTrail, uuid, allClient]);
+        return [
+            { label: "Clients", href: "/clients" },
+            {
+                label: initial.client_name,
+                href: `/clients/${initial.client_uuid}`,
+            },
+            { label: initial.name },
+        ];
+    }, [initial, uuid, allClient]);
+
+    const trailLoading = !initial;
 
     useEffect(() => {
         setProvisionDetails(initial?.activeProvisionDetails ?? null);
@@ -534,7 +551,7 @@ export default function ServerDetail() {
                     size="sm"
                     icon={<ArrowLeft size={14} />}
                     label="Back"
-                    onClick={() => navigate("/")}
+                    onClick={() => navigate("/servers")}
                 />
             </div>
         );
@@ -553,10 +570,10 @@ export default function ServerDetail() {
                 ? [...(initial.stats ?? []), ...history]
                 : initial.stats,
     };
-    const status: keyof typeof STATUS_CONFIG =
-        server.agent_deleted
-            ? "pending_deletion"
-            : (server.status as keyof typeof STATUS_CONFIG) || "pending_installation";
+    const status: keyof typeof STATUS_CONFIG = server.agent_deleted
+        ? "pending_deletion"
+        : (server.status as keyof typeof STATUS_CONFIG) ||
+          "pending_installation";
     const { icon: StatusIcon, label, color, bg } = STATUS_CONFIG[status];
     const isInstalled =
         status === "online" || status === "warning" || status === "offline";
@@ -564,6 +581,11 @@ export default function ServerDetail() {
     return (
         <ChartZoomProvider>
             <PageLayout>
+                <IndexHeader
+                    icon={Server}
+                    trail={trail}
+                    trailLoading={trailLoading}
+                />
                 <main className="py-3 w-full flex-1">
                     <div className="py-5 px-5">
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
@@ -576,1226 +598,1384 @@ export default function ServerDetail() {
                         </div>
 
                         {!isInstalled && (
-                            <div className="mb-6 p-5 rounded-xl border border-border bg-card/50 backdrop-blur-sm shadow-lg">
-                                <div className="flex items-center gap-2.5 mb-4 text-foreground font-semibold">
-                                    <Terminal className="size-5 text-primary" />
-                                    <h2>Agent Installation Guide</h2>
-                                </div>
-
-                                {status === "pending_installation" &&
-                                    !provisionDetails && (
-                                        <div className="space-y-4">
-                                            <p className="text-sm text-muted-foreground">
-                                                To start monitoring this server,
-                                                you must install the lightweight
-                                                monitoring agent on the machine.
-                                            </p>
-                                            <Button
-                                                variant="default"
-                                                label={
-                                                    generating
-                                                        ? "Generating..."
-                                                        : "Generate Installation Command"
-                                                }
-                                                onClick={generateProvisionToken}
-                                                disabled={generating}
-                                            />
-                                        </div>
-                                    )}
-
-                                {(status === "waiting_for_installation" ||
-                                    status === "waiting_for_first_heartbeat" ||
-                                    provisionDetails) && (
-                                        <div className="space-y-5">
-                                            <p className="text-sm text-muted-foreground">
-                                                Run the appropriate command directly
-                                                on your server.
-                                            </p>
-
-                                            <div className="space-y-4">
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                        Linux (cURL + bash)
-                                                    </label>
-                                                    <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
-                                                        <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
-                                                            {provisionDetails?.linux_command ||
-                                                                `curl -fsSL ${window.location.origin}/install/linux | bash -s -- <token>`}
-                                                        </span>
-                                                        {provisionDetails?.linux_command && (
-                                                            <button
-                                                                onClick={() =>
-                                                                    copyToClipboard(
-                                                                        provisionDetails.linux_command!,
-                                                                        "linux",
-                                                                    )
-                                                                }
-                                                                className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                            >
-                                                                {copiedKey ===
-                                                                    "linux" ? (
-                                                                    <Check className="size-4 text-emerald-400" />
-                                                                ) : (
-                                                                    <Copy className="size-4" />
-                                                                )}
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                        Windows (PowerShell)
-                                                    </label>
-                                                    <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
-                                                        <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
-                                                            {provisionDetails?.windows_command ||
-                                                                `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
-                                                        </span>
-                                                        {provisionDetails?.windows_command && (
-                                                            <button
-                                                                onClick={() =>
-                                                                    copyToClipboard(
-                                                                        provisionDetails.windows_command!,
-                                                                        "windows",
-                                                                    )
-                                                                }
-                                                                className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                            >
-                                                                {copiedKey ===
-                                                                    "windows" ? (
-                                                                    <Check className="size-4 text-emerald-400" />
-                                                                ) : (
-                                                                    <Copy className="size-4" />
-                                                                )}
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/40 text-xs text-muted-foreground">
-                                                <div>
-                                                    {provisionDetails?.expires_at && (
-                                                        <span>
-                                                            Token expires at:{" "}
-                                                            <strong>
-                                                                {new Date(
-                                                                    provisionDetails.expires_at,
-                                                                ).toLocaleString()}
-                                                            </strong>{" "}
-                                                            <span className="text-amber-500 font-mono ml-1.5">
-                                                                {timeLeft}
-                                                            </span>
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <button
-                                                    onClick={
-                                                        regenerateProvisionToken
-                                                    }
-                                                    className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-medium cursor-pointer"
-                                                >
-                                                    <RefreshCw size={12} />
-                                                    Regenerate Token
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                            </div>
+                            <AgentInstallationGuide
+                                status={status}
+                                provisionDetails={provisionDetails}
+                                generating={generating}
+                                copiedKey={copiedKey}
+                                timeLeft={timeLeft}
+                                generateProvisionToken={generateProvisionToken}
+                                regenerateProvisionToken={
+                                    regenerateProvisionToken
+                                }
+                                copyToClipboard={copyToClipboard}
+                            />
                         )}
 
                         <Tab>
                             <Tab.Item icon={Info} title="Info">
-                                <Form.Root store={store}>
-                                    <Form.SubmitHandler
-                                        handler={async (
-                                            data: Record<string, unknown>,
-                                        ) => {
-                                            console.log("[server-detail] submitHandler called", { data });
-                                            if (!initial?.client_uuid) {
-                                                toast.error(
-                                                    "Missing client reference for this server.",
-                                                );
-                                                return;
-                                            }
-                                            try {
-                                                const nameStr = data.name ? String(data.name).trim() : "";
-                                                const descStr = data.description && String(data.description).trim() !== "undefined" && String(data.description).trim() !== "null" ? String(data.description).trim() : "";
-                                                const costNum = data.hourly_cost !== undefined && data.hourly_cost !== null && data.hourly_cost !== "" ? Number(data.hourly_cost) : 0;
-
-                                                const { error } =
-                                                    await api.PATCH(
-                                                        "/v1/clients/{clientUuid}/servers/{serverUuid}",
-                                                        {
-                                                            params: {
-                                                                path: {
-                                                                    clientUuid:
-                                                                        initial.client_uuid,
-                                                                    serverUuid:
-                                                                        initial.uuid,
-                                                                },
-                                                            },
-                                                            body: {
-                                                                name: nameStr,
-                                                                description: descStr || undefined,
-                                                                hourly_cost: isNaN(costNum) ? 0 : costNum,
-                                                            },
-                                                        },
-                                                    );
-                                                if (error) {
-                                                    toast.error(
-                                                        "Failed to update server info.",
-                                                    );
-                                                } else {
-                                                    toast.success(
-                                                        "Server info updated.",
-                                                    );
-                                                    store.setMode("view");
-                                                    queryClient.invalidateQueries(
-                                                        {
-                                                            queryKey: [
-                                                                "server",
-                                                                initial.uuid,
-                                                            ],
-                                                        },
-                                                    );
-                                                }
-                                            } catch {
-                                                toast.error(
-                                                    "An error occurred.",
-                                                );
-                                            }
-                                        }}
-                                    />
-                                    <div className="flex flex-col gap-3 p-4 bg-card border border-t-0 border-b-0 border-border/60">
-                                        <div className="flex items-start justify-between gap-4">
-                                            <div className="min-w-0 flex-1">
-                                                {mode !== "view" ? (
-                                                    <div>
-                                                        <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                            Server name
-                                                        </label>
-                                                        <Input
-                                                            value={form.name}
-                                                            onChange={(e) =>
-                                                                store.set("name")(
-                                                                    e.target.value,
-                                                                )
-                                                            }
-                                                            className="text-sm"
-                                                            autoFocus
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        <div className="flex flex-col gap-1.5">
-                                                            <h3 className="text-2xl font-semibold text-foreground">
-                                                                {form.name}
-                                                            </h3>
-                                                            {initial?.client_uuid && initial?.client_name && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => navigate(`/clients/${initial.client_uuid}`)}
-                                                                    className="inline-flex items-center gap-1.5 w-fit text-xs font-medium text-muted-foreground border-b border-transparent hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
-                                                                    title={`Go to ${initial.client_name}`}
-                                                                >
-                                                                    <Building2 size={11} className="shrink-0 opacity-70" />
-                                                                    {initial.client_name}
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                        {form.description && (
-                                                            <p className="text-sm text-muted-foreground mt-1">
-                                                                {form.description}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                {mode !== "view" ? (
-                                                    <>
-                                                        <Form.Buttons.Cancel />
-                                                        <Form.Buttons.Submit />
-                                                    </>
-                                                ) : (
-                                                    <Form.Buttons.Edit />
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {mode !== "view" && (
-                                            <>
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                        Monthly Cost (₱ / mo)
-                                                    </label>
-                                                    <Input
-                                                        type="number"
-                                                        step="0.01"
-                                                        min="0"
-                                                        value={form.hourly_cost ?? ""}
-                                                        onChange={(e) =>
-                                                            store.set(
-                                                                "hourly_cost",
-                                                            )(e.target.value)
-                                                        }
-                                                        className="text-sm font-mono"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                        Description
-                                                    </label>
-                                                    <textarea
-                                                        value={form.description}
-                                                        onChange={(e) =>
-                                                            store.set(
-                                                                "description",
-                                                            )(e.target.value)
-                                                        }
-                                                        rows={2}
-                                                        maxLength={255}
-                                                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                                                    />
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-wrap items-start gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
-                                        {[
-                                            {
-                                                icon: Cpu,
-                                                label: "CPU Model",
-                                                value: server.cpu_model ?? "Unknown",
-                                                wide: true,
-                                            },
-                                            {
-                                                icon: Cpu,
-                                                label: "CPU Cores",
-                                                value: `${server.cpu_cores ?? "?"} cores`,
-                                            },
-                                            {
-                                                icon: MemoryStick,
-                                                label: "Memory",
-                                                value: server.ram ? `${server.ram} GB` : "Waiting for Agent",
-                                            },
-                                            {
-                                                icon: HardDrive,
-                                                label: "Disk",
-                                                value: server.disk ? `${server.disk} GB` : "Waiting for Agent",
-                                            },
-                                            {
-                                                icon: Monitor,
-                                                label: "OS",
-                                                value: server.operating_system ?? "Waiting for Agent",
-                                            },
-                                        ].map(({ icon: ItemIcon, label, value, wide }) => (
-                                            <div
-                                                key={label}
-                                                className={cn(
-                                                    "group flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all",
-                                                    wide ? "flex-[2_2_320px] min-w-[320px]" : "flex-1 min-w-[200px]",
-                                                )}
-                                            >
-                                                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
-                                                    <ItemIcon size={17} />
-                                                </div>
-                                                <div className="flex flex-col min-w-0 gap-0.5">
-                                                    <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
-                                                        {label}
-                                                    </span>
-                                                    <span className="text-sm font-semibold text-foreground wrap-break-word whitespace-nowrap overflow-hidden text-ellipsis">
-                                                        {value}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
-
-                                        {/* Monthly Cost Card */}
-                                        <div className="flex-1 min-w-[200px] flex items-center gap-3 p-3.5 rounded-xl bg-primary/5 border border-primary/20 shadow-sm hover:shadow-md transition-all">
-                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
-                                                <Banknote size={17} />
-                                            </div>
-                                            <div className="flex flex-col min-w-0 gap-0.5">
-                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1.5">
-                                                    Monthly Cost
-                                                </span>
-                                                <span className="text-sm font-semibold text-foreground font-mono">
-                                                    ₱{((initial as any)?.hourly_cost ?? 0).toFixed(2)} / mo
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Cost Card (Clickable) */}
-                                        <div
-                                            onClick={() => setShowCostModal(true)}
-                                            className="flex-1 min-w-[200px] group flex items-center gap-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 shadow-sm hover:border-emerald-500/60 hover:bg-emerald-500/15 transition-all cursor-pointer"
-                                            title="Click to view details or manage deductions"
-                                        >
-                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
-                                                <Coins size={17} />
-                                            </div>
-                                            <div className="flex flex-col min-w-0 gap-0.5">
-                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-emerald-400/90">
-                                                    Cost
-                                                </span>
-                                                <span className="text-sm font-bold text-emerald-400 font-mono">
-                                                    ₱{((initial as any)?.accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Next Billing Date Card */}
-                                        <div className="flex-1 min-w-[200px] flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all">
-                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
-                                                <Calendar size={17} />
-                                            </div>
-                                            <div className="flex flex-col min-w-0 gap-0.5">
-                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
-                                                    Next Billing Date
-                                                </span>
-                                                <span className="text-sm font-semibold text-foreground wrap-break-word">
-                                                    {(initial as any)?.billing_date
-                                                        ? new Date((initial as any).billing_date).toLocaleDateString(undefined, {
-                                                            month: "short",
-                                                            day: "numeric",
-                                                            year: "numeric",
-                                                        })
-                                                        : "N/A"}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5">
-                                        <p className="text-xs font-semibold text-destructive uppercase tracking-wider mb-3">
-                                            Danger Zone
-                                        </p>
-                                        <Form.DeleteModal
-                                            buttonProps={{
-                                                variant: "danger",
-                                                size: "sm",
-                                                icon: <Trash2 size={13} />,
-                                            }}
-                                            onOpenChange={(open) => {
-                                                if (!open) setConfirmText("");
-                                            }}
-                                            modal={(show) => (
-                                                <DialogContent className="sm:max-w-md">
-                                                    <DialogHeader>
-                                                        <DialogTitle className="flex items-center gap-2 text-destructive">
-                                                            <Trash2 size={16} />
-                                                            Delete server
-                                                        </DialogTitle>
-                                                    </DialogHeader>
-
-                                                    <p className="text-sm text-muted-foreground">
-                                                        This will permanently stop monitoring{" "}
-                                                        <strong className="text-foreground">
-                                                            {initial?.name}
-                                                        </strong>{" "}
-                                                        and remove all collected metrics. This cannot be undone.
-                                                    </p>
-
-                                                    {initial &&
-                                                        (initial as any).accumulated_cost > 0 && (
-                                                            <div className="flex items-start gap-2 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-600 dark:text-amber-400">
-                                                                <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-                                                                <div>
-                                                                    <p className="font-semibold text-foreground">
-                                                                        Outstanding Cost Balance
-                                                                    </p>
-                                                                    <p className="text-muted-foreground mt-0.5">
-                                                                        This server has an outstanding balance of{" "}
-                                                                        <strong className="text-amber-600 dark:text-amber-400">
-                                                                            ₱{((initial as any).accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                        </strong>. You must settle all deductions before this server can be deleted.
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                    {initial &&
-                                                        !initial.agent_deleted && (
-                                                            <div className="flex flex-col gap-3 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
-                                                                <div className="flex items-start gap-2">
-                                                                    <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-                                                                    <div>
-                                                                        <p className="font-semibold text-foreground">
-                                                                            Agent Uninstallation Required
-                                                                        </p>
-                                                                        <p className="text-muted-foreground mt-0.5">
-                                                                            You must uninstall the agent service from the target machine before you can delete this server. Run the command for your operating system:
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="flex flex-col gap-2.5 mt-1 text-foreground">
-                                                                    <div>
-                                                                        <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                                                            Linux (bash)
-                                                                        </label>
-                                                                        <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
-                                                                            <span className="flex-1 whitespace-pre-wrap break-all">
-                                                                                {initial.uninstall_linux_command}
-                                                                            </span>
-                                                                            <button
-                                                                                onClick={() =>
-                                                                                    copyToClipboard(
-                                                                                        initial.uninstall_linux_command!,
-                                                                                        "uninstall_linux",
-                                                                                    )
-                                                                                }
-                                                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                                            >
-                                                                                {copiedKey === "uninstall_linux" ? (
-                                                                                    <Check className="size-3.5 text-emerald-400" />
-                                                                                ) : (
-                                                                                    <Copy className="size-3.5" />
-                                                                                )}
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div>
-                                                                        <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                                                            Windows (PowerShell)
-                                                                        </label>
-                                                                        <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
-                                                                            <span className="flex-1 whitespace-pre-wrap break-all">
-                                                                                {initial.uninstall_windows_command}
-                                                                            </span>
-                                                                            <button
-                                                                                onClick={() =>
-                                                                                    copyToClipboard(
-                                                                                        initial.uninstall_windows_command!,
-                                                                                        "uninstall_windows",
-                                                                                    )
-                                                                                }
-                                                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                                            >
-                                                                                {copiedKey === "uninstall_windows" ? (
-                                                                                    <Check className="size-3.5 text-emerald-400" />
-                                                                                ) : (
-                                                                                    <Copy className="size-3.5" />
-                                                                                )}
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                    <div className="flex flex-col gap-2 pt-1">
-                                                        <label className="text-xs text-muted-foreground">
-                                                            Type{" "}
-                                                            <strong className="text-foreground font-mono">
-                                                                {initial?.name}
-                                                            </strong>{" "}
-                                                            to confirm
-                                                        </label>
-                                                        <Input
-                                                            value={confirmText}
-                                                            onChange={(e) =>
-                                                                setConfirmText(e.target.value)
-                                                            }
-                                                            placeholder={initial?.name}
-                                                            autoFocus
-                                                            className="font-mono text-sm"
-                                                        />
-                                                    </div>
-
-                                                    <div className="flex justify-end gap-3 pt-2">
-                                                        <Form.Buttons.Cancel
-                                                            onClick={() => {
-                                                                show(false);
-                                                                setConfirmText("");
-                                                            }}
-                                                        />
-                                                        <Form.Button
-                                                            variant="danger"
-                                                            disabled={
-                                                                !isConfirmed ||
-                                                                deleteServer.isPending
-                                                            }
-                                                            onClick={async () => {
-                                                                if (
-                                                                    !initial ||
-                                                                    !isConfirmed ||
-                                                                    !initial.client_uuid
-                                                                )
-                                                                    return;
-                                                                try {
-                                                                    await deleteServer.mutateAsync({
-                                                                        clientUuid: initial.client_uuid,
-                                                                        serverUuid: initial.uuid,
-                                                                    });
-                                                                    toast.success(
-                                                                        `${initial.name} has been deleted.`,
-                                                                    );
-                                                                    if (allClient) {
-                                                                        navigate("/servers");
-                                                                    } else {
-                                                                        navigate(
-                                                                            `/clients/${initial.client_uuid}`,
-                                                                        );
-                                                                    }
-                                                                } catch (err: unknown) {
-                                                                    const msg =
-                                                                        (
-                                                                            err as {
-                                                                                message?: string;
-                                                                            }
-                                                                        )?.message ||
-                                                                        "Failed to delete server. Please try again.";
-                                                                    toast.error(msg);
-                                                                }
-                                                            }}
-                                                        >
-                                                            {deleteServer.isPending
-                                                                ? "Deleting…"
-                                                                : "Delete server"}
-                                                        </Form.Button>
-                                                    </div>
-                                                </DialogContent>
-                                            )}
-                                        >
-                                            Delete this server
-                                        </Form.DeleteModal>
-                                    </div>
-                                </Form.Root>
+                                <ServerInfoTab
+                                    store={store}
+                                    initial={initial}
+                                    server={server}
+                                    mode={mode}
+                                    form={form}
+                                    confirmText={confirmText}
+                                    setConfirmText={setConfirmText}
+                                    deleteServer={deleteServer}
+                                    isConfirmed={isConfirmed}
+                                    allClient={allClient}
+                                    navigate={navigate}
+                                    setShowCostModal={setShowCostModal}
+                                    copyToClipboard={copyToClipboard}
+                                />
                             </Tab.Item>
                             {isInstalled && mode === "view" && (
                                 <Tab.Item icon={BarChart3} title="Metrics">
-                                    <div className="flex flex-col gap-6 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
-                                        {/* Ports and Processes */}
-                                        <div className="flex flex-col gap-6">
-                                            {/* Processes */}
-                                            <div className="bg-card/50 border border-border/50 rounded-xl p-4 shadow-sm">
-                                                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                                                    <Cpu
-                                                        size={16}
-                                                        className="text-primary"
-                                                    />{" "}
-                                                    Top Processes
-                                                </h3>
-                                                {server?.processes &&
-                                                    server.processes.length > 0 ? (
-                                                    <div className="overflow-x-auto">
-                                                        <table className="w-full text-left text-xs">
-                                                            <thead>
-                                                                <tr className="text-muted-foreground border-b border-border/30">
-                                                                    <th className="pb-2 font-medium">
-                                                                        PID
-                                                                    </th>
-                                                                    <th className="pb-2 font-medium">
-                                                                        Name
-                                                                    </th>
-                                                                    <th className="pb-2 font-medium text-right">
-                                                                        CPU
-                                                                    </th>
-                                                                    <th className="pb-2 font-medium text-right">
-                                                                        RAM
-                                                                    </th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="divide-y divide-border/20">
-                                                                {server.processes.map(
-                                                                    (p) => (
-                                                                        <tr
-                                                                            key={
-                                                                                p.pid
-                                                                            }
-                                                                            className="hover:bg-muted/10"
-                                                                        >
-                                                                            <td className="py-2 text-muted-foreground">
-                                                                                {
-                                                                                    p.pid
-                                                                                }
-                                                                            </td>
-                                                                            <td
-                                                                                className="py-2 font-medium text-foreground max-w-30 truncate"
-                                                                                title={
-                                                                                    p.name
-                                                                                }
-                                                                            >
-                                                                                {
-                                                                                    p.name
-                                                                                }
-                                                                            </td>
-                                                                            <td className="py-2 text-right text-foreground">
-                                                                                {p.cpu !=
-                                                                                    null
-                                                                                    ? `${p.cpu.toFixed(1)}%`
-                                                                                    : "-"}
-                                                                            </td>
-                                                                            <td className="py-2 text-right text-foreground">
-                                                                                {p.memory !=
-                                                                                    null
-                                                                                    ? `${p.memory.toFixed(1)} MB`
-                                                                                    : "-"}
-                                                                            </td>
-                                                                        </tr>
-                                                                    ),
-                                                                )}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-xs text-muted-foreground py-4 text-center">
-                                                        No processes reported.
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            {/* Open Ports */}
-                                            <div className="bg-card/50 border border-border/50 rounded-xl p-4 shadow-sm">
-                                                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                                                    <Link2
-                                                        size={16}
-                                                        className="text-primary"
-                                                    />{" "}
-                                                    Exposed Ports
-                                                </h3>
-                                                {server?.ports &&
-                                                    server.ports.length > 0 ? (
-                                                    <div className="overflow-x-auto">
-                                                        <table className="w-full text-left text-xs">
-                                                            <thead>
-                                                                <tr className="text-muted-foreground border-b border-border/30">
-                                                                    <th className="pb-2 font-medium">
-                                                                        Port
-                                                                    </th>
-                                                                    <th className="pb-2 font-medium">
-                                                                        Proto
-                                                                    </th>
-                                                                    <th className="pb-2 font-medium">
-                                                                        Process
-                                                                    </th>
-                                                                    <th className="pb-2 font-medium text-right">
-                                                                        State
-                                                                    </th>
-                                                                    <th className="pb-2 font-medium text-right">
-                                                                        Ping
-                                                                    </th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="divide-y divide-border/20">
-                                                                {server.ports.map(
-                                                                    (
-                                                                        p,
-                                                                        idx,
-                                                                    ) => (
-                                                                        <tr
-                                                                            key={
-                                                                                idx
-                                                                            }
-                                                                            className="hover:bg-muted/10"
-                                                                        >
-                                                                            <td className="py-2 font-semibold text-foreground">
-                                                                                {
-                                                                                    p.port
-                                                                                }
-                                                                            </td>
-                                                                            <td className="py-2 text-muted-foreground uppercase">
-                                                                                {
-                                                                                    p.protocol
-                                                                                }
-                                                                            </td>
-                                                                            <td className="py-2 text-foreground font-medium">
-                                                                                {p.process ||
-                                                                                    "unknown"}
-                                                                            </td>
-                                                                            <td className="py-2 text-right flex items-center justify-end gap-1.5">
-                                                                                <span
-                                                                                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${p.state ===
-                                                                                        "listening"
-                                                                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                                                                        : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-                                                                                        }`}
-                                                                                >
-                                                                                    {
-                                                                                        p.state
-                                                                                    }
-                                                                                </span>
-                                                                                {p.id && (
-                                                                                    <button
-                                                                                        onClick={() =>
-                                                                                            handleDeletePort(
-                                                                                                p.id,
-                                                                                            )
-                                                                                        }
-                                                                                        className="p-1 rounded text-red-500/80 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
-                                                                                        title="Delete tracked port"
-                                                                                    >
-                                                                                        <Trash2
-                                                                                            size={
-                                                                                                12
-                                                                                            }
-                                                                                        />
-                                                                                    </button>
-                                                                                )}
-                                                                            </td>
-                                                                            <td className="py-2 text-right text-foreground">
-                                                                                {p.ping_status ===
-                                                                                    "offline"
-                                                                                    ? "offline"
-                                                                                    : p.ping_status ===
-                                                                                        "online"
-                                                                                        ? `${p.ping_time}ms`
-                                                                                        : "-"}
-                                                                            </td>
-                                                                        </tr>
-                                                                    ),
-                                                                )}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-xs text-muted-foreground py-4 text-center">
-                                                        No open exposed ports.
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 gap-6 pt-6 border-t border-border/60">
-                                            {CHARTS.map((cfg) => (
-                                                <ServerStatChart
-                                                    key={cfg.dataKey}
-                                                    title={cfg.title}
-                                                    data={server?.stats || []}
-                                                    dataKey={cfg.dataKey}
-                                                    color={cfg.color}
-                                                    unit={cfg.unit}
-                                                    yDomain={cfg.yDomain}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
+                                    <MetricsTab
+                                        server={server}
+                                        handleDeletePort={handleDeletePort}
+                                    />
                                 </Tab.Item>
                             )}
 
                             {mode === "view" && (
                                 <Tab.Item icon={Bell} title="Alerts">
-                                    <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-6">
-                                        <div>
-                                            <label className="text-sm font-medium text-foreground">
-                                                Alert Scope
-                                            </label>
-                                            <p className="text-xs text-muted-foreground mb-3">
-                                                Choose which alert configuration
-                                                applies to this server.
-                                            </p>
-                                            <div className="flex gap-4">
-                                                <label className="flex items-center gap-2 cursor-pointer">
-                                                    <input
-                                                        type="radio"
-                                                        name="alertScope"
-                                                        value="global"
-                                                        checked={
-                                                            serverAlertTab.alertScope ===
-                                                            "global"
-                                                        }
-                                                        onChange={() =>
-                                                            serverAlertTab.setAlertScope(
-                                                                "global",
-                                                            )
-                                                        }
-                                                        className="accent-primary"
-                                                    />
-                                                    <span className="text-sm">
-                                                        Global
-                                                    </span>
-                                                </label>
-                                                {serverAlertTab.clientUuid && (
-                                                    <label className="flex items-center gap-2 cursor-pointer">
-                                                        <input
-                                                            type="radio"
-                                                            name="alertScope"
-                                                            value="client"
-                                                            checked={
-                                                                serverAlertTab.alertScope ===
-                                                                "client"
-                                                            }
-                                                            onChange={() =>
-                                                                serverAlertTab.setAlertScope(
-                                                                    "client",
-                                                                )
-                                                            }
-                                                            className="accent-primary"
-                                                        />
-                                                        <span className="text-sm">
-                                                            Client
-                                                        </span>
-                                                    </label>
-                                                )}
-                                                <label className="flex items-center gap-2 cursor-pointer">
-                                                    <input
-                                                        type="radio"
-                                                        name="alertScope"
-                                                        value="server"
-                                                        checked={
-                                                            serverAlertTab.alertScope ===
-                                                            "server"
-                                                        }
-                                                        onChange={() =>
-                                                            serverAlertTab.setAlertScope(
-                                                                "server",
-                                                            )
-                                                        }
-                                                        className="accent-primary"
-                                                    />
-                                                    <span className="text-sm">
-                                                        Server
-                                                    </span>
-                                                </label>
-                                            </div>
-                                        </div>
-                                        <NodeConfigEditor
-                                            configKey={serverAlertTab.configKey}
-                                            scopeLabel={
-                                                serverAlertTab.alertScope ===
-                                                    "server"
-                                                    ? (initial?.name ?? "")
-                                                    : serverAlertTab.alertScope ===
-                                                        "client"
-                                                        ? (initial?.client_name ??
-                                                            "")
-                                                        : ""
-                                            }
-                                            showControls={false}
-                                            showMinimap={false}
-                                            showNodeTypesSidebar={false}
-                                        />
-                                    </div>
+                                    <AlertsTab
+                                        serverAlertTab={serverAlertTab}
+                                        initial={initial}
+                                    />
                                 </Tab.Item>
                             )}
 
                             {mode === "view" && (
                                 <Tab.Item icon={Cpu} title="Agent">
-                                    <div className="flex flex-col gap-6 p-5 bg-card border border-t-0 border-border/60 rounded-b-lg min-h-75">
-                                        <div className="flex items-center justify-between border-b border-border/30 pb-3">
-                                            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                                <Cpu
-                                                    size={16}
-                                                    className="text-primary"
-                                                />{" "}
-                                                Installed Agent Properties
-                                            </h3>
-                                            {server?.agent && (
-                                                <span
-                                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${server.agent.status ===
-                                                        "online"
-                                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                                        : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-                                                        }`}
-                                                >
-                                                    {server.agent.status}
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {server?.agent ? (
-                                            <>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    {[
-                                                        {
-                                                            label: "Agent Version",
-                                                            value: server.agent
-                                                                .version,
-                                                        },
-                                                        {
-                                                            label: "Heartbeat Interval",
-                                                            value: `${server.agent.heartbeat_interval} seconds`,
-                                                        },
-                                                        {
-                                                            label: "Metrics Scan Interval",
-                                                            value: `${server.agent.metrics_interval} seconds`,
-                                                        },
-                                                        {
-                                                            label: "Port Scan Interval",
-                                                            value: `${server.agent.port_scan_interval} seconds`,
-                                                        },
-                                                        {
-                                                            label: "Service Scan Interval",
-                                                            value: `${server.agent.service_scan_interval} seconds`,
-                                                        },
-                                                        {
-                                                            label: "Process Scan Interval",
-                                                            value: `${server.agent.process_scan_interval} seconds`,
-                                                        },
-                                                        {
-                                                            label: "Update Channel",
-                                                            value: server.agent
-                                                                .update_channel,
-                                                            capitalize: true,
-                                                        },
-                                                        {
-                                                            label: "Auto Update Enabled",
-                                                            value: server.agent
-                                                                .auto_update
-                                                                ? "Yes"
-                                                                : "No",
-                                                        },
-                                                        {
-                                                            label: "First Registered",
-                                                            value: new Date(
-                                                                server.agent
-                                                                    .registered_at,
-                                                            ).toLocaleString(),
-                                                        },
-                                                        {
-                                                            label: "Last Heartbeat",
-                                                            value: server.agent
-                                                                .last_seen_at
-                                                                ? new Date(
-                                                                    server.agent
-                                                                        .last_seen_at,
-                                                                ).toLocaleString()
-                                                                : "Never",
-                                                        },
-                                                    ].map((prop, idx) => (
-                                                        <div
-                                                            key={idx}
-                                                            className="flex items-center justify-between p-3 rounded-lg bg-card border border-border/40 hover:bg-muted/5 transition-colors"
-                                                        >
-                                                            <span className="text-xs font-medium text-muted-foreground">
-                                                                {prop.label}
-                                                            </span>
-                                                            <span
-                                                                className={`text-xs font-semibold text-foreground ${prop.capitalize ? "capitalize" : ""}`}
-                                                            >
-                                                                {prop.value}
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-
-                                                <div className="border-t border-border/30 pt-5 mt-3">
-                                                    <h4 className="text-xs font-semibold text-foreground flex items-center gap-2 mb-3">
-                                                        <Terminal
-                                                            size={14}
-                                                            className="text-primary"
-                                                        />{" "}
-                                                        Agent Activity History
-                                                    </h4>
-                                                    {server?.activities &&
-                                                        server.activities.length > 0 ? (
-                                                        <div className="flex flex-col gap-2 max-h-62.5 overflow-y-auto pr-1">
-                                                            {server.activities.map(
-                                                                (
-                                                                    act,
-                                                                    idx: number,
-                                                                ) => (
-                                                                    <div
-                                                                        key={idx}
-                                                                        className="flex items-start justify-between gap-3 p-2.5 rounded-lg bg-card border border-border/30 hover:bg-muted/5 transition-colors"
-                                                                    >
-                                                                        <div className="flex items-start gap-3 min-w-0 flex-1">
-                                                                            <div
-                                                                                className={cn(
-                                                                                    "w-2 h-2 rounded-full mt-1.5 shrink-0",
-                                                                                    act.type ===
-                                                                                        "agent_uninstalled"
-                                                                                        ? "bg-red-500"
-                                                                                        : act.type ===
-                                                                                            "agent_updated"
-                                                                                            ? "bg-blue-500"
-                                                                                            : act.type ===
-                                                                                                "server_online"
-                                                                                                ? "bg-emerald-500"
-                                                                                                : act.type ===
-                                                                                                    "registration_completed"
-                                                                                                    ? "bg-purple-500"
-                                                                                                    : "bg-primary",
-                                                                                )}
-                                                                            />
-                                                                            <div className="flex-1 min-w-0">
-                                                                                <p className="text-[11px] font-semibold text-foreground capitalize">
-                                                                                    {act.type.replace(
-                                                                                        /_/g,
-                                                                                        " ",
-                                                                                    )}
-                                                                                </p>
-                                                                                <p className="text-[11px] text-muted-foreground mt-0.5">
-                                                                                    {
-                                                                                        act.description
-                                                                                    }
-                                                                                </p>
-                                                                            </div>
-                                                                        </div>
-                                                                        {act.created_at && (
-                                                                            <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5 whitespace-nowrap">
-                                                                                {new Date(
-                                                                                    act.created_at,
-                                                                                ).toLocaleString(
-                                                                                    undefined,
-                                                                                    {
-                                                                                        month: "short",
-                                                                                        day: "numeric",
-                                                                                        hour: "2-digit",
-                                                                                        minute: "2-digit",
-                                                                                    },
-                                                                                )}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                ),
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <p className="text-xs text-muted-foreground py-2 text-center">
-                                                            No agent activities
-                                                            logged yet.
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center py-12 text-center">
-                                                <Cpu
-                                                    className="text-muted-foreground/30 mb-3"
-                                                    size={32}
-                                                />
-                                                <p className="text-xs text-muted-foreground">
-                                                    No agent registered on this
-                                                    server yet.
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
+                                    <AgentTab server={server} />
                                 </Tab.Item>
                             )}
                         </Tab>
 
-                        <Dialog open={showCostModal} onOpenChange={setShowCostModal}>
-                            <DialogContent className="sm:max-w-md">
-                                <DialogHeader>
-                                    <DialogTitle className="flex items-center gap-2 text-foreground">
-                                        <Coins size={18} className="text-emerald-400" />
-                                        Server Cost & Deduction Management
-                                    </DialogTitle>
-                                </DialogHeader>
+                        <CostModal
+                            open={showCostModal}
+                            onOpenChange={setShowCostModal}
+                            initial={initial}
+                            costLogs={costLogs}
+                            isLoadingCostLogs={isLoadingCostLogs}
+                            deductAmount={deductAmount}
+                            setDeductAmount={setDeductAmount}
+                            submittingPayment={submittingPayment}
+                            handleCostAdjustment={handleCostAdjustment}
+                        />
+                    </div>
+                </main>
+            </PageLayout>
+        </ChartZoomProvider>
+    );
+}
 
-                                <div className="flex flex-col gap-4 py-2">
-                                    <div className="flex flex-col gap-2 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-                                        <span className="text-xs uppercase tracking-wider font-semibold text-emerald-400/90">
-                                            Cost
-                                        </span>
-                                        <span className="text-3xl font-extrabold text-emerald-400 font-mono">
-                                            ₱{((initial as any)?.accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </span>
-                                        <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-2 border-t border-emerald-500/20 mt-1 font-mono">
-                                            <span>Payment Due: ₱{((initial as any)?.net_cost ?? 0).toFixed(2)}</span>
-                                            <span>Payments Recorded: ₱{((initial as any)?.cost_offset ?? 0).toFixed(2)}</span>
-                                        </div>
-                                    </div>
+// ═══════════════════════════════════════════════════════════════════════════════
+// Subcomponents
+// ═══════════════════════════════════════════════════════════════════════════════
 
-                                    {/* Action: Payment Deduction */}
-                                    <div className="flex flex-col gap-2 p-3.5 rounded-lg border border-border/60 bg-card">
-                                        <p className="text-xs font-semibold text-foreground">Deduction</p>
-                                        <p className="text-[11px] text-muted-foreground">
-                                            Enter a payment amount to deduct directly from the total accumulated server cost.
+function AgentInstallationGuide({
+    status,
+    provisionDetails,
+    generating,
+    copiedKey,
+    timeLeft,
+    generateProvisionToken,
+    regenerateProvisionToken,
+    copyToClipboard,
+}: {
+    status: string;
+    provisionDetails: ProvisionDetailData | null;
+    generating: boolean;
+    copiedKey: string | null;
+    timeLeft: string;
+    generateProvisionToken: () => void;
+    regenerateProvisionToken: () => void;
+    copyToClipboard: (text: string, type) => void;
+}) {
+    return (
+        <div className="mb-6 p-5 rounded-xl border border-border bg-card/50 backdrop-blur-sm shadow-lg">
+            <div className="flex items-center gap-2.5 mb-4 text-foreground font-semibold">
+                <Terminal className="size-5 text-primary" />
+                <h2>Agent Installation Guide</h2>
+            </div>
+
+            {status === "pending_installation" && !provisionDetails && (
+                <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                        To start monitoring this server, you must install the
+                        lightweight monitoring agent on the machine.
+                    </p>
+                    <Button
+                        variant="default"
+                        label={
+                            generating
+                                ? "Generating..."
+                                : "Generate Installation Command"
+                        }
+                        onClick={generateProvisionToken}
+                        disabled={generating}
+                    />
+                </div>
+            )}
+
+            {(status === "waiting_for_installation" ||
+                status === "waiting_for_first_heartbeat" ||
+                provisionDetails) && (
+                <div className="space-y-5">
+                    <p className="text-sm text-muted-foreground">
+                        Run the appropriate command directly on your server.
+                    </p>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                Linux (cURL + bash)
+                            </label>
+                            <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
+                                <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
+                                    {provisionDetails?.linux_command ||
+                                        `curl -fsSL ${window.location.origin}/install/linux | bash -s -- <token>`}
+                                </span>
+                                {provisionDetails?.linux_command && (
+                                    <button
+                                        onClick={() =>
+                                            copyToClipboard(
+                                                provisionDetails.linux_command!,
+                                                "linux",
+                                            )
+                                        }
+                                        className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                    >
+                                        {copiedKey === "linux" ? (
+                                            <Check className="size-4 text-emerald-400" />
+                                        ) : (
+                                            <Copy className="size-4" />
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                Windows (PowerShell)
+                            </label>
+                            <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
+                                <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
+                                    {provisionDetails?.windows_command ||
+                                        `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
+                                </span>
+                                {provisionDetails?.windows_command && (
+                                    <button
+                                        onClick={() =>
+                                            copyToClipboard(
+                                                provisionDetails.windows_command!,
+                                                "windows",
+                                            )
+                                        }
+                                        className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                    >
+                                        {copiedKey === "windows" ? (
+                                            <Check className="size-4 text-emerald-400" />
+                                        ) : (
+                                            <Copy className="size-4" />
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border/40 text-xs text-muted-foreground">
+                        <div>
+                            {provisionDetails?.expires_at && (
+                                <span>
+                                    Token expires at:{" "}
+                                    <strong>
+                                        {new Date(
+                                            provisionDetails.expires_at,
+                                        ).toLocaleString()}
+                                    </strong>{" "}
+                                    <span className="text-amber-500 font-mono ml-1.5">
+                                        {timeLeft}
+                                    </span>
+                                </span>
+                            )}
+                        </div>
+                        <button
+                            onClick={regenerateProvisionToken}
+                            className="flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors font-medium cursor-pointer"
+                        >
+                            <RefreshCw size={12} />
+                            Regenerate Token
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function ServerInfoTab({
+    store,
+    initial,
+    server,
+    mode,
+    form,
+    confirmText,
+    setConfirmText,
+    deleteServer,
+    isConfirmed,
+    allClient,
+    navigate,
+    setShowCostModal,
+    copyToClipboard,
+}: {
+    store;
+    initial;
+    server;
+    mode: string;
+    form;
+    confirmText: string;
+    setConfirmText: (v: string) => void;
+    deleteServer;
+    isConfirmed: boolean;
+    allClient: boolean;
+    navigate;
+    setShowCostModal: (v: boolean) => void;
+    copyToClipboard: (text: string, type) => void;
+}) {
+    const queryClient = useQueryClient();
+    return (
+        <Form.Root store={store}>
+            <Form.SubmitHandler
+                handler={async (data: Record<string, unknown>) => {
+                    if (!initial?.client_uuid) {
+                        toast.error(
+                            "Missing client reference for this server.",
+                        );
+                        return;
+                    }
+                    try {
+                        const nameStr = data.name
+                            ? String(data.name).trim()
+                            : "";
+                        const descStr =
+                            data.description &&
+                            String(data.description).trim() !== "undefined" &&
+                            String(data.description).trim() !== "null"
+                                ? String(data.description).trim()
+                                : "";
+                        const costNum =
+                            data.hourly_cost !== undefined &&
+                            data.hourly_cost !== null &&
+                            data.hourly_cost !== ""
+                                ? Number(data.hourly_cost)
+                                : 0;
+
+                        const { error } = await api.PATCH(
+                            "/v1/clients/{clientUuid}/servers/{serverUuid}",
+                            {
+                                params: {
+                                    path: {
+                                        clientUuid: initial.client_uuid,
+                                        serverUuid: initial.uuid,
+                                    },
+                                },
+                                body: {
+                                    name: nameStr,
+                                    description: descStr || undefined,
+                                    hourly_cost: isNaN(costNum) ? 0 : costNum,
+                                },
+                            },
+                        );
+                        if (error) {
+                            toast.error("Failed to update server info.");
+                        } else {
+                            toast.success("Server info updated.");
+                            store.setMode("view");
+                            queryClient.invalidateQueries({
+                                queryKey: ["server", initial.uuid],
+                            });
+                        }
+                    } catch {
+                        toast.error("An error occurred.");
+                    }
+                }}
+            />
+            <div className="flex flex-col gap-3 p-4 bg-card border border-t-0 border-b-0 border-border/60">
+                <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                        {mode !== "view" ? (
+                            <div>
+                                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                    Server name
+                                </label>
+                                <Input
+                                    value={form.name}
+                                    onChange={(e) =>
+                                        store.set("name")(e.target.value)
+                                    }
+                                    className="text-sm"
+                                    autoFocus
+                                />
+                            </div>
+                        ) : (
+                            <div>
+                                <div className="flex flex-col gap-1.5">
+                                    <h3 className="text-2xl font-semibold text-foreground">
+                                        {form.name}
+                                    </h3>
+                                    {initial?.client_uuid &&
+                                        initial?.client_name && (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    navigate(
+                                                        `/clients/${initial.client_uuid}`,
+                                                    )
+                                                }
+                                                className="inline-flex items-center gap-1.5 w-fit text-xs font-medium text-muted-foreground border-b border-transparent hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
+                                                title={`Go to ${initial.client_name}`}
+                                            >
+                                                <Building2
+                                                    size={11}
+                                                    className="shrink-0 opacity-70"
+                                                />
+                                                {initial.client_name}
+                                            </button>
+                                        )}
+                                </div>
+                                {form.description && (
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        {form.description}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {mode !== "view" ? (
+                            <>
+                                <Form.Buttons.Cancel />
+                                <Form.Buttons.Submit />
+                            </>
+                        ) : (
+                            <Form.Buttons.Edit />
+                        )}
+                    </div>
+                </div>
+
+                {mode !== "view" && (
+                    <>
+                        <div>
+                            <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                Monthly Cost (₱ / mo)
+                            </label>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={form.hourly_cost ?? ""}
+                                onChange={(e) =>
+                                    store.set("hourly_cost")(e.target.value)
+                                }
+                                className="text-sm font-mono"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                Description
+                            </label>
+                            <textarea
+                                value={form.description}
+                                onChange={(e) =>
+                                    store.set("description")(e.target.value)
+                                }
+                                rows={2}
+                                maxLength={255}
+                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                            />
+                        </div>
+                    </>
+                )}
+            </div>
+            <div className="flex flex-wrap items-start gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
+                {[
+                    {
+                        icon: Cpu,
+                        label: "CPU Model",
+                        value: server.cpu_model ?? "Unknown",
+                        wide: true,
+                    },
+                    {
+                        icon: Cpu,
+                        label: "CPU Cores",
+                        value: `${server.cpu_cores ?? "?"} cores`,
+                    },
+                    {
+                        icon: MemoryStick,
+                        label: "Memory",
+                        value: server.ram
+                            ? `${server.ram} GB`
+                            : "Waiting for Agent",
+                    },
+                    {
+                        icon: HardDrive,
+                        label: "Disk",
+                        value: server.disk
+                            ? `${server.disk} GB`
+                            : "Waiting for Agent",
+                    },
+                    {
+                        icon: Monitor,
+                        label: "OS",
+                        value: server.operating_system ?? "Waiting for Agent",
+                    },
+                ].map(({ icon: ItemIcon, label, value, wide }) => (
+                    <div
+                        key={label}
+                        className={cn(
+                            "group flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all",
+                            wide
+                                ? "flex-[2_2_320px] min-w-[320px]"
+                                : "flex-1 min-w-50",
+                        )}
+                    >
+                        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
+                            <ItemIcon size={17} />
+                        </div>
+                        <div className="flex flex-col min-w-0 gap-0.5">
+                            <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
+                                {label}
+                            </span>
+                            <span className="text-sm font-semibold text-foreground wrap-break-word whitespace-nowrap overflow-hidden text-ellipsis">
+                                {value}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+
+                <div className="flex-1 min-w-50 flex items-center gap-3 p-3.5 rounded-xl bg-primary/5 border border-primary/20 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
+                        <Banknote size={17} />
+                    </div>
+                    <div className="flex flex-col min-w-0 gap-0.5">
+                        <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1.5">
+                            Monthly Cost
+                        </span>
+                        <span className="text-sm font-semibold text-foreground font-mono">
+                            ₱{((initial as any)?.hourly_cost ?? 0).toFixed(2)} /
+                            mo
+                        </span>
+                    </div>
+                </div>
+
+                <div
+                    onClick={() => setShowCostModal(true)}
+                    className="flex-1 min-w-50 group flex items-center gap-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 shadow-sm hover:border-emerald-500/60 hover:bg-emerald-500/15 transition-all cursor-pointer"
+                    title="Click to view details or manage deductions"
+                >
+                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
+                        <Coins size={17} />
+                    </div>
+                    <div className="flex flex-col min-w-0 gap-0.5">
+                        <span className="text-[10.5px] font-medium uppercase tracking-wider text-emerald-400/90">
+                            Cost
+                        </span>
+                        <span className="text-sm font-bold text-emerald-400 font-mono">
+                            ₱
+                            {(
+                                (initial as any)?.accumulated_cost ?? 0
+                            ).toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                            })}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="flex-1 min-w-50 flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
+                        <Calendar size={17} />
+                    </div>
+                    <div className="flex flex-col min-w-0 gap-0.5">
+                        <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
+                            Next Billing Date
+                        </span>
+                        <span className="text-sm font-semibold text-foreground wrap-break-word">
+                            {(initial as any)?.billing_date
+                                ? new Date(
+                                      (initial as any).billing_date,
+                                  ).toLocaleDateString(undefined, {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                  })
+                                : "N/A"}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <DeleteModalDangerZone
+                initial={initial}
+                confirmText={confirmText}
+                setConfirmText={setConfirmText}
+                deleteServer={deleteServer}
+                isConfirmed={isConfirmed}
+                allClient={allClient}
+                navigate={navigate}
+                copyToClipboard={copyToClipboard}
+            />
+        </Form.Root>
+    );
+}
+
+function DeleteModalDangerZone({
+    initial,
+    confirmText,
+    setConfirmText,
+    deleteServer,
+    isConfirmed,
+    allClient,
+    navigate,
+    copyToClipboard,
+}: {
+    initial;
+    confirmText: string;
+    setConfirmText: (v: string) => void;
+    deleteServer;
+    isConfirmed: boolean;
+    allClient: boolean;
+    navigate;
+    copyToClipboard: (text: string, type) => void;
+}) {
+    return (
+        <div className="mt-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5">
+            <p className="text-xs font-semibold text-destructive uppercase tracking-wider mb-3">
+                Danger Zone
+            </p>
+            <Form.DeleteModal
+                buttonProps={{
+                    variant: "danger",
+                    size: "sm",
+                    icon: <Trash2 size={13} />,
+                }}
+                onOpenChange={(open: boolean) => {
+                    if (!open) setConfirmText("");
+                }}
+                modal={(show: (open: boolean) => void) => (
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2 text-destructive">
+                                <Trash2 size={16} />
+                                Delete server
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        <p className="text-sm text-muted-foreground">
+                            This will permanently stop monitoring{" "}
+                            <strong className="text-foreground">
+                                {initial?.name}
+                            </strong>{" "}
+                            and remove all collected metrics. This cannot be
+                            undone.
+                        </p>
+
+                        {initial && (initial as any).accumulated_cost > 0 && (
+                            <div className="flex items-start gap-2 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-600 dark:text-amber-400">
+                                <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-semibold text-foreground">
+                                        Outstanding Cost Balance
+                                    </p>
+                                    <p className="text-muted-foreground mt-0.5">
+                                        This server has an outstanding balance
+                                        of{" "}
+                                        <strong className="text-amber-600 dark:text-amber-400">
+                                            ₱
+                                            {(
+                                                (initial as any)
+                                                    .accumulated_cost ?? 0
+                                            ).toLocaleString(undefined, {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2,
+                                            })}
+                                        </strong>
+                                        . You must settle all deductions before
+                                        this server can be deleted.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {initial && !initial.agent_deleted && (
+                            <div className="flex flex-col gap-3 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
+                                <div className="flex items-start gap-2">
+                                    <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-semibold text-foreground">
+                                            Agent Uninstallation Required
                                         </p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <Input
-                                                type="number"
-                                                step="0.01"
-                                                min="0"
-                                                placeholder="e.g. 500.00"
-                                                value={deductAmount}
-                                                onChange={(e) => setDeductAmount(e.target.value)}
-                                                className="text-sm font-mono"
-                                            />
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                label={submittingPayment ? "Applying…" : "Deduct"}
-                                                onClick={() => {
-                                                    const val = parseFloat(deductAmount);
-                                                    if (isNaN(val) || val <= 0) {
-                                                        toast.error("Please enter a valid positive payment amount.");
-                                                        return;
-                                                    }
-                                                    handleCostAdjustment("deduction", val);
-                                                }}
-                                                disabled={submittingPayment || !deductAmount || parseFloat(deductAmount) <= 0}
-                                                className="shrink-0"
-                                            />
+                                        <p className="text-muted-foreground mt-0.5">
+                                            You must uninstall the agent service
+                                            from the target machine before you
+                                            can delete this server. Run the
+                                            command for your operating system:
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-2.5 mt-1 text-foreground">
+                                    <div>
+                                        <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                            Linux (bash)
+                                        </label>
+                                        <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
+                                            <span className="flex-1 whitespace-pre-wrap break-all">
+                                                {
+                                                    initial.uninstall_linux_command
+                                                }
+                                            </span>
+                                            <button
+                                                onClick={() =>
+                                                    copyToClipboard(
+                                                        initial.uninstall_linux_command!,
+                                                        "uninstall_linux",
+                                                    )
+                                                }
+                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                            >
+                                                <Copy className="size-3.5" />
+                                            </button>
                                         </div>
                                     </div>
 
-                                    {/* Cost Activity Logs */}
-                                    <div className="flex flex-col gap-2 pt-2 border-t border-border/60">
-                                        <div className="flex items-center gap-2">
-                                            <History size={14} className="text-muted-foreground" />
-                                            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                                                Cost & Payment Activity Logs
-                                            </h4>
+                                    <div>
+                                        <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                            Windows (PowerShell)
+                                        </label>
+                                        <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
+                                            <span className="flex-1 whitespace-pre-wrap break-all">
+                                                {
+                                                    initial.uninstall_windows_command
+                                                }
+                                            </span>
+                                            <button
+                                                onClick={() =>
+                                                    copyToClipboard(
+                                                        initial.uninstall_windows_command!,
+                                                        "uninstall_windows",
+                                                    )
+                                                }
+                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                            >
+                                                <Copy className="size-3.5" />
+                                            </button>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
-                                        <div className="max-h-44 overflow-y-auto flex flex-col gap-2 pr-1">
-                                            {isLoadingCostLogs ? (
-                                                <p className="text-xs text-muted-foreground py-3 text-center">Loading logs…</p>
-                                            ) : costLogs.length === 0 ? (
-                                                <p className="text-xs text-muted-foreground py-3 text-center">No cost activity logs recorded yet.</p>
-                                            ) : (
-                                                costLogs.map((log: any) => {
-                                                    const msg = log.details?.message || log.action;
-                                                    return (
-                                                        <div key={log.id} className="p-2.5 rounded-lg bg-muted/20 border border-border/40 flex flex-col gap-1">
-                                                            <div className="flex items-center justify-between gap-2">
-                                                                <span className="text-xs font-medium text-foreground">
-                                                                    {log.action}
-                                                                </span>
-                                                                {log.created_at && (
-                                                                    <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                                                                        {new Date(log.created_at).toLocaleString(undefined, {
-                                                                            month: "short",
-                                                                            day: "numeric",
-                                                                            year: "numeric",
-                                                                            hour: "2-digit",
-                                                                            minute: "2-digit",
-                                                                        })}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-[11px] text-muted-foreground">
-                                                                {msg}
-                                                            </p>
-                                                            {log.details?.before?.hourly_cost && log.details?.after?.hourly_cost && (
-                                                                <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
-                                                                    <span>Before: ₱{log.details.before.hourly_cost}/hr</span>
-                                                                    <span>→</span>
-                                                                    <span>After: ₱{log.details.after.hourly_cost}/hr</span>
-                                                                </div>
-                                                            )}
-                                                            {log.user && (
-                                                                <p className="text-[10px] text-muted-foreground/70">
-                                                                    By: {log.user}
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })
+                        <div className="flex flex-col gap-2 pt-1">
+                            <label className="text-xs text-muted-foreground">
+                                Type{" "}
+                                <strong className="text-foreground font-mono">
+                                    {initial?.name}
+                                </strong>{" "}
+                                to confirm
+                            </label>
+                            <Input
+                                value={confirmText}
+                                onChange={(e) => setConfirmText(e.target.value)}
+                                placeholder={initial?.name}
+                                autoFocus
+                                className="font-mono text-sm"
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-2">
+                            <Form.Buttons.Cancel
+                                onClick={() => {
+                                    show(false);
+                                    setConfirmText("");
+                                }}
+                            />
+                            <Form.Button
+                                variant="danger"
+                                disabled={
+                                    !isConfirmed || deleteServer.isPending
+                                }
+                                onClick={async () => {
+                                    if (
+                                        !initial ||
+                                        !isConfirmed ||
+                                        !initial.client_uuid
+                                    )
+                                        return;
+                                    try {
+                                        await deleteServer.mutateAsync({
+                                            clientUuid: initial.client_uuid,
+                                            serverUuid: initial.uuid,
+                                        });
+                                        toast.success(
+                                            `${initial.name} has been deleted.`,
+                                        );
+                                        if (allClient) {
+                                            navigate("/servers");
+                                        } else {
+                                            navigate(
+                                                `/clients/${initial.client_uuid}`,
+                                            );
+                                        }
+                                    } catch (err: unknown) {
+                                        const msg =
+                                            (
+                                                err as {
+                                                    message?: string;
+                                                }
+                                            )?.message ||
+                                            "Failed to delete server. Please try again.";
+                                        toast.error(msg);
+                                    }
+                                }}
+                            >
+                                {deleteServer.isPending
+                                    ? "Deleting…"
+                                    : "Delete server"}
+                            </Form.Button>
+                        </div>
+                    </DialogContent>
+                )}
+            >
+                Delete this server
+            </Form.DeleteModal>
+        </div>
+    );
+}
+
+function MetricsTab({
+    server,
+    handleDeletePort,
+}: {
+    server;
+    handleDeletePort: (id: number) => void;
+}) {
+    return (
+        <div className="flex flex-col gap-6 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
+            <div className="flex flex-col gap-6">
+                <div className="bg-card/50 border border-border/50 rounded-xl p-4 shadow-sm">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <Cpu size={16} className="text-primary" /> Top Processes
+                    </h3>
+                    {server?.processes && server.processes.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                                <thead>
+                                    <tr className="text-muted-foreground border-b border-border/30">
+                                        <th className="pb-2 font-medium">
+                                            PID
+                                        </th>
+                                        <th className="pb-2 font-medium">
+                                            Name
+                                        </th>
+                                        <th className="pb-2 font-medium text-right">
+                                            CPU
+                                        </th>
+                                        <th className="pb-2 font-medium text-right">
+                                            RAM
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/20">
+                                    {server.processes.map((p) => (
+                                        <tr
+                                            key={p.pid}
+                                            className="hover:bg-muted/10"
+                                        >
+                                            <td className="py-2 text-muted-foreground">
+                                                {p.pid}
+                                            </td>
+                                            <td
+                                                className="py-2 font-medium text-foreground max-w-30 truncate"
+                                                title={p.name}
+                                            >
+                                                {p.name}
+                                            </td>
+                                            <td className="py-2 text-right text-foreground">
+                                                {p.cpu != null
+                                                    ? `${p.cpu.toFixed(1)}%`
+                                                    : "-"}
+                                            </td>
+                                            <td className="py-2 text-right text-foreground">
+                                                {p.memory != null
+                                                    ? `${p.memory.toFixed(1)} MB`
+                                                    : "-"}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <p className="text-xs text-muted-foreground py-4 text-center">
+                            No processes reported.
+                        </p>
+                    )}
+                </div>
+
+                <div className="bg-card/50 border border-border/50 rounded-xl p-4 shadow-sm">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <Link2 size={16} className="text-primary" /> Exposed
+                        Ports
+                    </h3>
+                    {server?.ports && server.ports.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                                <thead>
+                                    <tr className="text-muted-foreground border-b border-border/30">
+                                        <th className="pb-2 font-medium">
+                                            Port
+                                        </th>
+                                        <th className="pb-2 font-medium">
+                                            Proto
+                                        </th>
+                                        <th className="pb-2 font-medium">
+                                            Process
+                                        </th>
+                                        <th className="pb-2 font-medium text-right">
+                                            State
+                                        </th>
+                                        <th className="pb-2 font-medium text-right">
+                                            Ping
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/20">
+                                    {server.ports.map((p, idx: number) => (
+                                        <tr
+                                            key={idx}
+                                            className="hover:bg-muted/10"
+                                        >
+                                            <td className="py-2 font-semibold text-foreground">
+                                                {p.port}
+                                            </td>
+                                            <td className="py-2 text-muted-foreground uppercase">
+                                                {p.protocol}
+                                            </td>
+                                            <td className="py-2 text-foreground font-medium">
+                                                {p.process || "unknown"}
+                                            </td>
+                                            <td className="py-2 text-right flex items-center justify-end gap-1.5">
+                                                <span
+                                                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${p.state === "listening" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"}`}
+                                                >
+                                                    {p.state}
+                                                </span>
+                                                {p.id && (
+                                                    <button
+                                                        onClick={() =>
+                                                            handleDeletePort(
+                                                                p.id,
+                                                            )
+                                                        }
+                                                        className="p-1 rounded text-red-500/80 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                                                        title="Delete tracked port"
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                )}
+                                            </td>
+                                            <td className="py-2 text-right text-foreground">
+                                                {p.ping_status === "offline"
+                                                    ? "offline"
+                                                    : p.ping_status === "online"
+                                                      ? `${p.ping_time}ms`
+                                                      : "-"}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <p className="text-xs text-muted-foreground py-4 text-center">
+                            No open exposed ports.
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 pt-6 border-t border-border/60">
+                {CHARTS.map((cfg) => (
+                    <ServerStatChart
+                        key={cfg.dataKey}
+                        title={cfg.title}
+                        data={server?.stats || []}
+                        dataKey={cfg.dataKey}
+                        color={cfg.color}
+                        unit={cfg.unit}
+                        yDomain={cfg.yDomain}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function AlertsTab({ serverAlertTab, initial }: { serverAlertTab; initial }) {
+    return (
+        <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-6">
+            <div>
+                <label className="text-sm font-medium text-foreground">
+                    Alert Scope
+                </label>
+                <p className="text-xs text-muted-foreground mb-3">
+                    Choose which alert configuration applies to this server.
+                </p>
+                <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="radio"
+                            name="alertScope"
+                            value="global"
+                            checked={serverAlertTab.alertScope === "global"}
+                            onChange={() =>
+                                serverAlertTab.setAlertScope("global")
+                            }
+                            className="accent-primary"
+                        />
+                        <span className="text-sm">Global</span>
+                    </label>
+                    {serverAlertTab.clientUuid && (
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="radio"
+                                name="alertScope"
+                                value="client"
+                                checked={serverAlertTab.alertScope === "client"}
+                                onChange={() =>
+                                    serverAlertTab.setAlertScope("client")
+                                }
+                                className="accent-primary"
+                            />
+                            <span className="text-sm">Client</span>
+                        </label>
+                    )}
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="radio"
+                            name="alertScope"
+                            value="server"
+                            checked={serverAlertTab.alertScope === "server"}
+                            onChange={() =>
+                                serverAlertTab.setAlertScope("server")
+                            }
+                            className="accent-primary"
+                        />
+                        <span className="text-sm">Server</span>
+                    </label>
+                </div>
+            </div>
+            <NodeConfigEditor
+                configKey={serverAlertTab.configKey}
+                scopeLabel={
+                    serverAlertTab.alertScope === "server"
+                        ? (initial?.name ?? "")
+                        : serverAlertTab.alertScope === "client"
+                          ? (initial?.client_name ?? "")
+                          : ""
+                }
+                showControls={false}
+                showMinimap={false}
+                showNodeTypesSidebar={false}
+            />
+        </div>
+    );
+}
+
+function AgentTab({ server }: { server }) {
+    return (
+        <div className="flex flex-col gap-6 p-5 bg-card border border-t-0 border-border/60 rounded-b-lg min-h-75">
+            <div className="flex items-center justify-between border-b border-border/30 pb-3">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Cpu size={16} className="text-primary" /> Installed Agent
+                    Properties
+                </h3>
+                {server?.agent && (
+                    <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border capitalize ${
+                            server.agent.status === "online"
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+                        }`}
+                    >
+                        {server.agent.status}
+                    </span>
+                )}
+            </div>
+
+            {server?.agent ? (
+                <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {[
+                            {
+                                label: "Agent Version",
+                                value: server.agent.version,
+                            },
+                            {
+                                label: "Heartbeat Interval",
+                                value: `${server.agent.heartbeat_interval} seconds`,
+                            },
+                            {
+                                label: "Metrics Scan Interval",
+                                value: `${server.agent.metrics_interval} seconds`,
+                            },
+                            {
+                                label: "Port Scan Interval",
+                                value: `${server.agent.port_scan_interval} seconds`,
+                            },
+                            {
+                                label: "Service Scan Interval",
+                                value: `${server.agent.service_scan_interval} seconds`,
+                            },
+                            {
+                                label: "Process Scan Interval",
+                                value: `${server.agent.process_scan_interval} seconds`,
+                            },
+                            {
+                                label: "Update Channel",
+                                value: server.agent.update_channel,
+                                capitalize: true,
+                            },
+                            {
+                                label: "Auto Update Enabled",
+                                value: server.agent.auto_update ? "Yes" : "No",
+                            },
+                            {
+                                label: "First Registered",
+                                value: new Date(
+                                    server.agent.registered_at,
+                                ).toLocaleString(),
+                            },
+                            {
+                                label: "Last Heartbeat",
+                                value: server.agent.last_seen_at
+                                    ? new Date(
+                                          server.agent.last_seen_at,
+                                      ).toLocaleString()
+                                    : "Never",
+                            },
+                        ].map((prop, idx) => (
+                            <div
+                                key={idx}
+                                className="flex items-center justify-between p-3 rounded-lg bg-card border border-border/40 hover:bg-muted/5 transition-colors"
+                            >
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    {prop.label}
+                                </span>
+                                <span
+                                    className={`text-xs font-semibold text-foreground ${prop.capitalize ? "capitalize" : ""}`}
+                                >
+                                    {prop.value}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="border-t border-border/30 pt-5 mt-3">
+                        <h4 className="text-xs font-semibold text-foreground flex items-center gap-2 mb-3">
+                            <Terminal size={14} className="text-primary" />{" "}
+                            Agent Activity History
+                        </h4>
+                        {server?.activities && server.activities.length > 0 ? (
+                            <div className="flex flex-col gap-2 max-h-62.5 overflow-y-auto pr-1">
+                                {server.activities.map((act, idx: number) => (
+                                    <div
+                                        key={idx}
+                                        className="flex items-start justify-between gap-3 p-2.5 rounded-lg bg-card border border-border/30 hover:bg-muted/5 transition-colors"
+                                    >
+                                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                                            <div
+                                                className={cn(
+                                                    "w-2 h-2 rounded-full mt-1.5 shrink-0",
+                                                    act.type ===
+                                                        "agent_uninstalled"
+                                                        ? "bg-red-500"
+                                                        : act.type ===
+                                                            "agent_updated"
+                                                          ? "bg-blue-500"
+                                                          : act.type ===
+                                                              "server_online"
+                                                            ? "bg-emerald-500"
+                                                            : act.type ===
+                                                                "registration_completed"
+                                                              ? "bg-purple-500"
+                                                              : "bg-primary",
+                                                )}
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] font-semibold text-foreground capitalize">
+                                                    {act.type.replace(
+                                                        /_/g,
+                                                        " ",
+                                                    )}
+                                                </p>
+                                                <p className="text-[11px] text-muted-foreground mt-0.5">
+                                                    {act.description}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {act.created_at && (
+                                            <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5 whitespace-nowrap">
+                                                {new Date(
+                                                    act.created_at,
+                                                ).toLocaleString(undefined, {
+                                                    month: "short",
+                                                    day: "numeric",
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                })}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground py-2 text-center">
+                                No agent activities logged yet.
+                            </p>
+                        )}
+                    </div>
+                </>
+            ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Cpu className="text-muted-foreground/30 mb-3" size={32} />
+                    <p className="text-xs text-muted-foreground">
+                        No agent registered on this server yet.
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function CostModal({
+    open,
+    onOpenChange,
+    initial,
+    costLogs,
+    isLoadingCostLogs,
+    deductAmount,
+    setDeductAmount,
+    submittingPayment,
+    handleCostAdjustment,
+}: {
+    open: boolean;
+    onOpenChange: (v: boolean) => void;
+    initial;
+    costLogs;
+    isLoadingCostLogs: boolean;
+    deductAmount: string;
+    setDeductAmount: (v: string) => void;
+    submittingPayment: boolean;
+    handleCostAdjustment: (
+        type:
+            | "full_payment"
+            | "deduction"
+            | "top_up"
+            | "add_funds"
+            | "reset_usage",
+        amount?: number,
+    ) => void;
+}) {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-foreground">
+                        <Coins size={18} className="text-emerald-400" />
+                        Server Cost & Deduction Management
+                    </DialogTitle>
+                </DialogHeader>
+
+                <div className="flex flex-col gap-4 py-2">
+                    <div className="flex flex-col gap-2 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                        <span className="text-xs uppercase tracking-wider font-semibold text-emerald-400/90">
+                            Cost
+                        </span>
+                        <span className="text-3xl font-extrabold text-emerald-400 font-mono">
+                            ₱
+                            {(
+                                (initial as any)?.accumulated_cost ?? 0
+                            ).toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                            })}
+                        </span>
+                        <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-2 border-t border-emerald-500/20 mt-1 font-mono">
+                            <span>
+                                Payment Due: ₱
+                                {((initial as any)?.net_cost ?? 0).toFixed(2)}
+                            </span>
+                            <span>
+                                Payments Recorded: ₱
+                                {((initial as any)?.cost_offset ?? 0).toFixed(
+                                    2,
+                                )}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 p-3.5 rounded-lg border border-border/60 bg-card">
+                        <p className="text-xs font-semibold text-foreground">
+                            Deduction
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                            Enter a payment amount to deduct directly from the
+                            total accumulated server cost.
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                            <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                placeholder="e.g. 500.00"
+                                value={deductAmount}
+                                onChange={(e) =>
+                                    setDeductAmount(e.target.value)
+                                }
+                                className="text-sm font-mono"
+                            />
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                label={
+                                    submittingPayment ? "Applying…" : "Deduct"
+                                }
+                                onClick={() => {
+                                    const val = parseFloat(deductAmount);
+                                    if (isNaN(val) || val <= 0) {
+                                        toast.error(
+                                            "Please enter a valid positive payment amount.",
+                                        );
+                                        return;
+                                    }
+                                    handleCostAdjustment("deduction", val);
+                                }}
+                                disabled={
+                                    submittingPayment ||
+                                    !deductAmount ||
+                                    parseFloat(deductAmount) <= 0
+                                }
+                                className="shrink-0"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 pt-2 border-t border-border/60">
+                        <div className="flex items-center gap-2">
+                            <History
+                                size={14}
+                                className="text-muted-foreground"
+                            />
+                            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                                Cost & Payment Activity Logs
+                            </h4>
+                        </div>
+
+                        <div className="max-h-44 overflow-y-auto flex flex-col gap-2 pr-1">
+                            {isLoadingCostLogs ? (
+                                <p className="text-xs text-muted-foreground py-3 text-center">
+                                    Loading logs…
+                                </p>
+                            ) : costLogs.length === 0 ? (
+                                <p className="text-xs text-muted-foreground py-3 text-center">
+                                    No cost activity logs recorded yet.
+                                </p>
+                            ) : (
+                                costLogs.map((log) => {
+                                    const msg =
+                                        log.details?.message || log.action;
+                                    return (
+                                        <div
+                                            key={log.id}
+                                            className="p-2.5 rounded-lg bg-muted/20 border border-border/40 flex flex-col gap-1"
+                                        >
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-xs font-medium text-foreground">
+                                                    {log.action}
+                                                </span>
+                                                {log.created_at && (
+                                                    <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                                                        {new Date(
+                                                            log.created_at,
+                                                        ).toLocaleString(
+                                                            undefined,
+                                                            {
+                                                                month: "short",
+                                                                day: "numeric",
+                                                                year: "numeric",
+                                                                hour: "2-digit",
+                                                                minute: "2-digit",
+                                                            },
+                                                        )}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-[11px] text-muted-foreground">
+                                                {msg}
+                                            </p>
+                                            {log.details?.before?.hourly_cost &&
+                                                log.details?.after
+                                                    ?.hourly_cost && (
+                                                    <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
+                                                        <span>
+                                                            Before: ₱
+                                                            {
+                                                                log.details
+                                                                    .before
+                                                                    .hourly_cost
+                                                            }
+                                                            /hr
+                                                        </span>
+                                                        <span>→</span>
+                                                        <span>
+                                                            After: ₱
+                                                            {
+                                                                log.details
+                                                                    .after
+                                                                    .hourly_cost
+                                                            }
+                                                            /hr
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            {log.user && (
+                                                <p className="text-[10px] text-muted-foreground/70">
+                                                    By: {log.user}
+                                                </p>
                                             )}
                                         </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end pt-2">
-                                    <DialogClose asChild>
-                                        <Button variant="outline" label="Close" />
-                                    </DialogClose>
-                                </div>
-                            </DialogContent>
-                        </Dialog>
+                                    );
+                                })
+                            )}
+                        </div>
                     </div>
-                </main >
-            </PageLayout >
-        </ChartZoomProvider >
+                </div>
+
+                <div className="flex justify-end pt-2">
+                    <DialogClose asChild>
+                        <Button variant="outline" label="Close" />
+                    </DialogClose>
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }

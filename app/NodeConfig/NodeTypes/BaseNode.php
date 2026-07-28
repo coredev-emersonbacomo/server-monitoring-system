@@ -9,17 +9,22 @@ abstract class BaseNode implements NodeType
         return false;
     }
 
+    public function hasOutput(): bool
+    {
+        return true;
+    }
+
     public function getSettingDefinitions(): array
     {
         return [];
     }
 
-    public static function parseDurationToSeconds(string $duration): int
+    /**
+     * Parse a duration value (already stored as ms string from the frontend)
+     * into an integer milliseconds.
+     */
+    public static function parseDurationToMs(string $duration): int
     {
-        $parts = explode(':', $duration);
-        $parts = array_pad(array_slice($parts, 0, 5), 5, '0');
-        [$months, $days, $hours, $minutes, $seconds] = array_map('intval', $parts);
-
-        return ($months * 30 * 86400) + ($days * 86400) + ($hours * 3600) + ($minutes * 60) + $seconds;
+        return (int) $duration;
     }
 }

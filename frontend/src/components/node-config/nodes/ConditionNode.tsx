@@ -9,7 +9,9 @@ import { BaseNode } from './BaseNode';
 
 const OPERATORS: Record<string, string> = {
     greater_than: 'Greater Than',
+    greater_than_equal: 'Greater Than or Equal',
     less_than: 'Less Than',
+    less_than_equal: 'Less Than or Equal',
     equal: 'Equal',
     between: 'Between',
 };
