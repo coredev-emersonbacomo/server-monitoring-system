@@ -7,7 +7,7 @@ interface BaseNodeProps {
     children: React.ReactNode;
 }
 
-export const BaseNode = ({ width = 'w-[200px]', borderColor, selected, children }: BaseNodeProps) => {
+export const BaseNode = ({ width = 'w-[200px]', borderColor = '#e5e7eb', selected, children }: BaseNodeProps) => {
     const contentRef = useRef<HTMLDivElement>(null);
     const [snappedHeight, setSnappedHeight] = useState<number | undefined>(undefined);
 
@@ -33,7 +33,7 @@ export const BaseNode = ({ width = 'w-[200px]', borderColor, selected, children 
 
     return (
         <div
-            className={`relative rounded-xl bg-card shadow-sm ${width} transition-[height] duration-75`}
+            className={`relative rounded-xl bg-card ${width} transition-[height] duration-75`}
             style={{
                 boxShadow,
                 height: snappedHeight ? `${snappedHeight}px` : 'fit-content'

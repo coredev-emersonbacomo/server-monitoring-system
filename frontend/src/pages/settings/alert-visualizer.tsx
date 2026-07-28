@@ -695,6 +695,11 @@ export function AlertVisualizer() {
 // Sub-component for exact backend-synced countdown clock
 function TimerCard({ task, offset }: { task: TelemetryTask; offset: number }) {
     const [timeLeft, setTimeLeft] = useState<number>(0);
+    const [subStepTimes, setSubStepTimes] = useState<number[]>([]);
+
+    const chainStepsMeta = (task.context.chain_steps_meta as Array<{ timing_node_id: string; duration_ms: number }> | undefined);
+    const isChain = Array.isArray(chainStepsMeta) && chainStepsMeta.length > 1;
+    const maxDurationMs = isChain ? Math.max(...chainStepsMeta!.map(s => s.duration_ms)) : 0;
 
     useEffect(() => {
         const updateClock = () => {
@@ -702,6 +707,15 @@ function TimerCard({ task, offset }: { task: TelemetryTask; offset: number }) {
             const nowCalculated = Date.now() + offset;
             const diff = Math.max(0, (backendTargetMs - nowCalculated) / 1000);
             setTimeLeft(diff);
+
+            if (isChain && chainStepsMeta) {
+                const stepTimes = chainStepsMeta.map(step => {
+                    // Virtual fire time for sub-step = fire_at - (max_duration - step_duration) / 1000
+                    const stepFireAtMs = backendTargetMs - (maxDurationMs - step.duration_ms);
+                    return Math.max(0, (stepFireAtMs - nowCalculated) / 1000);
+                });
+                setSubStepTimes(stepTimes);
+            }
         };
 
         updateClock();
@@ -710,16 +724,21 @@ function TimerCard({ task, offset }: { task: TelemetryTask; offset: number }) {
     }, [task, offset]);
 
     const stats = task.live_stats;
-    const isRepeat = task.context.repeat_fire === true;
     const repeatCount = (task.context.repeat_count as number) ?? 0;
+    const isRepeat = task.context.repeat_fire === true || repeatCount > 0 || task.node_id.includes("repeat");
     const metricType = (task.context.metric_type as string) || "general";
+
+    // Human-readable label: strip "chain:" prefix for display
+    const displayLabel = task.node_id.startsWith("chain:")
+        ? `⛓ ${task.node_id.slice(6).replace(/:/g, " → ")}`
+        : task.node_id;
 
     return (
         <div className={`p-2 rounded-lg border flex flex-col gap-1.5 ${isRepeat ? "bg-amber-950/30 border-amber-800/50" : "bg-slate-950 border-slate-800"}`}>
             {/* Header row: node_id + countdown */}
             <div className="flex items-center justify-between gap-1">
                 <span className="text-[11px] font-mono text-slate-300 truncate font-semibold flex-1">
-                    {task.node_id}
+                    {displayLabel}
                 </span>
                 <span className={`text-xs font-mono font-bold ${timeLeft < 5 ? "text-red-400" : "text-cyan-400"}`}>
                     {timeLeft.toFixed(1)}s
@@ -743,12 +762,48 @@ function TimerCard({ task, offset }: { task: TelemetryTask; offset: number }) {
                         Pending
                     </span>
                 )}
+                {isChain && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-900/50 text-violet-300 border border-violet-800/60">
+                        ⛓ Chain
+                    </span>
+                )}
                 {repeatCount > 0 && (
                     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
                         #{repeatCount}
                     </span>
                 )}
             </div>
+
+            {/* Chain sub-step parallel countdowns */}
+            {isChain && chainStepsMeta && (
+                <div className="flex flex-col gap-1 pt-0.5">
+                    <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wide">Chain Steps</span>
+                    {chainStepsMeta.map((step, idx) => {
+                        const stepSec = subStepTimes[idx] ?? 0;
+                        const reached = stepSec <= 0;
+                        const stepLabel = step.timing_node_id.replace(/_/g, " ");
+                        const stepDurSec = step.duration_ms / 1000;
+                        return (
+                            <div key={step.timing_node_id} className="flex items-center gap-1.5">
+                                <div className="flex-1 flex items-center gap-1">
+                                    <span className="text-[9px] font-mono text-slate-500 shrink-0 w-3 text-right">{idx + 1}.</span>
+                                    <span className="text-[9px] font-mono text-slate-400 truncate">{stepLabel}</span>
+                                    <span className="text-[9px] text-slate-600 shrink-0">({stepDurSec}s)</span>
+                                </div>
+                                {reached ? (
+                                    <span className="text-[9px] font-semibold px-1 py-0.5 rounded bg-emerald-900/60 text-emerald-400 border border-emerald-800/50 shrink-0">
+                                        Reached
+                                    </span>
+                                ) : (
+                                    <span className={`text-[9px] font-mono font-bold shrink-0 ${stepSec < 3 ? "text-red-400" : "text-violet-400"}`}>
+                                        {stepSec.toFixed(1)}s
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Live stats */}
             {stats && (

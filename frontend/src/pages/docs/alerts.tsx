@@ -77,9 +77,9 @@ const alertGraph: NodeConfigGraph = {
                 label: "Email 10s",
                 channel: "email",
                 subject:
-                    "[{server.client.name}] {server.name} - {metricName} Alert (10s)",
+                    "[{server.client.name}] {server.name} - {runtime.metricName} Alert (10s)",
                 message:
-                    "[{server.client.name}] {server.name}'s {metricName} has been above 85% for {sustainValue}! (event timestamp: {runtime.offlineTimestamp})",
+                    "[{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! (event timestamp: {runtime.offlineTimestamp})",
             },
         },
         {
@@ -90,9 +90,9 @@ const alertGraph: NodeConfigGraph = {
                 label: "Email 20s",
                 channel: "email",
                 subject:
-                    "[{server.client.name}] {server.name} - {metricName} Alert (20s)",
+                    "[{server.client.name}] {server.name} - {runtime.metricName} Alert (20s)",
                 message:
-                    "[{server.client.name}] {server.name}'s {metricName} has been above 85% for {sustainValue}! (event timestamp: {runtime.offlineTimestamp})",
+                    "[{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! (event timestamp: {runtime.offlineTimestamp})",
             },
         },
         {
@@ -103,7 +103,7 @@ const alertGraph: NodeConfigGraph = {
                 label: "Discord 30s",
                 channel: "discord",
                 message:
-                    ":rotating_light: [{server.client.name}] {server.name}'s {metricName} has been above 85% for {sustainValue}! Repeating every 10s. (event timestamp: {runtime.offlineTimestamp})",
+                    ":rotating_light: [{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! Repeating every 10s. (event timestamp: {runtime.offlineTimestamp})",
             },
         },
         {
@@ -431,8 +431,8 @@ export default function DocsAlerts() {
                                 message. Supports template variables:{" "}
                                 <InlineCode>{`{server.name}`}</InlineCode>,{" "}
                                 <InlineCode>{`{server.client.name}`}</InlineCode>
-                                , <InlineCode>{`{metricName}`}</InlineCode>,{" "}
-                                <InlineCode>{`{sustainValue}`}</InlineCode>,{" "}
+                                , <InlineCode>{`{runtime.metricName}`}</InlineCode>,{" "}
+                                <InlineCode>{`{runtime.sustainValue}`}</InlineCode>,{" "}
                                 <InlineCode>{`{runtime.offlineTimestamp}`}</InlineCode>
                                 .
                             </p>
