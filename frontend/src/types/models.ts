@@ -8,6 +8,7 @@ export type ActivityLog = components["schemas"]["ActivityLog"];
 export type AgentData = components["schemas"]["AgentData"];
 export type AuthUserData = components["schemas"]["AuthUserData"];
 export type ClientData = components["schemas"]["ClientData"];
+export type CustomActivityLog = components["schemas"]["CustomActivityLog"];
 export type DashboardStatsData = components["schemas"]["DashboardStatsData"];
 export type GlobalAlert = components["schemas"]["GlobalAlert"];
 export type NodeConfig = components["schemas"]["NodeConfig"];
