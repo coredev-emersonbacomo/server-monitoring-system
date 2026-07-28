@@ -41,7 +41,7 @@ export function ReportsLayout() {
         if (type === "servers") setView("servers");
         if (type === "clients") setView("clients");
     }, [detailMatch?.params.type, multiMatch?.params.type]);
-    
+
     const handleSelect = (uuids: string[]) => {
         setPickerOpen(false);
         if (uuids.length === 0) return;

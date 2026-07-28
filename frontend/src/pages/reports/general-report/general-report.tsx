@@ -99,7 +99,6 @@ export default function GeneralReport() {
                                     cx="50%"
                                     cy="50%"
                                     outerRadius={140}
-                                    paddingAngle={2}
                                     isAnimationActive={false}
                                 >
                                     {report.servers_per_client.map((_, i) => (
@@ -167,7 +166,6 @@ export default function GeneralReport() {
                                     cx="50%"
                                     cy="50%"
                                     outerRadius={140}
-                                    paddingAngle={2}
                                     isAnimationActive={false}
                                 >
                                     <Cell fill="#3b82f6" />
