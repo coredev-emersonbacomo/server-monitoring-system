@@ -10,8 +10,5 @@ Artisan::command('inspire', function () {
 
 Schedule::command('system:monitor')->everyMinute();
 Schedule::command('tokens:cleanup')->hourly();
-<<<<<<< HEAD
 Schedule::command('agg:refresh')->everyMinute();
-=======
 Schedule::command('node-tasks:process')->everyFiveSeconds();
->>>>>>> main
