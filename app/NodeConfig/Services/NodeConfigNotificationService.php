@@ -4,6 +4,7 @@ namespace App\NodeConfig\Services;
 
 use App\Models\Server;
 use App\Services\NotificationService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class NodeConfigNotificationService
@@ -27,11 +28,20 @@ class NodeConfigNotificationService
         $serverId = $context['server_id'] ?? null;
         $server = $serverId ? Server::with('client.secopclients')->find($serverId) : null;
 
+        $firstTriggerTs = isset($context['first_trigger_timestamp'])
+            ? Carbon::parse($context['first_trigger_timestamp'])->format('Y-m-d H:i:s')
+            : now()->format('Y-m-d H:i:s');
+
+        $repeatCount = (int) ($context['repeat_count'] ?? 0);
+        $isRepeat = ($context['repeat_fire'] ?? false) === true || $repeatCount > 0;
+
         $templateData = [
             'server' => $server,
             'runtime' => [
                 'metricName' => $context['metric_name'] ?? 'Unknown Metric',
                 'sustainValue' => $context['sustain_value'] ?? '',
+                'eventTimestamp' => now()->format('Y-m-d H:i:s'),
+                'firstTriggerTimestamp' => $firstTriggerTs,
                 'offlineTimestamp' => $context['offlineTimestamp']
                     ?? $server?->went_offline_at?->format('Y-m-d H:i:s')
                     ?? now()->format('Y-m-d H:i:s'),
@@ -40,11 +50,30 @@ class NodeConfigNotificationService
                     : ($server?->agent?->last_seen_at
                         ? now()->diffForHumans($server->agent->last_seen_at, true) . ' ago'
                         : 'unknown'),
+                'repeat' => [
+                    'interval' => $context['repeat_interval'] ?? '',
+                    'countOfMessage' => $repeatCount,
+                    'max' => (int) ($context['repeat_max'] ?? 0),
+                ],
             ],
         ];
 
         $subject = $this->resolveTemplates($settings['subject'] ?? 'Alert triggered', $templateData);
-        $message = $this->resolveTemplates($settings['message'] ?? 'An alert condition was triggered.', $templateData);
+        $message = $this->resolveTemplates($settings['message'] ?? '', $templateData);
+
+        // Parse <if-repeat> conditionals
+        if (!$isRepeat) {
+            $message = preg_replace('/<if-repeat>.*?<\/if-repeat>/s', '', $message);
+        } else {
+            $message = preg_replace('/<\/?if-repeat>/', '', $message);
+        }
+
+        $message = trim($message);
+
+        // Skip if message is empty
+        if ($message === '' && $channel !== 'discord') {
+            return;
+        }
 
         $channel = $settings['channel'] ?? 'email';
 
@@ -52,7 +81,7 @@ class NodeConfigNotificationService
 
         try {
             match ($channel) {
-                'email' => $this->sendEmail($server, $subject, $message, $serverUrl),
+                'email' => $message !== '' ? $this->sendEmail($server, $subject, $message, $serverUrl) : null,
                 'discord' => $this->sendDiscord($settings, $message, $serverUrl),
                 default => null,
             };

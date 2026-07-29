@@ -78,6 +78,14 @@ export function AlertVisualizer() {
         evaluations: 0,
         notifications: 0,
     });
+    const [offlineServers, setOfflineServers] = useState<
+        {
+            uuid: string;
+            name: string;
+            client_name: string;
+            went_offline_at: string | null;
+        }[]
+    >([]);
 
     // Real server-anchored countdown — only runs once we have a real sweep timestamp
     useEffect(() => {
@@ -212,8 +220,34 @@ export function AlertVisualizer() {
         }
     };
 
+    const fetchOfflineServers = async () => {
+        try {
+            const res = await jwtClient.get("/v1/servers");
+            const servers: {
+                uuid: string;
+                name: string;
+                client_name: string;
+                status: string | null;
+                went_offline_at: string | null;
+            }[] = res.data.data ?? res.data ?? [];
+            setOfflineServers(
+                servers
+                    .filter((s) => s.status === "offline")
+                    .map(({ uuid, name, client_name, went_offline_at }) => ({
+                        uuid,
+                        name,
+                        client_name,
+                        went_offline_at,
+                    })),
+            );
+        } catch {
+            // silently ignore
+        }
+    };
+
     useEffect(() => {
         fetchInitialState();
+        fetchOfflineServers();
     }, []);
 
     // Trigger particle motion along edges
@@ -626,6 +660,66 @@ export function AlertVisualizer() {
                                             View Details
                                         </button>
                                     </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                {/* Offline Servers */}
+                <div className="bg-card border border-border/60 rounded-xl p-4 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold flex items-center gap-2">
+                            <Server className="w-4 h-4 text-red-400" />
+                            Offline Servers
+                        </h3>
+                        <button
+                            onClick={fetchOfflineServers}
+                            className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors"
+                        >
+                            <RefreshCw className="w-3 h-3" />
+                            Refresh
+                        </button>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
+                        {offlineServers.length === 0 ? (
+                            <p className="text-muted-foreground text-center py-4 text-xs">
+                                No offline servers
+                            </p>
+                        ) : (
+                            offlineServers.map((s) => (
+                                <div
+                                    key={s.uuid}
+                                    className="flex items-center justify-between p-2 rounded-lg bg-muted/40 border border-border/40"
+                                >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                                        <span className="font-medium text-xs truncate">
+                                            {s.name}
+                                        </span>
+                                        <span className="text-[11px] text-muted-foreground truncate">
+                                            {s.client_name}
+                                        </span>
+                                    </div>
+                                    <span className="text-[11px] font-mono text-muted-foreground shrink-0">
+                                        {s.went_offline_at
+                                            ? (() => {
+                                                  const d = new Date(
+                                                      s.went_offline_at,
+                                                  );
+                                                  const ago = Math.round(
+                                                      (Date.now() - d.getTime()) /
+                                                          60000,
+                                                  );
+                                                  return ago < 1
+                                                      ? "<1m ago"
+                                                      : ago < 60
+                                                        ? `${ago}m ago`
+                                                        : `${Math.floor(ago / 60)}h ${ago % 60}m ago`;
+                                              })()
+                                            : "unknown"}
+                                    </span>
                                 </div>
                             ))
                         )}

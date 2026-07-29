@@ -5,6 +5,8 @@ namespace App\Services;
 use Illuminate\Support\Facades\Mail;
 use Discord\Discord;
 use Discord\Builders\MessageBuilder;
+use Discord\Builders\Components\ActionRow;
+use Discord\Builders\Components\Button;
 use Discord\Parts\Embed\Embed;
 
 class NotificationService
@@ -20,6 +22,21 @@ class NotificationService
      * @param string|null $url Optional URL link shown on the embed
      * @param string $color Hex color for the embed sidebar (default: red)
      */
+    private function parseDiscordButton(string $message): array
+    {
+        $buttonUrl = null;
+        $buttonLabel = 'View Server Details';
+        $cleaned = $message;
+
+        if (preg_match('/<discord-button(?:\s+detailsUrl="([^"]*)")?\s*>([^<]*)<\/discord-button>/', $message, $matches)) {
+            $buttonUrl = !empty($matches[1]) ? $matches[1] : null;
+            $buttonLabel = !empty($matches[2]) ? $matches[2] : 'View Server Details';
+            $cleaned = trim(str_replace($matches[0], '', $message));
+        }
+
+        return [$cleaned, $buttonUrl, $buttonLabel];
+    }
+
     public function sendDiscordAlert(
         string $tokenId,
         string $roleId,
@@ -29,27 +46,39 @@ class NotificationService
         ?string $url = null,
         string $color = '#ED4245',
     ) {
+        [$description, $buttonUrl, $buttonLabel] = $this->parseDiscordButton($message);
+        $buttonUrl = $buttonUrl ?? $url;
+
         $discord = new Discord([
             'token' => $tokenId,
         ]);
 
-        $discord->on('ready', function (Discord $discord) use ($roleId, $message, $channelId, $title, $url, $color) {
+        $discord->on('ready', function (Discord $discord) use ($roleId, $description, $channelId, $title, $buttonUrl, $buttonLabel, $color) {
             $channel = $discord->getChannel($channelId);
 
             if ($channel) {
-                $embed = new Embed($discord);
-                $embed->setTitle($title);
-                $embed->setDescription($message);
-                $embed->setColor($color);
-                $embed->setTimestamp(now()->timestamp);
-                $embed->setFooter('Server Monitoring System');
+                $builder = MessageBuilder::new();
 
-                if ($url) {
-                    $embed->setURL($url);
+                if ($description !== '') {
+                    $embed = new Embed($discord);
+                    $embed->setTitle($title);
+                    $embed->setDescription($description);
+                    $embed->setColor($color);
+                    $embed->setTimestamp(now()->timestamp);
+                    $embed->setFooter('Server Monitoring System');
+                    $builder->addEmbed($embed);
                 }
 
-                $builder = MessageBuilder::new()
-                    ->addEmbed($embed);
+                if ($buttonUrl) {
+                    $button = Button::new(Button::STYLE_LINK)
+                        ->setLabel($buttonLabel)
+                        ->setUrl($buttonUrl);
+
+                    $actionRow = ActionRow::new()
+                        ->addComponent($button);
+
+                    $builder->addComponent($actionRow);
+                }
 
                 if ($roleId) {
                     $builder->setContent("<@&{$roleId}>");
