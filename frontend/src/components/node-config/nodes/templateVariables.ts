@@ -7,17 +7,28 @@ type StatPointData = components['schemas']['StatPointData'];
 type ServerVarKey = `server.${keyof ServerData & string}`;
 type ClientVarKey = `server.client.${keyof ClientData & string}`;
 type MetricVarKey = `metric.${keyof StatPointData & string}`;
+type RuntimeVarKey =
+    | 'runtime.metricName'
+    | 'runtime.sustainValue'
+    | 'runtime.eventTimestamp'
+    | 'runtime.firstTriggerTimestamp'
+    | 'runtime.offlineTimestamp'
+    | 'runtime.offlineDuration'
+    | 'runtime.repeat.interval'
+    | 'runtime.repeat.countOfMessage'
+    | 'runtime.repeat.max';
 
-type TemplateVariableKey = ServerVarKey | ClientVarKey | MetricVarKey;
+type TemplateVariableKey = ServerVarKey | ClientVarKey | MetricVarKey | RuntimeVarKey | 'server.url';
 
 export interface TemplateVariable {
     key: TemplateVariableKey;
     label: string;
-    group: 'server' | 'client' | 'metric';
+    group: 'server' | 'client' | 'metric' | 'runtime' | 'tag';
     description: string;
+    tag?: string;
 }
 
-const LABELS: Record<TemplateVariableKey, { label: string; group: TemplateVariable['group']; description: string }> = {
+const LABELS: Record<string, { label: string; group: TemplateVariable['group']; description: string; tag?: string }> = {
     'server.name'                   : { label: 'Name', group: 'server', description: 'Name (ServerData)' },
     'server.description'            : { label: 'Description', group: 'server', description: 'Description (ServerData)' },
     'server.uuid'                   : { label: 'Uuid', group: 'server', description: 'Uuid (ServerData)' },
@@ -72,15 +83,31 @@ const LABELS: Record<TemplateVariableKey, { label: string; group: TemplateVariab
     'metric.netIn'                  : { label: 'NetIn', group: 'metric', description: 'NetIn (StatPointData)' },
     'metric.netOut'                 : { label: 'NetOut', group: 'metric', description: 'NetOut (StatPointData)' },
     'metric.disk'                   : { label: 'Disk', group: 'metric', description: 'Disk (StatPointData)' },
+    'server.url'                    : { label: 'URL', group: 'server', description: 'Server detail page URL' },
+    'runtime.metricName'            : { label: 'Metric Name', group: 'runtime', description: 'Name of the metric being evaluated' },
+    'runtime.sustainValue'          : { label: 'Sustain Value', group: 'runtime', description: 'How long the condition has been sustained' },
+    'runtime.eventTimestamp'        : { label: 'Event Timestamp', group: 'runtime', description: 'When the evaluation occurred' },
+    'runtime.firstTriggerTimestamp' : { label: 'First Trigger Timestamp', group: 'runtime', description: 'When the condition first triggered' },
+    'runtime.offlineTimestamp'      : { label: 'Offline Timestamp', group: 'runtime', description: 'When the server went offline' },
+    'runtime.offlineDuration'       : { label: 'Offline Duration', group: 'runtime', description: 'How long the server has been offline' },
+    'runtime.repeat.interval'       : { label: 'Repeat Interval', group: 'runtime', description: 'How often the alert repeats' },
+    'runtime.repeat.countOfMessage' : { label: 'Repeat Count', group: 'runtime', description: 'Current repeat message number' },
+    'runtime.repeat.max'            : { label: 'Repeat Max', group: 'runtime', description: 'Maximum number of repeats' },
+    '<discord-button>'              : { label: 'Discord Button', group: 'tag', description: 'Insert a Discord link button tag' },
+    '<if-repeat>'                   : { label: 'If Repeat Block', group: 'tag', description: 'Insert a conditional repeat block' },
 };
 
-export const TEMPLATE_VARIABLES: TemplateVariable[] = (Object.entries(LABELS) as [TemplateVariableKey, typeof LABELS[TemplateVariableKey]][]).map(
+export const TEMPLATE_VARIABLES: TemplateVariable[] = (Object.entries(LABELS)).map(
     ([key, meta]) => ({ key, ...meta }),
 );
 
 export function filterVariables(query: string): TemplateVariable[] {
     const q = query.toLowerCase();
-    return TEMPLATE_VARIABLES.filter(
-        (v) => v.key.toLowerCase().includes(q) || v.label.toLowerCase().includes(q),
-    );
+    const isTagQuery = q.startsWith('<');
+    return TEMPLATE_VARIABLES.filter((v) => {
+        if (isTagQuery && v.group !== 'tag') return false;
+        if (!isTagQuery && v.group === 'tag') return false;
+        const key = isTagQuery ? v.key : `{${v.key}}`;
+        return key.toLowerCase().includes(q) || v.label.toLowerCase().includes(q);
+    });
 }

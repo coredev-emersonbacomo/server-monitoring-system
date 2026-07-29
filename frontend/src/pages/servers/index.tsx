@@ -46,6 +46,7 @@ export default function ServersIndex() {
     const { data: servers, isLoading } = useServers(clientUuid);
     const [sortField, setSortField] = useState<string>("created_at");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+    const [search, setSearch] = useState("");
 
     const sortOptions = [
         { label: "Created At", value: "created_at" },
@@ -62,11 +63,13 @@ export default function ServersIndex() {
 
     const filtered = useMemo(() => {
         if (!servers) return [];
-        const result = statusFilter
+        const q = search.toLowerCase().trim();
+        const result = (statusFilter
             ? statusFilter === "pending_deletion"
                 ? servers.filter((s) => s.agent_deleted)
                 : servers.filter((s) => s.status === statusFilter && !s.agent_deleted)
-            : [...servers];
+            : [...servers]
+        ).filter((s) => !q || s.name.toLowerCase().includes(q) || s.client_name.toLowerCase().includes(q));
         return result.sort((a, b) => {
             const cmp = (() => {
                 switch (sortField) {
@@ -80,7 +83,7 @@ export default function ServersIndex() {
             })();
             return sortDir === "desc" ? -cmp : cmp;
         });
-    }, [servers, statusFilter, sortField, sortDir]);
+    }, [servers, statusFilter, sortField, sortDir, search]);
 
     const counts = useMemo(() => {
         if (!servers) return { online: 0, warning: 0, offline: 0, pending_installation: 0, waiting_for_installation: 0 };
@@ -108,6 +111,9 @@ export default function ServersIndex() {
 
             <main className="w-full flex-1">
                 <IndexToolbar
+                    search={search}
+                    onSearchChange={setSearch}
+                    searchPlaceholder="Search servers…"
                     filterOptions={[
                         {
                             label: "All",
@@ -180,7 +186,7 @@ export default function ServersIndex() {
                     sortLabel={currentSortLabel}
                 />
                 {isLoading ? (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
                         {Array.from({ length: 6 }).map((_, i) => (
                             <div
                                 key={i}
@@ -198,7 +204,7 @@ export default function ServersIndex() {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
                         {filtered.map((server) => {
                             const effectiveStatus = server.agent_deleted ? "pending_deletion" : (server.status ?? "offline");
                             const meta = STATUS_META[effectiveStatus] ?? STATUS_META.offline;
