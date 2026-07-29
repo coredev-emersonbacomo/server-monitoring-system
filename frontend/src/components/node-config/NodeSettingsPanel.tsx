@@ -4,7 +4,7 @@ import type {
     NodeTypeDefinition,
     NodeSettingDefinition,
 } from "@/types/node-config";
-import { X, Repeat, Puzzle } from "lucide-react";
+import { X, Puzzle } from "lucide-react";
 import { DurationInput } from "./nodes/DurationInput";
 
 interface NodeSettingsPanelProps {
@@ -39,7 +39,8 @@ export function NodeSettingsPanel({
 
     const settings = (node.data as Record<string, unknown>) || {};
     const channel = settings.channel as string | undefined;
-    const repeatIntervalMs = parseInt((settings.repeat_interval as string) || '0', 10) || 0;
+    const repeatIntervalMs =
+        parseInt((settings.repeat_interval as string) || "0", 10) || 0;
     const hasRepeat = repeatIntervalMs > 0;
 
     const settingDefs = useMemo(() => {
@@ -50,13 +51,24 @@ export function NodeSettingsPanel({
             const channelSettings: Record<string, string[]> = {
                 email: ["channel", "subject", "message"],
                 sms: ["channel", "message"],
-                discord: ["channel", "bot_token", "channel_id", "role_id", "message"],
+                discord: [
+                    "channel",
+                    "bot_token",
+                    "channel_id",
+                    "role_id",
+                    "message",
+                ],
             };
-            const allowed = channelSettings[channelKey] || channelSettings.email;
+            const allowed =
+                channelSettings[channelKey] || channelSettings.email;
             filtered = all.filter((s) => allowed.includes(s.key));
         }
         if (hasRepeat) {
-            filtered = filtered.filter((s) => s.key !== 'repeat_interval' && s.key !== 'repeat_max_repeats');
+            filtered = filtered.filter(
+                (s) =>
+                    s.key !== "repeat_interval" &&
+                    s.key !== "repeat_max_repeats",
+            );
         }
         return filtered;
     }, [nodeTypeDef, channel, hasRepeat]);
@@ -99,17 +111,33 @@ export function NodeSettingsPanel({
                 {hasRepeat && (
                     <>
                         <div className="flex items-center gap-2 pt-2 border-t border-border/40">
-                            <Puzzle size={10} className="text-muted-foreground" />
-                            <span className="text-[10px] font-medium uppercase text-muted-foreground/60">Capabilities</span>
+                            <Puzzle
+                                size={10}
+                                className="text-muted-foreground"
+                            />
+                            <span className="text-[10px] font-medium uppercase text-muted-foreground/60">
+                                Capabilities
+                            </span>
                         </div>
                         <div className="flex flex-col gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <Puzzle size={12} className="text-primary" />
-                                    <span className="text-xs font-medium text-primary">Repeat</span>
+                                    <Puzzle
+                                        size={12}
+                                        className="text-primary"
+                                    />
+                                    <span className="text-xs font-medium text-primary">
+                                        Repeat
+                                    </span>
                                 </div>
                                 <button
-                                    onClick={() => onUpdate(node.id, { ...settings, repeat_interval: '', repeat_max_repeats: 0 })}
+                                    onClick={() =>
+                                        onUpdate(node.id, {
+                                            ...settings,
+                                            repeat_interval: "",
+                                            repeat_max_repeats: -1,
+                                        })
+                                    }
                                     className="text-[10px] text-muted-foreground hover:text-red-400 transition-colors"
                                 >
                                     Remove
@@ -118,11 +146,24 @@ export function NodeSettingsPanel({
                             <DurationInput
                                 label="Interval"
                                 value={repeatIntervalMs}
-                                onChange={(ms) => onUpdate(node.id, { ...settings, repeat_interval: String(ms) })}
+                                onChange={(ms) =>
+                                    onUpdate(node.id, {
+                                        ...settings,
+                                        repeat_interval: String(ms),
+                                    })
+                                }
                             />
                             <RepeatMaxField
-                                value={(settings.repeat_max_repeats as number) ?? 0}
-                                onChange={(v) => onUpdate(node.id, { ...settings, repeat_max_repeats: v })}
+                                value={
+                                    (settings.repeat_max_repeats as number) ??
+                                    -1
+                                }
+                                onChange={(v) =>
+                                    onUpdate(node.id, {
+                                        ...settings,
+                                        repeat_max_repeats: v,
+                                    })
+                                }
                             />
                         </div>
                     </>
@@ -141,17 +182,31 @@ export function NodeSettingsPanel({
     );
 }
 
-function RepeatMaxField({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-    const isInfinite = value === 0 || value === 'inf';
-    const [inputValue, setInputValue] = useState(isInfinite ? 'inf' : String(value));
+function RepeatMaxField({
+    value,
+    onChange,
+}: {
+    value: number;
+    onChange: (v: number) => void;
+}) {
+    const isInfinite =
+        value === -1 || value === 0 || (value as unknown) === "inf";
+    const [inputValue, setInputValue] = useState(
+        isInfinite ? "inf" : String(value),
+    );
     const [hasError, setHasError] = useState(false);
+
+    useEffect(() => {
+        const inf = value === -1 || value === 0 || (value as unknown) === "inf";
+        setInputValue(inf ? "inf" : String(value));
+    }, [value]);
 
     const commit = () => {
         const v = inputValue.trim();
-        if (v === 'inf' || v === '0') {
+        if (v === "inf" || v === "-1") {
             setHasError(false);
-            onChange(0);
-            setInputValue('inf');
+            onChange(-1);
+            setInputValue("inf");
         } else {
             const n = parseInt(v);
             if (isNaN(n) || n < 1) {
@@ -166,7 +221,9 @@ function RepeatMaxField({ value, onChange }: { value: number; onChange: (v: numb
 
     return (
         <div className="flex items-center gap-2">
-            <span className="text-[10px] font-medium uppercase text-muted-foreground shrink-0">Max runs</span>
+            <span className="text-[10px] font-medium uppercase text-muted-foreground shrink-0">
+                Max runs
+            </span>
             <input
                 type="text"
                 value={inputValue}
@@ -175,12 +232,19 @@ function RepeatMaxField({ value, onChange }: { value: number; onChange: (v: numb
                     if (hasError) setHasError(false);
                 }}
                 onBlur={commit}
-                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter")
+                        (e.target as HTMLInputElement).blur();
+                }}
                 className={`flex-1 min-w-0 text-xs font-mono text-foreground bg-background border rounded px-1.5 py-1 focus:outline-none focus:ring-1 ${
-                    hasError ? 'border-red-500 focus:ring-red-500/50' : 'border-input focus:ring-ring'
+                    hasError
+                        ? "border-red-500 focus:ring-red-500/50"
+                        : "border-input focus:ring-ring"
                 }`}
             />
-            <span className="text-[10px] text-muted-foreground font-medium">inf = endless</span>
+            <span className="text-[10px] text-muted-foreground font-medium">
+                inf = endless
+            </span>
         </div>
     );
 }
@@ -279,11 +343,7 @@ function SettingField({ def, value, onChange }: SettingFieldProps) {
                 id={id}
                 value={String(value)}
                 onChange={(v) =>
-                    onChange(
-                        def.type === "number"
-                            ? parseFloat(v) || 0
-                            : v,
-                    )
+                    onChange(def.type === "number" ? parseFloat(v) || 0 : v)
                 }
                 placeholder={def.description || ""}
             />

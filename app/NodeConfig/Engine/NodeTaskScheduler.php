@@ -15,7 +15,8 @@ class NodeTaskScheduler
 
     private static function store()
     {
-        return Cache::store(config('cache.default', 'file'));
+        $default = config('cache.default', 'file');
+        return Cache::store($default === 'database' ? 'file' : $default);
     }
 
     public static function schedule(
@@ -232,9 +233,8 @@ class NodeTaskScheduler
             default              => '>',
         };
 
-        $row = \App\Models\MetricSample::whereHas('batch', fn($q) => $q
-            ->where('agent_id', $agent->id)
-            ->where('recorded_at', '>=', $since))
+        $row = \App\Models\MetricSample::whereHas('batch', fn($q) => $q->where('agent_id', $agent->id))
+            ->where('recorded_at', '>=', $since)
             ->where('metric_type', $metricTypeForQuery)
             ->where('metric_name', $metricName)
             ->selectRaw("
@@ -326,6 +326,15 @@ class NodeTaskScheduler
                 $result = $engine->fireTimer($config, $task['node_id'], $task['context'], $task['server_id']);
 
                 if (!$result['success'] || !($result['propagated'] ?? false)) {
+                    Log::info("[node-task-scheduler] Timer fired but not propagated", [
+                        'task_id'    => $task['task_id'],
+                        'config_id'  => $task['config_id'],
+                        'node_id'    => $task['node_id'],
+                        'server_id'  => $task['server_id'],
+                        'success'    => $result['success'],
+                        'propagated' => $result['propagated'] ?? false,
+                        'num_actions' => count($result['actions'] ?? []),
+                    ]);
                     continue;
                 }
 

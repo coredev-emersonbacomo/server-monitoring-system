@@ -545,7 +545,7 @@ export function NodeConfigEditor({
     const CAPABILITY_SETTINGS: Record<string, Record<string, unknown>> = {
         repeat: {
             repeat_interval: '10000',
-            repeat_max_repeats: 0,
+            repeat_max_repeats: -1,
         },
     };
 

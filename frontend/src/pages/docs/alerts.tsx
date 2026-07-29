@@ -103,7 +103,7 @@ const alertGraph: NodeConfigGraph = {
                 label: "Discord 30s",
                 channel: "discord",
                 message:
-                    ":rotating_light: [{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!\n\nEvent Timestamp: {runtime.eventTimestamp}\nFirst Trigger Timestamp: {runtime.firstTriggerTimestamp}\n<if-repeat>\nRepeat Interval: {runtime.repeat.interval}\nCount: {runtime.repeat.countOfMessage} of {runtime.repeat.max}\n</if-repeat>\n" +
+                    ":rotating_light: [{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!\n\nEvent: <t:{runtime.eventTimestampUnix}:f>\nFirst Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>\n<if-repeat>\n<discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>\n</if-repeat>\n" +
                         '<discord-button detailsUrl="{server.url}">View Server Details</discord-button>',
             },
         },
@@ -145,7 +145,7 @@ const alertGraph: NodeConfigGraph = {
                 label: "Discord Offline",
                 channel: "discord",
                 message:
-                    ":rotating_light: [{server.client.name}] {server.name} is still offline! (for {runtime.offlineDuration})\n\nEvent Timestamp: {runtime.eventTimestamp}\nFirst Trigger Timestamp: {runtime.firstTriggerTimestamp}\n<if-repeat>\nRepeat Interval: {runtime.repeat.interval}\nCount: {runtime.repeat.countOfMessage} of {runtime.repeat.max}\n</if-repeat>\n" +
+                    ":rotating_light: [{server.client.name}] {server.name} is still offline! (for {runtime.offlineDuration})\n\nEvent: <t:{runtime.eventTimestampUnix}:f>\nFirst Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>\n<if-repeat>\n<discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>\n</if-repeat>\n" +
                         '<discord-button detailsUrl="{server.url}">View Server Details</discord-button>',
             },
         },
@@ -435,9 +435,13 @@ export default function DocsAlerts() {
                                 <InlineCode>{`{server.client.name}`}</InlineCode>
                                 , <InlineCode>{`{runtime.metricName}`}</InlineCode>,{" "}
                                 <InlineCode>{`{runtime.sustainValue}`}</InlineCode>,{" "}
-                                <InlineCode>{`{runtime.eventTimestamp}`}</InlineCode>,{" "}
-                                <InlineCode>{`{runtime.firstTriggerTimestamp}`}</InlineCode>
-                                .
+                                 <InlineCode>{`{runtime.eventTimestamp}`}</InlineCode>,{" "}
+                                 <InlineCode>{`{runtime.eventTimestampUnix}`}</InlineCode>,{" "}
+                                 <InlineCode>{`{runtime.firstTriggerTimestamp}`}</InlineCode>,{" "}
+                                 <InlineCode>{`{runtime.firstTriggerTimestampUnix}`}</InlineCode>
+                                 . For Discord, use{" "}
+                                 <InlineCode>{`<t:{runtime.eventTimestampUnix}:f>`}</InlineCode>{" "}
+                                 to render timestamps in the viewer's local timezone.
                             </p>
                         </SubSection>
                     </Section>
