@@ -64,9 +64,11 @@ export default function MultiReportsPreview() {
     const items = queries
         .map((q) => q.data)
         .filter(Boolean)
-        .map((report) => Object.fromEntries(
-            Object.entries(report).filter(([k]) => k !== "metrics"),
-        ));
+        .map((report) => {
+            if (isServer) return report;
+            const { metrics, ...rest } = report as any;
+            return rest;
+        });
 
     const template = isServer ? "multi-server" : "multi-client";
 

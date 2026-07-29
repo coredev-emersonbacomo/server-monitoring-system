@@ -1,102 +1,176 @@
-// general-report.typ — Global system overview report
 #import "base.typ": *
 
 #let d = json("input.json")
 
-// Report header
-#block(below: 1.5em)[
-  #text(size: 18pt, weight: "bold")[Global Report]
-  #v(0.2em)
-  #text(size: 10pt, fill: text-muted)[System-wide overview of all clients and servers]
-  #v(0.3em)
-  #text(size: 9pt, fill: text-muted)[Generated #d.generated_at]
-]
-
-// Overview
-#section-heading("Overview")
-#kv-table((
-  (label: "Total Servers", value: str(d.total_servers)),
-  (label: "Total Clients", value: str(d.total_clients)),
-  (label: "Total Users", value: str(d.total_users)),
-  (label: "Online", value: text(fill: green, weight: "medium")[#str(d.online_servers)]),
-  (label: "Offline", value: text(fill: red, weight: "medium")[#str(d.offline_servers)]),
-  (label: "Total Alerts", value: str(d.total_alerts)),
-))
-
-#v(1em)
-
-// Servers per Client
-#section-heading("Servers per Client")
-#data-table(
-  headers: ("Client", "No. of Servers", "Percentage"),
-  rows: d.servers_per_client.map(c => (
-    c.client_name,
-    str(c.server_count),
-    if d.total_servers > 0 {
-      str(calc.round(c.server_count * 100 / d.total_servers, digits: 1)) + "%"
-    } else {
-      "0%"
-    },
-  )),
+// ── Report heading ───────────────────────────────────────────────────────────
+#report-heading(
+  d.at("report_title", default: "Global Report"),
+  d.at("report_subtitle", default: "System-wide overview of all clients and servers"),
 )
 
-// Server Assignment
-#v(1em)
-#section-heading("Server Assignment")
-#text(size: 9pt, fill: text-muted)[(#d.unassigned_servers unassigned)]
-#{
-  let assigned = d.total_servers - d.unassigned_servers
-  data-table(
-    headers: ("Category", "No. of Servers", "Percentage"),
-    rows: (
-      ("Assigned", str(assigned), if d.total_servers > 0 { str(calc.round(assigned * 100 / d.total_servers, digits: 1)) + "%" } else { "0%" }),
-      ("Unassigned", str(d.unassigned_servers), if d.total_servers > 0 { str(calc.round(d.unassigned_servers * 100 / d.total_servers, digits: 1)) + "%" } else { "0%" }),
-    ),
-  )
-}
-
-#v(1em)
-
-// System Health
-#section-heading("System Health")
-#kv-table((
-  (label: "Avg Uptime", value: pct(d.avg_uptime_percentage)),
-  (label: "Avg CPU", value: pct(d.avg_cpu_usage)),
-  (label: "Avg Memory", value: pct(d.avg_memory_usage)),
-  (label: "Avg Disk", value: pct(d.avg_disk_usage)),
+// ── KPI Summary Grid ─────────────────────────────────────────────────────────
+#section-title("KPI Summary")
+#kpi-grid((
+  (label: "Total Servers",   value: str(d.at("total_servers", default: 0))),
+  (label: "Total Clients",   value: str(d.at("total_clients", default: 0))),
+  (label: "Total Users",     value: str(d.at("total_users", default: 0))),
+  (label: "Active Alerts",   value: str(d.at("total_alerts", default: 0))),
+  (label: "Fleet Uptime",    value: if d.at("avg_uptime_percentage", default: none) != none { pct(d.at("avg_uptime_percentage", default: 0)) } else { "—" }),
+  (label: "Monthly Cost",    value: if d.at("monthly_cost", default: none) != none { fmt-money(d.at("monthly_cost", default: 0)) } else { "—" }),
 ))
 
-#v(1em)
+// ── Server Performance ───────────────────────────────────────────────────────
+#let tops = d.at("top_servers", default: ())
+#let worsts = d.at("worst_servers", default: ())
+#let sla_servers = d.at("sla_servers", default: ())
+#let srv_per_client = d.at("servers_per_client", default: ())
+#let recent_clients = d.at("recent_clients", default: ())
+#let recent_servers = d.at("recent_servers", default: ())
+#let insights = d.at("insights", default: ())
+#let charts = d.at("charts", default: none)
 
-// Recently Added
-#section-heading("Recently Added Clients")
-#if d.recent_clients.len() > 0 {
-  data-table(
-    headers: ("Client", "Added"),
-    rows: d.recent_clients.map(c => (c.name, c.created_at)),
+#if tops.len() > 0 and worsts.len() > 0 {
+  section-title("Server Performance")
+  grid(columns: (1fr, 1fr), gutter: 10pt)[
+    #block[
+      #text(size: 8.5pt, weight: "bold", fill: green)[Top Performing]
+      #v(0.3em)
+      #sub-table(
+        headers: ("Server", "CPU", "Memory", "Status", "Uptime"),
+        rows: tops.map(s => (
+          s.name,
+          pct(s.cpu_usage),
+          pct(s.memory_usage),
+          status-pill(s.status),
+          pct(s.uptime_percentage),
+        )),
+      )
+    ]
+    #block[
+      #text(size: 8.5pt, weight: "bold", fill: red)[Worst Performing]
+      #v(0.3em)
+      #sub-table(
+        headers: ("Server", "CPU", "Memory", "Status", "Uptime"),
+        rows: worsts.map(s => (
+          s.name,
+          pct(s.cpu_usage),
+          pct(s.memory_usage),
+          status-pill(s.status),
+          pct(s.uptime_percentage),
+        )),
+      )
+    ]
+  ]
+}
+
+// ── Charts ───────────────────────────────────────────────────────────────────
+#if charts != none and "cpu_memory_alert" in charts {
+  section-title("Metrics (7-Day Window)")
+  image(
+    bytes(charts.cpu_memory_alert),
+    width: 100%,
+    height: 140pt,
   )
-} else {
-  text(fill: text-muted)[No recent clients.]
 }
 
 #v(0.5em)
 
-#section-heading("Recently Added Servers")
-#if d.recent_servers.len() > 0 {
-  data-table(
-    headers: ("Server", "Added"),
-    rows: d.recent_servers.map(s => (s.name, s.created_at)),
-  )
-} else {
-  text(fill: text-muted)[No recent servers.]
+#if charts != none and "ranked" in charts {
+  grid(columns: (1fr, 1fr, 1fr), gutter: 8pt)[
+    #block[
+      #text(size: 8pt, weight: "bold", fill: text-muted)[Top CPU Load]
+      #v(0.3em)
+      #image(bytes(charts.ranked), width: 100%, height: 100pt)
+    ]
+    #block[
+      #text(size: 8pt, weight: "bold", fill: text-muted)[Most Alerts]
+      #v(0.3em)
+      #image(bytes(charts.ranked), width: 100%, height: 100pt)
+    ]
+    #block[
+      #text(size: 8pt, weight: "bold", fill: text-muted)[Highest Cost]
+      #v(0.3em)
+      #image(bytes(charts.ranked), width: 100%, height: 100pt)
+    ]
+  ]
 }
 
-#v(1em)
+// ── SLA Uptime Dashboard ─────────────────────────────────────────────────────
+#if sla_servers.len() > 0 {
+  v(0.5em)
+  section-title("SLA Uptime Dashboard")
+  data-table(
+    headers: ("Server", "Uptime", "Status"),
+    rows: sla_servers.map(s => (
+      s.name,
+      progress-bar(s.uptime_percentage),
+      if s.uptime_percentage >= 98 { status-pill("healthy") }
+      else if s.uptime_percentage >= 90 { status-pill("warning") }
+      else { status-pill("critical") },
+    )),
+    widths: (1.5fr, 3fr, 1fr),
+  )
+}
 
-// Alerts Summary
-#section-heading("Alerts Summary")
-#kv-table((
-  (label: "Total Alerts", value: str(d.total_alerts)),
-  (label: "Critical", value: text(fill: red, weight: "medium")[#str(d.critical_alerts)]),
-  (label: "Warning", value: text(fill: yellow, weight: "medium")[#str(d.warning_alerts)]),
-))
+// ── Ownership & Activity ─────────────────────────────────────────────────────
+#v(0.5em)
+#section-title("Ownership & Recent Activity")
+
+#grid(columns: (1fr, 1fr), gutter: 10pt)[
+  #block[
+    #text(size: 8.5pt, weight: "bold", fill: brand)[Servers per Client]
+    #v(0.3em)
+    #sub-table(
+      headers: ("Client", "Servers", "Share"),
+      rows: srv_per_client.map(c => (
+        c.client_name,
+        str(c.server_count),
+        if d.at("total_servers", default: 0) > 0 {
+          str(calc.round(c.server_count * 100 / d.at("total_servers", default: 0), digits: 1)) + "%"
+        } else { "0%" },
+      )),
+    )
+  ]
+  #block[
+    #text(size: 8.5pt, weight: "bold", fill: brand)[Recently Added (Last 30 Days)]
+    #v(0.3em)
+    #grid(columns: (1fr, 1fr), gutter: 6pt)[
+      #block[
+        #text(size: 7.5pt, fill: text-muted, weight: "medium")[Clients]
+        #v(0.2em)
+        #if recent_clients.len() > 0 {
+          sub-table(
+            headers: ("Name", "Added"),
+            rows: recent_clients.map(c => (c.name, fmt-date(c.created_at))),
+          )
+        } else {
+          text(size: 8pt, fill: text-muted)[None]
+        }
+      ]
+      #block[
+        #text(size: 7.5pt, fill: text-muted, weight: "medium")[Servers]
+        #v(0.2em)
+        #if recent_servers.len() > 0 {
+          sub-table(
+            headers: ("Name", "Added"),
+            rows: recent_servers.map(s => (s.name, fmt-date(s.created_at))),
+          )
+        } else {
+          text(size: 8pt, fill: text-muted)[None]
+        }
+      ]
+    ]
+  ]
+]
+
+// ── Summary Insights ─────────────────────────────────────────────────────────
+#if insights.len() > 0 {
+  v(0.5em)
+  section-title("Diagnostic Insights")
+  callout-box[
+    #for line in insights {
+      text("- " + line)
+      v(0.15em)
+    }
+  ]
+}

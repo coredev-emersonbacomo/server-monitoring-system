@@ -1,42 +1,73 @@
-// client-report.typ — Client-specific server monitoring report
 #import "base.typ": *
 
-// Data comes from sys.inputs via JSON file
 #let d = json("input.json")
+#let servers = d.at("servers", default: ())
+#let insights = d.at("insights", default: ())
+#let charts = d.at("charts", default: none)
 
-// Report header
-#block(below: 1.5em)[
-  #text(size: 18pt, weight: "bold")[#d.name]
-  #v(0.2em)
-  #text(size: 10pt, fill: text-muted)[Client-specific report]
-  #v(0.3em)
-  #text(size: 9pt, fill: text-muted)[Generated #d.generated_at]
-]
+// ── Report heading ───────────────────────────────────────────────────────────
+#report-heading(
+  d.at("name", default: "Client Report"),
+  d.at("report_subtitle", default: "Client-specific server overview"),
+)
 
-// Overview section
-#section-heading("Overview")
-#kv-table((
-  (label: "Total Servers", value: str(d.total_servers)),
-  (label: "Online", value: text(fill: green, weight: "medium")[#str(d.online_servers)]),
-  (label: "Offline", value: text(fill: red, weight: "medium")[#str(d.offline_servers)]),
-  (label: "Total Alerts", value: str(d.total_alerts)),
-  (label: "Avg CPU", value: pct(d.avg_cpu_usage)),
-  (label: "Avg Memory", value: pct(d.avg_memory_usage)),
+// ── KPI Summary ──────────────────────────────────────────────────────────────
+#section-title("KPI Summary")
+#kpi-grid((
+  (label: "Total Servers", value: str(d.at("total_servers", default: 0))),
+  (label: "Online",        value: text(fill: green, weight: "bold")[#str(d.at("online_servers", default: 0))]),
+  (label: "Offline",       value: text(fill: red, weight: "bold")[#str(d.at("offline_servers", default: 0))]),
+  (label: "Active Alerts", value: str(d.at("total_alerts", default: 0))),
+  (label: "Avg CPU",       value: if d.at("avg_cpu_usage", default: none) != none { pct(d.at("avg_cpu_usage", default: 0)) } else { "—" }),
+  (label: "Avg Memory",    value: if d.at("avg_memory_usage", default: none) != none { pct(d.at("avg_memory_usage", default: 0)) } else { "—" }),
 ))
 
-#v(1em)
+// ── Servers Table ────────────────────────────────────────────────────────────
+#if servers.len() > 0 {
+  section-title("Servers")
+  data-table(
+    headers: ("Server", "Status", "CPU", "Memory", "Disk", "Uptime", "Last Seen"),
+    rows: servers.map(s => (
+      s.name,
+      status-pill(s.at("status", default: "unknown")),
+      if s.at("cpu_usage", default: none) != none { pct(s.cpu_usage) } else { "—" },
+      if s.at("memory_usage", default: none) != none { pct(s.memory_usage) } else { "—" },
+      if s.at("disk_usage", default: none) != none { pct(s.disk_usage) } else { "—" },
+      if s.at("uptime_percentage", default: none) != none { pct(s.uptime_percentage) } else { "—" },
+      if s.at("last_seen", default: "") != "" { fmt-date(s.last_seen) } else { "—" },
+    )),
+  )
+}
 
-// Servers section
-#section-heading("Servers")
-#data-table(
-  headers: ("Server", "Status", "CPU", "Memory", "Disk", "Uptime %", "Last Seen"),
-  rows: d.servers.map(s => (
-    s.name,
-    status-text(s.status),
-    pct(s.cpu_usage),
-    pct(s.memory_usage),
-    pct(s.disk_usage),
-    str(s.uptime_percentage) + "%",
-    if s.last_seen != "" { s.last_seen } else { "—" },
-  )),
-)
+// ── SLA Uptime ───────────────────────────────────────────────────────────────
+#if servers.len() > 0 {
+  v(0.5em)
+  section-title("SLA Uptime")
+  data-table(
+    headers: ("Server", "Uptime %"),
+    rows: servers.map(s => (
+      s.name,
+      progress-bar(s.at("uptime_percentage", default: 0)),
+    )),
+    widths: (1.5fr, 4fr),
+  )
+}
+
+// ── Charts ───────────────────────────────────────────────────────────────────
+#if charts != none and "cpu" in charts {
+  v(0.5em)
+  section-title("Metrics")
+  image(bytes(charts.cpu), width: 100%, height: 140pt)
+}
+
+// ── Insights ─────────────────────────────────────────────────────────────────
+#if insights.len() > 0 {
+  v(0.5em)
+  section-title("Insights")
+  callout-box[
+    #for line in insights {
+      text("- " + line)
+      v(0.15em)
+    }
+  ]
+}

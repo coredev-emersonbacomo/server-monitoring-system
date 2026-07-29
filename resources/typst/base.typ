@@ -1,97 +1,211 @@
-// base.typ — Shared styles, functions, and page configuration
-// All report templates import this file
-
 #let d = json("input.json")
 
-// Page configuration
 #set page(
   paper: d.at("paper", default: "a4"),
   flipped: d.at("orientation", default: "landscape") == "landscape",
-  margin: (x: 20mm, y: 25mm),
-  header: context {
-    if counter(page).get().first() > 1 [
-      #set text(size: 9pt, fill: gray)
-      #h(1fr) CoreDev Server Monitoring #h(1fr)
-    ]
-  },
+  margin: (x: 18mm, y: 20mm),
+  header: context [
+    #set text(size: 9pt, fill: rgb("#888888"))
+    #h(1fr)
+    #d.at("report_title", default: "Report")
+    #h(1fr)
+    #if counter(page).get().first() > 1 {
+      d.at("report_subtitle", default: "")
+    }
+    #v(-0.8em)
+    #line(length: 100%, stroke: 0.3pt + rgb("#dddddd"))
+  ],
+  footer: context [
+    #set text(size: 8pt, fill: rgb("#999999"))
+    #line(length: 100%, stroke: 0.3pt + rgb("#dddddd"))
+    #v(0.3em)
+    Confidential Internal Data
+    #h(1fr)
+    Page #counter(page).display() of #counter(page).final().first()
+  ],
 )
 
-// Typography
-#set text(font: "DejaVu Sans", size: 10pt, fill: black)
-#set par(justify: true)
+#set text(font: "DejaVu Sans", size: 10pt, fill: rgb("#222222"))
+#set par(justify: false)
 
-// Colors
-#let brand-color = rgb("#1f2937")
-#let header-bg = rgb("#f9fafb")
-#let border-color = rgb("#d1d5db")
-#let text-muted = rgb("#6b7280")
-#let green = rgb("#16a34a")
-#let red = rgb("#dc2626")
-#let yellow = rgb("#ca8a04")
+// ── Colours ──────────────────────────────────────────────────────────────────
+#let brand       = rgb("#1a237e")
+#let accent      = rgb("#3949ab")
+#let bg-light    = rgb("#f4f5f7")
+#let border-clr  = rgb("#dddddd")
+#let text-muted  = rgb("#777777")
+#let text-dark   = rgb("#222222")
+#let green       = rgb("#2e7d32")
+#let amber       = rgb("#e65100")
+#let red         = rgb("#c62828")
+#let grey        = rgb("#9e9e9e")
 
-// Layout functions
-#let report-layout(body) = {
-  body
-}
+// ── Re-usable components ─────────────────────────────────────────────────────
 
-#let section-heading(title) = {
-  block(above: 1.2em, below: 0.5em)[
-    #text(size: 11pt, weight: "semibold", fill: brand-color)[#title]
+#let report-heading(title, subtitle) = {
+  block(below: 1.2em)[
+    #text(size: 16pt, weight: "bold", fill: brand)[#title]
+    #v(0.15em)
+    #text(size: 9pt, fill: text-muted)[#subtitle]
   ]
 }
 
-#let kv-table(fields) = {
-  table(
-    columns: (1fr, 1fr),
-    stroke: 0.5pt + border-color,
-    inset: 8pt,
-    ..fields.map(f => (
-      table.cell(fill: header-bg)[
-        #text(weight: "medium", fill: text-muted)[#f.at("label")]
-      ],
-      [#f.at("value")],
-    )).flatten()
+#let kpi-card(label, value, note: none) = {
+  let c = if note != none { bg-light } else { bg-light }
+  block(
+    width: 100%,
+    fill: c,
+    inset: (x: 10pt, y: 8pt),
+    radius: 4pt,
+    stroke: 0.3pt + border-clr,
+  )[
+    #text(size: 8pt, fill: text-muted, weight: "medium")[#label]
+    #v(0.2em)
+    #text(size: 13pt, weight: "bold", fill: text-dark)[#value]
+    #if note != none {
+      v(0.1em)
+      text(size: 7.5pt, fill: text-muted)[#note]
+    }
+  ]
+}
+
+#let kpi-grid(items, columns: 3) = {
+  let cols = (1fr,) * columns
+  grid(
+    columns: cols,
+    gutter: 8pt,
+    ..items.map(i => kpi-card(i.at("label"), i.at("value"), note: i.at("note", default: none))),
   )
 }
 
-#let data-table(headers: (), rows: ()) = {
+#let status-pill(status) = {
+  let bg = if status == "online" or status == "healthy" { rgb("#e8f5e9") }
+    else if status == "warning" { rgb("#fff3e0") }
+    else if status == "offline" or status == "critical" or status == "down" { rgb("#ffebee") }
+    else { rgb("#f5f5f5") }
+  let fg = if status == "online" or status == "healthy" { green }
+    else if status == "warning" { amber }
+    else if status == "offline" or status == "critical" or status == "down" { red }
+    else { grey }
+  let label = if status == "online" { "Online" }
+    else if status == "offline" { "Offline" }
+    else if status == "warning" { "Warning" }
+    else if status == "critical" { "Critical" }
+    else if status == "down" { "Down" }
+    else if status == "healthy" { "Healthy" }
+    else { str(status) }
+  block(
+    fill: bg,
+    inset: (x: 6pt, y: 2.5pt),
+    radius: 3pt,
+    width: auto,
+  )[
+    #set text(size: 8pt, weight: "bold", fill: fg)
+    #label
+  ]
+}
+
+#let progress-bar(pct, label: none) = {
+  let bar-color = if pct >= 98 { green }
+    else if pct >= 90 { amber }
+    else { red }
+  let w = pct / 100
+  block(
+    width: 100%,
+    height: 10pt,
+    fill: rgb("#e0e0e0"),
+    radius: 2pt,
+  )[
+    #box(
+      width: w * 100%,
+      height: 100%,
+      fill: bar-color,
+      radius: 2pt,
+      inset: 0pt,
+    )
+  ]
+  if label != none {
+    v(0.15em)
+    text(size: 7pt, fill: text-muted)[#label]
+  }
+}
+
+#let callout-box(body) = {
+  block(
+    fill: rgb("#f0f4ff"),
+    inset: (x: 12pt, y: 10pt),
+    radius: 4pt,
+    stroke: 0.5pt + rgb("#c5cae9"),
+  )[#body]
+}
+
+#let section-title(title) = {
+  block(above: 1em, below: 0.4em)[
+    #text(size: 10.5pt, weight: "bold", fill: brand)[#title]
+  ]
+}
+
+#let data-table(headers: (), rows: (), widths: auto) = {
+  let hdr-cols = headers.len()
+  let col-w = if widths == auto { (1fr,) * hdr-cols } else { widths }
   table(
-    columns: headers.len(),
-    stroke: 0.5pt + border-color,
-    inset: 8pt,
+    columns: col-w,
+    stroke: 0.3pt + border-clr,
+    inset: 6pt,
     table.header(
-      ..headers.map(h => table.cell(fill: header-bg)[
-        #text(weight: "medium", fill: text-muted)[#h]
+      ..headers.map(h => table.cell(
+        fill: brand,
+        inset: (x: 6pt, y: 4pt),
+      )[
+        #set text(size: 8pt, weight: "bold", fill: white)
+        #h
+      ])
+    ),
+    ..rows.enumerate().map(((idx, row)) =>
+      row.map(cell =>
+        table.cell(
+          fill: if calc.odd(idx + 1) { white } else { bg-light },
+          inset: (x: 6pt, y: 3.5pt),
+        )[
+          #set text(size: 8.5pt, fill: text-dark)
+          #cell
+        ]
+      )
+    ).flatten()
+  )
+}
+
+#let sub-table(headers: (), rows: (), row-fills: ()) = {
+  let hdr-cols = headers.len()
+  table(
+    columns: (1fr,) * hdr-cols,
+    stroke: 0.3pt + border-clr,
+    inset: 5pt,
+    table.header(
+      ..headers.map(h => table.cell(
+        fill: rgb("#e8eaf6"),
+        inset: (x: 5pt, y: 3pt),
+      )[
+        #set text(size: 7.5pt, weight: "bold", fill: brand)
+        #h
       ])
     ),
     ..rows.map(row => (
-      ..row.map(cell => [#cell])
+      ..row.map(cell => table.cell(
+        fill: bg-light,
+        inset: (x: 5pt, y: 2.5pt),
+      )[
+        #set text(size: 8pt, fill: text-dark)
+        #cell
+      ])
     )).flatten()
   )
 }
 
-#let status-text(status) = {
-  if status == "online" {
-    text(fill: green, weight: "medium")[#status]
-  } else if status == "offline" {
-    text(fill: red, weight: "medium")[#status]
-  } else {
-    [#status]
-  }
+#let pct(value) = str(value) + "%"
+#let fmt-money(value) = {
+  "₱" + str(calc.round(value, digits: 2))
 }
-
-#let pct(value) = {
-  [#str(value)%]
-}
-
-#let format-bytes(bytes) = {
-  if bytes > 1073741824 {
-    [#str(calc.round(bytes / 1073741824, digits: 1)) GB]
-  } else if bytes > 1048576 {
-    [#str(calc.round(bytes / 1048576, digits: 1)) MB]
-  } else if bytes > 1024 {
-    [#str(calc.round(bytes / 1024, digits: 1)) KB]
-  } else {
-    [#str(bytes) B]
-  }
+#let fmt-date(iso) = {
+  iso.split("T").at(0)
 }
