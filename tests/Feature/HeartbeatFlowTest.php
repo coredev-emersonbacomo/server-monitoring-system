@@ -84,7 +84,7 @@ class HeartbeatFlowTest extends TestCase
 
             ['id' => 'sustained_10', 'type' => 'sustained', 'settings' => ['label' => 'Sustained 10m', 'duration' => '600000']],
 
-            ['id' => 'email_10', 'type' => 'notification', 'settings' => ['label' => 'Email 10m', 'channel' => 'email', 'subject' => '[{server.client.name}] {server.name} - {metricName} Alert (10m)', 'message' => '[{server.client.name}] {server.name}\'s {metricName} has been above 85% for {sustainValue}!']],
+            ['id' => 'email_10', 'type' => 'notification', 'settings' => ['label' => 'Email 10m', 'channel' => 'email', 'subject' => '[{server.client.name}] {server.name} - {runtime.metricName} Alert (10m)', 'message' => '[{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!']],
             ['id' => 'email_offline', 'type' => 'notification', 'settings' => ['label' => 'Email Offline', 'channel' => 'email', 'subject' => '[{server.client.name}] {server.name} - Offline Alert', 'message' => '[{server.client.name}] {server.name} is offline!']],
 
             ['id' => 'check_after_10m', 'type' => 'check_after', 'settings' => ['label' => 'Check After 10m', 'duration' => '600000']],

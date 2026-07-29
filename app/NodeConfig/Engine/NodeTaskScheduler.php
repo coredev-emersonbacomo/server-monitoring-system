@@ -30,15 +30,9 @@ class NodeTaskScheduler
         $store = self::store();
         $index = $store->get(self::INDEX_KEY) ?? [];
 
-        // If a task with this ID is already queued, don't overwrite it.
-        // Overwriting resets fire_at on every heartbeat, breaking the countdown.
-        if (isset($index[$taskId])) {
-            Log::debug("[node-task-scheduler] Task already queued, skipping", [
-                'task_id' => $taskId,
-            ]);
-            return $taskId;
-        }
-
+        // If a task with this ID is already queued, don't overwrite it UNLESS this is a repeat fire cycle.
+        // Overwriting resets fire_at on every heartbeat, breaking the initial countdown.
+        $isRepeatFire = $context['repeat_fire'] ?? false;
         $fireAt = microtime(true) + ($delayMs / 1000);
 
         $task = [
@@ -51,6 +45,15 @@ class NodeTaskScheduler
             'delay_ms'     => $delayMs,
             'created_at'   => microtime(true),
         ];
+
+        // If a task with this ID is already queued, skip resetting fire_at ONLY if it's not a repeat fire.
+        $existingFireAt = $index[$taskId] ?? null;
+        if ($existingFireAt !== null && !$isRepeatFire) {
+            Log::debug("[node-task-scheduler] Task already queued, skipping", [
+                'task_id' => $taskId,
+            ]);
+            return $taskId;
+        }
 
         $store->put(self::PREFIX . $taskId, $task, self::TTL);
 
@@ -66,7 +69,8 @@ class NodeTaskScheduler
             'fire_at'   => date('Y-m-d H:i:s', (int) $fireAt),
         ]);
 
-        \App\Events\SystemTelemetryEvent::emit('task_scheduled', $task);
+        $enrichedTask = self::enrichTaskWithMetrics($task);
+        \App\Events\SystemTelemetryEvent::emit('task_scheduled', $enrichedTask);
 
         return $taskId;
     }
@@ -92,18 +96,16 @@ class NodeTaskScheduler
         $cancelled = 0;
 
         foreach (array_keys($index) as $taskId) {
-            $parts = explode(':', $taskId);
-            if (count($parts) === 4) {
-                [,$taskNodeId, $taskMetric, $taskServerId] = $parts;
-            } elseif (count($parts) === 3) {
-                [$taskNodeId, $taskMetric, $taskServerId] = $parts;
-            } else {
+            $task = $store->get(self::PREFIX . $taskId);
+            if (!$task) {
+                unset($index[$taskId]);
                 continue;
             }
 
-            if ($taskNodeId !== $nodeId) continue;
-            if ($metricType !== null && $taskMetric !== $metricType) continue;
-            if ($serverId !== null && (int) $taskServerId !== $serverId) continue;
+            // Match against stored payload fields — safe regardless of node ID format
+            if (($task['node_id'] ?? null) !== $nodeId) continue;
+            if ($metricType !== null && ($task['context']['metric_type'] ?? null) !== $metricType) continue;
+            if ($serverId !== null && ($task['server_id'] ?? null) !== $serverId) continue;
 
             $store->forget(self::PREFIX . $taskId);
             unset($index[$taskId]);
@@ -124,6 +126,7 @@ class NodeTaskScheduler
 
         return $cancelled;
     }
+
 
     public static function cancelByServer(int $serverId): int
     {
@@ -287,9 +290,7 @@ class NodeTaskScheduler
             }
         }
 
-        if (!empty($due)) {
-            $store->put(self::INDEX_KEY, $index, self::TTL);
-        }
+        $store->put(self::INDEX_KEY, $index, self::TTL);
 
         return $due;
     }
@@ -307,6 +308,15 @@ class NodeTaskScheduler
 
         foreach ($dueTasks as $task) {
             try {
+                // Always tell the frontend this task is dequeued, regardless of outcome.
+                // Without this, cancelled/condition-failed tasks linger at 0.0s until page refresh.
+                \App\Events\SystemTelemetryEvent::emit('task_fired', [
+                    'task_id'   => $task['task_id'],
+                    'config_id' => $task['config_id'],
+                    'node_id'   => $task['node_id'],
+                    'server_id' => $task['server_id'],
+                ]);
+
                 $config = NodeConfigCache::findById($task['config_id']);
                 if (!$config || !$config->enabled) {
                     continue;
@@ -324,19 +334,12 @@ class NodeTaskScheduler
                         $timer['node_config_id'],
                         $timer['node_id'],
                         $timer['delay_ms'],
-                        array_merge($timer['context'], $task['context']),
+                        array_merge($task['context'], $timer['context']),   // timer context wins over stale task context
                         $task['server_id'],
                     );
                 }
 
                 $notifications->dispatchActions($result['actions'] ?? []);
-
-                \App\Events\SystemTelemetryEvent::emit('task_fired', [
-                    'task_id'   => $task['task_id'],
-                    'config_id' => $task['config_id'],
-                    'node_id'   => $task['node_id'],
-                    'server_id' => $task['server_id'],
-                ]);
 
                 Log::debug("[node-task-scheduler] Fired task", [
                     'task_id'   => $task['task_id'],

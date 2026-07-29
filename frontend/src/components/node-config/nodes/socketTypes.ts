@@ -33,9 +33,11 @@ export const INPUT_TYPES: Record<string, Record<string, HandleTypeDef>> = {
     },
     check_after: {
         input: { type: 'any', label: 'In' },
+        'chain-in': { type: 'any', label: 'Chain In' },
     },
     sustained: {
         input: { type: 'any', label: 'In' },
+        'chain-in': { type: 'any', label: 'Chain In' },
     },
     notification: {
         input: { type: 'boolean', label: 'Trigger' },
@@ -49,6 +51,9 @@ export function getInputType(nodeType: string, handleId: string): HandleTypeDef 
 export function getOutputType(nodeType: string, handleId?: string): HandleTypeDef | undefined {
     if (nodeType === 'metric' && handleId && (handleId === 'online' || handleId === 'offline')) {
         return { type: 'boolean', label: handleId === 'online' ? 'Online' : 'Offline' };
+    }
+    if (handleId === 'chain-out') {
+        return { type: 'any', label: 'Chain Out' };
     }
     return OUTPUT_TYPES[nodeType];
 }
