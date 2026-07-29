@@ -209,7 +209,9 @@ class NodeConfigEngine
                     'node_config_id' => $config->id,
                     'node_id' => $subBranch['timing_node_id'],
                     'delay_ms' => $timingResult->timer->delayMs,
-                    'context' => array_merge($extraState, $timingState, $timingResult->timer->context),
+                    'context' => array_merge($extraState, $timingState, $timingResult->timer->context, [
+                        'first_trigger_timestamp' => now(),
+                    ]),
                 ];
             }
 
@@ -448,6 +450,17 @@ class NodeConfigEngine
             if ($actionResult->shouldPropagate && $actionResult->value) {
                 $upstreamContext = $this->buildUpstreamContext($branch, $subBranch, null);
                 $upstreamContext = array_merge($upstreamContext, $context);
+                if (isset($upstreamContext['first_trigger_timestamp'])) {
+                    $firstTrigger = $upstreamContext['first_trigger_timestamp'];
+                    $elapsedMs = $firstTrigger->diffInMilliseconds(now());
+                    $upstreamContext['sustain_value'] = $this->formatDuration($elapsedMs);
+                }
+                $upstreamContext['repeat_count'] = $timingResult->state['repeat_count'] ?? 0;
+                $repeatInterval = $timingSettings['repeat_interval'] ?? '';
+                $upstreamContext['repeat_interval'] = $repeatInterval
+                    ? $this->formatDuration(BaseNode::parseDurationToMs($repeatInterval))
+                    : '';
+                $upstreamContext['repeat_max'] = (int) ($timingSettings['repeat_max_repeats'] ?? 0);
                 $actions[] = [
                     'node_id' => $subBranch['action_node_id'],
                     'type' => 'notification',
@@ -546,6 +559,7 @@ class NodeConfigEngine
                     $timingState,
                     $timingResult->timer->context,
                     ['chain_steps_meta' => $chainStepsMeta],
+                    ['first_trigger_timestamp' => now()],
                 ),
             ];
         }
@@ -643,6 +657,17 @@ class NodeConfigEngine
                     ]);
                     $upstreamContext = $this->buildUpstreamContext($branch, $contextSubBranch, null);
                     $upstreamContext = array_merge($upstreamContext, $context);
+                    if (isset($upstreamContext['first_trigger_timestamp'])) {
+                        $firstTrigger = $upstreamContext['first_trigger_timestamp'];
+                        $elapsedMs = $firstTrigger->diffInMilliseconds(now());
+                        $upstreamContext['sustain_value'] = $this->formatDuration($elapsedMs);
+                    }
+                    $upstreamContext['repeat_count'] = $timingResult->state['repeat_count'] ?? 0;
+                    $repeatInterval = $stepSettings['repeat_interval'] ?? '';
+                    $upstreamContext['repeat_interval'] = $repeatInterval
+                        ? $this->formatDuration(BaseNode::parseDurationToMs($repeatInterval))
+                        : '';
+                    $upstreamContext['repeat_max'] = (int) ($stepSettings['repeat_max_repeats'] ?? 0);
 
                     $actions[] = [
                         'node_id'          => $step['action_node_id'],

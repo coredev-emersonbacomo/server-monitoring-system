@@ -6,6 +6,8 @@ import {
     Loader2,
     AlertTriangle,
     Radio,
+    Undo2,
+    Redo2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -14,12 +16,11 @@ import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
 import IndexHeader from "@/components/IndexHeader";
 import PageLayout from "@/components/PageLayout";
 import { DurationInput } from "@/components/node-config/nodes/DurationInput";
-import { Form, createFormStore, useForm } from "@/components/ui/form";
+import { Form, createFormStore, useForm, type FormStore } from "@/components/ui/form";
 
 const schema = z.object({
     heartbeat_interval: z.string(),
     offline_threshold: z.string(),
-    agent_version: z.string(),
 });
 
 // ─── Settings field wrapper ───────────────────────────────────────────────────
@@ -55,15 +56,6 @@ export default function AgentSettings() {
     const { data: settings, isLoading } = useSettings();
     const updateSettings = useUpdateSettings();
 
-    const store = useMemo(
-        () => createFormStore({
-            schema,
-            originalData: { heartbeat_interval: "0", offline_threshold: "0", agent_version: "" },
-            initialMode: "edit",
-        }),
-        [],
-    );
-
     // Guard: ensure user is authenticated via UUID
     useEffect(() => {
         if (!authLoading && !user) {
@@ -71,14 +63,19 @@ export default function AgentSettings() {
         }
     }, [user, authLoading, navigate]);
 
-    // Populate from server
-    useEffect(() => {
-        if (settings) {
-            store.set("heartbeat_interval")(settings.heartbeat_interval);
-            store.set("offline_threshold")(settings.offline_threshold);
-            store.set("agent_version")(settings.agent_version);
-        }
-    }, [settings, store]);
+    const store = useMemo(
+        () => createFormStore({
+            schema,
+                    originalData: settings
+                        ? {
+                              heartbeat_interval: settings.heartbeat_interval,
+                              offline_threshold: settings.offline_threshold,
+                          }
+                        : { heartbeat_interval: "0", offline_threshold: "0" },
+            initialMode: "edit",
+        }),
+        [settings],
+    );
 
     if (isLoading) {
         return (
@@ -106,20 +103,26 @@ export default function AgentSettings() {
             <AgentSettingsContent
                 store={store}
                 updateSettings={updateSettings}
+                agentVersion={settings?.agent_version ?? "2.0"}
             />
         </PageLayout>
     );
 }
 
-function AgentSettingsContent({
+type FormData = z.infer<typeof schema>;
+function AgentSettingsContent<T extends FormData>({
     store,
     updateSettings,
+    agentVersion,
 }: {
-    store: ReturnType<typeof createFormStore>;
+    store: FormStore<T>;
     updateSettings: ReturnType<typeof useUpdateSettings>;
+    agentVersion: string;
 }) {
-    const form = useForm(store, (s) => s.form as z.infer<typeof schema>);
+    const form = useForm(store, (s) => s.form);
     const hasChanges = useForm(store, (s) => s.hasChanges);
+    const canUndo = useForm(store, (s) => s.canUndo);
+    const canRedo = useForm(store, (s) => s.canRedo);
 
     const heartbeatValue = parseInt(form.heartbeat_interval, 10) || 0;
     const offlineValue = parseInt(form.offline_threshold, 10) || 0;
@@ -128,13 +131,30 @@ function AgentSettingsContent({
     const isValid =
         heartbeatValue >= 1 && heartbeatValue <= 1000 &&
         offlineValue >= 1 && offlineValue <= 1000 &&
-        offlineValue >= heartbeatValue &&
-        form.agent_version.trim() !== "";
+        offlineValue >= heartbeatValue;
 
     return (
-        <>
+        <Form.Root store={store}>
             {hasChanges && (
-                <div className="flex justify-end">
+                <div className="flex justify-end items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => store.undo()}
+                        disabled={!canUndo}
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-secondary hover:bg-secondary/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    >
+                        <Undo2 className="w-3.5 h-3.5" />
+                        Undo
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => store.redo()}
+                        disabled={!canRedo}
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-secondary hover:bg-secondary/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    >
+                        <Redo2 className="w-3.5 h-3.5" />
+                        Redo
+                    </button>
                     <Form.Button
                         type="submit"
                         icon={
@@ -150,13 +170,10 @@ function AgentSettingsContent({
                     </Form.Button>
                 </div>
             )}
-
-            <Form.Root store={store}>
                 <Form.SubmitHandler
                     handler={async (data: Record<string, unknown>) => {
                         const hb = parseInt(String(data.heartbeat_interval), 10);
                         const off = parseInt(String(data.offline_threshold), 10);
-                        const ver = String(data.agent_version).trim();
 
                         if (isNaN(hb) || hb < 1 || hb > 1000) {
                             toast.error("Heartbeat interval must be between 1s and ~16m.");
@@ -170,16 +187,11 @@ function AgentSettingsContent({
                             toast.error("Offline threshold must be greater than or equal to the heartbeat interval.");
                             return;
                         }
-                        if (!ver) {
-                            toast.error("Agent version cannot be empty.");
-                            return;
-                        }
 
                         try {
                             await updateSettings.mutateAsync({
                                 heartbeat_interval: String(hb),
                                 offline_threshold: String(off),
-                                agent_version: ver,
                             });
                             toast.success("Agent settings saved.");
                         } catch {
@@ -274,7 +286,7 @@ function AgentSettingsContent({
                                         <input
                                             type="text"
                                             readOnly
-                                            value={form.agent_version}
+                                            value={agentVersion}
                                             className="w-32 h-9 rounded-md border border-border bg-muted/50 px-3 text-sm text-left font-medium text-muted-foreground cursor-not-allowed focus:outline-none"
                                         />
                                     </div>
@@ -284,7 +296,23 @@ function AgentSettingsContent({
 
                         {/* Floating save (mobile) */}
                         {hasChanges && (
-                            <div className="sm:hidden">
+                            <div className="sm:hidden flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => store.undo()}
+                                    disabled={!canUndo}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-secondary hover:bg-secondary/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                                >
+                                    <Undo2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => store.redo()}
+                                    disabled={!canRedo}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-secondary hover:bg-secondary/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                                >
+                                    <Redo2 className="w-3.5 h-3.5" />
+                                </button>
                                 <Form.Button
                                     type="submit"
                                     icon={<Save className="w-3.5 h-3.5" />}
@@ -297,7 +325,6 @@ function AgentSettingsContent({
                         )}
                     </div>
                 </main>
-            </Form.Root>
-        </>
+        </Form.Root>
     );
 }
