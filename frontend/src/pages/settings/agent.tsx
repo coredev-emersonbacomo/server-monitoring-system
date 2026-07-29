@@ -68,10 +68,18 @@ export default function AgentSettings() {
             schema,
                     originalData: settings
                         ? {
-                              heartbeat_interval: settings.heartbeat_interval,
-                              offline_threshold: settings.offline_threshold,
+                              heartbeat_interval: String(
+                                  parseInt(settings.heartbeat_interval, 10) >= 1000
+                                      ? Math.floor(parseInt(settings.heartbeat_interval, 10) / 1000)
+                                      : parseInt(settings.heartbeat_interval, 10) || 5
+                              ),
+                              offline_threshold: String(
+                                  parseInt(settings.offline_threshold, 10) >= 1000
+                                      ? Math.floor(parseInt(settings.offline_threshold, 10) / 1000)
+                                      : parseInt(settings.offline_threshold, 10) || 15
+                              ),
                           }
-                        : { heartbeat_interval: "0", offline_threshold: "0" },
+                        : { heartbeat_interval: "5", offline_threshold: "15" },
             initialMode: "edit",
         }),
         [settings],

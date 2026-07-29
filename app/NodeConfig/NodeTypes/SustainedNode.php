@@ -173,9 +173,10 @@ class SustainedNode extends BaseNode
             return false;
         }
 
-        $offlineThresholdMs = (int) Setting::get('offline_threshold', '15000');
+        $rawOffline = (int) Setting::get('offline_threshold', '15');
+        $offlineSec = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
 
-        return $agent->last_seen_at->lt(now()->subMilliseconds($offlineThresholdMs + $requiredMs));
+        return $agent->last_seen_at->lt(now()->subSeconds($offlineSec)->subMilliseconds($requiredMs));
     }
 
     private function checkMetricCondition(

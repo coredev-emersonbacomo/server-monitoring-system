@@ -18,7 +18,7 @@ class SystemMonitor extends Command
         $servers = \App\Models\Server::whereHas('agent')->get();
         foreach ($servers as $server) {
             $server->checkTokenExpiration();
-            MonitorServer::dispatch($server->uuid);
+            MonitorServer::dispatchSync($server->uuid);
         }
 
         $this->syncNoSecOpsClients();

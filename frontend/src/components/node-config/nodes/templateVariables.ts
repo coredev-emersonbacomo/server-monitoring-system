@@ -56,7 +56,7 @@ const LABELS: Record<string, { label: string; group: TemplateVariable['group']; 
     'server.activities'             : { label: 'Activities', group: 'server', description: 'Activities (ServerData)' },
     'server.agent'                  : { label: 'Agent', group: 'server', description: 'Agent (ServerData)' },
     'server.alert_scope'            : { label: 'Alert Scope', group: 'server', description: 'Alert Scope (ServerData)' },
-    'server.hourly_cost'            : { label: 'Hourly Cost', group: 'server', description: 'Hourly Cost (ServerData)' },
+    'server.monthly_cost'           : { label: 'Monthly Cost', group: 'server', description: 'Monthly Cost (ServerData)' },
     'server.cost_offset'            : { label: 'Cost Offset', group: 'server', description: 'Cost Offset (ServerData)' },
     'server.cost_reset_at'          : { label: 'Cost Reset At', group: 'server', description: 'Cost Reset At (ServerData)' },
     'server.historical_cost'        : { label: 'Historical Cost', group: 'server', description: 'Historical Cost (ServerData)' },

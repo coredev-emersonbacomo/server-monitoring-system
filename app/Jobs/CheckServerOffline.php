@@ -15,6 +15,8 @@ class CheckServerOffline implements ShouldQueue
 
     public function handle(): void
     {
-        MonitorServer::dispatch($this->serverUuid);
+        // Run MonitorServer synchronously so the offline status update
+        // and ServerHealthLog write always execute, even without a queue worker.
+        MonitorServer::dispatchSync($this->serverUuid);
     }
 }

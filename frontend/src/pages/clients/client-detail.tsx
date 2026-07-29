@@ -1236,7 +1236,7 @@ export default function ClientDetail() {
                                                                 <td className="py-3.5 px-4 font-mono text-foreground font-medium">
                                                                     ₱
                                                                     {(
-                                                                        s.hourly_cost ??
+                                                                        s.monthly_cost ??
                                                                         0
                                                                     ).toFixed(
                                                                         2,
@@ -1782,10 +1782,8 @@ export default function ClientDetail() {
                                                     <p className="text-[11px] text-muted-foreground">
                                                         {msg}
                                                     </p>
-                                                    {log.details?.before
-                                                        ?.hourly_cost &&
-                                                        log.details?.after
-                                                            ?.hourly_cost && (
+                                                    {(log.details?.before?.monthly_cost || log.details?.before?.hourly_cost) &&
+                                                        (log.details?.after?.monthly_cost || log.details?.after?.hourly_cost) && (
                                                             <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
                                                                 <span>
                                                                     Before: ₱
@@ -1793,7 +1791,7 @@ export default function ClientDetail() {
                                                                         log
                                                                             .details
                                                                             .before
-                                                                            .hourly_cost
+                                                                            .monthly_cost ?? log.details.before.hourly_cost
                                                                     }
                                                                     /mo
                                                                 </span>

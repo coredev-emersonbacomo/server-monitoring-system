@@ -38,7 +38,7 @@ class ServerController extends Controller
                 'name'         => $data->name,
                 'description' => $data->description,
                 'host_name'    => $data->host_name ?? $data->name,
-                'hourly_cost'  => $data->hourly_cost ?? 0.0,
+                'monthly_cost' => $data->monthly_cost ?? 0.0,
             ]);
 
             $actor = auth()->user();
@@ -55,7 +55,7 @@ class ServerController extends Controller
                     'host_name' => $server->host_name,
                     'client_uuid' => $clientModel->uuid,
                     'client_name' => $clientModel->name,
-                    'hourly_cost' => $server->hourly_cost,
+                    'monthly_cost' => $server->monthly_cost,
                 ],
             ]);
 
@@ -112,11 +112,11 @@ class ServerController extends Controller
             $updatePayload['description'] = $data->description;
         }
 
-        if (!($data->hourly_cost instanceof \Spatie\LaravelData\Optional) && $data->hourly_cost !== null) {
-            $newRate = (float) $data->hourly_cost;
-            $oldRate = (float) ($serverModel->hourly_cost ?? 0.0);
+        if (!($data->monthly_cost instanceof \Spatie\LaravelData\Optional) && $data->monthly_cost !== null) {
+            $newRate = (float) $data->monthly_cost;
+            $oldRate = (float) ($serverModel->monthly_cost ?? 0.0);
             if (abs($newRate - $oldRate) > 0.0001) {
-                $updatePayload['hourly_cost'] = $newRate;
+                $updatePayload['monthly_cost'] = $newRate;
 
                 // Adjust cost_offset so the active accumulated_cost remains unaffected.
                 // Accumulated cost is: max(0, billedMonths * rate - costOffset)
@@ -152,9 +152,9 @@ class ServerController extends Controller
         $actor = auth()->user();
         $actorName = $actor ? "{$actor->first_name} {$actor->last_name}" : 'System';
 
-        if (isset($updatePayload['hourly_cost'])) {
-            $oldRateFmt = number_format((float) ($originalAttributes['hourly_cost'] ?? 0.0), 2);
-            $newRateFmt = number_format((float) $updatePayload['hourly_cost'], 2);
+        if (isset($updatePayload['monthly_cost'])) {
+            $oldRateFmt = number_format((float) ($originalAttributes['monthly_cost'] ?? 0.0), 2);
+            $newRateFmt = number_format((float) $updatePayload['monthly_cost'], 2);
 
             CustomActivityLog::create([
                 'logable_type' => Server::class,
@@ -165,8 +165,8 @@ class ServerController extends Controller
                 'details'      => [
                     'message'     => "Monthly cost updated from ₱{$oldRateFmt}/mo to ₱{$newRateFmt}/mo (accumulated cost preserved) for server: {$serverModel->name}",
                     'server_name' => $serverModel->name,
-                    'before'      => ['hourly_cost' => $oldRateFmt],
-                    'after'       => ['hourly_cost' => $newRateFmt],
+                    'before'      => ['monthly_cost' => $oldRateFmt],
+                    'after'       => ['monthly_cost' => $newRateFmt],
                 ],
             ]);
         } elseif ($serverModel->wasChanged()) {

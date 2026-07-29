@@ -18,7 +18,7 @@ import { Form, createFormStore, useForm } from "@/components/ui/form";
 const schema = z.object({
     name: z.string().min(1, "Server name is required"),
     description: z.string().max(255, "Maximum 255 characters").optional().default(""),
-    hourly_cost: z.union([z.string(), z.number()]).transform((val) => {
+    monthly_cost: z.union([z.string(), z.number()]).transform((val) => {
         if (val === "" || val === undefined || val === null) return 0;
         const num = Number(val);
         return isNaN(num) ? 0 : num;
@@ -33,7 +33,7 @@ export default function CreateServer() {
     const store = useMemo(
         () => createFormStore({
             schema,
-            originalData: { name: "", description: "", hourly_cost: 0 },
+            originalData: { name: "", description: "", monthly_cost: 0 },
             initialMode: "create",
         }),
         [],
@@ -89,8 +89,8 @@ export default function CreateServer() {
                                         body: {
                                             name: String(data.name).trim(),
                                             description: (String(data.description ?? "").trim()) || "",
-                                            hourly_cost: Number(data.hourly_cost) || 0,
-                                        } as any,
+                                            monthly_cost: Number(data.monthly_cost) || 0,
+                                        },
                                     },
                                 );
                                 if (apiError) {
@@ -172,8 +172,8 @@ function CreateServerFields({ store }: { store: ReturnType<typeof createFormStor
                     type="number"
                     step="0.01"
                     min="0"
-                    value={String(form.hourly_cost ?? "")}
-                    onValueChange={store.set("hourly_cost")}
+                    value={String(form.monthly_cost ?? "")}
+                    onValueChange={store.set("monthly_cost")}
                 />
             </div>
 

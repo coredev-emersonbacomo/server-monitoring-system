@@ -34,8 +34,8 @@ class HeartbeatService
         // Accumulate monitored online time OUTSIDE the transaction so it always persists.
         // ONLY accumulate time if the server was ALREADY in Online status prior to this heartbeat.
         // If it was offline, this first heartbeat transitions it back to online, so we do NOT add the offline gap to online_seconds.
-        $offlineThresholdMs = (int) \App\Models\Setting::get('offline_threshold', '15000');
-        $offlineThresholdSeconds = intdiv($offlineThresholdMs, 1000);
+        $rawOffline = (int) \App\Models\Setting::get('offline_threshold', '15');
+        $offlineThresholdSeconds = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
         if ($oldStatus === ServerStatus::Online->value && $agent->last_seen_at) {
             $elapsedSeconds = (int) $agent->last_seen_at->diffInSeconds(now());
             $maxStepSeconds = max(5, $offlineThresholdSeconds + 5);
@@ -81,7 +81,7 @@ class HeartbeatService
                     'description' => 'Server transitioned to Online state.',
                 ]);
 
-                \App\Models\CustomActivityLog::create([
+                \App\Models\ServerHealthLog::create([
                     'logable_type' => get_class($server),
                     'logable_id' => $server->id,
                     'user_id' => null,
@@ -182,8 +182,8 @@ class HeartbeatService
             $configVersion = $currentConfig ? $currentConfig->version : 1;
             $agentConfigVersion = (int) ($payload['configuration_version'] ?? 0);
 
-            $globalIntervalMs = (int) \App\Models\Setting::get('heartbeat_interval', '5000');
-            $globalInterval = intdiv($globalIntervalMs, 1000);
+            $rawInterval = (int) \App\Models\Setting::get('heartbeat_interval', '5');
+            $globalInterval = $rawInterval >= 1000 ? intdiv($rawInterval, 1000) : ($rawInterval ?: 5);
             $response = [
                 'heartbeat_interval' => $globalInterval ?: ($currentConfig ? $currentConfig->heartbeat_interval : 5),
                 'current_time'       => now()->timestamp,
