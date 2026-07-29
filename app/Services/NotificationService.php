@@ -13,15 +13,16 @@ use Discord\Parts\Embed\Embed;
 class NotificationService
 {
     /**
-     * Send an alert to a Discord text channel using an embed card.
+     * Send an alert to a Discord text channel using an embed card with link buttons.
      *
      * @param string $tokenId The Bot Token
      * @param string $roleId The Discord Role ID to mention
      * @param string $message The message content
      * @param string $channelId The Channel ID to send the message to
      * @param string $title The embed title
-     * @param string|null $url Optional URL link shown on the embed
+     * @param string|null $url Optional URL link for View Server button
      * @param string $color Hex color for the embed sidebar (default: red)
+     * @param string|null $dashboardUrl Optional URL link for Go to Dashboard button
      */
     private function parseDiscordButton(string $message): array
     {
@@ -56,9 +57,10 @@ class NotificationService
         string $roleId,
         string $message,
         string $channelId,
-        string $title = 'System Alert',
+        string $title = 'Server Monitor Alert',
         ?string $url = null,
         string $color = '#ED4245',
+        ?string $dashboardUrl = null,
     ) {
         [$description, $buttonUrl, $buttonLabel] = $this->parseDiscordButton($message);
         [$description, $footerContent] = $this->parseDiscordFooter($description);
@@ -96,6 +98,27 @@ class NotificationService
 
                     $builder->addComponent($actionRow);
                 }
+
+                $actionRow = ActionRow::new();
+
+                if ($url) {
+                    $actionRow->addComponent(
+                        Button::new(Button::STYLE_LINK)
+                            ->setLabel('View Server')
+                            ->setUrl($url)
+                            ->setEmoji('🔍')
+                    );
+                }
+
+                $dashUrl = $dashboardUrl ?? url('/dashboard');
+                $actionRow->addComponent(
+                    Button::new(Button::STYLE_LINK)
+                        ->setLabel('Go to Dashboard')
+                        ->setUrl($dashUrl)
+                        ->setEmoji('📊')
+                );
+
+                $builder->addComponent($actionRow);
 
                 if ($roleId) {
                     $builder->setContent("<@&{$roleId}>");

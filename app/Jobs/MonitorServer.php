@@ -7,6 +7,7 @@ use App\Enums\ServerStatus;
 use App\Models\Activity;
 use App\Models\ActionItem;
 use App\Models\CustomActivityLog;
+use App\Models\ServerHealthLog;
 use App\Models\Server;
 use App\Models\Setting;
 use App\NodeConfig\Cache\NodeConfigCache;
@@ -78,7 +79,7 @@ class MonitorServer implements ShouldQueue
                 'description' => 'Server transitioned to Offline state.',
             ]);
 
-            CustomActivityLog::create([
+            ServerHealthLog::create([
                 'logable_type' => get_class($server),
                 'logable_id'   => $server->id,
                 'user_id'      => null,
@@ -139,7 +140,7 @@ class MonitorServer implements ShouldQueue
                 'description' => 'Server transitioned to Online state.',
             ]);
 
-            CustomActivityLog::create([
+            ServerHealthLog::create([
                 'logable_type' => get_class($server),
                 'logable_id'   => $server->id,
                 'user_id'      => null,

@@ -1052,9 +1052,10 @@ class NodeConfigEngine
                 return $sourceHandle === 'offline';
             }
 
-            $offlineThresholdMs = (int) \App\Models\Setting::get('offline_threshold', '15000');
+            $rawOffline = (int) \App\Models\Setting::get('offline_threshold', '15');
+            $offlineSec = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
             $isOffline = !$agent->last_seen_at ||
-                $agent->last_seen_at->lt(now()->subMilliseconds($offlineThresholdMs));
+                $agent->last_seen_at->lt(now()->subSeconds($offlineSec));
 
             Log::debug('[node-config-engine] live condition check (server_status)', [
                 'server_id' => $serverId,
