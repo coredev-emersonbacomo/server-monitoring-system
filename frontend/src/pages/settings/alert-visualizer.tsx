@@ -220,34 +220,8 @@ export function AlertVisualizer() {
         }
     };
 
-    const fetchOfflineServers = async () => {
-        try {
-            const res = await jwtClient.get("/v1/servers");
-            const servers: {
-                uuid: string;
-                name: string;
-                client_name: string;
-                status: string | null;
-                went_offline_at: string | null;
-            }[] = res.data.data ?? res.data ?? [];
-            setOfflineServers(
-                servers
-                    .filter((s) => s.status === "offline")
-                    .map(({ uuid, name, client_name, went_offline_at }) => ({
-                        uuid,
-                        name,
-                        client_name,
-                        went_offline_at,
-                    })),
-            );
-        } catch {
-            // silently ignore
-        }
-    };
-
     useEffect(() => {
         fetchInitialState();
-        fetchOfflineServers();
     }, []);
 
     // Trigger particle motion along edges
@@ -322,6 +296,31 @@ export function AlertVisualizer() {
                         setLastMonitorSweep(Date.now());
                     }
                     spawnParticle("system_monitor", "metric_db", "#f59e0b");
+                    const rawServers = e.payload.offline_servers as
+                        | {
+                              uuid: string;
+                              name: string;
+                              client_name: string;
+                              went_offline_at: string | null;
+                          }[]
+                        | undefined;
+                    if (rawServers) {
+                        setOfflineServers(
+                            rawServers.map(
+                                ({
+                                    uuid,
+                                    name,
+                                    client_name,
+                                    went_offline_at,
+                                }) => ({
+                                    uuid,
+                                    name,
+                                    client_name,
+                                    went_offline_at,
+                                }),
+                            ),
+                        );
+                    }
                 } else if (e.type === "state_snapshot") {
                     // Backend pushed a full snapshot (e.g. on client (re)connect)
                     hydrateFromSnapshot(e.payload as Record<string, unknown>);
@@ -673,13 +672,6 @@ export function AlertVisualizer() {
                             <Server className="w-4 h-4 text-red-400" />
                             Offline Servers
                         </h3>
-                        <button
-                            onClick={fetchOfflineServers}
-                            className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium bg-secondary hover:bg-secondary/80 rounded-lg transition-colors"
-                        >
-                            <RefreshCw className="w-3 h-3" />
-                            Refresh
-                        </button>
                     </div>
 
                     <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">

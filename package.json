@@ -13,10 +13,10 @@
     "test:middleware": "php artisan test --filter=JwtAuthenticateTest",
     "gpush": "scripts\\git\\git-push.bat",
     "pull": "git stash && git pull && git stash apply",
-    "resetdb": "php artisan migrate:fresh --seed && php artisan system:monitor && npm run loadtestfactory",
+    "resetdb": "php artisan optimize:clear && php artisan migrate:fresh --seed && php artisan system:monitor && npm run loadtestfactory",
     "compileagent:go": "powershell -ExecutionPolicy Bypass -File scripts/build-agent.ps1",
     "compileagent": "npm run compileagent:go",
-    "loadtestfactory": "php artisan tinker --execute=\"\\App\\Models\\User::factory(25)->create(); \\App\\Models\\Client::factory(10)->create(); \\App\\Models\\Server::factory(100)->create();\""
+    "loadtestfactory": "type database\\seeders\\load-test-factory.php | php artisan tinker"
   },
   "workspaces": [
     "frontend"

@@ -12,7 +12,7 @@ class RepeatNode extends BaseNode
     {
         return [
             ['key' => 'interval', 'label' => 'Interval (ms)', 'type' => 'string', 'required' => true, 'default' => '600000'],
-            ['key' => 'max_repeats', 'label' => 'Max Repeats (0 = infinite)', 'type' => 'number', 'default' => 0, 'description' => '0 = infinite'],
+            ['key' => 'max_repeats', 'label' => 'Max Repeats (-1 = infinite)', 'type' => 'number', 'default' => -1, 'description' => '-1 = infinite'],
         ];
     }
 
@@ -86,7 +86,7 @@ class RepeatNode extends BaseNode
     {
         return [
             'interval_ms' => static::parseDurationToMs($settings['interval'] ?? '600000'),
-            'max_repeats' => (int) ($settings['max_repeats'] ?? 0),
+            'max_repeats' => (int) ($settings['max_repeats'] ?? -1),
         ];
     }
 

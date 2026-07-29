@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Discord\Discord;
 use Discord\Builders\MessageBuilder;
@@ -28,13 +29,26 @@ class NotificationService
         $buttonLabel = 'View Server Details';
         $cleaned = $message;
 
-        if (preg_match('/<discord-button(?:\s+detailsUrl="([^"]*)")?\s*>([^<]*)<\/discord-button>/', $message, $matches)) {
+        if (preg_match('/<discord-button(?:\s+(?:href|url|detailsUrl)="([^"]*)")?\s*>([^<]*)<\/discord-button>/', $message, $matches)) {
             $buttonUrl = !empty($matches[1]) ? $matches[1] : null;
             $buttonLabel = !empty($matches[2]) ? $matches[2] : 'View Server Details';
             $cleaned = trim(str_replace($matches[0], '', $message));
         }
 
         return [$cleaned, $buttonUrl, $buttonLabel];
+    }
+
+    private function parseDiscordFooter(string $message): array
+    {
+        $footer = null;
+        $cleaned = $message;
+
+        if (preg_match('/<discord-footer>([^<]*)<\/discord-footer>/', $message, $matches)) {
+            $footer = !empty($matches[1]) ? $matches[1] : null;
+            $cleaned = trim(str_replace($matches[0], '', $message));
+        }
+
+        return [$cleaned, $footer];
     }
 
     public function sendDiscordAlert(
@@ -47,13 +61,16 @@ class NotificationService
         string $color = '#ED4245',
     ) {
         [$description, $buttonUrl, $buttonLabel] = $this->parseDiscordButton($message);
+        [$description, $footerContent] = $this->parseDiscordFooter($description);
         $buttonUrl = $buttonUrl ?? $url;
 
         $discord = new Discord([
             'token' => $tokenId,
         ]);
 
-        $discord->on('ready', function (Discord $discord) use ($roleId, $description, $channelId, $title, $buttonUrl, $buttonLabel, $color) {
+        $footerText = $footerContent ?? 'Server Monitoring System';
+
+        $discord->on('ready', function (Discord $discord) use ($roleId, $description, $channelId, $title, $buttonUrl, $buttonLabel, $color, $footerText) {
             $channel = $discord->getChannel($channelId);
 
             if ($channel) {
@@ -65,7 +82,7 @@ class NotificationService
                     $embed->setDescription($description);
                     $embed->setColor($color);
                     $embed->setTimestamp(now()->timestamp);
-                    $embed->setFooter('Server Monitoring System');
+                    $embed->setFooter($footerText);
                     $builder->addEmbed($embed);
                 }
 
@@ -87,10 +104,15 @@ class NotificationService
 
                 $channel->sendMessage($builder)->then(function () use ($discord) {
                     $discord->close();
-                }, function () use ($discord) {
+                }, function (\Throwable $e) use ($discord) {
+                    Log::error('[discord] Failed to send message', [
+                        'channel_id' => $channelId,
+                        'error' => $e->getMessage(),
+                    ]);
                     $discord->close();
                 });
             } else {
+                Log::error('[discord] Channel not found', ['channel_id' => $channelId]);
                 $discord->close();
             }
         });

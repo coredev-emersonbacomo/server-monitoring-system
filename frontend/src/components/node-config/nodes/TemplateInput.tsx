@@ -79,10 +79,14 @@ export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDo
             const closing = tagKey.startsWith('</') ? '' : `</${tagKey.slice(1)}`;
             const tagContent = tagKey === '<discord-button>'
                 ? '<discord-button detailsUrl=""></discord-button>'
+                : tagKey === '<discord-footer>'
+                ? '<discord-footer></discord-footer>'
                 : tagKey + closing;
             newVal = before + tagContent + after;
             cursorOffset = tagKey === '<discord-button>'
                 ? insertPos + '<discord-button detailsUrl="'.length
+                : tagKey === '<discord-footer>'
+                ? insertPos + '<discord-footer>'.length
                 : insertPos + tagKey.length;
         } else {
             newVal = before + '{' + variable.key + '}' + after;

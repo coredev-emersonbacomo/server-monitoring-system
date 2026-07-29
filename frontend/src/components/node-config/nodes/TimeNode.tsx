@@ -13,7 +13,7 @@ const TIME_CONFIGS: Record<string, { icon: React.ComponentType<{ size?: number }
 };
 
 function isValidMaxValue(v: string): boolean {
-    if (v === 'inf') return true;
+    if (v === 'inf' || v === '-1') return true;
     const n = parseInt(v);
     return !isNaN(n) && n >= 0;
 }
@@ -30,8 +30,8 @@ export const TimeNode = memo(({ id, data, type, selected }: NodeProps) => {
     const durationMs = parseInt((data.duration as string) || '0', 10) || 0;
     const repeatIntervalMs = parseInt((data.repeat_interval as string) || '0', 10) || 0;
     const hasRepeat = repeatIntervalMs > 0;
-    const repeatMaxRepeatsRaw = (data.repeat_max_repeats as number | string) ?? 0;
-    const isInfinite = repeatMaxRepeatsRaw === 0 || repeatMaxRepeatsRaw === 'inf';
+    const repeatMaxRepeatsRaw = (data.repeat_max_repeats as number | string) ?? -1;
+    const isInfinite = repeatMaxRepeatsRaw === -1 || repeatMaxRepeatsRaw === 0 || repeatMaxRepeatsRaw === 'inf';
     const savedMax = isInfinite ? 'inf' : String(repeatMaxRepeatsRaw);
 
     const [maxInputValue, setMaxInputValue] = useState(savedMax);
@@ -52,8 +52,9 @@ export const TimeNode = memo(({ id, data, type, selected }: NodeProps) => {
             return;
         }
         setMaxHasError(false);
-        if (v === 'inf') {
-            updateNodeData(id, { repeat_max_repeats: 0 });
+        if (v === 'inf' || v === '-1') {
+            setMaxInputValue('inf');
+            updateNodeData(id, { repeat_max_repeats: -1 });
         } else {
             updateNodeData(id, { repeat_max_repeats: parseInt(v) });
         }

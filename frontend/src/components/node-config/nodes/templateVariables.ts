@@ -11,7 +11,9 @@ type RuntimeVarKey =
     | 'runtime.metricName'
     | 'runtime.sustainValue'
     | 'runtime.eventTimestamp'
+    | 'runtime.eventTimestampUnix'
     | 'runtime.firstTriggerTimestamp'
+    | 'runtime.firstTriggerTimestampUnix'
     | 'runtime.offlineTimestamp'
     | 'runtime.offlineDuration'
     | 'runtime.repeat.interval'
@@ -86,14 +88,17 @@ const LABELS: Record<string, { label: string; group: TemplateVariable['group']; 
     'server.url'                    : { label: 'URL', group: 'server', description: 'Server detail page URL' },
     'runtime.metricName'            : { label: 'Metric Name', group: 'runtime', description: 'Name of the metric being evaluated' },
     'runtime.sustainValue'          : { label: 'Sustain Value', group: 'runtime', description: 'How long the condition has been sustained' },
-    'runtime.eventTimestamp'        : { label: 'Event Timestamp', group: 'runtime', description: 'When the evaluation occurred' },
-    'runtime.firstTriggerTimestamp' : { label: 'First Trigger Timestamp', group: 'runtime', description: 'When the condition first triggered' },
+    'runtime.eventTimestamp'              : { label: 'Event Timestamp', group: 'runtime', description: 'When the evaluation occurred' },
+    'runtime.eventTimestampUnix'          : { label: 'Event Timestamp (Unix)', group: 'runtime', description: 'Unix timestamp — use with Discord <t:> for local time' },
+    'runtime.firstTriggerTimestamp'       : { label: 'First Trigger Timestamp', group: 'runtime', description: 'When the condition first triggered' },
+    'runtime.firstTriggerTimestampUnix'   : { label: 'First Trigger Timestamp (Unix)', group: 'runtime', description: 'Unix timestamp — use with Discord <t:> for local time' },
     'runtime.offlineTimestamp'      : { label: 'Offline Timestamp', group: 'runtime', description: 'When the server went offline' },
     'runtime.offlineDuration'       : { label: 'Offline Duration', group: 'runtime', description: 'How long the server has been offline' },
     'runtime.repeat.interval'       : { label: 'Repeat Interval', group: 'runtime', description: 'How often the alert repeats' },
     'runtime.repeat.countOfMessage' : { label: 'Repeat Count', group: 'runtime', description: 'Current repeat message number' },
     'runtime.repeat.max'            : { label: 'Repeat Max', group: 'runtime', description: 'Maximum number of repeats' },
     '<discord-button>'              : { label: 'Discord Button', group: 'tag', description: 'Insert a Discord link button tag' },
+    '<discord-footer>'              : { label: 'Discord Footer', group: 'tag', description: 'Set the Discord embed footer text' },
     '<if-repeat>'                   : { label: 'If Repeat Block', group: 'tag', description: 'Insert a conditional repeat block' },
 };
 
