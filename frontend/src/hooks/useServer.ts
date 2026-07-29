@@ -12,5 +12,6 @@ export const useServer = (serverUuid: string) => {
             return data;
         },
         enabled: !!serverUuid,
+        refetchInterval: 3000,
     });
 };

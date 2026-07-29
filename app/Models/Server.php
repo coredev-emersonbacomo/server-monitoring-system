@@ -94,9 +94,16 @@ class Server extends Model
         return $this->hasOne(ServerUpdate::class, 'server_id')->latestOfMany('created_at');
     }
 
-    public static function computeHealth(?Carbon $lastSeen, int $offlineThresholdMs = 15000): ServerHealth
+    public static function computeHealth(?Carbon $lastSeen, int $offlineThresholdSec = 15): ServerHealth
     {
-        if ($lastSeen === null || $lastSeen->lessThan(now()->subMilliseconds($offlineThresholdMs))) {
+        if ($offlineThresholdSec >= 1000) {
+            $offlineThresholdSec = intdiv($offlineThresholdSec, 1000);
+        }
+        if ($offlineThresholdSec < 1) {
+            $offlineThresholdSec = 15;
+        }
+
+        if ($lastSeen === null || $lastSeen->lessThan(now()->subSeconds($offlineThresholdSec))) {
             return ServerHealth::Offline;
         }
 
@@ -107,8 +114,9 @@ class Server extends Model
     {
         return Attribute::get(function () {
             $lastSeen = $this->agent?->last_seen_at;
-            $threshold = (int) Setting::get('offline_threshold', '15000');
-            return self::computeHealth($lastSeen, $threshold);
+            $raw = (int) Setting::get('offline_threshold', '15');
+            $thresholdSec = $raw >= 1000 ? intdiv($raw, 1000) : $raw;
+            return self::computeHealth($lastSeen, $thresholdSec);
         });
     }
 
