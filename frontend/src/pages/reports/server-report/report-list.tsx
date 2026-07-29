@@ -5,46 +5,33 @@ import { mockGetServerList } from "./mockServerList";
 import { mockGetServerReport } from "./mockServerReport";
 import { generateReportPdf } from "@/lib/generateReportPdf";
 
-
 export default function ServerReportTable() {
     const navigate = useNavigate();
-    const { data: servers, isLoading, error } = useQuery({
+    const {
+        data: servers,
+        isLoading,
+        error,
+    } = useQuery({
         queryKey: ["report-server-list"],
-        queryFn: mockGetServerList, // TODO: swap to real API
+        queryFn: mockGetServerList,
     });
 
     if (isLoading) return <div className="p-8">Loading servers...</div>;
-    if (error || !servers) return <div className="p-8">Failed to load servers.</div>;
+    if (error || !servers)
+        return <div className="p-8">Failed to load servers.</div>;
 
     async function handleGenerate(uuid: string, name: string) {
-        const report = await mockGetServerReport(uuid); // TODO: swap to real API
-        generateReportPdf(
-            `Server Report — ${report.name}`,
-            [
-                {
-                    title: "Server Info",
-                    fields: [
-                        { label: "Client", value: report.client_name ?? "—" },
-                        { label: "OS", value: report.operating_system ?? "—" },
-                        { label: "Status", value: report.status },
-                        { label: "CPU", value: report.cpu_model ?? "—" },
-                        { label: "RAM", value: report.ram ?? "—" },
-                        { label: "Last Seen", value: report.last_seen ?? "—" },
-                    ],
-                },
-                {
-                    title: "Uptime",
-                    fields: [
-                        { label: "Uptime %", value: `${report.uptime.uptime_percentage}%` },
-                        { label: "Outages", value: String(report.uptime.outage_count) },
-                        { label: "Last Downtime", value: report.uptime.last_downtime ?? "None recorded" },
-                    ],
-                },
-            ],
-            `server-report-${name.toLowerCase().replace(/\s+/g, "-")}.pdf`,
-        );
+        const report = await mockGetServerReport(uuid);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { metrics, ...reportData } = report;
+        await generateReportPdf({
+            template: "server",
+            data: reportData,
+            filename: `server-report-${name.toLowerCase().replace(/\s+/g, "-")}.pdf`,
+        });
     }
-    function handleGenerateAll() {
+
+    async function handleGenerateAll() {
         if (!servers) return;
 
         const totals = servers.reduce(
@@ -55,29 +42,30 @@ export default function ServerReportTable() {
             { online: 0, offline: 0 },
         );
 
-        generateReportPdf(
-            "All Servers Report",
-            [
-                {
-                    title: "Summary",
-                    fields: [
-                        { label: "Total Servers", value: String(servers.length) },
-                        { label: "Online", value: String(totals.online) },
-                        { label: "Offline", value: String(totals.offline) },
-                    ],
-                },
-                ...servers.map((s) => ({
-                    title: s.name,
-                    fields: [
-                        { label: "Client", value: s.client_name ?? "—" },
-                        { label: "Status", value: s.status },
-                        { label: "Last Seen", value: s.last_seen ?? "—" },
-                    ],
-                })),
-            ],
-            "all-servers-report.pdf",
-        );
+        await generateReportPdf({
+            template: "general",
+            data: {
+                total_servers: servers.length,
+                total_clients: 0,
+                total_users: 0,
+                online_servers: totals.online,
+                offline_servers: totals.offline,
+                total_alerts: 0,
+                avg_uptime_percentage: 0,
+                avg_cpu_usage: 0,
+                avg_memory_usage: 0,
+                avg_disk_usage: 0,
+                servers_per_client: [],
+                recent_clients: [],
+                recent_servers: [],
+                critical_alerts: 0,
+                warning_alerts: 0,
+                unassigned_servers: 0,
+            },
+            filename: "all-servers-report.pdf",
+        });
     }
+
     return (
         <div className="flex flex-col gap-3">
             <div className="flex justify-end">
@@ -102,23 +90,45 @@ export default function ServerReportTable() {
                     </thead>
                     <tbody className="divide-y divide-border">
                         {servers.map((server) => (
-                            <tr key={server.uuid} className="hover:bg-sidebar-hover/50">
-                                <td className="p-3 font-medium">{server.name}</td>
-                                <td className="p-3">{server.client_name ?? "—"}</td>
-                                <td className={`p-3 ${server.status === "online" ? "text-green-600" : "text-red-600"}`}>
+                            <tr
+                                key={server.uuid}
+                                className="hover:bg-sidebar-hover/50"
+                            >
+                                <td className="p-3 font-medium">
+                                    {server.name}
+                                </td>
+                                <td className="p-3">
+                                    {server.client_name ?? "—"}
+                                </td>
+                                <td
+                                    className={`p-3 ${
+                                        server.status === "online"
+                                            ? "text-green-600"
+                                            : "text-red-600"
+                                    }`}
+                                >
                                     {server.status}
                                 </td>
                                 <td className="p-3">
                                     <div className="flex justify-end gap-2">
                                         <button
-                                            onClick={() => navigate(`/report/servers/${server.uuid}`)}
+                                            onClick={() =>
+                                                navigate(
+                                                    `/report/servers/${server.uuid}`,
+                                                )
+                                            }
                                             className="flex items-center gap-1 px-3 py-1.5 rounded-lg ring ring-border hover:bg-sidebar-hover text-sm"
                                         >
                                             <Eye className="w-3.5 h-3.5" />
                                             Preview
                                         </button>
                                         <button
-                                            onClick={() => handleGenerate(server.uuid, server.name)}
+                                            onClick={() =>
+                                                handleGenerate(
+                                                    server.uuid,
+                                                    server.name,
+                                                )
+                                            }
                                             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:opacity-90 text-sm"
                                         >
                                             <Download className="w-3.5 h-3.5" />

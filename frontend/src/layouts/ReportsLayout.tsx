@@ -7,10 +7,11 @@ import { FilterDropdown } from "../pages/reports/FilterDropdown";
 import type { FilterOption } from "../pages/reports/FilterDropdown";
 
 export type ReportView = "global" | "clients" | "servers";
+export type ReportOrientation = "landscape" | "portrait";
 export interface ReportOutletContext {
     view: ReportView;
     filters: string[];
-    showLabel: boolean;
+    orientation: ReportOrientation;
 }
 
 const VIEWS: { key: ReportView; label: string }[] = [
@@ -31,7 +32,7 @@ export function ReportsLayout() {
     const [view, setView] = useState<ReportView>("global");
     const [pickerOpen, setPickerOpen] = useState(false);
     const [filters, setFilters] = useState<string[]>([]);
-    const [showLabel, setShowLabel] = useState(true);
+    const [orientation, setOrientation] = useState<ReportOrientation>("landscape");
     const navigate = useNavigate();
 
     const detailMatch = useMatch("/report/:type/:uuid");
@@ -56,9 +57,9 @@ export function ReportsLayout() {
         }
     };
 
-    const handleGenerateReport = () => {
-        // TODO: swap for real export (backend PDF endpoint or print-to-PDF of the bondpaper node)
-        window.print();
+    const handleGenerateReport = async () => {
+        // TODO: Implement global report generation via Typst API
+        // For now, this is a placeholder
     };
 
     return (
@@ -109,17 +110,14 @@ export function ReportsLayout() {
                     onChange={setFilters}
                 />
 
-                {view !== "global" && (
-                    <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-                        <input
-                            type="checkbox"
-                            checked={showLabel}
-                            onChange={(e) => setShowLabel(e.target.checked)}
-                            className="rounded border-gray-300"
-                        />
-                        Show {view === "servers" ? "server" : "client"} counter
-                    </label>
-                )}
+                <select
+                    value={orientation}
+                    onChange={(e) => setOrientation(e.target.value as ReportOrientation)}
+                    className="px-3 py-1.5 rounded-lg text-sm border border-border bg-background text-foreground"
+                >
+                    <option value="landscape">Landscape</option>
+                    <option value="portrait">Portrait</option>
+                </select>
 
                 <button
                     onClick={handleGenerateReport}
@@ -130,7 +128,7 @@ export function ReportsLayout() {
                 </button>
             </div>
 
-            <Outlet context={{ view, filters, showLabel }} />
+            <Outlet context={{ view, filters, orientation }} />
 
             {pickerOpen && (
                 <EntityPickerModal
