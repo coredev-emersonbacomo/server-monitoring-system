@@ -2,6 +2,31 @@
 
 #let d = json("input.json")
 
+#set page(
+  paper: d.at("paper", default: "a4"),
+  flipped: d.at("orientation", default: "landscape") == "landscape",
+  margin: (x: 18mm, y: 20mm),
+  header: context [
+    #set text(size: 9pt, fill: rgb("#888888"))
+    #h(1fr)
+    #d.at("report_title", default: "Report")
+    #h(1fr)
+    #if counter(page).get().first() > 1 {
+      d.at("report_subtitle", default: "")
+    }
+    #v(-0.8em)
+    #line(length: 100%, stroke: 0.3pt + rgb("#dddddd"))
+  ],
+  footer: context [
+    #set text(size: 8pt, fill: rgb("#999999"))
+    #line(length: 100%, stroke: 0.3pt + rgb("#dddddd"))
+    #v(0.3em)
+    Confidential Internal Data
+    #h(1fr)
+    Page #counter(page).display() of #counter(page).final().first()
+  ],
+)
+
 // ── Report heading ───────────────────────────────────────────────────────────
 #report-heading(
   d.at("report_title", default: "Global Report"),
