@@ -98,8 +98,11 @@ class SustainedNode extends BaseNode
             );
         }
 
-        return NodeResult::propagate(true, $firingState);
+        // After a one-shot fire: propagate the alert, then return to idle so the
+        // next heartbeat can start a fresh pending window if conditions still hold.
+        return NodeResult::propagate(true, $this->idleState());
     }
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // Helpers

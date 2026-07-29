@@ -21,21 +21,21 @@ class NodeConfigSeeder extends Seeder
             ['id' => 'compare_85',       'type' => 'condition',   'position' => ['x' => 340,  'y' => 140], 'settings' => ['label' => '>= 85%', 'operator' => 'greater_than_equal', 'threshold' => 85, 'min' => 0, 'max' => 0]],
 
             ['id' => 'sustained_10',     'type' => 'sustained',   'position' => ['x' => 600,  'y' => 60],  'settings' => ['label' => 'Sustained 10s', 'duration' => '10000']],
-            ['id' => 'sustained_20',     'type' => 'sustained',   'position' => ['x' => 600,  'y' => 210], 'settings' => ['label' => 'Sustained 20s', 'duration' => '20000']],
-            ['id' => 'sustained_30',     'type' => 'sustained',   'position' => ['x' => 600,  'y' => 360], 'settings' => ['label' => 'Sustained 30s + Repeat', 'duration' => '30000', 'repeat_interval' => '10000', 'repeat_max_repeats' => 0]],
+            ['id' => 'sustained_20',     'type' => 'sustained',   'position' => ['x' => 600,  'y' => 230], 'settings' => ['label' => 'Sustained 20s', 'duration' => '20000']],
+            ['id' => 'sustained_30',     'type' => 'sustained',   'position' => ['x' => 600,  'y' => 400], 'settings' => ['label' => 'Sustained 30s + Repeat', 'duration' => '30000', 'repeat_interval' => '10000', 'repeat_max_repeats' => 0]],
 
-            ['id' => 'email_10',         'type' => 'notification','position' => ['x' => 860,  'y' => 10],  'settings' => ['label' => 'Email 10s',  'channel' => 'email',   'subject' => '[{server.client.name}] {server.name} - {metricName} Alert (10s)',  'message' => '[{server.client.name}] {server.name}\'s {metricName} has been above 85% for {sustainValue}! (event timestamp: {runtime.offlineTimestamp})']],
-            ['id' => 'email_20',         'type' => 'notification','position' => ['x' => 860,  'y' => 210], 'settings' => ['label' => 'Email 20s',  'channel' => 'email',   'subject' => '[{server.client.name}] {server.name} - {metricName} Alert (20s)',  'message' => '[{server.client.name}] {server.name}\'s {metricName} has been above 85% for {sustainValue}! (event timestamp: {runtime.offlineTimestamp})']],
-            ['id' => 'discord_30',       'type' => 'notification','position' => ['x' => 860,  'y' => 410], 'settings' => ['label' => 'Discord 30s','channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'message' => ':rotating_light: [{server.client.name}] {server.name}\'s {metricName} has been above 85% for {sustainValue}! Repeating every 10s. (event timestamp: {runtime.offlineTimestamp})']],
+            ['id' => 'email_10',         'type' => 'notification','position' => ['x' => 860,  'y' => 10],  'settings' => ['label' => 'Email 10s',  'channel' => 'email',   'subject' => '[{server.client.name}] {server.name} - {runtime.metricName} Alert (10s)',  'message' => '[{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! (event timestamp: {runtime.offlineTimestamp})']],
+            ['id' => 'email_20',         'type' => 'notification','position' => ['x' => 860,  'y' => 210], 'settings' => ['label' => 'Email 20s',  'channel' => 'email',   'subject' => '[{server.client.name}] {server.name} - {runtime.metricName} Alert (20s)',  'message' => '[{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! (event timestamp: {runtime.offlineTimestamp})']],
+            ['id' => 'discord_30',       'type' => 'notification','position' => ['x' => 860,  'y' => 410], 'settings' => ['label' => 'Discord 30s','channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'message' => ':rotating_light: [{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! Repeating every 10s. (event timestamp: {runtime.offlineTimestamp})']],
 
             // ── Bottom section: Server Status Offline ────────────────────
 
-            ['id' => 'metric_status',    'type' => 'metric',      'position' => ['x' => 100,  'y' => 640], 'settings' => ['label' => 'Server Status', 'metric_type' => 'server_status']],
+            ['id' => 'metric_status',    'type' => 'metric',      'position' => ['x' => -300, 'y' => 510], 'settings' => ['label' => 'Server Status', 'metric_type' => 'server_status']],
 
-            ['id' => 'email_offline',    'type' => 'notification','position' => ['x' => 340,  'y' => 640], 'settings' => ['label' => 'Email Offline',  'channel' => 'email',   'subject' => '[{server.client.name}] {server.name} - Offline Alert', 'message' => '[{server.client.name}] {server.name} is offline! (event timestamp: {runtime.offlineTimestamp})']],
+            ['id' => 'email_offline',    'type' => 'notification','position' => ['x' => -60,  'y' => 510], 'settings' => ['label' => 'Email Offline',  'channel' => 'email',   'subject' => '[{server.client.name}] {server.name} - Offline Alert', 'message' => '[{server.client.name}] {server.name} is offline! (event timestamp: {runtime.offlineTimestamp})']],
 
-            ['id' => 'check_after_10m',  'type' => 'check_after', 'position' => ['x' => 340,  'y' => 840], 'settings' => ['label' => 'Check After 10s', 'duration' => '10000', 'repeat_interval' => '10000', 'repeat_max_repeats' => 0]],
-            ['id' => 'discord_offline',  'type' => 'notification','position' => ['x' => 600,  'y' => 840], 'settings' => ['label' => 'Discord Offline', 'channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'message' => ':rotating_light: [{server.client.name}] {server.name} is still offline! (for {runtime.offlineDuration}) (event timestamp: {runtime.offlineTimestamp})']],
+            ['id' => 'check_after_10m',  'type' => 'check_after', 'position' => ['x' => -60,  'y' => 710], 'settings' => ['label' => 'Check After 10s', 'duration' => '10000', 'repeat_interval' => '10000', 'repeat_max_repeats' => 0]],
+            ['id' => 'discord_offline',  'type' => 'notification','position' => ['x' => 200,  'y' => 710], 'settings' => ['label' => 'Discord Offline', 'channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'message' => ':rotating_light: [{server.client.name}] {server.name} is still offline! (for {runtime.offlineDuration}) (event timestamp: {runtime.offlineTimestamp})']],
         ];
 
         $edges = [
@@ -45,10 +45,10 @@ class NodeConfigSeeder extends Seeder
             ['id' => 'e_disk_85',       'source' => 'metric_disk',    'target' => 'compare_85', 'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
             ['id' => 'e_net_85',        'source' => 'metric_network', 'target' => 'compare_85', 'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
 
-            // Compare → Sustained
+            // Compare → Sustained Stack (Sequential chaining)
             ['id' => 'e_85_s10',        'source' => 'compare_85',     'target' => 'sustained_10', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
-            ['id' => 'e_85_s20',        'source' => 'compare_85',     'target' => 'sustained_20', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
-            ['id' => 'e_85_s30',        'source' => 'compare_85',     'target' => 'sustained_30', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+            ['id' => 'e_s10_s20',       'source' => 'sustained_10',   'target' => 'sustained_20', 'sourceHandle' => 'chain-out', 'targetHandle' => 'chain-in'],
+            ['id' => 'e_s20_s30',       'source' => 'sustained_20',   'target' => 'sustained_30', 'sourceHandle' => 'chain-out', 'targetHandle' => 'chain-in'],
 
             // Sustained → Notifications
             ['id' => 'e_s10_email10',   'source' => 'sustained_10',   'target' => 'email_10',     'sourceHandle' => 'output', 'targetHandle' => 'input'],

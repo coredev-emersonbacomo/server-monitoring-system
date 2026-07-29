@@ -269,3 +269,15 @@
 .preview-nodes-disabled .react-flow__node {
     pointer-events: none !important;
 }
+
+.react-flow__node {
+    box-shadow: none !important;
+}
+
+.react-flow__node:hover {
+    box-shadow: none !important;
+}
+
+.react-flow__node.selected {
+    box-shadow: none !important;
+}
