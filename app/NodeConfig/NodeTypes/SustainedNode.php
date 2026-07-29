@@ -3,10 +3,8 @@
 namespace App\NodeConfig\NodeTypes;
 
 use App\Models\Agent;
-use App\Models\MetricBatch;
 use App\Models\MetricSample;
 use App\Models\Setting;
-use Illuminate\Support\Facades\DB;
 
 class SustainedNode extends BaseNode
 {
@@ -17,179 +15,166 @@ class SustainedNode extends BaseNode
     public function getSettingDefinitions(): array
     {
         return [
-            ['key' => 'duration', 'label' => 'Duration (MM:DD:HH:MM:SS)', 'type' => 'string', 'required' => true, 'default' => '00:00:05:00:00'],
+            ['key' => 'duration', 'label' => 'Duration (ms)', 'type' => 'string', 'required' => true, 'default' => '300000'],
             ['key' => 'min_match_percent', 'label' => 'Min Match %', 'type' => 'number', 'default' => 100, 'description' => 'Minimum % of samples that must violate the threshold within the sustain window'],
+            ['key' => 'repeat_interval', 'label' => 'Repeat Interval (ms)', 'type' => 'string', 'default' => ''],
+            ['key' => 'repeat_max_repeats', 'label' => 'Max Repeats (0 = infinite)', 'type' => 'number', 'default' => 0],
         ];
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Entry point
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function evaluate(array $inputValues, array $settings, array $state): NodeResult
     {
-        $input = $inputValues[0] ?? null;
-        $requiredSeconds = static::parseDurationToSeconds($settings['duration'] ?? '00:00:05:00:00');
-        $extraSeconds = (int) ($state['extra_sustain_seconds'] ?? 0);
-        $requiredSeconds += $extraSeconds;
-        $minMatchPercent = (float) ($settings['min_match_percent'] ?? 100);
+        $cfg = $this->parseConfig($settings, $state);
 
-        $isTimerFire = $state['timer_fire'] ?? false;
-        $timerPending = $state['timer_pending'] ?? false;
-        $alreadyFired = $state['already_fired'] ?? false;
-
-        $serverId = $state['server_id'] ?? null;
-        $metricType = $state['metric_type'] ?? null;
-        $threshold = $state['threshold'] ?? null;
-        $operator = $state['operator'] ?? 'greater_than';
-
-        // Timer fire: re-check historical condition after sustain duration elapsed
-        if ($isTimerFire) {
-            if ($serverId && $metricType) {
-                $conditionMet = $this->checkHistoricalCondition(
-                    $serverId,
-                    $metricType,
-                    $threshold,
-                    $operator,
-                    $requiredSeconds,
-                    $minMatchPercent,
-                );
-
-                if ($conditionMet) {
-                    return NodeResult::propagate(true, [
-                        'timer_pending' => false,
-                        'already_fired' => true,
-                    ]);
-                }
-
-                return NodeResult::propagate(false, [
-                    'timer_pending' => false,
-                    'already_fired' => false,
-                ]);
-            }
-
-            // Fallback: propagate whatever input was pending
-            $pendingInput = $state['pending_input'] ?? null;
-            return NodeResult::propagate($pendingInput, [
-                'timer_pending' => false,
-                'already_fired' => $pendingInput ? true : false,
-            ]);
-        }
-
-        // Historical DB path (server_id + metric_type available)
-        if ($serverId && $metricType) {
-            $conditionMet = $this->checkHistoricalCondition(
-                $serverId,
-                $metricType,
-                $threshold,
-                $operator,
-                $requiredSeconds,
-                $minMatchPercent,
-            );
-
-            if ($alreadyFired) {
-                if (!$conditionMet) {
-                    return NodeResult::propagate(false, [
-                        'timer_pending' => false,
-                        'already_fired' => false,
-                    ]);
-                }
-                return NodeResult::noPropagate(null, $state);
-            }
-
-            if ($conditionMet && !$timerPending) {
-                // First time condition is true: schedule timer for sustain duration
-                $delayMs = $requiredSeconds * 1000;
-                return NodeResult::withTimer(true, new NodeTimer($delayMs, ['sustain_fire' => true]), [
-                    'timer_pending' => true,
-                    'pending_input' => true,
-                    'already_fired' => false,
-                ]);
-            }
-
-            if ($conditionMet && $timerPending) {
-                // Timer already dispatched, skip
-                return NodeResult::noPropagate(null, $state);
-            }
-
-            if (!$conditionMet && $timerPending) {
-                // Condition went false while timer pending: reset
-                return NodeResult::noPropagate(null, [
-                    'timer_pending' => false,
-                    'pending_input' => null,
-                    'already_fired' => false,
-                ]);
-            }
-
-            if (!$conditionMet && !$timerPending) {
-                return NodeResult::propagate(false, [
-                    'timer_pending' => false,
-                    'already_fired' => false,
-                ]);
-            }
-        }
-
-        // Fallback: accumulated time path (no server_id/metric_type)
-        if ($alreadyFired) {
-            if (!$input) {
-                return NodeResult::propagate(false, ['timer_pending' => false, 'already_fired' => false]);
-            }
-            return NodeResult::noPropagate(null, $state);
-        }
-
-        if ($input) {
-            $accumulated = (float) ($state['accumulated_seconds'] ?? 0);
-            $lastTimestamp = (float) ($state['last_timestamp'] ?? 0);
-            $now = microtime(true);
-
-            if ($lastTimestamp > 0) {
-                $accumulated += ($now - $lastTimestamp);
-            }
-
-            $newState = [
-                'accumulated_seconds' => $accumulated,
-                'last_timestamp' => $now,
-                'already_fired' => false,
-            ];
-
-            if ($accumulated >= $requiredSeconds) {
-                $newState['already_fired'] = true;
-                return NodeResult::propagate(true, $newState);
-            }
-
-            return NodeResult::noPropagate(null, $newState);
-        }
-
-        return NodeResult::propagate(false, ['accumulated_seconds' => 0, 'last_timestamp' => 0, 'already_fired' => false, 'timer_pending' => false]);
+        return ($state['timer_fire'] ?? false)
+            ? $this->onTimerFire($cfg, $state)
+            : $this->onHeartbeat($cfg, $state, $inputValues[0] ?? null);
     }
 
-    private function checkHistoricalCondition(
-        int $serverId,
-        string $metricType,
-        ?float $threshold,
-        string $operator,
-        int $requiredSeconds,
-        float $minMatchPercent = 100,
-    ): bool {
-        if ($metricType === 'server_status') {
-            return $this->checkServerStatusCondition($serverId, $requiredSeconds);
+    // ─────────────────────────────────────────────────────────────────────────
+    // Heartbeat path  (no DB query — driven purely by live ConditionNode input)
+    //
+    // The $input is the output of the upstream ConditionNode (true/false/null).
+    // It tells us whether the metric is currently crossing the threshold.
+    // It "jumpstarts" the sustain window; the DB verifies it at timer-fire time.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function onHeartbeat(array $cfg, array $state, mixed $input): NodeResult
+    {
+        $phase = $state['phase'] ?? 'idle';
+        $conditionMet = $input === true;
+
+        return match ($phase) {
+            // Already firing: stay until condition clears (recovery)
+            'firing' => $conditionMet
+                ? NodeResult::noPropagate(null, $state)
+                : NodeResult::cancelTimers($this->idleState()),
+
+            // Timer is in flight: wait — if condition cleared while pending, cancel timer & return to idle
+            'pending' => $conditionMet
+                ? NodeResult::noPropagate(null, $state)
+                : NodeResult::cancelTimers($this->idleState()),
+
+            // Idle: start the sustain window on first truthy input
+            default => $conditionMet
+                ? NodeResult::noPropagate(
+                    new NodeTimer($cfg['duration_ms'], ['sustain_fire' => true]),
+                    ['phase' => 'pending', 'repeat_count' => 0],
+                )
+                : NodeResult::propagate(false, $this->idleState()),
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Timer-fire path  (DB query — verifies the condition was truly sustained)
+    //
+    // Two sub-cases arrive here:
+    //   sustain fire  — initial window elapsed, check whether condition held
+    //   repeat fire   — subsequent repeat interval elapsed, re-check and re-alert
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function onTimerFire(array $cfg, array $state): NodeResult
+    {
+        $isRepeat = $state['repeat_fire'] ?? false;
+        $repeatCount = (int) ($state['repeat_count'] ?? 0) + ($isRepeat ? 1 : 0);
+
+        // DB re-verification: was the condition actually sustained?
+        if (!$this->checkHistoricalCondition($cfg)) {
+            return NodeResult::cancelTimers($this->idleState());
         }
 
-        if ($threshold === null) {
+        // Condition confirmed — fire notification and manage repeat cycle
+        $firingState = ['phase' => 'firing', 'repeat_count' => $repeatCount];
+
+        if ($cfg['has_repeat'] && ($cfg['max_repeats'] === 0 || $repeatCount < $cfg['max_repeats'])) {
+            return NodeResult::withTimer(
+                true,
+                new NodeTimer($cfg['repeat_interval_ms'], ['repeat_fire' => true]),
+                $firingState,
+            );
+        }
+
+        // After a one-shot fire: propagate the alert, then return to idle so the
+        // next heartbeat can start a fresh pending window if conditions still hold.
+        return NodeResult::propagate(true, $this->idleState());
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function idleState(): array
+    {
+        return ['phase' => 'idle', 'repeat_count' => 0];
+    }
+
+    private function parseConfig(array $settings, array $state): array
+    {
+        $durationMs = static::parseDurationToMs($settings['duration'] ?? '300000');
+        $durationMs += (int) ($state['extra_sustain_ms'] ?? 0);
+
+        $repeatIntervalMs = static::parseDurationToMs($settings['repeat_interval'] ?? '0');
+
+        return [
+            'duration_ms'        => $durationMs,
+            'min_match_percent'  => (float) ($settings['min_match_percent'] ?? 100),
+            'repeat_interval_ms' => $repeatIntervalMs,
+            'max_repeats'        => (int) ($settings['repeat_max_repeats'] ?? 0),
+            'has_repeat'         => $repeatIntervalMs > 0,
+            'server_id'          => $state['server_id'] ?? null,
+            'metric_type'        => $state['metric_type'] ?? null,
+            'threshold'          => $state['threshold'] ?? null,
+            'operator'           => $state['operator'] ?? 'greater_than',
+        ];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DB condition checks
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function checkHistoricalCondition(array $cfg): bool
+    {
+        $serverId   = $cfg['server_id'];
+        $metricType = $cfg['metric_type'];
+
+        if (!$serverId || !$metricType) {
             return false;
         }
 
-        return $this->checkMetricCondition($serverId, $metricType, $threshold, $operator, $requiredSeconds, $minMatchPercent);
+        if ($metricType === 'server_status') {
+            return $this->checkServerStatusCondition($serverId, $cfg['duration_ms']);
+        }
+
+        if ($cfg['threshold'] === null) {
+            return false;
+        }
+
+        return $this->checkMetricCondition(
+            $serverId,
+            $metricType,
+            (float) $cfg['threshold'],
+            $cfg['operator'],
+            $cfg['duration_ms'],
+            $cfg['min_match_percent'],
+        );
     }
 
-    private function checkServerStatusCondition(int $serverId, int $requiredSeconds): bool
+    private function checkServerStatusCondition(int $serverId, int $requiredMs): bool
     {
         $agent = Agent::where('server_id', $serverId)->first();
 
         if (!$agent || !$agent->last_seen_at) {
-            return true;
+            return false;
         }
 
-        $offlineThresholdMinutes = (int) Setting::get('offline_threshold', '5');
-        $offlineThresholdSeconds = $offlineThresholdMinutes * 60;
+        $offlineThresholdMs = (int) Setting::get('offline_threshold', '15000');
 
-        return $agent->last_seen_at->lt(now()->subSeconds($offlineThresholdSeconds + $requiredSeconds));
+        return $agent->last_seen_at->lt(now()->subMilliseconds($offlineThresholdMs + $requiredMs));
     }
 
     private function checkMetricCondition(
@@ -197,59 +182,53 @@ class SustainedNode extends BaseNode
         string $metricType,
         float $threshold,
         string $operator,
-        int $requiredSeconds,
-        float $minMatchPercent = 100,
+        int $requiredMs,
+        float $minMatchPercent,
     ): bool {
-        $since = now()->subSeconds($requiredSeconds);
-
         $agent = Agent::where('server_id', $serverId)->first();
         if (!$agent) {
             return false;
         }
 
         $metricNameMap = [
-            'cpu_usage' => 'load1',
-            'memory_usage' => 'percent',
-            'disk_usage' => 'percent',
+            'cpu_usage'     => 'load1',
+            'memory_usage'  => 'percent',
+            'disk_usage'    => 'percent',
             'network_usage' => 'rx_bytes',
         ];
 
-        $metricName = $metricNameMap[$metricType] ?? $metricType;
+        $metricName         = $metricNameMap[$metricType] ?? $metricType;
+        $metricTypeForQuery = explode('_', $metricType, 2)[0];
+        $since              = now()->subMilliseconds($requiredMs);
+        $sqlOperator        = $this->toSqlOperator($operator);
 
-        $metricTypeForQuery = $metricType;
-        if (in_array($metricType, ['cpu_usage', 'memory_usage', 'disk_usage', 'network_usage'])) {
-            $metricTypeForQuery = strtok($metricType, '_');
-        }
+        // Single aggregated query instead of two separate count() calls
+        $row = MetricSample::whereHas('batch', fn($q) => $q
+            ->where('agent_id', $agent->id)
+            ->where('recorded_at', '>=', $since))
+            ->where('metric_type', $metricTypeForQuery)
+            ->where('metric_name', $metricName)
+            ->selectRaw(
+                'COUNT(*) as total, SUM(CASE WHEN value ' . $sqlOperator . ' ? THEN 1 ELSE 0 END) as violating',
+                [$threshold],
+            )
+            ->first();
 
-        $sampleCount = MetricSample::whereHas('batch', function ($q) use ($agent, $since) {
-            $q->where('agent_id', $agent->id)
-              ->where('recorded_at', '>=', $since);
-        })
-        ->where('metric_type', $metricTypeForQuery)
-        ->where('metric_name', $metricName)
-        ->count();
-
-        if ($sampleCount === 0) {
+        if (!$row || (int) $row->total === 0) {
             return false;
         }
 
-        $violatingCount = MetricSample::whereHas('batch', function ($q) use ($agent, $since) {
-            $q->where('agent_id', $agent->id)
-              ->where('recorded_at', '>=', $since);
-        })
-        ->where('metric_type', $metricTypeForQuery)
-        ->where('metric_name', $metricName)
-        ->where(function ($q) use ($operator, $threshold) {
-            match ($operator) {
-                'greater_than' => $q->where('value', '>', $threshold),
-                'less_than' => $q->where('value', '<', $threshold),
-                'equal' => $q->where('value', '=', $threshold),
-                'between' => $q->where('value', '<', $threshold),
-                default => $q->where('value', '>', $threshold),
-            };
-        })
-        ->count();
+        return ((int) $row->violating / (int) $row->total) * 100 >= $minMatchPercent;
+    }
 
-        return $sampleCount > 0 && ($violatingCount / $sampleCount) * 100 >= $minMatchPercent;
+    private function toSqlOperator(string $operator): string
+    {
+        return match ($operator) {
+            'greater_than_equal' => '>=',
+            'less_than'          => '<',
+            'less_than_equal'    => '<=',
+            'equal'              => '=',
+            default              => '>',   // greater_than (and fallback)
+        };
     }
 }

@@ -180,11 +180,11 @@ export default function ServersIndex() {
                     sortLabel={currentSortLabel}
                 />
                 {isLoading ? (
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
                         {Array.from({ length: 6 }).map((_, i) => (
                             <div
                                 key={i}
-                                className="h-16 bg-card border border-border rounded-lg animate-pulse"
+                                className="h-48 bg-card border border-border rounded-lg animate-pulse"
                             />
                         ))}
                     </div>
@@ -198,7 +198,7 @@ export default function ServersIndex() {
                         </p>
                     </div>
                 ) : (
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
                         {filtered.map((server) => {
                             const effectiveStatus = server.agent_deleted ? "pending_deletion" : (server.status ?? "offline");
                             const meta = STATUS_META[effectiveStatus] ?? STATUS_META.offline;
@@ -207,35 +207,30 @@ export default function ServersIndex() {
                                 <Link
                                     key={server.uuid}
                                     to={`/servers/${server.uuid}?client=all`}
-                                    className="flex items-center gap-4 p-4 rounded-lg border border-border/60 bg-card hover:bg-muted/20 transition-colors cursor-pointer"
+                                    className="block rounded-lg transition-transform duration-200 hover:-translate-y-1"
                                 >
-                                    <div
-                                        className={cn(
-                                            "p-2 rounded-lg",
-                                            meta.bg,
-                                        )}
-                                    >
-                                        <Icon
-                                            className={cn("size-4", meta.color)}
-                                        />
+                                    <div className="relative size-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans gap-3 transition-shadow hover:shadow-md">
+                                        <div className={cn("p-3 rounded-lg", meta.bg)}>
+                                            <Icon className={cn("size-5", meta.color)} />
+                                        </div>
+                                        <div className="text-center w-full flex flex-col items-center gap-1.5">
+                                            <p className="text-sm font-medium text-foreground truncate w-full">
+                                                {server.name}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground truncate w-full">
+                                                {server.client_name}
+                                            </p>
+                                            <span
+                                                className={cn(
+                                                    "text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded text-center",
+                                                    meta.color,
+                                                    meta.bg,
+                                                )}
+                                            >
+                                                {effectiveStatus.replace(/_/g, " ")}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-foreground truncate">
-                                            {server.name}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground truncate">
-                                            {server.client_name}
-                                        </p>
-                                    </div>
-                                    <span
-                                        className={cn(
-                                            "text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded text-center min-w-15",
-                                            meta.color,
-                                            meta.bg,
-                                        )}
-                                    >
-                                        {effectiveStatus.replace(/_/g, " ")}
-                                    </span>
                                 </Link>
                             );
                         })}

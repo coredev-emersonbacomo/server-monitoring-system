@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { Bell } from "lucide-react";
 import PageLayout from "@/components/PageLayout";
 import { NodeConfigEditor } from "@/components/node-config/NodeConfigEditor";
@@ -78,9 +77,9 @@ const alertGraph: NodeConfigGraph = {
                 label: "Email 10s",
                 channel: "email",
                 subject:
-                    "[{server.client.name}] {server.name} - {metricName} Alert (10s)",
+                    "[{server.client.name}] {server.name} - {runtime.metricName} Alert (10s)",
                 message:
-                    "[{server.client.name}] {server.name}'s {metricName} has been above 85% for {sustainValue}! (sent {runtime.timestamp})",
+                    "[{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! (event timestamp: {runtime.offlineTimestamp})",
             },
         },
         {
@@ -91,9 +90,9 @@ const alertGraph: NodeConfigGraph = {
                 label: "Email 20s",
                 channel: "email",
                 subject:
-                    "[{server.client.name}] {server.name} - {metricName} Alert (20s)",
+                    "[{server.client.name}] {server.name} - {runtime.metricName} Alert (20s)",
                 message:
-                    "[{server.client.name}] {server.name}'s {metricName} has been above 85% for {sustainValue}! (sent {runtime.timestamp})",
+                    "[{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! (event timestamp: {runtime.offlineTimestamp})",
             },
         },
         {
@@ -104,7 +103,7 @@ const alertGraph: NodeConfigGraph = {
                 label: "Discord 30s",
                 channel: "discord",
                 message:
-                    ":rotating_light: [{server.client.name}] {server.name}'s {metricName} has been above 85% for {sustainValue}! Repeating every 10s. (sent {runtime.timestamp})",
+                    ":rotating_light: [{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! Repeating every 10s. (event timestamp: {runtime.offlineTimestamp})",
             },
         },
         {
@@ -128,7 +127,7 @@ const alertGraph: NodeConfigGraph = {
                 channel: "email",
                 subject: "[{server.client.name}] {server.name} - Offline Alert",
                 message:
-                    "[{server.client.name}] {server.name} is offline! (sent {runtime.timestamp})",
+                    "[{server.client.name}] {server.name} is offline! (event timestamp: {runtime.offlineTimestamp})",
             },
         },
         {
@@ -145,7 +144,7 @@ const alertGraph: NodeConfigGraph = {
                 label: "Discord Offline",
                 channel: "discord",
                 message:
-                    ":rotating_light: [{server.client.name}] {server.name} is still offline! (for {runtime.offlineDuration}) (sent {runtime.timestamp})",
+                    ":rotating_light: [{server.client.name}] {server.name} is still offline! (for {runtime.offlineDuration}) (event timestamp: {runtime.offlineTimestamp})",
             },
         },
         {
@@ -267,15 +266,12 @@ const alertGraph: NodeConfigGraph = {
 // ── Page ──────────────────────────────────────────────────────────
 
 export default function DocsAlerts() {
-    const navigate = useNavigate();
-
     return (
         <PageLayout>
             <IndexHeader
                 icon={Bell}
                 title="Alerts"
                 description="Node-based alerting system — configuration, evaluation, and scheduling."
-                onBackClick={() => navigate("/docs")}
             />
 
             <main className="py-6 w-full flex-1">
@@ -435,9 +431,9 @@ export default function DocsAlerts() {
                                 message. Supports template variables:{" "}
                                 <InlineCode>{`{server.name}`}</InlineCode>,{" "}
                                 <InlineCode>{`{server.client.name}`}</InlineCode>
-                                , <InlineCode>{`{metricName}`}</InlineCode>,{" "}
-                                <InlineCode>{`{sustainValue}`}</InlineCode>,{" "}
-                                <InlineCode>{`{runtime.timestamp}`}</InlineCode>
+                                , <InlineCode>{`{runtime.metricName}`}</InlineCode>,{" "}
+                                <InlineCode>{`{runtime.sustainValue}`}</InlineCode>,{" "}
+                                <InlineCode>{`{runtime.offlineTimestamp}`}</InlineCode>
                                 .
                             </p>
                         </SubSection>

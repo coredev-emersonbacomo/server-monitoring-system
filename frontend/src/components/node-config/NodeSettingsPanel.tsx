@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
     NodeConfigNode,
     NodeTypeDefinition,
     NodeSettingDefinition,
 } from "@/types/node-config";
-import { X } from "lucide-react";
+import { X, Repeat, Puzzle } from "lucide-react";
+import { DurationInput } from "./nodes/DurationInput";
 
 interface NodeSettingsPanelProps {
     node: NodeConfigNode | null;
@@ -38,26 +39,27 @@ export function NodeSettingsPanel({
 
     const settings = (node.data as Record<string, unknown>) || {};
     const channel = settings.channel as string | undefined;
+    const repeatIntervalMs = parseInt((settings.repeat_interval as string) || '0', 10) || 0;
+    const hasRepeat = repeatIntervalMs > 0;
 
     const settingDefs = useMemo(() => {
         const all = nodeTypeDef?.settings || [];
-        if (nodeTypeDef?.type !== "notification") return all;
-        const channelKey = channel || "email";
-
-        const channelSettings: Record<string, string[]> = {
-            email: ["channel", "subject", "message"],
-            sms: ["channel", "message"],
-            discord: [
-                "channel",
-                "bot_token",
-                "channel_id",
-                "role_id",
-                "message",
-            ],
-        };
-        const allowed = channelSettings[channelKey] || channelSettings.email;
-        return all.filter((s) => allowed.includes(s.key));
-    }, [nodeTypeDef, channel]);
+        let filtered = all;
+        if (nodeTypeDef?.type === "notification") {
+            const channelKey = channel || "email";
+            const channelSettings: Record<string, string[]> = {
+                email: ["channel", "subject", "message"],
+                sms: ["channel", "message"],
+                discord: ["channel", "bot_token", "channel_id", "role_id", "message"],
+            };
+            const allowed = channelSettings[channelKey] || channelSettings.email;
+            filtered = all.filter((s) => allowed.includes(s.key));
+        }
+        if (hasRepeat) {
+            filtered = filtered.filter((s) => s.key !== 'repeat_interval' && s.key !== 'repeat_max_repeats');
+        }
+        return filtered;
+    }, [nodeTypeDef, channel, hasRepeat]);
 
     return (
         <div className="w-72 max-h-120 bg-card border border-border/40 ring-1 ring-foreground/30 rounded-lg shadow-lg overflow-y-auto">
@@ -93,6 +95,38 @@ export function NodeSettingsPanel({
                         No settings available.
                     </p>
                 )}
+
+                {hasRepeat && (
+                    <>
+                        <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+                            <Puzzle size={10} className="text-muted-foreground" />
+                            <span className="text-[10px] font-medium uppercase text-muted-foreground/60">Capabilities</span>
+                        </div>
+                        <div className="flex flex-col gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Puzzle size={12} className="text-primary" />
+                                    <span className="text-xs font-medium text-primary">Repeat</span>
+                                </div>
+                                <button
+                                    onClick={() => onUpdate(node.id, { ...settings, repeat_interval: '', repeat_max_repeats: 0 })}
+                                    className="text-[10px] text-muted-foreground hover:text-red-400 transition-colors"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                            <DurationInput
+                                label="Interval"
+                                value={repeatIntervalMs}
+                                onChange={(ms) => onUpdate(node.id, { ...settings, repeat_interval: String(ms) })}
+                            />
+                            <RepeatMaxField
+                                value={(settings.repeat_max_repeats as number) ?? 0}
+                                onChange={(v) => onUpdate(node.id, { ...settings, repeat_max_repeats: v })}
+                            />
+                        </div>
+                    </>
+                )}
             </div>
 
             <div className="p-4 border-t border-border/40">
@@ -103,6 +137,50 @@ export function NodeSettingsPanel({
                     Delete Node
                 </button>
             </div>
+        </div>
+    );
+}
+
+function RepeatMaxField({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+    const isInfinite = value === 0 || value === 'inf';
+    const [inputValue, setInputValue] = useState(isInfinite ? 'inf' : String(value));
+    const [hasError, setHasError] = useState(false);
+
+    const commit = () => {
+        const v = inputValue.trim();
+        if (v === 'inf' || v === '0') {
+            setHasError(false);
+            onChange(0);
+            setInputValue('inf');
+        } else {
+            const n = parseInt(v);
+            if (isNaN(n) || n < 1) {
+                setHasError(true);
+                return;
+            }
+            setHasError(false);
+            onChange(n);
+            setInputValue(String(n));
+        }
+    };
+
+    return (
+        <div className="flex items-center gap-2">
+            <span className="text-[10px] font-medium uppercase text-muted-foreground shrink-0">Max runs</span>
+            <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => {
+                    setInputValue(e.target.value);
+                    if (hasError) setHasError(false);
+                }}
+                onBlur={commit}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                className={`flex-1 min-w-0 text-xs font-mono text-foreground bg-background border rounded px-1.5 py-1 focus:outline-none focus:ring-1 ${
+                    hasError ? 'border-red-500 focus:ring-red-500/50' : 'border-input focus:ring-ring'
+                }`}
+            />
+            <span className="text-[10px] text-muted-foreground font-medium">inf = endless</span>
         </div>
     );
 }

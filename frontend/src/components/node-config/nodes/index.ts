@@ -15,7 +15,6 @@ export const nodeTypes: NodeTypes = {
     // Time
     check_after: TimeNode,
     sustained: TimeNode,
-    repeat: TimeNode,
-    // Notification (merged)
+    // Notification (merged - terminal, no output)
     notification: ActionNode,
 };

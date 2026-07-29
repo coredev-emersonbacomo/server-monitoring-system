@@ -5,16 +5,16 @@ import {
     Pencil,
     Upload,
     AlertTriangle,
-    Trash2,
     RefreshCw,
     Info,
     Building,
     Plus,
     Loader2,
     Search,
+    Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useBreadcrumb } from "@/hooks/useBreadcrumb";
+import IndexHeader from "@/components/IndexHeader";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { Label } from "@/components/ui/label";
@@ -39,9 +39,43 @@ import { useClients } from "@/hooks/useClients";
 import { Tab } from "@/components/ui/tab";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { uploadFile } from "@/lib/uploadToast";
-
-//helper function to format phone numbers
 import { formatPhoneNumber } from "@/utils/helpers";
+import { Form, createFormStore, useForm } from "@/components/ui/form";
+
+// ─── Schema ──────────────────────────────────────────────────────────────────
+
+const userSchema = z
+    .object({
+        first_name: z.string().trim().min(1, "Required"),
+        last_name: z.string().trim().min(1, "Required"),
+        email: z.email("Invalid email").trim().min(1, "Required"),
+        username: z.string().trim().min(1, "Required"),
+        phone_number: z
+            .string()
+            .trim()
+            .min(1, "Required")
+            .regex(
+                /^09\d{9}$/,
+                "Must be a valid PH number starting with 09 (e.g. 09123456789)",
+            ),
+        password: z.string().superRefine((val, ctx) => {
+            if (val && val.length < 8)
+                ctx.addIssue({
+                    code: "custom",
+                    message: "Minimum 8 characters",
+                });
+        }),
+        password_confirmation: z.string(),
+    })
+    .superRefine((data, ctx) => {
+        if (data.password && data.password !== data.password_confirmation) {
+            ctx.addIssue({
+                code: "custom",
+                path: ["password_confirmation"],
+                message: "Passwords do not match",
+            });
+        }
+    });
 
 // ─── Form skeleton ────────────────────────────────────────────────────────────
 
@@ -211,13 +245,6 @@ export default function UserDetail() {
     const navigate = useNavigate();
     const { uuid = "" } = useParams<{ uuid: string }>();
 
-    const { setTrail } = useBreadcrumb();
-
-    const [mode, setMode] = useState<"view" | "create" | "edit">(
-        uuid ? "view" : "create",
-    );
-    const showEdit = mode !== "view";
-
     // ── Data fetching ──────────────────────────────────────────────────────────
     const { data: user, isLoading, isError } = useUser(uuid);
     const { data: userClients = [], isLoading: clientsLoading } =
@@ -234,6 +261,51 @@ export default function UserDetail() {
     const addClient = useAddUserClient(uuid);
     const removeClient = useRemoveUserClient(uuid);
 
+    const isCreate = !uuid;
+    const isSaving = createUser.isPending || updateUser.isPending;
+
+    // ── Form store ─────────────────────────────────────────────────────────────
+    const store = useMemo(() => {
+        if (isCreate) {
+            return createFormStore({
+                schema: userSchema,
+                originalData: {
+                    first_name: "",
+                    last_name: "",
+                    email: "",
+                    username: "",
+                    phone_number: "",
+                    password: "",
+                    password_confirmation: "",
+                },
+                initialMode: "create",
+            });
+        }
+        return createFormStore({
+            schema: userSchema,
+            originalData: user
+                ? {
+                      first_name: user.first_name,
+                      last_name: user.last_name,
+                      email: user.email,
+                      username: user.username,
+                      phone_number: user.phone_number,
+                      password: "",
+                      password_confirmation: "",
+                  }
+                : {
+                      first_name: "",
+                      last_name: "",
+                      email: "",
+                      username: "",
+                      phone_number: "",
+                      password: "",
+                      password_confirmation: "",
+                  },
+            initialMode: "view",
+        });
+    }, [isCreate, user?.uuid]);
+
     // ── Local state ────────────────────────────────────────────────────────────
     const [showDelete, setShowDelete] = useState(false);
     const [showClientDialog, setShowClientDialog] = useState(false);
@@ -244,53 +316,51 @@ export default function UserDetail() {
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const [form, setForm] = useState({
-        first_name: "",
-        last_name: "",
-        email: "",
-        username: "",
-        phone_number: "",
-        password: "",
-        password_confirmation: "",
-    });
 
-    // Reset mode when navigating between users / to create
-    useEffect(() => {
-        const next = uuid ? "view" : "create";
-        setMode(next);
-        if (next === "create") {
-            setForm({
-                first_name: "",
-                last_name: "",
-                email: "",
-                username: "",
-                phone_number: "",
-                password: "",
-                password_confirmation: "",
-            });
-            setAvatarPreview(null);
-            setAvatarFile(null);
-            setErrors({});
-        }
-    }, [uuid]);
+    const form = useForm(store, (s) => s.form);
+    const mode = useForm(store, (s) => s.mode);
+    const showEdit = mode !== "view";
 
     // Populate form when user data arrives
     useEffect(() => {
-        if (user) {
-            setForm({
-                first_name: user.first_name,
-                last_name: user.last_name,
-                email: user.email,
-                username: user.username,
-                phone_number: user.phone_number,
-                password: "",
-                password_confirmation: "",
+        if (user && !isCreate) {
+            store.setState({
+                form: {
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    email: user.email,
+                    username: user.username,
+                    phone_number: user.phone_number,
+                    password: "",
+                    password_confirmation: "",
+                },
+                originalData: {
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    email: user.email,
+                    username: user.username,
+                    phone_number: user.phone_number,
+                    password: "",
+                    password_confirmation: "",
+                },
             });
             setAvatarPreview(user.profile_picture_url ?? null);
         }
-    }, [user]);
+    }, [user?.uuid]);
 
     const hasChanges = useMemo(() => {
+        if (isCreate) {
+            return (
+                form.first_name !== "" ||
+                form.last_name !== "" ||
+                form.email !== "" ||
+                form.username !== "" ||
+                form.phone_number !== "" ||
+                form.password !== "" ||
+                form.password_confirmation !== "" ||
+                avatarFile !== null
+            );
+        }
         if (!user) return false;
         const formChanged =
             form.first_name !== user.first_name ||
@@ -301,83 +371,28 @@ export default function UserDetail() {
             form.password !== "" ||
             form.password_confirmation !== "";
         return formChanged || avatarFile !== null;
-    }, [form, user, avatarFile]);
+    }, [form, user, avatarFile, isCreate]);
 
-    // Breadcrumb
-    useEffect(() => {
-        if (mode === "create") {
-            setTrail([{ label: "Users", href: "/users" }, { label: "Create" }]);
+    const trail = useMemo(() => {
+        if (isCreate) {
+            return [{ label: "Users", href: "/users" }, { label: "Create" }];
         } else if (user) {
-            setTrail([
+            return [
                 { label: "Users", href: "/users" },
                 { label: `${user.first_name} ${user.last_name}` },
-            ]);
+            ];
         }
-    }, [setTrail, mode, user]);
-
-    const set = (key: keyof typeof form) => (value: string) =>
-        setForm((f) => ({ ...f, [key]: value }));
-
-    // ── Validation ─────────────────────────────────────────────────────────────
-    const isCreate = mode === "create";
-
-    const schema = z
-        .object({
-            first_name: z.string().trim().min(1, "Required"),
-            last_name: z.string().trim().min(1, "Required"),
-            email: z.email("Invalid email").trim().min(1, "Required"),
-            username: z.string().trim().min(1, "Required"),
-            phone_number: z
-                .string()
-                .trim()
-                .min(1, "Required")
-                .regex(
-                    /^09\d{9}$/,
-                    "Must be a valid PH number starting with 09 (e.g. 09123456789)",
-                ),
-            password: z.string().superRefine((val, ctx) => {
-                if (isCreate && !val)
-                    ctx.addIssue({
-                        code: "custom",
-                        message: "Required",
-                    });
-                else if (val && val.length < 8)
-                    ctx.addIssue({
-                        code: "custom",
-                        message: "Minimum 8 characters",
-                    });
-            }),
-            password_confirmation: z.string(),
-        })
-        .superRefine((data, ctx) => {
-            if (data.password && data.password !== data.password_confirmation) {
-                ctx.addIssue({
-                    code: "custom",
-                    path: ["password_confirmation"],
-                    message: "Passwords do not match",
-                });
-            }
-        });
-
-    const validate = (): boolean => {
-        const result = schema.safeParse(form);
-        if (result.success) {
-            setErrors({});
-            return true;
-        }
-        const newErrors: Record<string, string> = {};
-        for (const issue of result.error.issues) {
-            const key = issue.path[0] as string;
-            if (!newErrors[key]) newErrors[key] = issue.message;
-        }
-        setErrors(newErrors);
-        return false;
-    };
+        return [];
+    }, [isCreate, user]);
 
     // ── Handlers ───────────────────────────────────────────────────────────────
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!validate()) return;
+    const handleSubmit = async () => {
+        // Extra validation for create mode: password required
+        if (isCreate && !form.password) {
+            store.setState({ errors: { password: "Password is required" } });
+            return;
+        }
+        store.setState({ errors: {} });
 
         try {
             let uploadFields: Record<string, string> = {};
@@ -394,7 +409,7 @@ export default function UserDetail() {
                 };
             }
 
-            if (mode === "create") {
+            if (isCreate) {
                 const createPayload = {
                     first_name: form.first_name,
                     last_name: form.last_name,
@@ -425,19 +440,18 @@ export default function UserDetail() {
                 };
                 await updateUser.mutateAsync(updatePayload);
                 toast.success("User updated successfully.");
-                setMode("view");
-                setForm((f) => ({
-                    ...f,
-                    password: "",
-                    password_confirmation: "",
-                }));
+                store.setMode("view");
+                store.setState({
+                    form: {
+                        ...form,
+                        password: "",
+                        password_confirmation: "",
+                    },
+                });
             }
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
-            // uploadFile handles toast cleanup on error
             console.error("Submission failed:", err);
-
-            // 2. Safely extract validation errors from Axios or native requests
             const errorData = err?.response?.data || err;
 
             if (errorData?.errors) {
@@ -445,14 +459,13 @@ export default function UserDetail() {
                 for (const [k, v] of Object.entries(errorData.errors)) {
                     mapped[k] = Array.isArray(v) ? v[0] : String(v);
                 }
-                setErrors(mapped);
+                store.setState({ errors: mapped });
             } else {
-                // 3. Provide a fallback message from the server if available, otherwise use your generic text
                 const serverMessage =
                     err?.response?.data?.message || err?.message;
                 toast.error(
                     serverMessage ||
-                        (mode === "create"
+                        (isCreate
                             ? "Failed to create user."
                             : "Failed to update user."),
                 );
@@ -483,17 +496,19 @@ export default function UserDetail() {
     };
 
     const cancelEdit = () => {
-        setMode("view");
+        store.setMode("view");
         setErrors({});
         if (user) {
-            setForm({
-                first_name: user.first_name,
-                last_name: user.last_name,
-                email: user.email,
-                username: user.username,
-                phone_number: user.phone_number,
-                password: "",
-                password_confirmation: "",
+            store.setState({
+                form: {
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    email: user.email,
+                    username: user.username,
+                    phone_number: user.phone_number,
+                    password: "",
+                    password_confirmation: "",
+                },
             });
             setAvatarPreview(user.profile_picture_url ?? null);
             setAvatarFile(null);
@@ -501,7 +516,7 @@ export default function UserDetail() {
     };
 
     // ── Loading state ──────────────────────────────────────────────────────────
-    if (mode !== "create" && isLoading) {
+    if (!isCreate && isLoading) {
         return (
             <div className="w-full flex flex-col items-center px-4 py-6">
                 <div className="w-full max-w-3xl flex flex-col gap-6">
@@ -514,7 +529,7 @@ export default function UserDetail() {
     }
 
     // ── Error / not found state ────────────────────────────────────────────────
-    if (mode !== "create" && (isError || (!isLoading && !user))) {
+    if (!isCreate && (isError || (!isLoading && !user))) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
                 <AlertTriangle size={32} className="opacity-40" />
@@ -534,7 +549,6 @@ export default function UserDetail() {
     const DEFAULT_AVATAR = import.meta.env.VITE_DEFAULT_PROFILE_PICTURE || null;
     const avatarSrc = avatarPreview || DEFAULT_AVATAR;
     const avatarInputId = "avatar-upload";
-    const isSaving = createUser.isPending || updateUser.isPending;
 
     const availableClients = allClients
         .filter((client) => !userClients.some((uc) => uc.uuid === client.uuid))
@@ -551,6 +565,9 @@ export default function UserDetail() {
         <>
             <LoadingOverlay visible={isSaving} />
             <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
+                {/* ── Breadcrumb ── */}
+                <IndexHeader icon={Users} trail={trail} />
+
                 {/* ── Banner / Hero ── */}
                 <div className="relative">
                     <div className="absolute inset-0 overflow-hidden rounded-t-xl">
@@ -570,13 +587,58 @@ export default function UserDetail() {
                         <div className="flex items-center justify-end mb-6">
                             <div className="flex items-center gap-2">
                                 {mode === "edit" && (
-                                    <Button
-                                        variant="danger"
-                                        size="sm"
-                                        icon={<Trash2 size={13} />}
-                                        label="Delete"
-                                        className="bg-red-600/70 cursor-pointer"
-                                        onClick={() => setShowDelete(true)}
+                                    <Form.DeleteModal
+                                        buttonProps={{
+                                            size: "sm",
+                                            className: "bg-red-600/70 cursor-pointer",
+                                        }}
+                                        onOpenChange={(open) => {
+                                            if (open) setShowDelete(true);
+                                        }}
+                                        modal={(show) => (
+                                            <DialogContent className="sm:max-w-sm">
+                                                <DialogHeader>
+                                                    <DialogTitle>
+                                                        Delete User
+                                                    </DialogTitle>
+                                                </DialogHeader>
+                                                <p className="text-sm text-muted-foreground">
+                                                    This will permanently delete{" "}
+                                                    <strong className="text-foreground">
+                                                        {user?.first_name}{" "}
+                                                        {user?.last_name}
+                                                    </strong>{" "}
+                                                    and all associated data. This
+                                                    cannot be undone.
+                                                </p>
+                                                <div className="flex justify-end gap-3 pt-2">
+                                                    <DialogClose asChild>
+                                                        <Button
+                                                            variant="outline"
+                                                            label="Cancel"
+                                                            onClick={() =>
+                                                                show(false)
+                                                            }
+                                                        />
+                                                    </DialogClose>
+                                                    <Button
+                                                        variant="danger"
+                                                        label={
+                                                            deleteUser.isPending
+                                                                ? "Deleting…"
+                                                                : "Delete"
+                                                        }
+                                                        disabled={
+                                                            deleteUser.isPending
+                                                        }
+                                                        onClick={() => {
+                                                            show(false);
+                                                            handleDelete();
+                                                        }}
+                                                    />
+                                                </div>
+                                            </DialogContent>
+                                        )}
                                     />
                                 )}
 
@@ -587,7 +649,7 @@ export default function UserDetail() {
                                         size="sm"
                                         icon={<Pencil className="w-4 h-4" />}
                                         label="Edit"
-                                        onClick={() => setMode("edit")}
+                                        onClick={() => store.setMode("edit")}
                                     />
                                 )}
                                 {showEdit && mode !== "create" && (
@@ -613,7 +675,7 @@ export default function UserDetail() {
                                         />
                                     </>
                                 )}
-                                {showEdit && mode === "create" && (
+                                {showEdit && isCreate && (
                                     <>
                                         <Button
                                             variant="outline"
@@ -676,7 +738,7 @@ export default function UserDetail() {
                                             <input
                                                 value={form.first_name}
                                                 onChange={(e) =>
-                                                    set("first_name")(
+                                                    store.set("first_name")(
                                                         e.target.value,
                                                     )
                                                 }
@@ -696,7 +758,7 @@ export default function UserDetail() {
                                             <input
                                                 value={form.last_name}
                                                 onChange={(e) =>
-                                                    set("last_name")(
+                                                    store.set("last_name")(
                                                         e.target.value,
                                                     )
                                                 }
@@ -761,10 +823,12 @@ export default function UserDetail() {
                         {/* ── Form card ── */}
                         <Tab>
                             <Tab.Item icon={Info} title="Details">
-                                <form
-                                    onSubmit={handleSubmit}
+                                <Form.Root
+                                    store={store}
                                     className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-8"
                                 >
+                                    <Form.SubmitHandler handler={handleSubmit} />
+
                                     {/* Basic Information */}
                                     <section className="space-y-4">
                                         <SectionHeader
@@ -778,7 +842,7 @@ export default function UserDetail() {
                                                         type="email"
                                                         label="Email Address"
                                                         value={form.email}
-                                                        onValueChange={set(
+                                                        onValueChange={store.set(
                                                             "email",
                                                         )}
                                                         className={cn(
@@ -809,7 +873,7 @@ export default function UserDetail() {
                                                     <FloatingInput
                                                         label="Username"
                                                         value={form.username}
-                                                        onValueChange={set(
+                                                        onValueChange={store.set(
                                                             "username",
                                                         )}
                                                         className={cn(
@@ -856,11 +920,9 @@ export default function UserDetail() {
                                                                     "",
                                                                 )
                                                                 .slice(0, 11);
-                                                            setForm((f) => ({
-                                                                ...f,
-                                                                phone_number:
-                                                                    digits,
-                                                            }));
+                                                            store.set(
+                                                                "phone_number",
+                                                            )(digits);
 
                                                             // Live validation
                                                             if (
@@ -974,13 +1036,9 @@ export default function UserDetail() {
                                                             onValueChange={(
                                                                 value,
                                                             ) => {
-                                                                setForm(
-                                                                    (f) => ({
-                                                                        ...f,
-                                                                        password:
-                                                                            value,
-                                                                    }),
-                                                                );
+                                                                store.set(
+                                                                    "password",
+                                                                )(value);
 
                                                                 // Live validation
                                                                 setErrors(
@@ -1088,13 +1146,9 @@ export default function UserDetail() {
                                                             onValueChange={(
                                                                 value,
                                                             ) => {
-                                                                setForm(
-                                                                    (f) => ({
-                                                                        ...f,
-                                                                        password_confirmation:
-                                                                            value,
-                                                                    }),
-                                                                );
+                                                                store.set(
+                                                                    "password_confirmation",
+                                                                )(value);
 
                                                                 setErrors(
                                                                     (prev) => {
@@ -1147,10 +1201,10 @@ export default function UserDetail() {
                                             </section>
                                         </>
                                     )}
-                                </form>
+                                </Form.Root>
                             </Tab.Item>
 
-                            {mode !== "create" && user && (
+                            {!isCreate && user && (
                                 <Tab.Item icon={Building} title="Clients">
                                     <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-8">
                                         <div className="flex items-center justify-between mb-6">

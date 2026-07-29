@@ -210,7 +210,8 @@ class ServerData extends Data
         $rateUpdatedAtStr = $server->rate_updated_at ? $server->rate_updated_at->toIso8601String() : null;
 
         $dbOnlineSeconds = (int) ($server->online_seconds ?? 0);
-        $offlineThreshold = (int) \App\Models\Setting::get('offline_threshold', '15');
+        $offlineThresholdMs = (int) \App\Models\Setting::get('offline_threshold', '15000');
+        $offlineThreshold = intdiv($offlineThresholdMs, 1000);
 
         $pendingSeconds = 0;
         if ($server->status === 'online' && $agent && $agent->last_seen_at) {
