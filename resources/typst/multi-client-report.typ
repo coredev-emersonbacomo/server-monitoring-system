@@ -1,27 +1,42 @@
 #import "base.typ": *
 #let d = json("input.json")
 
+#set page(
+  paper: d.at("paper", default: "a4"),
+  flipped: d.at("orientation", default: "landscape") == "landscape",
+  margin: (x: 18mm, y: 20mm),
+  header: context [
+    #set text(size: 9pt, fill: rgb("#888888"))
+    #h(1fr)
+    Multi-Client Report
+    #h(1fr)
+    #v(-0.8em)
+    #line(length: 100%, stroke: 0.3pt + rgb("#dddddd"))
+  ],
+  footer: context [
+    #set text(size: 8pt, fill: rgb("#999999"))
+    #line(length: 100%, stroke: 0.3pt + rgb("#dddddd"))
+    #v(0.3em)
+    Confidential
+    #h(1fr)
+    Page #counter(page).display()
+    #h(1fr)
+    Client #counter("client-num").display()
+  ],
+)
+
 #for (i, item) in d.items.enumerate() {
+  counter("client-num").update(i + 1)
+  counter(page).update(1)
+
   let servers = item.at("servers", default: ())
   let insights = item.at("insights", default: ())
   let charts = item.at("charts", default: none)
 
-  grid(columns: (1fr, auto), gutter: 12pt)[
-    #block[
-      #report-heading(
-        item.name,
-        "Client-specific report",
-      )
-    ]
-    #block(
-      fill: brand,
-      inset: (x: 10pt, y: 6pt),
-      radius: 4pt,
-    )[
-      #set text(size: 9pt, weight: "bold", fill: white)
-      #text(str(i + 1) + " of " + str(d.items.len()))
-    ]
-  ]
+  report-heading(
+    item.name,
+    "Client-specific report",
+  )
 
   section-title("Overview")
   kpi-grid((

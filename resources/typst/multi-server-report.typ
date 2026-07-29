@@ -1,7 +1,37 @@
 #import "base.typ": *
 #let d = json("input.json")
 
+#set page(
+  paper: d.at("paper", default: "a4"),
+  flipped: d.at("orientation", default: "landscape") == "landscape",
+  margin: (x: 18mm, y: 20mm),
+  header: context [
+    #set text(size: 9pt, fill: rgb("#888888"))
+    #h(1fr)
+    Multi-Server Report
+    #h(1fr)
+    #if counter(page).get().first() > 1 {
+      "continued"
+    }
+    #v(-0.8em)
+    #line(length: 100%, stroke: 0.3pt + rgb("#dddddd"))
+  ],
+  footer: context [
+    #set text(size: 8pt, fill: rgb("#999999"))
+    #line(length: 100%, stroke: 0.3pt + rgb("#dddddd"))
+    #v(0.3em)
+    Confidential
+    #h(1fr)
+    Page #counter(page).display()
+    #h(1fr)
+    Server #counter("server-num").display()
+  ],
+)
+
 #for (i, item) in d.items.enumerate() {
+  counter("server-num").update(i + 1)
+  counter(page).update(1)
+
   let metrics = item.at("metrics", default: ())
   let uptime = item.at("uptime", default: none)
   let charts = item.at("charts", default: none)
@@ -9,7 +39,7 @@
 
   report-heading(
     item.name,
-    "Server-specific report — " + str(i + 1) + " of " + str(d.items.len()),
+    "Server-specific report",
   )
 
   section-title("Server Information")
