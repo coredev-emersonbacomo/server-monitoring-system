@@ -9,10 +9,10 @@ export interface SystemSettings {
 }
 
 const normalizeSettings = (data: Partial<SystemSettings> | Record<string, unknown> | null | undefined): SystemSettings => ({
-    secop_limit_per_client: String(data?.secop_limit_per_client ?? data?.["secop_limit_per_client"] ?? "2"),
-    heartbeat_interval: String(data?.heartbeat_interval ?? data?.["heartbeat_interval"] ?? "5"),
-    offline_threshold: String(data?.offline_threshold ?? data?.["offline_threshold"] ?? "5"),
-    agent_version: String(data?.agent_version ?? data?.["agent_version"] ?? "2.0"),
+    secop_limit_per_client: String(data?.secop_limit_per_client ?? data?.["secop_limit_per_client"] ?? ""),
+    heartbeat_interval: String(data?.heartbeat_interval ?? data?.["heartbeat_interval"] ?? ""),
+    offline_threshold: String(data?.offline_threshold ?? data?.["offline_threshold"] ?? ""),
+    agent_version: String(data?.agent_version ?? data?.["agent_version"] ?? ""),
 });
 
 export const useSettings = () =>

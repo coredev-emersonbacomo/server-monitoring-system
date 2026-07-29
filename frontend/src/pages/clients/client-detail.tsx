@@ -21,9 +21,11 @@ import {
     Coins,
     History,
     Calendar,
+    Landmark,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
+import { Form, createFormStore, useForm } from "@/components/ui/form";
 
 function formatUptime(seconds: number): string {
     if (!seconds || seconds <= 0) return "0s";
@@ -50,7 +52,7 @@ import {
 import { useUsers } from "@/hooks/useUsers";
 import { useSettings } from "@/hooks/useSettings";
 import { Tab } from "@/components/ui/tab";
-import { useBreadcrumb } from "@/hooks/useBreadcrumb";
+import IndexHeader from "@/components/IndexHeader";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { Label } from "@/components/ui/label";
@@ -80,6 +82,16 @@ import { NodeConfigEditor } from "@/components/node-config/NodeConfigEditor";
 
 // Helper function to format phone numbers
 import { formatPhoneNumber } from "@/utils/helpers";
+
+// ─── Schema ──────────────────────────────────────────────────────────────────
+
+const clientSchema = z.object({
+    name: z.string().trim().min(2, "Minimum 2 characters"),
+    description: z.string().max(255, "Maximum 255 characters").optional(),
+    location: z.string().trim().min(2, "Minimum 2 characters"),
+    email: z.email("Invalid email address").trim().min(1, "Required"),
+    contact_number: z.string().trim().min(5, "Minimum 5 characters"),
+});
 
 // ─── Client Alert Tab ────────────────────────────────────────────────────────
 
@@ -128,15 +140,9 @@ function useClientAlertTab(
 export default function ClientDetail() {
     const navigate = useNavigate();
     const { uuid: clientUuid } = useParams<{ uuid: string }>();
-    const { setTrail } = useBreadcrumb();
     const queryClient = useQueryClient();
 
     const [secopSearch, setSecopSearch] = useState("");
-
-    const [mode, setMode] = useState<"view" | "create" | "edit">(
-        clientUuid ? "view" : "create",
-    );
-    const showEdit = mode !== "view";
 
     // ── Data fetching ──────────────────────────────────────────────────────────
     const { data: client, isLoading, isError } = useClient(clientUuid!);
@@ -182,9 +188,112 @@ export default function ClientDetail() {
     const [serverFilter, setServerFilter] = useState<
         "all" | "online" | "offline"
     >("all");
-    const [selectedServerForCost, setSelectedServerForCost] = useState<any | null>(null);
+    const [selectedServerForCost, setSelectedServerForCost] = useState<
+        any | null
+    >(null);
     const [deductAmount, setDeductAmount] = useState("");
     const [submittingPayment, setSubmittingPayment] = useState(false);
+
+    // ── Form store ─────────────────────────────────────────────────────────────
+    const isCreate = !clientUuid;
+
+    const store = useMemo(() => {
+        if (isCreate) {
+            return createFormStore({
+                schema: clientSchema,
+                originalData: {
+                    name: "",
+                    description: "",
+                    location: "",
+                    email: "",
+                    contact_number: "",
+                },
+                initialMode: "create",
+            });
+        }
+        return createFormStore({
+            schema: clientSchema,
+            originalData: client
+                ? {
+                      name: client.name,
+                      description: client.description ?? "",
+                      location: client.location,
+                      email: client.email,
+                      contact_number: client.contact_number,
+                  }
+                : {
+                      name: "",
+                      description: "",
+                      location: "",
+                      email: "",
+                      contact_number: "",
+                  },
+            initialMode: "view",
+        });
+    }, [isCreate, client?.uuid]);
+
+    const form = useForm(store, (s) => s.form);
+    const mode = useForm(store, (s) => s.mode);
+    const showEdit = mode !== "view";
+
+    // Populate form when client data arrives
+    useEffect(() => {
+        if (client && !isCreate) {
+            store.setState({
+                form: {
+                    name: client.name,
+                    description: client.description ?? "",
+                    location: client.location,
+                    email: client.email,
+                    contact_number: client.contact_number,
+                },
+                originalData: {
+                    name: client.name,
+                    description: client.description ?? "",
+                    location: client.location,
+                    email: client.email,
+                    contact_number: client.contact_number,
+                },
+            });
+            setBannerPreview(client.banner_image_url);
+        }
+    }, [client?.uuid]);
+
+    const hasChanges = useMemo(() => {
+        if (isCreate) {
+            return (
+                form.name !== "" ||
+                form.description !== "" ||
+                form.location !== "" ||
+                form.email !== "" ||
+                form.contact_number !== "" ||
+                bannerFile !== null
+            );
+        }
+        if (!client) return false;
+        const formChanged =
+            form.name !== client.name ||
+            form.description !== (client.description ?? "") ||
+            form.location !== client.location ||
+            form.email !== client.email ||
+            form.contact_number !== client.contact_number;
+        return formChanged || bannerFile !== null;
+    }, [form, client, bannerFile, isCreate]);
+
+    const trail = useMemo(() => {
+        if (isCreate) {
+            return [
+                { label: "Clients", href: "/clients" },
+                { label: "Create" },
+            ];
+        } else if (client) {
+            return [
+                { label: "Clients", href: "/clients" },
+                { label: client.name },
+            ];
+        }
+        return [];
+    }, [isCreate, client]);
 
     const { data: costLogs = [], isLoading: isLoadingCostLogs } = useQuery({
         queryKey: ["server-cost-logs", selectedServerForCost?.uuid],
@@ -214,16 +323,27 @@ export default function ClientDetail() {
             const { error } = await api.POST(
                 "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-adjustment",
                 {
-                    params: { path: { clientUuid, serverUuid: selectedServerForCost.uuid } },
+                    params: {
+                        path: {
+                            clientUuid,
+                            serverUuid: selectedServerForCost.uuid,
+                        },
+                    },
                     body: { action: "deduction" as any, amount },
                 },
             );
             if (error) throw error;
-            toast.success(`Deduction applied to ${selectedServerForCost.name}.`);
+            toast.success(
+                `Deduction applied to ${selectedServerForCost.name}.`,
+            );
             setSelectedServerForCost(null);
             setDeductAmount("");
-            queryClient.invalidateQueries({ queryKey: ["clients", clientUuid, "servers"] });
-            queryClient.invalidateQueries({ queryKey: ["clients", clientUuid] });
+            queryClient.invalidateQueries({
+                queryKey: ["clients", clientUuid, "servers"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["clients", clientUuid],
+            });
         } catch (err: any) {
             toast.error(err?.message || "Failed to apply deduction.");
         } finally {
@@ -231,107 +351,11 @@ export default function ClientDetail() {
         }
     };
 
-    const [form, setForm] = useState({
-        name: "",
-        description: "",
-        location: "",
-        email: "",
-        contact_number: "",
-    });
-
-    // Reset mode when navigating between clients / to create
-    useEffect(() => {
-        const next = clientUuid ? "view" : "create";
-        setMode(next);
-        if (next === "create") {
-            setForm({
-                name: "",
-                description: "",
-                location: "",
-                email: "",
-                contact_number: "",
-            });
-            setBannerPreview(defaultBanner);
-            setBannerFile(null);
-            setErrors({});
-        }
-    }, [defaultBanner, clientUuid]);
-
-    // Populate form when client data arrives
-    useEffect(() => {
-        if (client) {
-            setForm({
-                name: client.name,
-                description: client.description ?? "",
-                location: client.location,
-                email: client.email,
-                contact_number: client.contact_number,
-            });
-            setBannerPreview(client.banner_image_url);
-        }
-    }, [client]);
-
-    const hasChanges = useMemo(() => {
-        if (!client) return false;
-        const formChanged =
-            form.name !== client.name ||
-            form.description !== (client.description ?? "") ||
-            form.location !== client.location ||
-            form.email !== client.email ||
-            form.contact_number !== client.contact_number;
-        return formChanged || bannerFile !== null;
-    }, [form, client, bannerFile]);
-
-    // Breadcrumb
-    useEffect(() => {
-        if (mode === "create") {
-            setTrail([
-                { label: "Clients", href: "/clients" },
-                { label: "Create" },
-            ]);
-        } else if (client) {
-            setTrail([
-                { label: "Clients", href: "/clients" },
-                { label: client.name },
-            ]);
-        }
-    }, [setTrail, mode, client]);
-
-    const set = (key: keyof typeof form) => (value: string) =>
-        setForm((f) => ({ ...f, [key]: value }));
-
-    // ── Validation ─────────────────────────────────────────────────────────────
-    const schema = z.object({
-        name: z.string().trim().min(2, "Minimum 2 characters"),
-        description: z.string().max(255, "Maximum 255 characters").optional(),
-        location: z.string().trim().min(2, "Minimum 2 characters"),
-        email: z.email("Invalid email address").trim().min(1, "Required"),
-        contact_number: z.string().trim().min(5, "Minimum 5 characters"),
-    });
-
-    const validate = (): boolean => {
-        const result = schema.safeParse(form);
-        if (result.success) {
-            setErrors({});
-            return true;
-        }
-        const newErrors: Record<string, string> = {};
-        for (const issue of result.error.issues) {
-            const key = issue.path[0] as string;
-            if (!newErrors[key]) newErrors[key] = issue.message;
-        }
-        setErrors(newErrors);
-        return false;
-    };
-
     // ── Handlers ───────────────────────────────────────────────────────────────
-    const handleSubmit = async (e: React.SubmitEvent) => {
-        e.preventDefault();
-        if (!validate()) return;
-
+    const handleSubmit = async () => {
         const fd = new FormData();
         fd.append("name", form.name);
-        fd.append("description", form.description);
+        fd.append("description", form.description ?? "");
         fd.append("location", form.location);
         fd.append("email", form.email);
         fd.append("contact_number", form.contact_number);
@@ -351,19 +375,19 @@ export default function ClientDetail() {
             }
         }
 
-        if (mode !== "create") {
+        if (!isCreate) {
             fd.append("_method", "PUT");
         }
 
         try {
-            if (mode === "create") {
+            if (isCreate) {
                 await createClient.mutateAsync(fd);
                 toast.success("Client created successfully.");
                 navigate("/clients");
             } else {
                 await updateClient.mutateAsync(fd);
                 toast.success("Client updated successfully.");
-                setMode("view");
+                store.setMode("view");
             }
         } catch (err: unknown) {
             const data = err as Record<string, Record<string, string[]>>;
@@ -372,10 +396,10 @@ export default function ClientDetail() {
                 for (const [k, v] of Object.entries(data.errors)) {
                     mapped[k] = Array.isArray(v) ? v[0] : String(v);
                 }
-                setErrors(mapped);
+                store.setState({ errors: mapped });
             } else {
                 toast.error(
-                    mode === "create"
+                    isCreate
                         ? "Failed to create client."
                         : "Failed to update client.",
                 );
@@ -406,15 +430,17 @@ export default function ClientDetail() {
     };
 
     const cancelEdit = () => {
-        setMode("view");
+        store.setMode("view");
         setErrors({});
         if (client) {
-            setForm({
-                name: client.name,
-                description: client.description ?? "",
-                location: client.location,
-                email: client.email,
-                contact_number: client.contact_number,
+            store.setState({
+                form: {
+                    name: client.name,
+                    description: client.description ?? "",
+                    location: client.location,
+                    email: client.email,
+                    contact_number: client.contact_number,
+                },
             });
             setBannerPreview(client.banner_image_url);
             setBannerFile(null);
@@ -422,7 +448,7 @@ export default function ClientDetail() {
     };
 
     // ── Loading state ──────────────────────────────────────────────────────────
-    if (mode !== "create" && isLoading) {
+    if (!isCreate && isLoading) {
         return (
             <div className="w-full flex flex-col items-center px-4 py-6">
                 <div className="w-full max-w-3xl flex flex-col gap-6">
@@ -435,7 +461,7 @@ export default function ClientDetail() {
     }
 
     // ── Error / not found state ────────────────────────────────────────────────
-    if (mode !== "create" && (isError || (!isLoading && !client))) {
+    if (!isCreate && (isError || (!isLoading && !client))) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
                 <AlertTriangle size={32} className="opacity-40" />
@@ -482,7 +508,10 @@ export default function ClientDetail() {
     return (
         <>
             <LoadingOverlay visible={isSaving} />
-            <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
+            <div className="w-full flex flex-col min-h-0 bg-background text-foreground gap-6">
+                {/* ── Breadcrumb ── */}
+                <IndexHeader icon={Landmark} trail={trail} />
+
                 {/* ── Banner / Hero ── */}
                 <div className="relative overflow-hidden">
                     <div className="absolute -top-10 inset-x-0 bottom-0 overflow-hidden rounded-t-xl">
@@ -491,14 +520,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                        backgroundImage: `url(${bannerPreview})`,
-                                        backgroundSize: "cover",
-                                        backgroundPosition: "top center",
-                                    }
+                                          backgroundImage: `url(${bannerPreview})`,
+                                          backgroundSize: "cover",
+                                          backgroundPosition: "top center",
+                                      }
                                     : {
-                                        background:
-                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                    }
+                                          background:
+                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                      }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -517,7 +546,7 @@ export default function ClientDetail() {
                                         <input
                                             value={form.name}
                                             onChange={(e) =>
-                                                set("name")(e.target.value)
+                                                store.set("name")(e.target.value)
                                             }
                                             placeholder="Client name"
                                             className="w-full text-2xl sm:text-3xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
@@ -557,7 +586,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                        defaultBanner,
+                                                            defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -590,7 +619,7 @@ export default function ClientDetail() {
                                         size="sm"
                                         icon={<Pencil className="w-4 h-4" />}
                                         label="Edit"
-                                        onClick={() => setMode("edit")}
+                                        onClick={() => store.setMode("edit")}
                                     />
                                 )}
                                 {showEdit && mode !== "create" && (
@@ -616,7 +645,7 @@ export default function ClientDetail() {
                                         />
                                     </>
                                 )}
-                                {showEdit && mode === "create" && (
+                                {showEdit && isCreate && (
                                     <>
                                         <Button
                                             variant="outline"
@@ -650,7 +679,7 @@ export default function ClientDetail() {
                                     <textarea
                                         value={form.description}
                                         onChange={(e) =>
-                                            set("description")(e.target.value)
+                                            store.set("description")(e.target.value)
                                         }
                                         placeholder="Brief description about the client..."
                                         rows={2}
@@ -658,7 +687,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none break-all",
                                             errors.description &&
-                                            "border-destructive",
+                                                "border-destructive",
                                         )}
                                     />
                                 </div>
@@ -676,14 +705,15 @@ export default function ClientDetail() {
                 </div>
 
                 {/* ── Content ── */}
-                <div className="flex-1 -mt-12 relative z-20 px-6 sm:px-8 lg:px-10 pb-8">
+                <div className="flex-1 -mt-12 relative z-20 px-6 sm:px-8 lg:px-10 py-6">
                     <div className="max-w-3xl mx-auto relative flex flex-col gap-6">
                         <Tab>
                             <Tab.Item icon={Info} title="Details">
-                                <form
-                                    onSubmit={handleSubmit}
+                                <Form.Root
+                                    store={store}
                                     className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-8"
                                 >
+                                    <Form.SubmitHandler handler={handleSubmit} />
                                     {/* Basic Information */}
                                     <section className="space-y-4">
                                         <SectionHeader
@@ -696,12 +726,12 @@ export default function ClientDetail() {
                                                     <FloatingInput
                                                         label="Location"
                                                         value={form.location}
-                                                        onValueChange={set(
+                                                        onValueChange={store.set(
                                                             "location",
                                                         )}
                                                         className={cn(
                                                             errors.location &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                     {errors.location && (
@@ -740,12 +770,12 @@ export default function ClientDetail() {
                                                         type="email"
                                                         label="Email Address"
                                                         value={form.email}
-                                                        onValueChange={set(
+                                                        onValueChange={store.set(
                                                             "email",
                                                         )}
                                                         className={cn(
                                                             errors.email &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                     {errors.email && (
@@ -774,20 +804,20 @@ export default function ClientDetail() {
                                                         value={
                                                             form.contact_number
                                                         }
-                                                        onValueChange={(
-                                                            value,
-                                                        ) => {
-                                                            set(
-                                                                "contact_number",
-                                                            )(
-                                                                formatPhoneNumber(
-                                                                    value,
-                                                                ),
-                                                            );
-                                                        }}
+                                                            onValueChange={(
+                                                                value,
+                                                            ) => {
+                                                                store.set(
+                                                                    "contact_number",
+                                                                )(
+                                                                    formatPhoneNumber(
+                                                                        value,
+                                                                    ),
+                                                                );
+                                                            }}
                                                         className={cn(
                                                             errors.contact_number &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                     {errors.contact_number && (
@@ -808,14 +838,14 @@ export default function ClientDetail() {
                                                     <p className="text-base font-semibold text-foreground">
                                                         {formatPhoneNumber(
                                                             client?.contact_number ||
-                                                            "",
+                                                                "",
                                                         )}
                                                     </p>
                                                 </Field>
                                             )}
                                         </div>
                                     </section>
-                                </form>
+                                </Form.Root>
                             </Tab.Item>
 
                             {mode === "view" && client && (
@@ -1029,7 +1059,8 @@ export default function ClientDetail() {
                                                 Server Costs & Deductions
                                             </h3>
                                             <p className="text-xs text-muted-foreground mt-0.5">
-                                                View server costs and manage deductions per server.
+                                                View server costs and manage
+                                                deductions per server.
                                             </p>
                                         </div>
 
@@ -1042,7 +1073,19 @@ export default function ClientDetail() {
                                                     Total Client Cost
                                                 </span>
                                                 <span className="text-lg font-bold text-foreground font-mono">
-                                                    ₱{servers.reduce((acc: number, s: any) => acc + (s.accumulated_cost ?? 0), 0).toFixed(2)}
+                                                    ₱
+                                                    {servers
+                                                        .reduce(
+                                                            (
+                                                                acc: number,
+                                                                s: any,
+                                                            ) =>
+                                                                acc +
+                                                                (s.accumulated_cost ??
+                                                                    0),
+                                                            0,
+                                                        )
+                                                        .toFixed(2)}
                                                 </span>
                                             </div>
                                         </div>
@@ -1051,95 +1094,182 @@ export default function ClientDetail() {
                                     {/* Server List & Breakdown */}
                                     {serversLoading ? (
                                         <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
-                                            <Loader2 size={18} className="animate-spin text-primary" />
+                                            <Loader2
+                                                size={18}
+                                                className="animate-spin text-primary"
+                                            />
                                         </div>
                                     ) : servers.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2 border border-dashed border-border/60 rounded-xl">
-                                            <Server size={28} className="opacity-30" />
-                                            <p className="text-sm font-medium">No servers registered for this client.</p>
+                                            <Server
+                                                size={28}
+                                                className="opacity-30"
+                                            />
+                                            <p className="text-sm font-medium">
+                                                No servers registered for this
+                                                client.
+                                            </p>
                                         </div>
                                     ) : (
                                         <div className="overflow-x-auto rounded-xl border border-border/60">
                                             <table className="w-full text-left text-sm">
                                                 <thead className="bg-muted/40 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/60">
                                                     <tr>
-                                                        <th className="py-3 px-4">Server</th>
-                                                        <th className="py-3 px-4">Status</th>
-                                                        <th className="py-3 px-4">Next Billing Date</th>
-                                                        <th className="py-3 px-4">Monthly Rate</th>
-                                                        <th className="py-3 px-4 text-right">Cost</th>
-                                                        <th className="py-3 px-4 text-center">Action</th>
+                                                        <th className="py-3 px-4">
+                                                            Server
+                                                        </th>
+                                                        <th className="py-3 px-4">
+                                                            Status
+                                                        </th>
+                                                        <th className="py-3 px-4">
+                                                            Next Billing Date
+                                                        </th>
+                                                        <th className="py-3 px-4">
+                                                            Monthly Rate
+                                                        </th>
+                                                        <th className="py-3 px-4 text-right">
+                                                            Cost
+                                                        </th>
+                                                        <th className="py-3 px-4 text-center">
+                                                            Action
+                                                        </th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-border/60">
                                                     {servers.map((s: any) => {
-                                                        const isOnline = s.status === "online";
-                                                        const costVal = s.accumulated_cost ?? 0;
+                                                        const isOnline =
+                                                            s.status ===
+                                                            "online";
+                                                        const costVal =
+                                                            s.accumulated_cost ??
+                                                            0;
                                                         return (
                                                             <tr
                                                                 key={s.uuid}
-                                                                onClick={() => navigate(`/servers/${s.uuid}`)}
+                                                                onClick={() =>
+                                                                    navigate(
+                                                                        `/servers/${s.uuid}`,
+                                                                    )
+                                                                }
                                                                 className="hover:bg-muted/30 transition-colors cursor-pointer"
                                                             >
                                                                 <td className="py-3.5 px-4 font-semibold text-foreground">
                                                                     <div className="flex items-center gap-2">
-                                                                        <Server size={15} className="text-primary shrink-0" />
-                                                                        <span>{s.name}</span>
+                                                                        <Server
+                                                                            size={
+                                                                                15
+                                                                            }
+                                                                            className="text-primary shrink-0"
+                                                                        />
+                                                                        <span>
+                                                                            {
+                                                                                s.name
+                                                                            }
+                                                                        </span>
                                                                     </div>
                                                                 </td>
                                                                 <td className="py-3.5 px-4">
                                                                     {(() => {
-                                                                        const isPendingDeletion = s.agent_deleted;
-                                                                        const isOnline = !isPendingDeletion && s.status === "online";
+                                                                        const isPendingDeletion =
+                                                                            s.agent_deleted;
+                                                                        const isOnline =
+                                                                            !isPendingDeletion &&
+                                                                            s.status ===
+                                                                                "online";
                                                                         return (
-                                                                            <span className={cn(
-                                                                                "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border",
-                                                                                isPendingDeletion
-                                                                                    ? "bg-orange-500/10 text-orange-500 border-orange-500/20"
+                                                                            <span
+                                                                                className={cn(
+                                                                                    "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border",
+                                                                                    isPendingDeletion
+                                                                                        ? "bg-orange-500/10 text-orange-500 border-orange-500/20"
+                                                                                        : isOnline
+                                                                                          ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                                                                                          : "bg-muted text-muted-foreground border-border",
+                                                                                )}
+                                                                            >
+                                                                                <span
+                                                                                    className={cn(
+                                                                                        "w-1.5 h-1.5 rounded-full",
+                                                                                        isPendingDeletion
+                                                                                            ? "bg-orange-500"
+                                                                                            : isOnline
+                                                                                              ? "bg-emerald-500 animate-pulse"
+                                                                                              : "bg-muted-foreground",
+                                                                                    )}
+                                                                                />
+                                                                                {isPendingDeletion
+                                                                                    ? "Pending Deletion"
                                                                                     : isOnline
-                                                                                        ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                                                                                        : "bg-muted text-muted-foreground border-border"
-                                                                            )}>
-                                                                                <span className={cn("w-1.5 h-1.5 rounded-full",
-                                                                                    isPendingDeletion ? "bg-orange-500" : isOnline ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"
-                                                                                )} />
-                                                                                {isPendingDeletion ? "Pending Deletion" : isOnline ? "Online" : s.status === "pending_installation" ? "Pending" : "Offline"}
+                                                                                      ? "Online"
+                                                                                      : s.status ===
+                                                                                          "pending_installation"
+                                                                                        ? "Pending"
+                                                                                        : "Offline"}
                                                                             </span>
                                                                         );
                                                                     })()}
                                                                 </td>
                                                                 <td className="py-3.5 px-4 font-mono text-xs text-muted-foreground">
                                                                     <div className="flex items-center gap-1.5">
-                                                                        <Calendar size={13} className="text-muted-foreground/70" />
+                                                                        <Calendar
+                                                                            size={
+                                                                                13
+                                                                            }
+                                                                            className="text-muted-foreground/70"
+                                                                        />
                                                                         <span>
                                                                             {s.billing_date
-                                                                                ? new Date(s.billing_date).toLocaleDateString(undefined, {
-                                                                                    month: "short",
-                                                                                    day: "numeric",
-                                                                                    year: "numeric",
-                                                                                })
+                                                                                ? new Date(
+                                                                                      s.billing_date,
+                                                                                  ).toLocaleDateString(
+                                                                                      undefined,
+                                                                                      {
+                                                                                          month: "short",
+                                                                                          day: "numeric",
+                                                                                          year: "numeric",
+                                                                                      },
+                                                                                  )
                                                                                 : "N/A"}
                                                                         </span>
                                                                     </div>
                                                                 </td>
                                                                 <td className="py-3.5 px-4 font-mono text-foreground font-medium">
-                                                                    ₱{(s.hourly_cost ?? 0).toFixed(2)} / mo
+                                                                    ₱
+                                                                    {(
+                                                                        s.hourly_cost ??
+                                                                        0
+                                                                    ).toFixed(
+                                                                        2,
+                                                                    )}{" "}
+                                                                    / mo
                                                                 </td>
                                                                 <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-500">
-                                                                    ₱{costVal.toFixed(2)}
+                                                                    ₱
+                                                                    {costVal.toFixed(
+                                                                        2,
+                                                                    )}
                                                                 </td>
                                                                 <td className="py-3.5 px-4 text-center">
                                                                     <Button
                                                                         size="sm"
                                                                         variant="outline"
-                                                                        onClick={(e) => {
+                                                                        onClick={(
+                                                                            e,
+                                                                        ) => {
                                                                             e.stopPropagation();
-                                                                            setSelectedServerForCost(s);
+                                                                            setSelectedServerForCost(
+                                                                                s,
+                                                                            );
                                                                         }}
                                                                         className="gap-1.5 text-xs text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer"
                                                                     >
-                                                                        <Coins size={12} />
-                                                                        Manage Deductions
+                                                                        <Coins
+                                                                            size={
+                                                                                12
+                                                                            }
+                                                                        />
+                                                                        Manage
+                                                                        Deductions
                                                                     </Button>
                                                                 </td>
                                                             </tr>
@@ -1148,11 +1278,27 @@ export default function ClientDetail() {
                                                 </tbody>
                                                 <tfoot className="bg-muted/30 border-t border-border/60 text-sm font-semibold">
                                                     <tr>
-                                                        <td colSpan={4} className="py-3.5 px-4 text-muted-foreground uppercase tracking-wider text-xs">
-                                                            Total (All Client Servers)
+                                                        <td
+                                                            colSpan={4}
+                                                            className="py-3.5 px-4 text-muted-foreground uppercase tracking-wider text-xs"
+                                                        >
+                                                            Total (All Client
+                                                            Servers)
                                                         </td>
                                                         <td className="py-3.5 px-4 text-right font-mono text-base font-bold text-emerald-500">
-                                                            ₱{servers.reduce((acc: number, s: any) => acc + (s.accumulated_cost ?? 0), 0).toFixed(2)}
+                                                            ₱
+                                                            {servers
+                                                                .reduce(
+                                                                    (
+                                                                        acc: number,
+                                                                        s: any,
+                                                                    ) =>
+                                                                        acc +
+                                                                        (s.accumulated_cost ??
+                                                                            0),
+                                                                    0,
+                                                                )
+                                                                .toFixed(2)}
                                                         </td>
                                                         <td></td>
                                                     </tr>
@@ -1209,8 +1355,8 @@ export default function ClientDetail() {
                                                         ? "All"
                                                         : serverFilter ===
                                                             "online"
-                                                            ? "Online"
-                                                            : "Offline"}
+                                                          ? "Online"
+                                                          : "Offline"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -1237,9 +1383,9 @@ export default function ClientDetail() {
                                                         onClick={() =>
                                                             setServerFilter(
                                                                 opt.value as
-                                                                | "all"
-                                                                | "online"
-                                                                | "offline",
+                                                                    | "all"
+                                                                    | "online"
+                                                                    | "offline",
                                                             )
                                                         }
                                                         className={cn(
@@ -1483,7 +1629,12 @@ export default function ClientDetail() {
                     </DialogContent>
                 </Dialog>
 
-                <Dialog open={!!selectedServerForCost} onOpenChange={(open) => !open && setSelectedServerForCost(null)}>
+                <Dialog
+                    open={!!selectedServerForCost}
+                    onOpenChange={(open) =>
+                        !open && setSelectedServerForCost(null)
+                    }
+                >
                     <DialogContent className="sm:max-w-md">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2 text-foreground">
@@ -1498,19 +1649,42 @@ export default function ClientDetail() {
                                     Cost ({selectedServerForCost?.name})
                                 </span>
                                 <span className="text-3xl font-extrabold text-emerald-400 font-mono">
-                                    ₱{(selectedServerForCost?.accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    ₱
+                                    {(
+                                        selectedServerForCost?.accumulated_cost ??
+                                        0
+                                    ).toLocaleString(undefined, {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    })}
                                 </span>
                                 <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-2 border-t border-emerald-500/20 mt-1 font-mono">
-                                    <span>Payment Due: ₱{(selectedServerForCost?.net_cost ?? selectedServerForCost?.accumulated_cost ?? 0).toFixed(2)}</span>
-                                    <span>Payments Recorded: ₱{(selectedServerForCost?.cost_offset ?? 0).toFixed(2)}</span>
+                                    <span>
+                                        Payment Due: ₱
+                                        {(
+                                            selectedServerForCost?.net_cost ??
+                                            selectedServerForCost?.accumulated_cost ??
+                                            0
+                                        ).toFixed(2)}
+                                    </span>
+                                    <span>
+                                        Payments Recorded: ₱
+                                        {(
+                                            selectedServerForCost?.cost_offset ??
+                                            0
+                                        ).toFixed(2)}
+                                    </span>
                                 </div>
                             </div>
 
                             {/* Action: Payment Deduction */}
                             <div className="flex flex-col gap-2 p-3.5 rounded-lg border border-border/60 bg-card">
-                                <p className="text-xs font-semibold text-foreground">Deduction</p>
+                                <p className="text-xs font-semibold text-foreground">
+                                    Deduction
+                                </p>
                                 <p className="text-[11px] text-muted-foreground">
-                                    Enter a payment amount to deduct directly from the total accumulated server cost.
+                                    Enter a payment amount to deduct directly
+                                    from the total accumulated server cost.
                                 </p>
                                 <div className="flex items-center gap-2 mt-1">
                                     <Input
@@ -1519,22 +1693,35 @@ export default function ClientDetail() {
                                         min="0"
                                         placeholder="e.g. 500.00"
                                         value={deductAmount}
-                                        onChange={(e) => setDeductAmount(e.target.value)}
+                                        onChange={(e) =>
+                                            setDeductAmount(e.target.value)
+                                        }
                                         className="text-sm font-mono"
                                     />
                                     <Button
                                         size="sm"
                                         variant="outline"
-                                        label={submittingPayment ? "Applying…" : "Deduct"}
+                                        label={
+                                            submittingPayment
+                                                ? "Applying…"
+                                                : "Deduct"
+                                        }
                                         onClick={() => {
-                                            const val = parseFloat(deductAmount);
+                                            const val =
+                                                parseFloat(deductAmount);
                                             if (isNaN(val) || val <= 0) {
-                                                toast.error("Please enter a valid positive payment amount.");
+                                                toast.error(
+                                                    "Please enter a valid positive payment amount.",
+                                                );
                                                 return;
                                             }
                                             handleCostAdjustment(val);
                                         }}
-                                        disabled={submittingPayment || !deductAmount || parseFloat(deductAmount) <= 0}
+                                        disabled={
+                                            submittingPayment ||
+                                            !deductAmount ||
+                                            parseFloat(deductAmount) <= 0
+                                        }
                                         className="shrink-0"
                                     />
                                 </div>
@@ -1543,7 +1730,10 @@ export default function ClientDetail() {
                             {/* Cost Activity Logs */}
                             <div className="flex flex-col gap-2 pt-2 border-t border-border/60">
                                 <div className="flex items-center gap-2">
-                                    <History size={14} className="text-muted-foreground" />
+                                    <History
+                                        size={14}
+                                        className="text-muted-foreground"
+                                    />
                                     <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
                                         Cost & Payment Activity Logs
                                     </h4>
@@ -1551,40 +1741,75 @@ export default function ClientDetail() {
 
                                 <div className="max-h-44 overflow-y-auto flex flex-col gap-2 pr-1">
                                     {isLoadingCostLogs ? (
-                                        <p className="text-xs text-muted-foreground py-3 text-center">Loading logs…</p>
+                                        <p className="text-xs text-muted-foreground py-3 text-center">
+                                            Loading logs…
+                                        </p>
                                     ) : costLogs.length === 0 ? (
-                                        <p className="text-xs text-muted-foreground py-3 text-center">No cost activity logs recorded yet.</p>
+                                        <p className="text-xs text-muted-foreground py-3 text-center">
+                                            No cost activity logs recorded yet.
+                                        </p>
                                     ) : (
                                         costLogs.map((log: any) => {
-                                            const msg = log.details?.message || log.action;
+                                            const msg =
+                                                log.details?.message ||
+                                                log.action;
                                             return (
-                                                <div key={log.id} className="p-2.5 rounded-lg bg-muted/20 border border-border/40 flex flex-col gap-1">
+                                                <div
+                                                    key={log.id}
+                                                    className="p-2.5 rounded-lg bg-muted/20 border border-border/40 flex flex-col gap-1"
+                                                >
                                                     <div className="flex items-center justify-between gap-2">
                                                         <span className="text-xs font-medium text-foreground">
                                                             {log.action}
                                                         </span>
                                                         {log.created_at && (
                                                             <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                                                                {new Date(log.created_at).toLocaleString(undefined, {
-                                                                    month: "short",
-                                                                    day: "numeric",
-                                                                    year: "numeric",
-                                                                    hour: "2-digit",
-                                                                    minute: "2-digit",
-                                                                })}
+                                                                {new Date(
+                                                                    log.created_at,
+                                                                ).toLocaleString(
+                                                                    undefined,
+                                                                    {
+                                                                        month: "short",
+                                                                        day: "numeric",
+                                                                        year: "numeric",
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                    },
+                                                                )}
                                                             </span>
                                                         )}
                                                     </div>
                                                     <p className="text-[11px] text-muted-foreground">
                                                         {msg}
                                                     </p>
-                                                    {log.details?.before?.hourly_cost && log.details?.after?.hourly_cost && (
-                                                        <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
-                                                            <span>Before: ₱{log.details.before.hourly_cost}/mo</span>
-                                                            <span>→</span>
-                                                            <span>After: ₱{log.details.after.hourly_cost}/mo</span>
-                                                        </div>
-                                                    )}
+                                                    {log.details?.before
+                                                        ?.hourly_cost &&
+                                                        log.details?.after
+                                                            ?.hourly_cost && (
+                                                            <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
+                                                                <span>
+                                                                    Before: ₱
+                                                                    {
+                                                                        log
+                                                                            .details
+                                                                            .before
+                                                                            .hourly_cost
+                                                                    }
+                                                                    /mo
+                                                                </span>
+                                                                <span>→</span>
+                                                                <span>
+                                                                    After: ₱
+                                                                    {
+                                                                        log
+                                                                            .details
+                                                                            .after
+                                                                            .hourly_cost
+                                                                    }
+                                                                    /mo
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     {log.user && (
                                                         <p className="text-[10px] text-muted-foreground/70">
                                                             By: {log.user}
@@ -1600,7 +1825,13 @@ export default function ClientDetail() {
 
                         <div className="flex justify-end pt-2">
                             <DialogClose asChild>
-                                <Button variant="outline" label="Close" onClick={() => setSelectedServerForCost(null)} />
+                                <Button
+                                    variant="outline"
+                                    label="Close"
+                                    onClick={() =>
+                                        setSelectedServerForCost(null)
+                                    }
+                                />
                             </DialogClose>
                         </div>
                     </DialogContent>

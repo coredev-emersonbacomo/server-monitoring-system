@@ -2,7 +2,6 @@
 
 namespace App\NodeConfig\Cache;
 
-use App\Models\Server;
 use App\NodeConfig\Models\NodeConfig;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +12,7 @@ class NodeConfigCache
     private const SCOPE_PREFIX = self::PREFIX . 'scope:';
     private const ID_PREFIX = self::PREFIX . 'id:';
     private const SLUG_PREFIX = self::PREFIX . 'slug:';
+    private const COMPILED_PREFIX = self::PREFIX . 'compiled:';
     private const INDEX_KEY = self::PREFIX . 'index';
     private const TTL = 3600;
 
@@ -30,7 +30,7 @@ class NodeConfigCache
                 self::storeConfig($config);
             }
 
-            Log::debug('[node-config-cache] Warmed cache with ' . $configs->count() . ' configs');
+            // Log::debug('[node-config-cache] Warmed cache with ' . $configs->count() . ' configs');
         } catch (\Throwable $e) {
             Log::warning('[node-config-cache] Failed to warm cache: ' . $e->getMessage());
         }
@@ -58,10 +58,38 @@ class NodeConfigCache
             $store->forget($scopeKey);
             $store->forget(self::ID_PREFIX . $config->id);
             $store->forget(self::SLUG_PREFIX . $config->slug);
+            $store->forget(self::COMPILED_PREFIX . $config->id);
 
             self::rebuildIndex();
         } catch (\Throwable $e) {
             Log::warning("[node-config-cache] Failed to invalidate config {$config->id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Fetch compiled_config from Redis cache. Falls back to DB then null.
+     */
+    public static function getCompiledConfig(int $configId): ?array
+    {
+        try {
+            $store = self::store();
+            $key = self::COMPILED_PREFIX . $configId;
+            $cached = $store->get($key);
+
+            if ($cached !== null) {
+                return $cached;
+            }
+
+            $config = NodeConfig::find($configId);
+            if ($config && $config->compiled_config) {
+                $store->put($key, $config->compiled_config, self::TTL);
+                return $config->compiled_config;
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            Log::warning("[node-config-cache] Failed to get compiled config {$configId}: " . $e->getMessage());
+            return NodeConfig::find($configId)?->compiled_config;
         }
     }
 
@@ -76,20 +104,13 @@ class NodeConfigCache
                 return self::hydrate($cached);
             }
 
-            $server = Server::with('client')->where('uuid', $serverUuid)->first();
-            if (!$server) {
-                return self::fromCache(self::SCOPE_PREFIX . 'global');
+            $config = NodeConfig::resolveForServerFromDb($serverUuid);
+            if ($config) {
+                self::storeConfig($config);
+                return $config;
             }
 
-            if ($server->client) {
-                $clientKey = self::SCOPE_PREFIX . 'client:' . $server->client->id;
-                $cached = $store->get($clientKey);
-                if ($cached) {
-                    return self::hydrate($cached);
-                }
-            }
-
-            return self::fromCache(self::SCOPE_PREFIX . 'global');
+            return null;
         } catch (\Throwable $e) {
             Log::warning("[node-config-cache] Failed to resolve for server {$serverUuid}, falling back to DB: " . $e->getMessage());
             return NodeConfig::resolveForServerFromDb($serverUuid);
@@ -167,6 +188,11 @@ class NodeConfigCache
 
         if ($config->slug) {
             $store->put(self::SLUG_PREFIX . $config->slug, $config->id, self::TTL);
+        }
+
+        // Cache compiled_config separately for fast engine fetch
+        if ($config->compiled_config) {
+            $store->put(self::COMPILED_PREFIX . $config->id, $config->compiled_config, self::TTL);
         }
 
         self::rebuildIndex();

@@ -17,8 +17,6 @@ use App\Enums\ServerHealth;
 use App\Enums\ServerStatus;
 use App\Models\Setting;
 use App\Models\Activity;
-use App\Events\ServerStatsUpdated;
-use App\Events\ServerStatusUpdated;
 
 class Server extends Model
 {
@@ -51,6 +49,7 @@ class Server extends Model
             'accumulated_cost' => 'float',
             'pending_monthly_cost' => 'float',
             'rate_updated_at' => 'datetime',
+            'went_offline_at' => 'datetime',
         ];
     }
 
@@ -95,9 +94,9 @@ class Server extends Model
         return $this->hasOne(ServerUpdate::class, 'server_id')->latestOfMany('created_at');
     }
 
-    public static function computeHealth(?Carbon $lastSeen, int $offlineThresholdSeconds = 15): ServerHealth
+    public static function computeHealth(?Carbon $lastSeen, int $offlineThresholdMs = 15000): ServerHealth
     {
-        if ($lastSeen === null || $lastSeen->lessThan(now()->subSeconds($offlineThresholdSeconds))) {
+        if ($lastSeen === null || $lastSeen->lessThan(now()->subMilliseconds($offlineThresholdMs))) {
             return ServerHealth::Offline;
         }
 
@@ -108,141 +107,23 @@ class Server extends Model
     {
         return Attribute::get(function () {
             $lastSeen = $this->agent?->last_seen_at;
-            $threshold = (int) Setting::get('offline_threshold', '15');
+            $threshold = (int) Setting::get('offline_threshold', '15000');
             return self::computeHealth($lastSeen, $threshold);
         });
     }
 
-    public function checkOfflineStatus(): void
-    {
-        $agent = $this->agent;
-        if (!$agent) {
-            return;
-        }
-
-        // Only run offline checks for servers that have completed installation and are active
-        $installationStatuses = [
-            ServerStatus::PendingInstallation->value,
-            ServerStatus::WaitingForInstallation->value,
-            ServerStatus::WaitingForFirstHeartbeat->value,
-        ];
-        if (in_array($this->status, $installationStatuses)) {
-            return;
-        }
-
-        $offlineThresholdSeconds = (int) Setting::get('offline_threshold', '15');
-        $isOnline = $agent
-            && $agent->last_seen_at
-            && $agent->last_seen_at->greaterThan(now()->subSeconds($offlineThresholdSeconds));
-
-        if (!$isOnline) {
-            $oldStatus = $this->status;
-            if ($oldStatus !== ServerStatus::Offline->value) {
-                $this->update(['status' => ServerStatus::Offline->value]);
-
-                Activity::create([
-                    'server_id'   => $this->id,
-                    'agent_id'    => $agent?->id,
-                    'type'        => 'server_offline',
-                    'description' => 'Server transitioned to Offline state.',
-                ]);
-
-                CustomActivityLog::create([
-                    'logable_type' => get_class($this),
-                    'logable_id'   => $this->id,
-                    'user_id'      => null,
-                    'user'         => 'System',
-                    'action'       => 'Agent Offline',
-                    'details'      => json_encode([
-                        'message'     => "Agent went offline for server: {$this->name}",
-                        'server_name' => $this->name,
-                    ]),
-                ]);
-
-                // Real-time WebSocket push for status change (failsafe if Reverb is offline)
-                try {
-                    ServerStatusUpdated::dispatch($this->uuid, ServerStatus::Offline->value, $this->name);
-                    ServerStatsUpdated::dispatchSync($this->uuid, [
-                        'timestamp' => now()->timestamp,
-                        'c'         => 0.0,
-                        'm'         => 0.0,
-                        'd'         => 0.0,
-                        'netIn'     => 0.0,
-                        'netOut'    => 0.0,
-                    ]);
-                } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning('[broadcast] Failed to push offline update', ['error' => $e->getMessage()]);
-                }
-
-                // Discord offline alert — uses the NodeConfig's discord notification settings
-                $this->sendOfflineDiscordAlert();
-            }
-
-            // Always ensure the ActionItem exists and is open if the server is offline
-            \App\Models\ActionItem::updateOrCreate(
-                [
-                    'action_type' => 'server_offline',
-                    'server_id'   => $this->id,
-                    'client_id'   => $this->client_id,
-                ],
-                [
-                    'message'     => "{$this->name} is offline",
-                    'severity'    => 'critical',
-                    'client_name' => $this->client?->name ?? 'Unknown',
-                    'server_name' => $this->name,
-                    'status'      => 'open',
-                ]
-            );
-        }
-    }
-
-    private function sendOfflineDiscordAlert(): void
-    {
-        try {
-            $config = \App\NodeConfig\Models\NodeConfig::resolveForServer($this->uuid);
-            if (!$config) return;
-
-            $nodes = $config->getParsedConfig()['nodes'] ?? [];
-            $discordNode = collect($nodes)->first(function ($node) {
-                $settings = $node['settings'] ?? [];
-                return ($node['type'] ?? '') === 'notification'
-                    && ($settings['channel'] ?? '') === 'discord'
-                    && !empty($settings['bot_token'])
-                    && !empty($settings['channel_id']);
-            });
-
-            if (!$discordNode) return;
-
-            $settings  = $discordNode['settings'];
-            $botToken  = $settings['bot_token'];
-            $channelId = $settings['channel_id'];
-            $roleId    = $settings['role_id'] ?? null;
-
-            $clientName = $this->client?->name ?? 'Unknown';
-            $message = "[{$clientName}]{$this->name} is offline!";
-
-            (new \App\Services\NotificationService())
-                ->sendDiscordAlert($botToken, $roleId ?? '', $message, $channelId);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('[offline-alert] Discord notification failed', [
-                'server' => $this->name,
-                'error'  => $e->getMessage(),
-            ]);
-        }
-    }
-
     public function checkTokenExpiration(): void
     {
-        if ($this->status === \App\Enums\ServerStatus::WaitingForInstallation->value) {
+        if ($this->status === ServerStatus::WaitingForInstallation->value) {
             $activeToken = $this->activeProvisionToken;
             if (!$activeToken || $activeToken->isExpired()) {
-                $this->update(['status' => \App\Enums\ServerStatus::PendingInstallation->value]);
+                $this->update(['status' => ServerStatus::PendingInstallation->value]);
 
                 if ($activeToken) {
                     $activeToken->update(['status' => 'expired']);
                 }
 
-                \App\Models\CustomActivityLog::create([
+                CustomActivityLog::create([
                     'logable_type' => get_class($this),
                     'logable_id' => $this->id,
                     'user_id' => null,

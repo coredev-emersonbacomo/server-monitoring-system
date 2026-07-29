@@ -82,17 +82,17 @@ class HeartbeatFlowTest extends TestCase
 
             ['id' => 'compare_85', 'type' => 'condition', 'settings' => ['label' => '>= 85%', 'operator' => 'greater_than', 'threshold' => 85, 'min' => 0, 'max' => 0]],
 
-            ['id' => 'sustained_10', 'type' => 'sustained', 'settings' => ['label' => 'Sustained 10m', 'duration' => '00:00:00:10:00']],
+            ['id' => 'sustained_10', 'type' => 'sustained', 'settings' => ['label' => 'Sustained 10m', 'duration' => '600000']],
 
-            ['id' => 'email_10', 'type' => 'notification', 'settings' => ['label' => 'Email 10m', 'channel' => 'email', 'subject' => '[{server.client.name}] {server.name} - {metricName} Alert (10m)', 'message' => '[{server.client.name}] {server.name}\'s {metricName} has been above 85% for {sustainValue}!']],
+            ['id' => 'email_10', 'type' => 'notification', 'settings' => ['label' => 'Email 10m', 'channel' => 'email', 'subject' => '[{server.client.name}] {server.name} - {runtime.metricName} Alert (10m)', 'message' => '[{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!']],
             ['id' => 'email_offline', 'type' => 'notification', 'settings' => ['label' => 'Email Offline', 'channel' => 'email', 'subject' => '[{server.client.name}] {server.name} - Offline Alert', 'message' => '[{server.client.name}] {server.name} is offline!']],
 
-            ['id' => 'check_after_10m', 'type' => 'check_after', 'settings' => ['label' => 'Check After 10m', 'duration' => '00:00:00:10:00']],
+            ['id' => 'check_after_10m', 'type' => 'check_after', 'settings' => ['label' => 'Check After 10m', 'duration' => '600000']],
             ['id' => 'discord_offline', 'type' => 'notification', 'settings' => ['label' => 'Discord Offline', 'channel' => 'discord', 'message' => ':rotating_light: [{server.client.name}] {server.name} is still offline! (for {runtime.offlineDuration})']],
-            ['id' => 'repeat_5m', 'type' => 'repeat', 'settings' => ['label' => 'Repeat 5m', 'interval' => '00:00:00:05:00']],
+            ['id' => 'repeat_5m', 'type' => 'repeat', 'settings' => ['label' => 'Repeat 5m', 'interval' => '300000']],
 
             ['id' => 'discord_30', 'type' => 'notification', 'settings' => ['label' => 'Discord 30m', 'channel' => 'discord', 'message' => ':rotating_light: CPU high for 30m']],
-            ['id' => 'repeat_10', 'type' => 'repeat', 'settings' => ['label' => 'Repeat 10m', 'interval' => '00:00:00:10:00']],
+            ['id' => 'repeat_10', 'type' => 'repeat', 'settings' => ['label' => 'Repeat 10m', 'interval' => '600000']],
         ];
 
         $edges = [

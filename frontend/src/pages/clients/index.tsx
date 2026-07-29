@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { Landmark, RefreshCw, Loader2, Plus } from "lucide-react";
+import { Landmark, RefreshCw, Loader2, Plus, MoreVertical, Trash2 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useClients, useDeleteClient } from "@/hooks/useClients";
 import PageLayout from "@/components/PageLayout";
@@ -11,6 +11,12 @@ import {
     DialogTitle,
     DialogClose,
 } from "@/components/ui/dialog";
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import IndexHeader from "@/components/IndexHeader";
@@ -62,7 +68,7 @@ function ClientCard({
             className="block rounded-lg transition-transform duration-200 hover:-translate-y-1"
         >
             <div className="relative size-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans gap-3 transition-shadow hover:shadow-md">
-                <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
+                <div className="absolute top-3 left-4 right-4 flex justify-between items-center">
                     <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                         <span
                             className={cn(
@@ -76,17 +82,33 @@ function ClientCard({
                             ? `${client.servers_count} server${client.servers_count !== 1 ? "s" : ""}`
                             : "No servers"}
                     </span>
-                    <button
-                        onClick={(e) => {
-                            // Prevent the Link from navigating when clicking Remove
-                            e.preventDefault();
-                            e.stopPropagation();
-                            onDelete(client);
-                        }}
-                        className="text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded text-[11px] cursor-pointer"
-                    >
-                        Remove
-                    </button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                }}
+                                className="text-muted-foreground hover:text-foreground transition-colors pl-1 pr-0 py-1 rounded-md cursor-pointer"
+                                tabIndex={-1}
+                            >
+                                <MoreVertical className="size-4" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" sideOffset={4}>
+                            <DropdownMenuItem
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onDelete(client);
+                                }}
+                                className="text-destructive focus:text-destructive cursor-pointer"
+                            >
+                                <Trash2 className="size-3.5" />
+                                Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
 
                 <div className="mt-4 mb-1">

@@ -3,14 +3,21 @@
 namespace App\Jobs;
 
 use App\Enums\ServerHealth;
+use App\Enums\ServerStatus;
+use App\Models\Activity;
 use App\Models\ActionItem;
-use App\Models\MetricSample;
+use App\Models\CustomActivityLog;
 use App\Models\Server;
 use App\Models\Setting;
+use App\NodeConfig\Cache\NodeConfigCache;
 use App\NodeConfig\Engine\NodeConfigEngine;
 use App\NodeConfig\Engine\NodeRegistry;
+use App\NodeConfig\Engine\NodeTaskScheduler;
 use App\NodeConfig\Models\NodeConfig;
+use App\NodeConfig\Models\NodeConfigState;
 use App\NodeConfig\Services\NodeConfigNotificationService;
+use App\Events\ServerStatsUpdated;
+use App\Events\ServerStatusUpdated;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -31,216 +38,192 @@ class MonitorServer implements ShouldQueue
 
     public function handle(NodeRegistry $registry, NodeConfigNotificationService $notifications): void
     {
-        $server = Server::with(['client.secopclients', 'agent', 'latestUpdate'])->where('uuid', $this->serverUuid)->first();
-        if (!$server || !$server->agent) return;
+        $server = Server::with(['client.secopclients', 'agent'])->where('uuid', $this->serverUuid)->first();
+        if (!$server) return;
+
+        if (!$server->agent) return;
 
         $config = NodeConfig::resolveForServer($this->serverUuid);
-
         $engine = $config ? new NodeConfigEngine($registry) : null;
 
-        $this->evaluateServerAlerts($server, $config, $engine, $notifications);
-        $this->evaluateNumericMetrics($server, $config, $engine, $notifications);
-        $this->syncServerActionItem($server, $config, $engine);
-    }
-
-    private function evaluateServerAlerts(
-        Server $server,
-        ?NodeConfig $config,
-        ?NodeConfigEngine $engine,
-        NodeConfigNotificationService $notifications,
-    ): void {
-        if (!$config || !$engine) return;
-
-        $agent = $server->agent;
-        $offlineThresholdSeconds = (int) Setting::get('offline_threshold', '15');
-        $isOnline = $agent->last_seen_at && $agent->last_seen_at->greaterThan(
-            now()->subSeconds($offlineThresholdSeconds)
-        );
-
-        $sourceNodeId = $this->findMetricNode($config, 'server_status');
-        if (!$sourceNodeId) return;
-
-        $extraState = [
-            'server_id' => $server->id,
-            'server_name' => $server->name,
-            'client_name' => $server->client?->name ?? 'Unknown',
-            'metric_type' => 'server_status',
-        ];
-
-        $result = $engine->trigger($config, $sourceNodeId, $isOnline ? 'online' : 'offline', $extraState);
-        if (!$result['success']) return;
-
-        foreach ($result['timers'] as $timer) {
-            \App\NodeConfig\Jobs\FireNodeTimer::dispatch(
-                $timer['node_config_id'],
-                $timer['node_id'],
-                array_merge($timer['context'], $extraState),
-            )->delay(now()->addMilliseconds($timer['delay_ms']));
-        }
-
-        foreach ($result['actions'] as $action) {
-            Log::info("[server-events] Alert triggered", [
-                'server_id' => $server->id,
-                'server' => $server->name,
-                'status' => $isOnline ? 'online' : 'offline',
-                'metric' => 'server_status',
-                'node' => $action['node_id'],
-            ]);
-            $notifications->dispatchAction($action);
-        }
-    }
-
-    private function evaluateNumericMetrics(
-        Server $server,
-        ?NodeConfig $config,
-        ?NodeConfigEngine $engine,
-        NodeConfigNotificationService $notifications,
-    ): void {
-        if (!$config || !$engine) return;
-
-        $agent = $server->agent;
-
-        $metrics = [
-            'cpu_usage' => ['sample_type' => 'cpu', 'sample_name' => 'load1'],
-            'memory_usage' => ['sample_type' => 'memory', 'sample_name' => 'percent'],
-            'disk_usage' => ['sample_type' => 'disk', 'sample_name' => 'percent'],
-        ];
-
-        foreach ($metrics as $metricType => $sampleInfo) {
-            $sourceNodeId = $this->findMetricNode($config, $metricType);
-            if (!$sourceNodeId) continue;
-
-            $latestSample = MetricSample::whereHas('batch', function ($q) use ($agent) {
-                $q->where('agent_id', $agent->id);
-            })
-                ->where('metric_type', $sampleInfo['sample_type'])
-                ->where('metric_name', $sampleInfo['sample_name'])
-                ->latest('recorded_at')
-                ->first();
-
-            if (!$latestSample) continue;
-
-            $extraState = [
-                'server_id' => $server->id,
-                'server_name' => $server->name,
-                'client_name' => $server->client?->name ?? 'Unknown',
-                'metric_type' => $metricType,
-            ];
-
-            $result = $engine->trigger($config, $sourceNodeId, $latestSample->value, $extraState);
-            if (!$result['success']) continue;
-
-            foreach ($result['timers'] as $timer) {
-                \App\NodeConfig\Jobs\FireNodeTimer::dispatch(
-                    $timer['node_config_id'],
-                    $timer['node_id'],
-                    array_merge($timer['context'], $extraState),
-                )->delay(now()->addMilliseconds($timer['delay_ms']));
-            }
-
-            foreach ($result['actions'] as $action) {
-                Log::info("[server-events] Alert triggered", [
-                    'server_id' => $server->id,
-                    'server' => $server->name,
-                    'metric' => $metricType,
-                    'value' => $latestSample->value,
-                    'node' => $action['node_id'],
-                ]);
-                $notifications->dispatchAction($action);
-            }
-        }
-    }
-
-    private function syncServerActionItem(
-        Server $server,
-        ?NodeConfig $config,
-        ?NodeConfigEngine $engine,
-    ): void {
         $isOffline = $server->health === ServerHealth::Offline;
-        $wouldNotifyOffline = $config && $engine && $this->engineWouldNotifyOffline($server, $config, $engine);
+        $previousStatus = $server->status;
 
-        if (!$isOffline && !$wouldNotifyOffline) {
-            $resolved = ActionItem::where('action_type', 'server_offline')
-                ->where('server_id', $server->id)
-                ->where('status', 'open')
-                ->update(['status' => 'completed', 'completed_at' => now()]);
+        if ($isOffline) {
+            $this->handleOfflineTransition($server, $previousStatus, $config, $engine, $notifications);
+        } else {
+            $this->handleOnlineRecovery($server, $previousStatus);
+        }
+    }
 
-            if ($resolved) {
-                Log::info("[server-events] Server recovered", [
-                    'server_id' => $server->id,
-                    'server' => $server->name,
+    private function handleOfflineTransition(
+        Server $server,
+        string $previousStatus,
+        ?NodeConfig $config,
+        ?NodeConfigEngine $engine,
+        NodeConfigNotificationService $notifications,
+    ): void {
+        $statusChanged = $previousStatus !== ServerStatus::Offline->value;
+
+        if ($statusChanged) {
+            $server->update([
+                'status' => ServerStatus::Offline->value,
+                'went_offline_at' => now(),
+            ]);
+
+            Activity::create([
+                'server_id'   => $server->id,
+                'agent_id'    => $server->agent?->id,
+                'type'        => 'server_offline',
+                'description' => 'Server transitioned to Offline state.',
+            ]);
+
+            CustomActivityLog::create([
+                'logable_type' => get_class($server),
+                'logable_id'   => $server->id,
+                'user_id'      => null,
+                'user'         => 'System',
+                'action'       => 'Agent Offline',
+                'details'      => json_encode([
+                    'message'     => "Agent went offline for server: {$server->name}",
+                    'server_name' => $server->name,
+                ]),
+            ]);
+
+            try {
+                ServerStatusUpdated::dispatch($server->uuid, ServerStatus::Offline->value, $server->name);
+                ServerStatsUpdated::dispatchSync($server->uuid, [
+                    'timestamp' => now()->timestamp,
+                    'c'         => 0.0,
+                    'm'         => 0.0,
+                    'd'         => 0.0,
+                    'netIn'     => 0.0,
+                    'netOut'    => 0.0,
                 ]);
+            } catch (\Throwable $e) {
+                Log::warning('[broadcast] Failed to push offline update', ['error' => $e->getMessage()]);
             }
-            return;
         }
 
-        $message = $isOffline
-            ? "{$server->name} is offline"
-            : "{$server->name} is offline (sustained condition met)";
-
-        Log::warning("[server-events] " . ($isOffline ? 'Server offline' : 'Sustained offline condition'), [
-            'server_id' => $server->id,
-            'server' => $server->name,
-            'reason' => $isOffline ? 'heartbeat_timeout' : 'sustained_condition',
-        ]);
+        if ($statusChanged && $config && $engine) {
+            $this->evaluateServerAlerts($server, $config, $engine, $notifications);
+        }
 
         ActionItem::updateOrCreate(
             [
                 'action_type' => 'server_offline',
-                'server_id' => $server->id,
-                'client_id' => $server->client_id,
+                'server_id'   => $server->id,
+                'client_id'   => $server->client_id,
             ],
             [
-                'message' => $message,
-                'severity' => 'critical',
+                'message'     => "{$server->name} is offline",
+                'severity'    => 'critical',
                 'client_name' => $server->client?->name ?? 'Unknown',
                 'server_name' => $server->name,
             ]
         );
     }
 
-    private function engineWouldNotifyOffline(Server $server, NodeConfig $config, NodeConfigEngine $engine): bool
+    private function handleOnlineRecovery(Server $server, string $previousStatus): void
     {
+        if ($previousStatus === ServerStatus::Offline->value) {
+            $server->update([
+                'status' => ServerStatus::Online->value,
+                'went_offline_at' => null,
+            ]);
+
+            Activity::create([
+                'server_id'   => $server->id,
+                'agent_id'    => $server->agent?->id,
+                'type'        => 'server_online',
+                'description' => 'Server transitioned to Online state.',
+            ]);
+
+            CustomActivityLog::create([
+                'logable_type' => get_class($server),
+                'logable_id'   => $server->id,
+                'user_id'      => null,
+                'user'         => 'System',
+                'action'       => 'Agent Online',
+                'details'      => json_encode([
+                    'message'     => "Agent came back online for server: {$server->name}",
+                    'server_name' => $server->name,
+                ]),
+            ]);
+
+            // Reset graph states so the next evaluation starts fresh
+            $this->resetGraphStates($server);
+
+            try {
+                ServerStatusUpdated::dispatch($server->uuid, ServerStatus::Online->value, $server->name);
+            } catch (\Throwable $e) {
+                Log::warning('[broadcast] Failed to push online update', ['error' => $e->getMessage()]);
+            }
+
+            Log::info("[server-events] Server recovered", [
+                'server_id' => $server->id,
+                'server'    => $server->name,
+            ]);
+        }
+
+        ActionItem::where('action_type', 'server_offline')
+            ->where('server_id', $server->id)
+            ->where('status', 'open')
+            ->update(['status' => 'completed', 'completed_at' => now()]);
+    }
+
+    private function resetGraphStates(Server $server): void
+    {
+        $config = NodeConfig::resolveForServer($server->uuid);
+        if (!$config) return;
+
+        NodeConfigState::where('node_config_id', $config->id)
+            ->where('server_id', $server->id)
+            ->delete();
+
+        \App\NodeConfig\Engine\NodeTaskScheduler::cancelByServer($server->id);
+    }
+
+    private function evaluateServerAlerts(
+        Server $server,
+        NodeConfig $config,
+        NodeConfigEngine $engine,
+        NodeConfigNotificationService $notifications,
+    ): void {
         $agent = $server->agent;
-        if (!$agent) return false;
+        if (!$agent) return;
 
-        $offlineThresholdSeconds = (int) Setting::get('offline_threshold', '15');
-        $isOnline = $agent->last_seen_at && $agent->last_seen_at->greaterThan(
-            now()->subSeconds($offlineThresholdSeconds)
-        );
+        $sourceNodeId = $engine->findMetricNode($config, 'server_status');
+        if (!$sourceNodeId) return;
 
-        if ($isOnline) return false;
-
-        $sourceNodeId = $this->findMetricNode($config, 'server_status');
-        if (!$sourceNodeId) return false;
-
-        $result = $engine->trigger($config, $sourceNodeId, 'offline', [
-            'server_id' => $server->id,
+        $extraState = [
+            'server_id'   => $server->id,
             'server_name' => $server->name,
             'client_name' => $server->client?->name ?? 'Unknown',
             'metric_type' => 'server_status',
-        ]);
+            'offlineTimestamp' => $server->went_offline_at?->format('Y-m-d H:i:s') ?? now()->format('Y-m-d H:i:s'),
+        ];
 
-        if (!$result['success']) return false;
+        $result = $engine->trigger($config, $sourceNodeId, 'offline', $extraState, $server->id);
+        if (!$result['success']) return;
+
+        foreach ($result['timers'] as $timer) {
+            NodeTaskScheduler::schedule(
+                $timer['node_config_id'],
+                $timer['node_id'],
+                $timer['delay_ms'],
+                array_merge($timer['context'], $extraState),
+                $server->id,
+            );
+        }
 
         foreach ($result['actions'] as $action) {
-            if ($action['type'] === 'notification') return true;
+            Log::info("[server-events] Offline alert triggered", [
+                'server_id' => $server->id,
+                'server'    => $server->name,
+                'node'      => $action['node_id'],
+            ]);
+            $notifications->dispatchAction($action);
         }
-
-        return false;
-    }
-
-    private function findMetricNode(NodeConfig $config, string $metricType): ?string
-    {
-        $configData = $config->getParsedConfig();
-        $nodes = $configData['nodes'] ?? [];
-
-        foreach ($nodes as $node) {
-            if (($node['type'] ?? '') === 'metric' && ($node['settings']['metric_type'] ?? '') === $metricType) {
-                return $node['id'];
-            }
-        }
-
-        return null;
     }
 }

@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\NodeConfig\Engine\NodeConfigEngine;
 use App\NodeConfig\Engine\NodeRegistry;
 use App\NodeConfig\Models\NodeConfig;
+use App\NodeConfig\Models\NodeConfigState;
 use App\NodeConfig\NodeTypes\CheckAfterNode;
 use App\NodeConfig\NodeTypes\ConditionNode;
 use App\NodeConfig\NodeTypes\LogicNode;
@@ -54,7 +55,7 @@ class NodeConfigEngineHandleTest extends TestCase
                 ['id' => 'metric', 'type' => 'metric', 'settings' => ['metric_type' => 'cpu_usage']],
                 ['id' => 'compare', 'type' => 'condition', 'settings' => ['operator' => 'greater_than', 'threshold' => 85]],
                 ['id' => 'notify', 'type' => 'notification', 'settings' => ['channel' => 'email', 'subject' => 'Test', 'message' => 'Test']],
-                ['id' => 'repeat', 'type' => 'repeat', 'settings' => ['interval' => '00:00:00:05:00']],
+                ['id' => 'repeat', 'type' => 'repeat', 'settings' => ['interval' => '300000']],
             ],
             'edges' => [
                 ['id' => 'e1', 'source' => 'metric', 'target' => 'compare', 'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
@@ -83,7 +84,7 @@ class NodeConfigEngineHandleTest extends TestCase
                 ['id' => 'metric', 'type' => 'metric', 'settings' => ['metric_type' => 'cpu_usage']],
                 ['id' => 'compare', 'type' => 'condition', 'settings' => ['operator' => 'greater_than', 'threshold' => 85]],
                 ['id' => 'notify', 'type' => 'notification', 'settings' => ['channel' => 'email', 'subject' => 'Test', 'message' => 'Test']],
-                ['id' => 'repeat', 'type' => 'repeat', 'settings' => ['interval' => '00:00:00:05:00']],
+                ['id' => 'repeat', 'type' => 'repeat', 'settings' => ['interval' => '300000']],
             ],
             'edges' => [
                 ['id' => 'e1', 'source' => 'metric', 'target' => 'compare', 'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
@@ -109,9 +110,9 @@ class NodeConfigEngineHandleTest extends TestCase
         $config = $this->createConfig([
             'nodes' => [
                 ['id' => 'status', 'type' => 'metric', 'settings' => ['metric_type' => 'server_status']],
-                ['id' => 'check', 'type' => 'check_after', 'settings' => ['duration' => '00:00:00:10:00']],
+                ['id' => 'check', 'type' => 'check_after', 'settings' => ['duration' => '600000']],
                 ['id' => 'notify', 'type' => 'notification', 'settings' => ['channel' => 'discord', 'message' => 'Still offline']],
-                ['id' => 'repeat', 'type' => 'repeat', 'settings' => ['interval' => '00:00:00:05:00']],
+                ['id' => 'repeat', 'type' => 'repeat', 'settings' => ['interval' => '300000']],
             ],
             'edges' => [
                 ['id' => 'e1', 'source' => 'status', 'target' => 'check', 'sourceHandle' => 'offline', 'targetHandle' => 'input'],
@@ -171,5 +172,145 @@ class NodeConfigEngineHandleTest extends TestCase
         $this->assertTrue($resultOnline['success']);
         $this->assertCount(1, $resultOnline['actions']);
         $this->assertEquals('email_on', $resultOnline['actions'][0]['node_id']);
+    }
+
+    public function test_disk_metric_evaluates_condition_true_and_schedules_sustained(): void
+    {
+        $config = $this->createConfig([
+            'nodes' => [
+                ['id' => 'metric_cpu',     'type' => 'metric',     'settings' => ['metric_type' => 'cpu_usage']],
+                ['id' => 'metric_memory',  'type' => 'metric',     'settings' => ['metric_type' => 'memory_usage']],
+                ['id' => 'metric_disk',    'type' => 'metric',     'settings' => ['metric_type' => 'disk_usage']],
+                ['id' => 'metric_network', 'type' => 'metric',     'settings' => ['metric_type' => 'network_usage']],
+
+                ['id' => 'compare_85',     'type' => 'condition',  'settings' => ['operator' => 'greater_than_equal', 'threshold' => 85]],
+
+                ['id' => 'sustained_10',   'type' => 'sustained',  'settings' => ['duration' => '10000']],
+                ['id' => 'sustained_20',   'type' => 'sustained',  'settings' => ['duration' => '20000']],
+                ['id' => 'sustained_30',   'type' => 'sustained',  'settings' => ['duration' => '30000']],
+
+                ['id' => 'email_10',       'type' => 'notification', 'settings' => ['channel' => 'email', 'subject' => '10s']],
+                ['id' => 'email_20',       'type' => 'notification', 'settings' => ['channel' => 'email', 'subject' => '20s']],
+                ['id' => 'discord_30',     'type' => 'notification', 'settings' => ['channel' => 'discord', 'message' => '30s']],
+            ],
+            'edges' => [
+                ['id' => 'e_cpu',  'source' => 'metric_cpu',     'target' => 'compare_85', 'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
+                ['id' => 'e_mem',  'source' => 'metric_memory',  'target' => 'compare_85', 'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
+                ['id' => 'e_disk', 'source' => 'metric_disk',    'target' => 'compare_85', 'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
+                ['id' => 'e_net',  'source' => 'metric_network', 'target' => 'compare_85', 'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
+
+                ['id' => 'e_c_s10', 'source' => 'compare_85', 'target' => 'sustained_10', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+                ['id' => 'e_c_s20', 'source' => 'compare_85', 'target' => 'sustained_20', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+                ['id' => 'e_c_s30', 'source' => 'compare_85', 'target' => 'sustained_30', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+
+                ['id' => 'e_s10', 'source' => 'sustained_10', 'target' => 'email_10',   'sourceHandle' => 'output', 'targetHandle' => 'input'],
+                ['id' => 'e_s20', 'source' => 'sustained_20', 'target' => 'email_20',   'sourceHandle' => 'output', 'targetHandle' => 'input'],
+                ['id' => 'e_s30', 'source' => 'sustained_30', 'target' => 'discord_30', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+            ],
+        ]);
+
+        $result = $this->engine->trigger($config, 'metric_disk', 99.03, [
+            'server_name' => 'TestServer',
+            'client_name' => 'TestClient',
+            'metric_type' => 'disk_usage',
+        ], 1);
+
+        // Condition (>=85) should pass
+        $compareState = NodeConfigState::where('node_config_id', $config->id)
+            ->where('node_id', 'compare_85')
+            ->where('server_id', 1)
+            ->first();
+        $this->assertNotNull($compareState, 'compare_85 state should be saved');
+        $this->assertEquals(['value' => true], $compareState->output_value, 'Condition should evaluate to true for disk 99.03 >= 85');
+
+        // No actions yet — sustained needs Agent/DB records to propagate
+        $this->assertEmpty($result['actions'], 'No notification should fire yet');
+    }
+
+    public function test_disk_metric_below_threshold_does_not_schedule(): void
+    {
+        $config = $this->createConfig([
+            'nodes' => [
+                ['id' => 'metric_disk',  'type' => 'metric',     'settings' => ['metric_type' => 'disk_usage']],
+                ['id' => 'compare_85',   'type' => 'condition',  'settings' => ['operator' => 'greater_than_equal', 'threshold' => 85]],
+                ['id' => 'sustained_10', 'type' => 'sustained',  'settings' => ['duration' => '10000']],
+                ['id' => 'email_10',     'type' => 'notification', 'settings' => ['channel' => 'email', 'subject' => 'Alert']],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'source' => 'metric_disk',  'target' => 'compare_85',   'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
+                ['id' => 'e2', 'source' => 'compare_85',   'target' => 'sustained_10', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+                ['id' => 'e3', 'source' => 'sustained_10', 'target' => 'email_10',     'sourceHandle' => 'output', 'targetHandle' => 'input'],
+            ],
+        ]);
+
+        $result = $this->engine->trigger($config, 'metric_disk', 52.1, [
+            'server_name' => 'TestServer',
+            'client_name' => 'TestClient',
+            'metric_type' => 'disk_usage',
+        ], 1);
+
+        $compareState = NodeConfigState::where('node_config_id', $config->id)
+            ->where('node_id', 'compare_85')
+            ->where('server_id', 1)
+            ->first();
+        $this->assertNotNull($compareState);
+        $this->assertEquals(['value' => false], $compareState->output_value, 'Condition should evaluate to false');
+
+        $this->assertEmpty($result['timers'], 'No sustained timer when below threshold');
+        $this->assertEmpty($result['actions'], 'No notification when below threshold');
+    }
+
+    public function test_only_disk_metric_triggers_not_others(): void
+    {
+        $config = $this->createConfig([
+            'nodes' => [
+                ['id' => 'metric_cpu',     'type' => 'metric',     'settings' => ['metric_type' => 'cpu_usage']],
+                ['id' => 'metric_memory',  'type' => 'metric',     'settings' => ['metric_type' => 'memory_usage']],
+                ['id' => 'metric_disk',    'type' => 'metric',     'settings' => ['metric_type' => 'disk_usage']],
+                ['id' => 'metric_network', 'type' => 'metric',     'settings' => ['metric_type' => 'network_usage']],
+
+                ['id' => 'compare_85',     'type' => 'condition',  'settings' => ['operator' => 'greater_than_equal', 'threshold' => 85]],
+
+                ['id' => 'sustained_10',   'type' => 'sustained',  'settings' => ['duration' => '10000']],
+                ['id' => 'email_10',       'type' => 'notification', 'settings' => ['channel' => 'email', 'subject' => 'Alert']],
+            ],
+            'edges' => [
+                ['id' => 'e_cpu',  'source' => 'metric_cpu',     'target' => 'compare_85',   'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
+                ['id' => 'e_mem',  'source' => 'metric_memory',  'target' => 'compare_85',   'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
+                ['id' => 'e_disk', 'source' => 'metric_disk',    'target' => 'compare_85',   'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
+                ['id' => 'e_net',  'source' => 'metric_network', 'target' => 'compare_85',   'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
+                ['id' => 'e_c_s',  'source' => 'compare_85',     'target' => 'sustained_10', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+                ['id' => 'e_s_e',  'source' => 'sustained_10',   'target' => 'email_10',     'sourceHandle' => 'output', 'targetHandle' => 'input'],
+            ],
+        ]);
+
+        // Trigger ONLY disk_usage at 99.03%
+        $result = $this->engine->trigger($config, 'metric_disk', 99.03, [
+            'server_name' => 'TestServer',
+            'client_name' => 'TestClient',
+            'metric_type' => 'disk_usage',
+        ], 1);
+
+        $this->assertTrue($result['success']);
+
+        // Verify compare_85 was saved with true
+        $compareState = NodeConfigState::where('node_config_id', $config->id)
+            ->where('node_id', 'compare_85')
+            ->where('server_id', 1)
+            ->first();
+        $this->assertEquals(['value' => true], $compareState->output_value, 'Disk at 99.03 >= 85 should be true');
+
+        // Now trigger cpu_usage at 70% — should flip condition to false
+        $resultCpu = $this->engine->trigger($config, 'metric_cpu', 70.0, [
+            'server_name' => 'TestServer',
+            'client_name' => 'TestClient',
+            'metric_type' => 'cpu_usage',
+        ], 1);
+
+        $compareStateAfter = NodeConfigState::where('node_config_id', $config->id)
+            ->where('node_id', 'compare_85')
+            ->where('server_id', 1)
+            ->first();
+        $this->assertEquals(['value' => false], $compareStateAfter->output_value, 'CPU at 70 < 85 should be false');
     }
 }

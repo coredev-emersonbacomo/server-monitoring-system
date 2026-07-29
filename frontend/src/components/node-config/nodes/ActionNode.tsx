@@ -1,15 +1,14 @@
 import { memo, useCallback } from 'react';
 import { type NodeProps, Position, useReactFlow } from '@xyflow/react';
-import { Mail, MessageSquare, MessageCircle } from 'lucide-react';
-import { getInputType, getOutputType } from './socketTypes';
+import { Mail, MessageCircle } from 'lucide-react';
+import { getInputType } from './socketTypes';
 import { NodeSocket } from './node-socket';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { TemplateInput } from './TemplateInput';
 import { BaseNode } from './BaseNode';
 
 const CHANNELS: Record<string, { icon: React.ComponentType<{ size?: number }>; label: string }> = {
-    email: { icon: Mail, label: 'User Email' },
-    sms: { icon: MessageSquare, label: 'User SMS' },
+    email: { icon: Mail, label: 'Assigned SecOps Email' },
     discord: { icon: MessageCircle, label: 'Discord' },
 };
 
@@ -20,7 +19,6 @@ export const ActionNode = memo(({ id, data, type, selected }: NodeProps) => {
     const Icon = ch.icon;
 
     const inDef = getInputType(type, 'input');
-    const outDef = getOutputType(type);
 
     const handleChannelChange = useCallback((v: string) => {
         updateNodeData(id, { channel: v });
@@ -49,8 +47,6 @@ export const ActionNode = memo(({ id, data, type, selected }: NodeProps) => {
                 <NodeSocket type="target" position={Position.Left} id="input" def={inDef}
                     label={inDef?.label || 'Trigger'} />
                 <div className="flex-1" />
-                <NodeSocket type="source" position={Position.Right} id="output" def={outDef}
-                    label={outDef?.label || 'Out'} />
             </div>
 
             <div className="flex px-3 pb-2.5">

@@ -2,7 +2,6 @@
 
 namespace App\NodeConfig\Services;
 
-use App\NodeConfig\Engine\NodeConfigCompiler;
 use App\NodeConfig\Models\NodeConfig;
 use Illuminate\Support\Facades\Auth;
 
@@ -42,10 +41,9 @@ class NodeConfigService
             return;
         }
 
-        $compiler = new NodeConfigCompiler();
+        // compileAndStore is triggered by model saved event
         $targetConfig->update([
             'config' => $globalConfig->config,
-            'compiled_config' => $compiler->compile($globalConfig->config),
         ]);
     }
 }

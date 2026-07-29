@@ -1,19 +1,26 @@
-import { useState, useEffect, useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Cpu,
     Save,
-    ChevronLeft,
     Loader2,
     AlertTriangle,
     Radio,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useBreadcrumb } from "@/hooks/useBreadcrumb";
+import { z } from "zod";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
-import { Button } from "@/components/ui/button";
+import IndexHeader from "@/components/IndexHeader";
 import PageLayout from "@/components/PageLayout";
+import { DurationInput } from "@/components/node-config/nodes/DurationInput";
+import { Form, createFormStore, useForm } from "@/components/ui/form";
+
+const schema = z.object({
+    heartbeat_interval: z.string(),
+    offline_threshold: z.string(),
+    agent_version: z.string(),
+});
 
 // ─── Settings field wrapper ───────────────────────────────────────────────────
 
@@ -43,16 +50,19 @@ function SettingRow({
 
 export default function AgentSettings() {
     const { user, isLoading: authLoading } = useJwtAuth();
-    const { setTrail } = useBreadcrumb();
     const navigate = useNavigate();
 
     const { data: settings, isLoading } = useSettings();
     const updateSettings = useUpdateSettings();
 
-    const [heartbeatValue, setHeartbeatValue] = useState<string>("5");
-    const [offlineValue, setOfflineValue] = useState<string>("15");
-    const [versionValue, setVersionValue] = useState<string>("2.0");
-    const [isDirty, setIsDirty] = useState(false);
+    const store = useMemo(
+        () => createFormStore({
+            schema,
+            originalData: { heartbeat_interval: "0", offline_threshold: "0", agent_version: "" },
+            initialMode: "edit",
+        }),
+        [],
+    );
 
     // Guard: ensure user is authenticated via UUID
     useEffect(() => {
@@ -61,87 +71,14 @@ export default function AgentSettings() {
         }
     }, [user, authLoading, navigate]);
 
-    useEffect(() => {
-        setTrail([
-            { label: "Settings", href: "/settings" },
-            { label: "Agent Settings" },
-        ]);
-    }, [setTrail]);
-
     // Populate from server
     useEffect(() => {
         if (settings) {
-            setHeartbeatValue(settings.heartbeat_interval);
-            setOfflineValue(settings.offline_threshold);
-            setVersionValue(settings.agent_version);
-            setIsDirty(false);
+            store.set("heartbeat_interval")(settings.heartbeat_interval);
+            store.set("offline_threshold")(settings.offline_threshold);
+            store.set("agent_version")(settings.agent_version);
         }
-    }, [settings]);
-
-    const hasChanges = useMemo(() => {
-        if (!settings) return false;
-        return (
-            heartbeatValue !== settings.heartbeat_interval ||
-            offlineValue !== settings.offline_threshold ||
-            versionValue !== settings.agent_version
-        );
-    }, [heartbeatValue, offlineValue, versionValue, settings]);
-
-    useEffect(() => {
-        setIsDirty(hasChanges);
-    }, [hasChanges]);
-
-    const heartbeatNum = parseInt(heartbeatValue, 10);
-    const offlineNum = parseInt(offlineValue, 10);
-    const offlineBelowHeartbeat =
-        !isNaN(heartbeatNum) && !isNaN(offlineNum) && offlineNum < heartbeatNum;
-
-    const handleSave = async () => {
-        const heartbeatParsed = parseInt(heartbeatValue, 10);
-        const offlineParsed = parseInt(offlineValue, 10);
-
-        if (
-            isNaN(heartbeatParsed) ||
-            heartbeatParsed < 1 ||
-            heartbeatParsed > 1000
-        ) {
-            toast.error(
-                "Heartbeat interval must be between 1 and 1000 seconds.",
-            );
-            return;
-        }
-        if (isNaN(offlineParsed) || offlineParsed < 1 || offlineParsed > 1000) {
-            toast.error(
-                "Offline threshold must be between 1 and 1000 seconds.",
-            );
-            return;
-        }
-        if (offlineParsed < heartbeatParsed) {
-            toast.error(
-                "Offline threshold must be greater than or equal to the heartbeat interval.",
-            );
-            return;
-        }
-        if (!versionValue.trim()) {
-            toast.error("Agent version cannot be empty.");
-            return;
-        }
-
-        try {
-            await updateSettings.mutateAsync({
-                heartbeat_interval: String(heartbeatParsed),
-                offline_threshold: String(offlineParsed),
-                agent_version: versionValue.trim(),
-            });
-            setHeartbeatValue(String(heartbeatParsed));
-            setOfflineValue(String(offlineParsed));
-            setVersionValue(versionValue.trim());
-            setIsDirty(false);
-            toast.success("Agent settings saved.");
-        } catch {
-            toast.error("Failed to save agent settings.");
-        }
-    };
+    }, [settings, store]);
 
     if (isLoading) {
         return (
@@ -156,179 +93,211 @@ export default function AgentSettings() {
 
     return (
         <PageLayout>
-            {/* Header */}
-            <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
-                <div className="flex items-center gap-4 py-3 px-6 sm:px-8 lg:px-10">
-                    <button
-                        onClick={() => navigate("/settings")}
-                        className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
-                        aria-label="Back to Settings"
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-                            <Cpu className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                            <h1 className="text-lg font-semibold tracking-tight">
-                                Agent Settings
-                            </h1>
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                                Configure monitoring agent intervals, version
-                                tracking, and updates.
-                            </p>
-                        </div>
-                    </div>
-                    {isDirty && (
-                        <Button
-                            label={
-                                updateSettings.isPending
-                                    ? "Saving…"
-                                    : "Save Changes"
-                            }
-                            icon={
-                                updateSettings.isPending ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                    <Save className="w-3.5 h-3.5" />
-                                )
-                            }
-                            disabled={updateSettings.isPending}
-                            onClick={handleSave}
-                        />
-                    )}
-                </div>
-            </header>
+            <IndexHeader
+                icon={Cpu}
+                title="Agent Settings"
+                description="Configure monitoring agent intervals, version tracking, and updates."
+                trail={[
+                    { label: "Settings", href: "/settings" },
+                    { label: "Agent Settings" },
+                ]}
+            />
 
-            {/* Body */}
-            <main className="py-8 flex-1">
-                <div className="max-w-2xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-6">
-                    {/* Section: Monitoring */}
-                    <div className="bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
-                        <div className="flex items-center gap-3 px-6 py-4 border-b border-border/60 bg-muted/30">
-                            <div className="p-1.5 bg-primary/10 rounded-md">
-                                <Radio className="w-4 h-4 text-primary" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-semibold">
-                                    Heartbeat & Status Checks
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                    Configure how often agents report back and
-                                    when they are deemed offline.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="px-6 divide-y divide-border/50">
-                            <SettingRow
-                                label="Heartbeat Interval"
-                                description="How often agents send heartbeats to the server (in seconds). Must be less than or equal to the offline threshold."
-                            >
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        value={heartbeatValue}
-                                        onChange={(e) =>
-                                            setHeartbeatValue(e.target.value)
-                                        }
-                                        className="w-24 h-9 rounded-md border border-border bg-background px-3 text-sm text-center font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
-                                    />
-                                    <span className="text-xs text-muted-foreground">
-                                        sec
-                                    </span>
-                                </div>
-                            </SettingRow>
-
-                            <SettingRow
-                                label="Offline Threshold"
-                                description="Seconds without a heartbeat before a server is marked as offline. Must be greater than or equal to the heartbeat interval."
-                            >
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        value={offlineValue}
-                                        onChange={(e) =>
-                                            setOfflineValue(e.target.value)
-                                        }
-                                        className="w-24 h-9 rounded-md border border-border bg-background px-3 text-sm text-center font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
-                                    />
-                                    <span className="text-xs text-muted-foreground">
-                                        sec
-                                    </span>
-                                </div>
-                            </SettingRow>
-                        </div>
-                    </div>
-
-                    {/* Validation warning */}
-                    {offlineBelowHeartbeat && (
-                        <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-red-500/5 border border-red-500/20 text-red-600 dark:text-red-400">
-                            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                            <p className="text-xs leading-relaxed">
-                                Offline threshold ({offlineValue} sec) must
-                                be greater than or equal to the heartbeat
-                                interval ({heartbeatValue} sec).
-                            </p>
-                        </div>
-                    )}
-
-                    {/* Section: Agent Version Control */}
-                    <div className="bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
-                        <div className="flex items-center gap-3 px-6 py-4 border-b border-border/60 bg-muted/30">
-                            <div className="p-1.5 bg-primary/10 rounded-md">
-                                <Cpu className="w-4 h-4 text-primary" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-semibold">
-                                    Agent Update Control
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                    Set the latest agent binary version.
-                                    Outdated agents will download the new binary
-                                    and self-update.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="px-6 divide-y divide-border/50">
-                            <SettingRow
-                                label="Latest Agent Version"
-                                description="Changing this version number triggers self-update downloads on running agent binaries."
-                            >
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="text"
-                                        readOnly
-                                        value={versionValue}
-                                        className="w-32 h-9 rounded-md border border-border bg-muted/50 px-3 text-sm text-left font-medium text-muted-foreground cursor-not-allowed focus:outline-none"
-                                    />
-                                </div>
-                            </SettingRow>
-                        </div>
-                    </div>
-
-                    {/* Floating save (mobile) */}
-                    {isDirty && (
-                        <div className="sm:hidden">
-                            <Button
-                                label={
-                                    updateSettings.isPending
-                                        ? "Saving…"
-                                        : "Save Changes"
-                                }
-                                icon={<Save className="w-3.5 h-3.5" />}
-                                disabled={updateSettings.isPending}
-                                onClick={handleSave}
-                                className="w-full"
-                            />
-                        </div>
-                    )}
-                </div>
-            </main>
+            <AgentSettingsContent
+                store={store}
+                updateSettings={updateSettings}
+            />
         </PageLayout>
+    );
+}
+
+function AgentSettingsContent({
+    store,
+    updateSettings,
+}: {
+    store: ReturnType<typeof createFormStore>;
+    updateSettings: ReturnType<typeof useUpdateSettings>;
+}) {
+    const form = useForm(store, (s) => s.form as z.infer<typeof schema>);
+    const hasChanges = useForm(store, (s) => s.hasChanges);
+
+    const heartbeatValue = parseInt(form.heartbeat_interval, 10) || 0;
+    const offlineValue = parseInt(form.offline_threshold, 10) || 0;
+    const offlineBelowHeartbeat = offlineValue < heartbeatValue;
+
+    const isValid =
+        heartbeatValue >= 1 && heartbeatValue <= 1000 &&
+        offlineValue >= 1 && offlineValue <= 1000 &&
+        offlineValue >= heartbeatValue &&
+        form.agent_version.trim() !== "";
+
+    return (
+        <>
+            {hasChanges && (
+                <div className="flex justify-end">
+                    <Form.Button
+                        type="submit"
+                        icon={
+                            updateSettings.isPending ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                                <Save className="w-3.5 h-3.5" />
+                            )
+                        }
+                        disabled={updateSettings.isPending || !isValid}
+                    >
+                        {updateSettings.isPending ? "Saving…" : "Save Changes"}
+                    </Form.Button>
+                </div>
+            )}
+
+            <Form.Root store={store}>
+                <Form.SubmitHandler
+                    handler={async (data: Record<string, unknown>) => {
+                        const hb = parseInt(String(data.heartbeat_interval), 10);
+                        const off = parseInt(String(data.offline_threshold), 10);
+                        const ver = String(data.agent_version).trim();
+
+                        if (isNaN(hb) || hb < 1 || hb > 1000) {
+                            toast.error("Heartbeat interval must be between 1s and ~16m.");
+                            return;
+                        }
+                        if (isNaN(off) || off < 1 || off > 1000) {
+                            toast.error("Offline threshold must be between 1s and ~16m.");
+                            return;
+                        }
+                        if (off < hb) {
+                            toast.error("Offline threshold must be greater than or equal to the heartbeat interval.");
+                            return;
+                        }
+                        if (!ver) {
+                            toast.error("Agent version cannot be empty.");
+                            return;
+                        }
+
+                        try {
+                            await updateSettings.mutateAsync({
+                                heartbeat_interval: String(hb),
+                                offline_threshold: String(off),
+                                agent_version: ver,
+                            });
+                            toast.success("Agent settings saved.");
+                        } catch {
+                            toast.error("Failed to save agent settings.");
+                        }
+                    }}
+                />
+
+                {/* Body */}
+                <main className="py-8 flex-1">
+                    <div className="max-w-2xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-6">
+                        {/* Section: Monitoring */}
+                        <div className="bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
+                            <div className="flex items-center gap-3 px-6 py-4 border-b border-border/60 bg-muted/30">
+                                <div className="p-1.5 bg-primary/10 rounded-md">
+                                    <Radio className="w-4 h-4 text-primary" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold">
+                                        Heartbeat & Status Checks
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Configure how often agents report back and
+                                        when they are deemed offline.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="px-6 divide-y divide-border/50">
+                                <SettingRow
+                                    label="Heartbeat Interval"
+                                    description="How often agents send heartbeats to the server. Must be less than or equal to the offline threshold."
+                                >
+                                    <DurationInput
+                                        label=""
+                                        value={heartbeatValue}
+                                        onChange={(v) => store.set("heartbeat_interval")(String(v))}
+                                        placeholder="5s"
+                                    />
+                                </SettingRow>
+
+                                <SettingRow
+                                    label="Offline Threshold"
+                                    description="Time without a heartbeat before a server is marked as offline. Must be greater than or equal to the heartbeat interval."
+                                >
+                                    <DurationInput
+                                        label=""
+                                        value={offlineValue}
+                                        onChange={(v) => store.set("offline_threshold")(String(v))}
+                                        placeholder="15s"
+                                    />
+                                </SettingRow>
+                            </div>
+                        </div>
+
+                        {/* Validation warning */}
+                        {offlineBelowHeartbeat && (
+                            <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-red-500/5 border border-red-500/20 text-red-600 dark:text-red-400">
+                                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                                <p className="text-xs leading-relaxed">
+                                    Offline threshold ({offlineValue}s) must
+                                    be greater than or equal to the heartbeat
+                                    interval ({heartbeatValue}s).
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Section: Agent Version Control */}
+                        <div className="bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
+                            <div className="flex items-center gap-3 px-6 py-4 border-b border-border/60 bg-muted/30">
+                                <div className="p-1.5 bg-primary/10 rounded-md">
+                                    <Cpu className="w-4 h-4 text-primary" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold">
+                                        Agent Update Control
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Set the latest agent binary version.
+                                        Outdated agents will download the new binary
+                                        and self-update.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="px-6 divide-y divide-border/50">
+                                <SettingRow
+                                    label="Latest Agent Version"
+                                    description="Changing this version number triggers self-update downloads on running agent binaries."
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={form.agent_version}
+                                            className="w-32 h-9 rounded-md border border-border bg-muted/50 px-3 text-sm text-left font-medium text-muted-foreground cursor-not-allowed focus:outline-none"
+                                        />
+                                    </div>
+                                </SettingRow>
+                            </div>
+                        </div>
+
+                        {/* Floating save (mobile) */}
+                        {hasChanges && (
+                            <div className="sm:hidden">
+                                <Form.Button
+                                    type="submit"
+                                    icon={<Save className="w-3.5 h-3.5" />}
+                                    disabled={updateSettings.isPending || !isValid}
+                                    className="w-full"
+                                >
+                                    {updateSettings.isPending ? "Saving…" : "Save Changes"}
+                                </Form.Button>
+                            </div>
+                        )}
+                    </div>
+                </main>
+            </Form.Root>
+        </>
     );
 }

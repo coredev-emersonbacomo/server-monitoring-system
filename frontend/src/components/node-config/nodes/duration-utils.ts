@@ -2,7 +2,7 @@
  * Duration parsing and formatting utilities.
  *
  * Parses human-readable duration strings (e.g. "1h30m", "2d6h", "90s")
- * into total seconds, and formats seconds back into short canonical form.
+ * into total milliseconds, and formats milliseconds back into short canonical form.
  *
  * Supported units:
  *   y  = years   (365 days)
@@ -14,7 +14,7 @@
  *   s  = seconds
  *
  * Rules:
- *   - Unitless numbers default to seconds.
+ *   - Unitless numbers default to seconds, converted to ms internally.
  *   - Whitespace is ignored.
  *   - Units are case-insensitive.
  *   - Duplicate units are rejected.
@@ -22,14 +22,14 @@
  *   - Decimal values are supported (e.g. 1.5h).
  */
 
-const UNIT_ORDER: readonly { unit: string; alias: string; seconds: number }[] = [
-    { unit: 'y',  alias: 'y',  seconds: 365 * 86400 },
-    { unit: 'mo', alias: 'mo', seconds: 30 * 86400 },
-    { unit: 'w',  alias: 'w',  seconds: 7 * 86400 },
-    { unit: 'd',  alias: 'd',  seconds: 86400 },
-    { unit: 'h',  alias: 'h',  seconds: 3600 },
-    { unit: 'm',  alias: 'm',  seconds: 60 },
-    { unit: 's',  alias: 's',  seconds: 1 },
+const UNIT_ORDER: readonly { unit: string; alias: string; ms: number }[] = [
+    { unit: 'y',  alias: 'y',  ms: 365 * 86400_000 },
+    { unit: 'mo', alias: 'mo', ms: 30 * 86400_000 },
+    { unit: 'w',  alias: 'w',  ms: 7 * 86400_000 },
+    { unit: 'd',  alias: 'd',  ms: 86400_000 },
+    { unit: 'h',  alias: 'h',  ms: 3600_000 },
+    { unit: 'm',  alias: 'm',  ms: 60_000 },
+    { unit: 's',  alias: 's',  ms: 1000 },
 ];
 
 const VALID_UNITS = new Set(UNIT_ORDER.map((u) => u.alias));
@@ -39,30 +39,31 @@ const VALID_UNITS = new Set(UNIT_ORDER.map((u) => u.alias));
  */
 export interface ParseResult {
     valid: boolean;
-    seconds: number;
+    milliseconds: number;
     error?: string;
 }
 
 /**
- * Parse a duration string into total seconds.
+ * Parse a duration string into total milliseconds.
+ *
+ * Unitless numbers are treated as seconds and converted to ms.
  *
  * @example
- * parseDuration('30')       // { valid: true, seconds: 30 }
- * parseDuration('5m')       // { valid: true, seconds: 300 }
- * parseDuration('1h30m')    // { valid: true, seconds: 5400 }
- * parseDuration('2d6h')     // { valid: true, seconds: 194400 }
- * parseDuration('1w2d')     // { valid: true, seconds: 777600 }
- * parseDuration('abc')      // { valid: false, seconds: 0, error: '...' }
+ * parseDuration('30')       // { valid: true, milliseconds: 30000 }
+ * parseDuration('5m')       // { valid: true, milliseconds: 300000 }
+ * parseDuration('1h30m')    // { valid: true, milliseconds: 5400000 }
+ * parseDuration('2d6h')     // { valid: true, milliseconds: 194400000 }
+ * parseDuration('abc')      // { valid: false, milliseconds: 0, error: '...' }
  */
 export function parseDuration(input: string): ParseResult {
     const cleaned = input.replace(/\s+/g, '').toLowerCase();
 
     if (cleaned === '') {
-        return { valid: false, seconds: 0, error: 'Empty input' };
+        return { valid: false, milliseconds: 0, error: 'Empty input' };
     }
 
     if (cleaned.startsWith('-')) {
-        return { valid: false, seconds: 0, error: 'Negative values are not allowed' };
+        return { valid: false, milliseconds: 0, error: 'Negative values are not allowed' };
     }
 
     // Match sequences of: number (with optional decimal) followed by optional unit
@@ -85,78 +86,77 @@ export function parseDuration(input: string): ParseResult {
     // Check if we consumed the entire string
     const consumed = tokens.reduce((sum, t) => sum + t.raw.length, 0);
     if (consumed !== cleaned.length) {
-        return { valid: false, seconds: 0, error: `Invalid characters in input` };
+        return { valid: false, milliseconds: 0, error: `Invalid characters in input` };
     }
 
     if (tokens.length === 0) {
-        return { valid: false, seconds: 0, error: 'No valid tokens found' };
+        return { valid: false, milliseconds: 0, error: 'No valid tokens found' };
     }
 
     // Validate each token
     const usedUnits = new Set<string>();
-    let totalSeconds = 0;
+    let totalMs = 0;
 
     for (const token of tokens) {
         const unit = token.unit;
 
-        // Unitless = seconds
+        // Unitless = seconds → convert to ms
         if (unit === '') {
             if (usedUnits.has('s')) {
-                return { valid: false, seconds: 0, error: 'Duplicate unit: s' };
+                return { valid: false, milliseconds: 0, error: 'Duplicate unit: s' };
             }
             usedUnits.add('s');
-            totalSeconds += token.value;
+            totalMs += token.value * 1000;
             continue;
         }
 
         if (!VALID_UNITS.has(unit)) {
-            return { valid: false, seconds: 0, error: `Unknown unit: ${unit}` };
+            return { valid: false, milliseconds: 0, error: `Unknown unit: ${unit}` };
         }
 
         if (usedUnits.has(unit)) {
-            return { valid: false, seconds: 0, error: `Duplicate unit: ${unit}` };
+            return { valid: false, milliseconds: 0, error: `Duplicate unit: ${unit}` };
         }
 
         usedUnits.add(unit);
 
         const unitDef = UNIT_ORDER.find((u) => u.alias === unit);
         if (unitDef) {
-            totalSeconds += token.value * unitDef.seconds;
+            totalMs += token.value * unitDef.ms;
         }
     }
 
-    return { valid: true, seconds: Math.round(totalSeconds * 1000) / 1000 };
+    return { valid: true, milliseconds: Math.round(totalMs * 1000) / 1000 };
 }
 
 /**
- * Format a number of seconds into the shortest canonical duration string.
+ * Format a number of milliseconds into the shortest canonical duration string.
  *
  * Uses the largest applicable units first, dropping trailing zero units.
  *
  * @example
- * formatDuration(30)      // '30s'
- * formatDuration(300)     // '5m'
- * formatDuration(5400)    // '1h30m'
- * formatDuration(86400)   // '1d'
- * formatDuration(604800)  // '1w'
- * formatDuration(31536000)// '1y'
+ * formatDuration(30000)       // '30s'
+ * formatDuration(300000)      // '5m'
+ * formatDuration(5400000)     // '1h30m'
+ * formatDuration(86400000)    // '1d'
+ * formatDuration(604800000)   // '1w'
+ * formatDuration(31536000000) // '1y'
  */
-export function formatDuration(totalSeconds: number): string {
-    if (totalSeconds <= 0) return '0s';
+export function formatDuration(totalMs: number): string {
+    if (totalMs <= 0) return '0s';
 
-    const absSeconds = Math.abs(totalSeconds);
-    let remaining = absSeconds;
+    const absMs = Math.abs(totalMs);
+    let remaining = absMs;
     const parts: string[] = [];
 
-    for (const { alias, seconds: unitSeconds } of UNIT_ORDER) {
-        if (unitSeconds > remaining) continue;
+    for (const { alias, ms: unitMs } of UNIT_ORDER) {
+        if (unitMs > remaining) continue;
 
-        const count = Math.floor(remaining / unitSeconds);
+        const count = Math.floor(remaining / unitMs);
         if (count <= 0) continue;
 
-        remaining -= count * unitSeconds;
+        remaining -= count * unitMs;
 
-        // Show decimals only for the smallest unit that has a remainder
         const display = count % 1 === 0 ? count.toString() : count.toFixed(1);
         parts.push(`${display}${alias}`);
     }
@@ -166,51 +166,4 @@ export function formatDuration(totalSeconds: number): string {
     }
 
     return parts.join('');
-}
-
-/**
- * Convert a colon-format duration string (MM:DD:HH:MM:SS) to seconds.
- * Used for backward compatibility with the existing node config storage format.
- *
- * @example
- * colonToSeconds('00:00:00:10:00')  // 600 (10 minutes)
- * colonToSeconds('00:00:01:30:00')  // 5400 (1 hour 30 minutes)
- */
-export function colonToSeconds(colon: string): number {
-    const parts = colon.split(':');
-    const padded = [...parts, ...Array(Math.max(0, 5 - parts.length)).fill('0')].slice(0, 5);
-    const [months, days, hours, minutes, seconds] = padded.map(Number);
-
-    return (
-        (months || 0) * 30 * 86400 +
-        (days || 0) * 86400 +
-        (hours || 0) * 3600 +
-        (minutes || 0) * 60 +
-        (seconds || 0)
-    );
-}
-
-/**
- * Convert seconds to colon-format duration string (MM:DD:HH:MM:SS).
- * Used for backward compatibility with the existing node config storage format.
- *
- * @example
- * secondsToColon(600)     // '00:00:00:10:00'
- * secondsToColon(5400)    // '00:00:01:30:00'
- */
-export function secondsToColon(totalSeconds: number): string {
-    const s = Math.max(0, Math.floor(totalSeconds));
-
-    const months = Math.floor(s / (30 * 86400));
-    const remainingAfterMonths = s - months * 30 * 86400;
-    const days = Math.floor(remainingAfterMonths / 86400);
-    const remainingAfterDays = remainingAfterMonths - days * 86400;
-    const hours = Math.floor(remainingAfterDays / 3600);
-    const remainingAfterHours = remainingAfterDays - hours * 3600;
-    const minutes = Math.floor(remainingAfterHours / 60);
-    const seconds = remainingAfterHours - minutes * 60;
-
-    return [months, days, hours, minutes, seconds]
-        .map((n) => String(n).padStart(2, '0'))
-        .join(':');
 }

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
     UserCircle,
@@ -9,18 +8,14 @@ import {
     GitBranch,
     Cpu,
     BookOpen,
+    Activity,
 } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
-import { useBreadcrumb } from "@/hooks/useBreadcrumb";
+import IndexHeader from "@/components/IndexHeader";
 import PageLayout from "@/components/PageLayout";
 
 function Settings() {
     const { user, isLoading: authLoading } = useJwtAuth();
-    const { setTrail } = useBreadcrumb();
-
-    useEffect(() => {
-        setTrail([{ label: "Settings" }]);
-    }, [setTrail]);
 
     if (authLoading) {
         return (
@@ -78,6 +73,13 @@ function Settings() {
             href: "/settings/alerts",
         },
         {
+            title: "System Pipeline Visualizer",
+            description:
+                "Real-time ecosystem map showing agent heartbeats, metrics flow particles, backend FSM evaluations, and exact scheduled timers.",
+            icon: Activity,
+            href: "/settings/alerts/visualizer",
+        },
+        {
             title: "Docs",
             description:
                 "System documentation and reference guides.",
@@ -88,23 +90,12 @@ function Settings() {
 
     return (
         <PageLayout>
-            <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
-                <div className="flex items-start justify-between gap-4 py-3 px-6 sm:px-8 lg:px-10">
-                    <div className="flex items-start gap-3">
-                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
-                            <UserCircle className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                            <h1 className="text-lg font-semibold tracking-tight">
-                                Settings
-                            </h1>
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                                Manage your account settings and preferences.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </header>
+            <IndexHeader
+                icon={UserCircle}
+                title="Settings"
+                description="Manage your account settings and preferences."
+                trail={[{ label: "Settings" }]}
+            />
 
             <main className="py-6 w-full flex-1">
                 <div className="max-w-2xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-3">

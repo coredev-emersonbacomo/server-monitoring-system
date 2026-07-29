@@ -40,6 +40,7 @@ export interface NodeTypeDefinition {
     category: string;
     label: string;
     unlimitedInputs: boolean;
+    hasOutput: boolean;
     settings: NodeSettingDefinition[];
 }
 

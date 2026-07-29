@@ -32,7 +32,9 @@ Route::prefix('v1')->group(function () {
     Route::group([], base_path('routes/api/v1/uploads.php'));
     Route::group([], base_path('routes/api/v1/activity-logs.php'));
     Route::group([], base_path('routes/api/v1/agent.php'));
-    Route::group([], base_path('routes/api/v1/node-configs.php'));
+Route::group([], base_path('routes/api/v1/node-configs.php'));
+Route::group([], base_path('routes/api/v1/reports.php'));
+    Route::group([], base_path('routes/api/v1/reports.php'));
 });
 
 // Backward compatibility routes for tests and frontend

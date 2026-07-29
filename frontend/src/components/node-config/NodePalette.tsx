@@ -1,10 +1,8 @@
 import { useCallback, type DragEvent } from 'react';
 import type { NodeTypeDefinition, NodeCategory } from '@/types/node-config';
 import { NODE_CATEGORIES } from '@/types/node-config';
-import { cn } from '@/lib/utils';
 import {
-    Activity, MemoryStick, HardDrive, Network, Server, Heart,
-    GitCompare, GitBranch, Clock, Timer, Repeat, Mail,
+    Activity, GitCompare, GitBranch, Clock, Timer, Mail, Repeat, Puzzle,
 } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -14,6 +12,19 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ size?: number; classN
     time: Clock,
     action: Mail,
 };
+
+const CAPABILITIES = [
+    {
+        id: 'repeat',
+        label: 'Repeat',
+        icon: Repeat,
+        targetCategories: ['time'],
+        settings: {
+            repeat_interval: '10000',
+            repeat_max_repeats: 0,
+        },
+    },
+] as const;
 
 interface NodePaletteProps {
     nodeTypes: NodeTypeDefinition[];
@@ -27,10 +38,17 @@ export function NodePalette({ nodeTypes, onAddNode }: NodePaletteProps) {
         return acc;
     }, {});
 
-    const onDragStart = useCallback((event: DragEvent, type: string) => {
+    const onNodeDragStart = useCallback((event: DragEvent, type: string) => {
         event.dataTransfer.setData('application/reactflow', type);
         event.dataTransfer.effectAllowed = 'move';
     }, []);
+
+    const onCapabilityDragStart = useCallback((event: DragEvent, capId: string) => {
+        event.dataTransfer.setData('application/capability', capId);
+        event.dataTransfer.effectAllowed = 'copy';
+    }, []);
+
+    const timeCapabilities = CAPABILITIES.filter((c) => c.targetCategories.includes('time'));
 
     return (
         <div className="w-full bg-card border-r border-border/40 overflow-y-auto p-3 flex flex-col gap-4">
@@ -41,6 +59,7 @@ export function NodePalette({ nodeTypes, onAddNode }: NodePaletteProps) {
                 const items = grouped[cat.key] || [];
                 if (items.length === 0) return null;
                 const CatIcon = CATEGORY_ICONS[cat.key];
+                const caps = cat.key === 'time' ? timeCapabilities : [];
 
                 return (
                     <div key={cat.key}>
@@ -55,7 +74,7 @@ export function NodePalette({ nodeTypes, onAddNode }: NodePaletteProps) {
                                 <button
                                     key={nt.type}
                                     draggable
-                                    onDragStart={(e) => onDragStart(e, nt.type)}
+                                    onDragStart={(e) => onNodeDragStart(e, nt.type)}
                                     onClick={() => onAddNode(nt.type)}
                                     className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-left
                                         hover:bg-accent hover:text-accent-foreground transition-colors cursor-grab active:cursor-grabbing"
@@ -70,6 +89,34 @@ export function NodePalette({ nodeTypes, onAddNode }: NodePaletteProps) {
                                 </button>
                             ))}
                         </div>
+
+                        {caps.length > 0 && (
+                            <>
+                                <div className="flex items-center justify-end gap-1.5 px-2 py-1 mt-2 mb-1">
+                                    <Puzzle size={10} className="text-muted-foreground" />
+                                    <span className="text-[10px] font-medium uppercase text-muted-foreground/60">
+                                        Time Capabilities
+                                    </span>
+                                </div>
+                                <div className="flex flex-col gap-0.5">
+                                    {caps.map((cap) => (
+                                        <button
+                                            key={cap.id}
+                                            draggable
+                                            onDragStart={(e) => onCapabilityDragStart(e, cap.id)}
+                                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-left
+                                                hover:bg-accent hover:text-accent-foreground transition-colors cursor-grab active:cursor-grabbing
+                                                border border-dashed border-border/40"
+                                        >
+                                            <div className="p-1 rounded" style={{ backgroundColor: `${cat.color}10` }}>
+                                                <cap.icon size={11} style={{ color: cat.color }} />
+                                            </div>
+                                            <span className="text-foreground/70">{cap.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
                     </div>
                 );
             })}
