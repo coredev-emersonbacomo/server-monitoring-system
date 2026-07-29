@@ -26,34 +26,41 @@ export default function ClientReportPage({ uuidOverride }: { uuidOverride?: stri
 
             <div className="report-section">
                 <h2 className="text-sm font-semibold text-gray-700 mb-2">Overview</h2>
-                <table className="w-full text-sm" style={BORDER}>
-                    <tbody>
-                        <tr>
-                            <td className="p-3 bg-gray-50 font-medium text-gray-600 w-1/2" style={BORDER}>Total Servers</td>
-                            <td className="p-3" style={BORDER}>{report.total_servers}</td>
-                        </tr>
-                        <tr>
-                            <td className="p-3 bg-gray-50 font-medium text-gray-600" style={BORDER}>Online</td>
-                            <td className="p-3 text-green-600 font-medium" style={BORDER}>{report.online_servers}</td>
-                        </tr>
-                        <tr>
-                            <td className="p-3 bg-gray-50 font-medium text-gray-600" style={BORDER}>Offline</td>
-                            <td className="p-3 text-red-600 font-medium" style={BORDER}>{report.offline_servers}</td>
-                        </tr>
-                        <tr>
-                            <td className="p-3 bg-gray-50 font-medium text-gray-600" style={BORDER}>Total Alerts</td>
-                            <td className="p-3" style={BORDER}>{report.total_alerts}</td>
-                        </tr>
-                        <tr>
-                            <td className="p-3 bg-gray-50 font-medium text-gray-600" style={BORDER}>Avg CPU</td>
-                            <td className="p-3" style={BORDER}>{report.avg_cpu_usage}%</td>
-                        </tr>
-                        <tr>
-                            <td className="p-3 bg-gray-50 font-medium text-gray-600" style={BORDER}>Avg Memory</td>
-                            <td className="p-3" style={BORDER}>{report.avg_memory_usage}%</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="grid grid-cols-2 gap-4">
+                    <table className="w-full text-sm" style={BORDER}>
+                        <tbody>
+                            <tr>
+                                <td className="p-3 bg-gray-50 font-medium text-gray-600 w-1/2" style={BORDER}>Total Servers</td>
+                                <td className="p-3" style={BORDER}>{report.total_servers}</td>
+                            </tr>
+                            <tr>
+                                <td className="p-3 bg-gray-50 font-medium text-gray-600" style={BORDER}>Online</td>
+                                <td className="p-3 text-green-600 font-medium" style={BORDER}>{report.online_servers}</td>
+                            </tr>
+                            <tr>
+                                <td className="p-3 bg-gray-50 font-medium text-gray-600" style={BORDER}>Offline</td>
+                                <td className="p-3 text-red-600 font-medium" style={BORDER}>{report.offline_servers}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <table className="w-full text-sm" style={BORDER}>
+                        <tbody>
+                            <tr>
+                                <td className="p-3 bg-gray-50 font-medium text-gray-600" style={BORDER}>Total Alerts</td>
+                                <td className="p-3" style={BORDER}>{report.total_alerts}</td>
+                            </tr>
+                            <tr>
+                                <td className="p-3 bg-gray-50 font-medium text-gray-600" style={BORDER}>Avg CPU</td>
+                                <td className="p-3" style={BORDER}>{report.avg_cpu_usage}%</td>
+                            </tr>
+                            <tr>
+                                <td className="p-3 bg-gray-50 font-medium text-gray-600" style={BORDER}>Avg Memory</td>
+                                <td className="p-3" style={BORDER}>{report.avg_memory_usage}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <div className="report-section">
