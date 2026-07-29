@@ -210,8 +210,8 @@ class ServerData extends Data
         $rateUpdatedAtStr = $server->rate_updated_at ? $server->rate_updated_at->toIso8601String() : null;
 
         $dbOnlineSeconds = (int) ($server->online_seconds ?? 0);
-        $offlineThresholdMs = (int) \App\Models\Setting::get('offline_threshold', '15000');
-        $offlineThreshold = intdiv($offlineThresholdMs, 1000);
+        $rawOffline = (int) \App\Models\Setting::get('offline_threshold', '15');
+        $offlineThreshold = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
 
         $pendingSeconds = 0;
         if ($server->status === 'online' && $agent && $agent->last_seen_at) {
@@ -272,7 +272,73 @@ class ServerData extends Data
             disk: $server->disk,
             operating_system: $server->operating_system,
             record_status: $server->record_status?->value ?? 'active',
-            status: $server->status,
+            status: (function () use ($server, $agent, $offlineThreshold): string {
+                if (!$agent || !$agent->registered_at) {
+                    return $server->status ?? 'pending_installation';
+                }
+
+                // Live health check: if last heartbeat is past the threshold, go offline immediately
+                $lastSeen = $agent->last_seen_at;
+                $health = \App\Models\Server::computeHealth($lastSeen, $offlineThreshold);
+                $isOffline = $health === \App\Enums\ServerHealth::Offline;
+                $wasOffline = $server->status === 'offline';
+
+                if ($isOffline && !$wasOffline) {
+                    // Transition to offline — use a cache lock so only the first
+                    // concurrent request writes the DB row and log entry.
+                    $lockKey = 'server_offline_transition_' . $server->uuid;
+                    $acquired = \Illuminate\Support\Facades\Cache::add($lockKey, true, 60);
+                    if ($acquired) {
+                        $server->updateQuietly([
+                            'status'          => 'offline',
+                            'went_offline_at' => now(),
+                        ]);
+
+                        \App\Models\ServerHealthLog::create([
+                            'logable_type' => get_class($server),
+                            'logable_id'   => $server->id,
+                            'user_id'      => null,
+                            'user'         => 'System',
+                            'action'       => 'Agent Offline',
+                            'details'      => json_encode([
+                                'message'     => "Agent went offline for server: {$server->name}",
+                                'server_name' => $server->name,
+                                'last_seen'   => $lastSeen?->toIso8601String(),
+                            ]),
+                        ]);
+
+                        \App\Models\Activity::create([
+                            'server_id'   => $server->id,
+                            'agent_id'    => $agent->id,
+                            'type'        => 'server_offline',
+                            'description' => 'Server transitioned to Offline state.',
+                        ]);
+
+                        \App\Models\ActionItem::updateOrCreate(
+                            [
+                                'action_type' => 'server_offline',
+                                'server_id'   => $server->id,
+                                'client_id'   => $server->client_id,
+                            ],
+                            [
+                                'message'     => "{$server->name} is offline",
+                                'severity'    => 'critical',
+                                'client_name' => $server->client?->name ?? 'Unknown',
+                                'server_name' => $server->name,
+                            ]
+                        );
+                    }
+                    return 'offline';
+                }
+
+                if (!$isOffline && $wasOffline) {
+                    // Recovery is handled by HeartbeatService when the next heartbeat arrives.
+                    // Just reflect the live online state without re-logging here.
+                    return 'online';
+                }
+
+                return $isOffline ? 'offline' : ($server->status ?? 'online');
+            })(),
             created_at: $server->created_at->toIso8601String(),
             updated_at: $server->updated_at->toIso8601String(),
             activeProvisionDetails: $activeDetails,
