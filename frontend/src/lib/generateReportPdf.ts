@@ -1,49 +1,45 @@
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import jwtClient from "@/api/jwtClient";
 
-interface PdfField {
-    label: string;
-    value: string;
+interface ReportDownloadOptions {
+    template: "client" | "server" | "general" | "multi-client" | "multi-server";
+    data: Record<string, unknown>;
+    filename: string;
+    paper?: string;
+    orientation?: "landscape" | "portrait";
 }
 
-interface PdfSection {
-    title: string;
-    fields: PdfField[];
-}
+/**
+ * Generate a PDF report via the Typst backend and trigger a download.
+ */
+export async function generateReportPdf({
+    template,
+    data,
+    filename,
+    paper = "a4",
+    orientation = "landscape",
+}: ReportDownloadOptions): Promise<void> {
+    const response = await jwtClient.post(
+        "/v1/reports/compile",
+        {
+            template,
+            data,
+            paper,
+            orientation,
+        },
+        {
+            responseType: "blob",
+        },
+    );
 
-export function generateReportPdf(
-    title: string,
-    sections: PdfSection[],
-    filename: string,
-) {
-    const doc = new jsPDF();
-    let y = 20;
+    const blob = new Blob([response.data], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
 
-    doc.setFontSize(18);
-    doc.text(title, 14, y);
-    y += 6;
-    doc.setFontSize(10);
-    doc.setTextColor(120);
-    doc.text(`Generated ${new Date().toLocaleString()}`, 14, y);
-    doc.setTextColor(0);
-    y += 10;
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-    sections.forEach((section) => {
-        doc.setFontSize(13);
-        doc.text(section.title, 14, y);
-        y += 4;
-
-        autoTable(doc, {
-            startY: y,
-            body: section.fields.map((f) => [f.label, f.value]),
-            theme: "plain",
-            styles: { fontSize: 10, cellPadding: 2 },
-            columnStyles: { 0: { fontStyle: "bold", cellWidth: 50 } },
-        });
-
-        // @ts-expect-error jspdf-autotable attaches this at runtime
-        y = doc.lastAutoTable.finalY + 10;
-    });
-
-    doc.save(filename);
+    URL.revokeObjectURL(url);
 }

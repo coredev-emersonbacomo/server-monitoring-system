@@ -79,7 +79,7 @@ const alertGraph: NodeConfigGraph = {
                 subject:
                     "[{server.client.name}] {server.name} - {runtime.metricName} Alert (10s)",
                 message:
-                    "[{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! (event timestamp: {runtime.offlineTimestamp})",
+                    "[{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!\nEvent Timestamp: {runtime.eventTimestamp}\nFirst Trigger Timestamp: {runtime.firstTriggerTimestamp}",
             },
         },
         {
@@ -92,7 +92,7 @@ const alertGraph: NodeConfigGraph = {
                 subject:
                     "[{server.client.name}] {server.name} - {runtime.metricName} Alert (20s)",
                 message:
-                    "[{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! (event timestamp: {runtime.offlineTimestamp})",
+                    "[{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!\nEvent Timestamp: {runtime.eventTimestamp}\nFirst Trigger Timestamp: {runtime.firstTriggerTimestamp}",
             },
         },
         {
@@ -103,7 +103,8 @@ const alertGraph: NodeConfigGraph = {
                 label: "Discord 30s",
                 channel: "discord",
                 message:
-                    ":rotating_light: [{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! Repeating every 10s. (event timestamp: {runtime.offlineTimestamp})",
+                    ":rotating_light: [{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!\n\nEvent Timestamp: {runtime.eventTimestamp}\nFirst Trigger Timestamp: {runtime.firstTriggerTimestamp}\n<if-repeat>\nRepeat Interval: {runtime.repeat.interval}\nCount: {runtime.repeat.countOfMessage} of {runtime.repeat.max}\n</if-repeat>\n" +
+                        '<discord-button detailsUrl="{server.url}">View Server Details</discord-button>',
             },
         },
         {
@@ -127,7 +128,7 @@ const alertGraph: NodeConfigGraph = {
                 channel: "email",
                 subject: "[{server.client.name}] {server.name} - Offline Alert",
                 message:
-                    "[{server.client.name}] {server.name} is offline! (event timestamp: {runtime.offlineTimestamp})",
+                    "[{server.client.name}] {server.name} is offline!\nEvent Timestamp: {runtime.eventTimestamp}\nFirst Trigger Timestamp: {runtime.firstTriggerTimestamp}",
             },
         },
         {
@@ -144,7 +145,8 @@ const alertGraph: NodeConfigGraph = {
                 label: "Discord Offline",
                 channel: "discord",
                 message:
-                    ":rotating_light: [{server.client.name}] {server.name} is still offline! (for {runtime.offlineDuration}) (event timestamp: {runtime.offlineTimestamp})",
+                    ":rotating_light: [{server.client.name}] {server.name} is still offline! (for {runtime.offlineDuration})\n\nEvent Timestamp: {runtime.eventTimestamp}\nFirst Trigger Timestamp: {runtime.firstTriggerTimestamp}\n<if-repeat>\nRepeat Interval: {runtime.repeat.interval}\nCount: {runtime.repeat.countOfMessage} of {runtime.repeat.max}\n</if-repeat>\n" +
+                        '<discord-button detailsUrl="{server.url}">View Server Details</discord-button>',
             },
         },
         {
@@ -433,7 +435,8 @@ export default function DocsAlerts() {
                                 <InlineCode>{`{server.client.name}`}</InlineCode>
                                 , <InlineCode>{`{runtime.metricName}`}</InlineCode>,{" "}
                                 <InlineCode>{`{runtime.sustainValue}`}</InlineCode>,{" "}
-                                <InlineCode>{`{runtime.offlineTimestamp}`}</InlineCode>
+                                <InlineCode>{`{runtime.eventTimestamp}`}</InlineCode>,{" "}
+                                <InlineCode>{`{runtime.firstTriggerTimestamp}`}</InlineCode>
                                 .
                             </p>
                         </SubSection>

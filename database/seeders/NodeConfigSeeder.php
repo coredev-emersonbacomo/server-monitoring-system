@@ -24,18 +24,40 @@ class NodeConfigSeeder extends Seeder
             ['id' => 'sustained_20',     'type' => 'sustained',   'position' => ['x' => 600,  'y' => 230], 'settings' => ['label' => 'Sustained 20s', 'duration' => '20000']],
             ['id' => 'sustained_30',     'type' => 'sustained',   'position' => ['x' => 600,  'y' => 400], 'settings' => ['label' => 'Sustained 30s + Repeat', 'duration' => '30000', 'repeat_interval' => '10000', 'repeat_max_repeats' => 0]],
 
-            ['id' => 'email_10',         'type' => 'notification','position' => ['x' => 860,  'y' => 10],  'settings' => ['label' => 'Email 10s',  'channel' => 'email',   'subject' => '[{server.client.name}] {server.name} - {runtime.metricName} Alert (10s)',  'message' => '[{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! (event timestamp: {runtime.offlineTimestamp})']],
-            ['id' => 'email_20',         'type' => 'notification','position' => ['x' => 860,  'y' => 210], 'settings' => ['label' => 'Email 20s',  'channel' => 'email',   'subject' => '[{server.client.name}] {server.name} - {runtime.metricName} Alert (20s)',  'message' => '[{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! (event timestamp: {runtime.offlineTimestamp})']],
-            ['id' => 'discord_30',       'type' => 'notification','position' => ['x' => 860,  'y' => 410], 'settings' => ['label' => 'Discord 30s','channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'message' => ':rotating_light: [{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}! Repeating every 10s. (event timestamp: {runtime.offlineTimestamp})']],
+            ['id' => 'email_10',         'type' => 'notification','position' => ['x' => 860,  'y' => 10],  'settings' => ['label' => 'Email 10s',  'channel' => 'email',   'subject' => '[{server.client.name}] {server.name} - {runtime.metricName} Alert (10s)',  'message' => '[{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!
+Event Timestamp: {runtime.eventTimestamp}
+First Trigger Timestamp: {runtime.firstTriggerTimestamp}']],
+            ['id' => 'email_20',         'type' => 'notification','position' => ['x' => 860,  'y' => 210], 'settings' => ['label' => 'Email 20s',  'channel' => 'email',   'subject' => '[{server.client.name}] {server.name} - {runtime.metricName} Alert (20s)',  'message' => '[{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!
+Event Timestamp: {runtime.eventTimestamp}
+First Trigger Timestamp: {runtime.firstTriggerTimestamp}']],
+            ['id' => 'discord_30',       'type' => 'notification','position' => ['x' => 860,  'y' => 410], 'settings' => ['label' => 'Discord 30s','channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'message' => ':rotating_light: [{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!
+
+Event Timestamp: {runtime.eventTimestamp}
+First Trigger Timestamp: {runtime.firstTriggerTimestamp}
+<if-repeat>
+Repeat Interval: {runtime.repeat.interval}
+Count: {runtime.repeat.countOfMessage} of {runtime.repeat.max}
+</if-repeat>
+<discord-button detailsUrl="{server.url}">View Server Details</discord-button>']],
 
             // ── Bottom section: Server Status Offline ────────────────────
 
             ['id' => 'metric_status',    'type' => 'metric',      'position' => ['x' => -300, 'y' => 510], 'settings' => ['label' => 'Server Status', 'metric_type' => 'server_status']],
 
-            ['id' => 'email_offline',    'type' => 'notification','position' => ['x' => -60,  'y' => 510], 'settings' => ['label' => 'Email Offline',  'channel' => 'email',   'subject' => '[{server.client.name}] {server.name} - Offline Alert', 'message' => '[{server.client.name}] {server.name} is offline! (event timestamp: {runtime.offlineTimestamp})']],
+            ['id' => 'email_offline',    'type' => 'notification','position' => ['x' => -60,  'y' => 510], 'settings' => ['label' => 'Email Offline',  'channel' => 'email',   'subject' => '[{server.client.name}] {server.name} - Offline Alert', 'message' => '[{server.client.name}] {server.name} is offline!
+Event Timestamp: {runtime.eventTimestamp}
+First Trigger Timestamp: {runtime.firstTriggerTimestamp}']],
 
             ['id' => 'check_after_10m',  'type' => 'check_after', 'position' => ['x' => -60,  'y' => 710], 'settings' => ['label' => 'Check After 10s', 'duration' => '10000', 'repeat_interval' => '10000', 'repeat_max_repeats' => 0]],
-            ['id' => 'discord_offline',  'type' => 'notification','position' => ['x' => 200,  'y' => 710], 'settings' => ['label' => 'Discord Offline', 'channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'message' => ':rotating_light: [{server.client.name}] {server.name} is still offline! (for {runtime.offlineDuration}) (event timestamp: {runtime.offlineTimestamp})']],
+            ['id' => 'discord_offline',  'type' => 'notification','position' => ['x' => 200,  'y' => 710], 'settings' => ['label' => 'Discord Offline', 'channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'message' => ':rotating_light: [{server.client.name}] {server.name} is still offline! (for {runtime.offlineDuration})
+
+Event Timestamp: {runtime.eventTimestamp}
+First Trigger Timestamp: {runtime.firstTriggerTimestamp}
+<if-repeat>
+Repeat Interval: {runtime.repeat.interval}
+Count: {runtime.repeat.countOfMessage} of {runtime.repeat.max}
+</if-repeat>
+<discord-button detailsUrl="{server.url}">View Server Details</discord-button>']],
         ];
 
         $edges = [
