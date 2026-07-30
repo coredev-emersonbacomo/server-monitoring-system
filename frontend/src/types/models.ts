@@ -74,9 +74,6 @@ export interface CustomActivityLog {
             created_at: string | null;
             /** Format: date-time */
             updated_at: string | null;
-            type: string;
-            title: string | null;
-            severity: string | null;
         }
 
 /** DashboardStatsData */
