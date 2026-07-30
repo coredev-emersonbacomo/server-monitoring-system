@@ -4,15 +4,8 @@
 #set page(
   paper: d.at("paper", default: "a4"),
   flipped: d.at("orientation", default: "portrait") == "landscape",
-  margin: (x: 18mm, y: 20mm),
-  header: context [
-    #set text(size: 9pt, fill: rgb("#888888"))
-    #h(1fr)
-    Multi-Client Report
-    #h(1fr)
-    #v(-0.8em)
-    #line(length: 100%, stroke: 0.3pt + rgb("#dddddd"))
-  ],
+  margin: (top: 3cm, bottom: 2.5cm, x: 1.5cm),
+  header: page-header("Multi-Client Report"),
   footer: context [
     #set text(size: 8pt, fill: rgb("#999999"))
     #line(length: 100%, stroke: 0.3pt + rgb("#dddddd"))
