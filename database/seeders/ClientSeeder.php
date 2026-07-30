@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 use App\Models\Client;
 use App\Models\Server;
 use App\Models\User;
@@ -17,7 +16,7 @@ class ClientSeeder extends Seeder
      */
     public function run(): void
     {
-        $user = User::first();
+        $user = User::where('username', 'admin')->first();
         if (!$user) {
             $this->command->error('Please run AdminSeeder first, no users found.');
             return;
@@ -42,5 +41,6 @@ class ClientSeeder extends Seeder
                 'host_name' => 'Thinkpad',
             ]
         );
+
     }
 }

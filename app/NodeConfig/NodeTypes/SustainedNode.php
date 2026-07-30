@@ -5,6 +5,7 @@ namespace App\NodeConfig\NodeTypes;
 use App\Models\Agent;
 use App\Models\MetricSample;
 use App\Models\Setting;
+use Illuminate\Support\Facades\Log;
 
 class SustainedNode extends BaseNode
 {
@@ -18,7 +19,7 @@ class SustainedNode extends BaseNode
             ['key' => 'duration', 'label' => 'Duration (ms)', 'type' => 'string', 'required' => true, 'default' => '300000'],
             ['key' => 'min_match_percent', 'label' => 'Min Match %', 'type' => 'number', 'default' => 100, 'description' => 'Minimum % of samples that must violate the threshold within the sustain window'],
             ['key' => 'repeat_interval', 'label' => 'Repeat Interval (ms)', 'type' => 'string', 'default' => ''],
-            ['key' => 'repeat_max_repeats', 'label' => 'Max Repeats (0 = infinite)', 'type' => 'number', 'default' => 0],
+            ['key' => 'repeat_max_repeats', 'label' => 'Max Repeats (-1 = infinite)', 'type' => 'number', 'default' => -1],
         ];
     }
 
@@ -90,7 +91,7 @@ class SustainedNode extends BaseNode
         // Condition confirmed — fire notification and manage repeat cycle
         $firingState = ['phase' => 'firing', 'repeat_count' => $repeatCount];
 
-        if ($cfg['has_repeat'] && ($cfg['max_repeats'] === 0 || $repeatCount < $cfg['max_repeats'])) {
+        if ($cfg['has_repeat'] && ($cfg['max_repeats'] <= 0 || $repeatCount < $cfg['max_repeats'])) {
             return NodeResult::withTimer(
                 true,
                 new NodeTimer($cfg['repeat_interval_ms'], ['repeat_fire' => true]),
@@ -122,9 +123,9 @@ class SustainedNode extends BaseNode
 
         return [
             'duration_ms'        => $durationMs,
-            'min_match_percent'  => (float) ($settings['min_match_percent'] ?? 100),
+            'min_match_percent'  => (is_numeric($settings['min_match_percent'] ?? null) && (float) $settings['min_match_percent'] > 0) ? (float) $settings['min_match_percent'] : 100,
             'repeat_interval_ms' => $repeatIntervalMs,
-            'max_repeats'        => (int) ($settings['repeat_max_repeats'] ?? 0),
+            'max_repeats'        => (int) ($settings['repeat_max_repeats'] ?? -1),
             'has_repeat'         => $repeatIntervalMs > 0,
             'server_id'          => $state['server_id'] ?? null,
             'metric_type'        => $state['metric_type'] ?? null,
@@ -172,9 +173,10 @@ class SustainedNode extends BaseNode
             return false;
         }
 
-        $offlineThresholdMs = (int) Setting::get('offline_threshold', '15000');
+        $rawOffline = (int) Setting::get('offline_threshold', '15');
+        $offlineSec = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
 
-        return $agent->last_seen_at->lt(now()->subMilliseconds($offlineThresholdMs + $requiredMs));
+        return $agent->last_seen_at->lt(now()->subSeconds($offlineSec)->subMilliseconds($requiredMs));
     }
 
     private function checkMetricCondition(
@@ -199,13 +201,12 @@ class SustainedNode extends BaseNode
 
         $metricName         = $metricNameMap[$metricType] ?? $metricType;
         $metricTypeForQuery = explode('_', $metricType, 2)[0];
-        $since              = now()->subMilliseconds($requiredMs);
+        $since              = now()->subMilliseconds($requiredMs + 2000);
         $sqlOperator        = $this->toSqlOperator($operator);
 
         // Single aggregated query instead of two separate count() calls
-        $row = MetricSample::whereHas('batch', fn($q) => $q
-            ->where('agent_id', $agent->id)
-            ->where('recorded_at', '>=', $since))
+        $row = MetricSample::whereHas('batch', fn($q) => $q->where('agent_id', $agent->id))
+            ->where('recorded_at', '>=', $since)
             ->where('metric_type', $metricTypeForQuery)
             ->where('metric_name', $metricName)
             ->selectRaw(
@@ -215,10 +216,28 @@ class SustainedNode extends BaseNode
             ->first();
 
         if (!$row || (int) $row->total === 0) {
+            Log::info('[sustained] checkMetricCondition — no samples in window', [
+                'server_id'  => $serverId,
+                'metric_type' => $metricType,
+                'since'      => $since->toDateTimeString(),
+                'required_ms' => $requiredMs,
+            ]);
             return false;
         }
 
-        return ((int) $row->violating / (int) $row->total) * 100 >= $minMatchPercent;
+        $matchPercent = ((int) $row->violating / (int) $row->total) * 100;
+        $passes = $matchPercent >= $minMatchPercent;
+        if (!$passes) {
+            Log::info('[sustained] checkMetricCondition — below min_match_percent', [
+                'server_id'    => $serverId,
+                'metric_type'  => $metricType,
+                'total'        => (int) $row->total,
+                'violating'    => (int) $row->violating,
+                'match_percent' => $matchPercent,
+                'min_percent'  => $minMatchPercent,
+            ]);
+        }
+        return $passes;
     }
 
     private function toSqlOperator(string $operator): string

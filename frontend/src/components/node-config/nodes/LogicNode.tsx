@@ -54,18 +54,20 @@ export const LogicNode = memo(({ id, data, type, selected }: NodeProps) => {
                 </Select>
             </div>
 
-            <div className="flex">
-                <NodeSocket type="target" position={Position.Left} id="input" def={inDef} elongated
-                    label={`${inDef?.label || 'Input'}${isNot ? '' : 's'}`}>
-                    {!inputConnected && (
-                        <span className="text-[10px] text-muted-foreground/40 italic ml-1">
-                            {isNot ? '(1)' : '(any)'}
-                        </span>
-                    )}
-                </NodeSocket>
-                <div className="flex-1" />
-                <NodeSocket type="source" position={Position.Right} id="output" def={outDef}
-                    label={outDef?.label || 'Result'} />
+            <div className="flex flex-col px-3 gap-1.5 py-3">
+                <div className="flex w-full">
+                    <NodeSocket type="target" position={Position.Left} id="input" def={inDef} elongated
+                        label={`${inDef?.label || 'Input'}${isNot ? '' : 's'}`}>
+                        {!inputConnected && (
+                            <span className="text-[10px] text-muted-foreground/40 italic ml-1">
+                                {isNot ? '(1)' : '(any)'}
+                            </span>
+                        )}
+                    </NodeSocket>
+                    <div className="flex-1" />
+                    <NodeSocket type="source" position={Position.Right} id="output" def={outDef}
+                        label={outDef?.label || 'Result'} />
+                </div>
             </div>
         </BaseNode>
     );

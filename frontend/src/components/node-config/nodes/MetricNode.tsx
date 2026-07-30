@@ -39,7 +39,7 @@ export const MetricNode = memo(({ id, data, selected }: NodeProps) => {
                 <span className="text-xs font-semibold text-foreground">Metric</span>
             </div>
 
-            <div className="flex px-3 py-2">
+            <div className="flex flex-col px-3 gap-1.5 py-3">
                 <Select value={metricType} onValueChange={handleChange}>
                     <SelectTrigger className="flex-1 h-7 text-xs font-semibold" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
                         <SelectValue />
@@ -50,28 +50,28 @@ export const MetricNode = memo(({ id, data, selected }: NodeProps) => {
                         ))}
                     </SelectContent>
                 </Select>
-            </div>
 
-            {isMultiOutput ? (
-                <>
-                    <div className="flex pb-1">
+                {isMultiOutput ? (
+                    <>
+                        <div className="flex w-full">
+                            <div className="flex-1" />
+                            <NodeSocket type="source" position={Position.Right} id="online"
+                                def={{ type: 'boolean', label: 'Online' }} label="Online" labelColor="#6ee7b7" />
+                        </div>
+                        <div className="flex w-full">
+                            <div className="flex-1" />
+                            <NodeSocket type="source" position={Position.Right} id="offline"
+                                def={{ type: 'boolean', label: 'Offline' }} label="Offline" labelColor="#c48888" />
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex w-full">
                         <div className="flex-1" />
-                        <NodeSocket type="source" position={Position.Right} id="online"
-                            def={{ type: 'boolean', label: 'Online' }} label="Online" labelColor="#6ee7b7" />
+                        <NodeSocket type="source" position={Position.Right} id="output"
+                            def={{ type: 'number', label: 'Value' }} label="Value" />
                     </div>
-                    <div className="flex pb-2.5">
-                        <div className="flex-1" />
-                        <NodeSocket type="source" position={Position.Right} id="offline"
-                            def={{ type: 'boolean', label: 'Offline' }} label="Offline" labelColor="#c48888" />
-                    </div>
-                </>
-            ) : (
-                <div className="flex pb-2.5">
-                    <div className="flex-1" />
-                    <NodeSocket type="source" position={Position.Right} id="output"
-                        def={{ type: 'number', label: 'Value' }} label="Value" />
-                </div>
-            )}
+                )}
+            </div>
         </BaseNode>
     );
 });

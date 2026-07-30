@@ -125,7 +125,7 @@ function SystemSettingsContent({
     const isValid = !isNaN(limitParsed) && limitParsed >= 1 && limitParsed <= 50;
 
     return (
-        <>
+        <Form.Root store={store}>
             {hasChanges && (
                 <div className="flex justify-end">
                     <Form.Button
@@ -144,8 +144,7 @@ function SystemSettingsContent({
                 </div>
             )}
 
-            <Form.Root store={store}>
-                <Form.SubmitHandler
+            <Form.SubmitHandler
                     handler={async (data: Record<string, unknown>) => {
                         const limit = parseInt(String(data.secop_limit_per_client), 10);
                         if (isNaN(limit) || limit < 1 || limit > 50) {
@@ -237,6 +236,5 @@ function SystemSettingsContent({
                     </div>
                 </main>
             </Form.Root>
-        </>
     );
 }

@@ -1,4 +1,4 @@
-export type SocketDataType = 'number' | 'boolean' | 'any' | 'event';
+export type SocketDataType = 'number' | 'boolean' | 'any' | 'event' | 'severity';
 
 export interface HandleTypeDef {
     type: SocketDataType;
@@ -10,12 +10,14 @@ export const TYPE_COLORS: Record<SocketDataType, string> = {
     boolean: '#34d399',
     any: '#9ca3af',
     event: '#f59e0b',
+    severity: '#ef4444',
 };
 
 export const OUTPUT_TYPES: Record<string, HandleTypeDef> = {
     metric: { type: 'number', label: 'Value' },
     condition: { type: 'boolean', label: 'Result' },
     logic: { type: 'boolean', label: 'Result' },
+    severity: { type: 'severity', label: 'Severity' },
     check_after: { type: 'boolean', label: 'Out' },
     sustained: { type: 'boolean', label: 'Out' },
     notification: { type: 'event', label: 'Out' },
@@ -31,6 +33,10 @@ export const INPUT_TYPES: Record<string, Record<string, HandleTypeDef>> = {
     logic: {
         input: { type: 'boolean', label: 'Input' },
     },
+    severity: {
+        input: { type: 'boolean', label: 'In' },
+        severity: { type: 'severity', label: 'Severity' },
+    },
     check_after: {
         input: { type: 'any', label: 'In' },
         'chain-in': { type: 'any', label: 'Chain In' },
@@ -41,6 +47,7 @@ export const INPUT_TYPES: Record<string, Record<string, HandleTypeDef>> = {
     },
     notification: {
         input: { type: 'boolean', label: 'Trigger' },
+        severity: { type: 'severity', label: 'Severity' },
     },
 };
 

@@ -13,7 +13,7 @@ const TIME_CONFIGS: Record<string, { icon: React.ComponentType<{ size?: number }
 };
 
 function isValidMaxValue(v: string): boolean {
-    if (v === 'inf') return true;
+    if (v === 'inf' || v === '-1') return true;
     const n = parseInt(v);
     return !isNaN(n) && n >= 0;
 }
@@ -30,8 +30,8 @@ export const TimeNode = memo(({ id, data, type, selected }: NodeProps) => {
     const durationMs = parseInt((data.duration as string) || '0', 10) || 0;
     const repeatIntervalMs = parseInt((data.repeat_interval as string) || '0', 10) || 0;
     const hasRepeat = repeatIntervalMs > 0;
-    const repeatMaxRepeatsRaw = (data.repeat_max_repeats as number | string) ?? 0;
-    const isInfinite = repeatMaxRepeatsRaw === 0 || repeatMaxRepeatsRaw === 'inf';
+    const repeatMaxRepeatsRaw = (data.repeat_max_repeats as number | string) ?? -1;
+    const isInfinite = repeatMaxRepeatsRaw === -1 || repeatMaxRepeatsRaw === 0 || repeatMaxRepeatsRaw === 'inf';
     const savedMax = isInfinite ? 'inf' : String(repeatMaxRepeatsRaw);
 
     const [maxInputValue, setMaxInputValue] = useState(savedMax);
@@ -52,8 +52,9 @@ export const TimeNode = memo(({ id, data, type, selected }: NodeProps) => {
             return;
         }
         setMaxHasError(false);
-        if (v === 'inf') {
-            updateNodeData(id, { repeat_max_repeats: 0 });
+        if (v === 'inf' || v === '-1') {
+            setMaxInputValue('inf');
+            updateNodeData(id, { repeat_max_repeats: -1 });
         } else {
             updateNodeData(id, { repeat_max_repeats: parseInt(v) });
         }
@@ -98,12 +99,49 @@ export const TimeNode = memo(({ id, data, type, selected }: NodeProps) => {
                 )}
             </div>
 
-            <div className="flex">
-                <NodeSocket type="target" position={Position.Left} id="input" def={inDef}
-                    label={inDef?.label || 'In'} />
-                <div className="flex-1" />
-                <NodeSocket type="source" position={Position.Right} id="output" def={outDef}
-                    label={outDef?.label || 'Out'} />
+            <div className="flex flex-col px-3 gap-1.5 py-3">
+                <div className="flex items-center w-full">
+                    <NodeSocket type="target" position={Position.Left} id="input" def={inDef}
+                        label={inDef?.label || 'In'} />
+                    <div className="flex-1" />
+                    <NodeSocket type="source" position={Position.Right} id="output" def={outDef}
+                        label={outDef?.label || 'Out'} />
+                </div>
+
+                <DurationInput
+                    label="For"
+                    value={durationMs}
+                    onChange={handleDurationChange}
+                />
+                {hasRepeat && (
+                    <>
+                        <DurationInput
+                            label="Repeats after"
+                            value={repeatIntervalMs}
+                            onChange={handleRepeatIntervalChange}
+                        />
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-medium uppercase text-muted-foreground shrink-0">Max</span>
+                            <input
+                                type="text"
+                                value={maxInputValue}
+                                onChange={(e) => {
+                                    setMaxInputValue(e.target.value);
+                                    if (maxHasError) setMaxHasError(false);
+                                }}
+                                onBlur={handleMaxBlur}
+                                onKeyDown={handleMaxKeyDown}
+                                onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
+                                className={`flex-1 min-w-0 w-full text-xs font-mono text-foreground bg-background border rounded px-1.5 py-1 focus:outline-none focus:ring-1 ${
+                                    maxHasError
+                                        ? 'border-red-500 focus:ring-red-500/50'
+                                        : 'border-input focus:ring-ring'
+                                }`}
+                            />
+                            <span className="text-[10px] text-muted-foreground font-medium">runs</span>
+                        </div>
+                    </>
+                )}
             </div>
 
             {isSustained && (
@@ -122,45 +160,6 @@ export const TimeNode = memo(({ id, data, type, selected }: NodeProps) => {
                     </TooltipContent>
                 </Tooltip>
             )}
-
-            <div className="px-3 pb-2.5">
-                <div className="flex flex-col gap-1.5 w-full">
-                    <DurationInput
-                        label="For"
-                        value={durationMs}
-                        onChange={handleDurationChange}
-                    />
-                    {hasRepeat && (
-                        <>
-                            <DurationInput
-                                label="Repeats after"
-                                value={repeatIntervalMs}
-                                onChange={handleRepeatIntervalChange}
-                            />
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-medium uppercase text-muted-foreground shrink-0">Max</span>
-                                <input
-                                    type="text"
-                                    value={maxInputValue}
-                                    onChange={(e) => {
-                                        setMaxInputValue(e.target.value);
-                                        if (maxHasError) setMaxHasError(false);
-                                    }}
-                                    onBlur={handleMaxBlur}
-                                    onKeyDown={handleMaxKeyDown}
-                                    onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
-                                    className={`flex-1 min-w-0 w-full text-xs font-mono text-foreground bg-background border rounded px-1.5 py-1 focus:outline-none focus:ring-1 ${
-                                        maxHasError
-                                            ? 'border-red-500 focus:ring-red-500/50'
-                                            : 'border-input focus:ring-ring'
-                                    }`}
-                                />
-                                <span className="text-[10px] text-muted-foreground font-medium">runs</span>
-                            </div>
-                        </>
-                    )}
-                </div>
-            </div>
         </BaseNode>
     );
 });
