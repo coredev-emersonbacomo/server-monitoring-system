@@ -13,6 +13,7 @@ export type DashboardStatsData = components["schemas"]["DashboardStatsData"];
 export type GlobalAlert = components["schemas"]["GlobalAlert"];
 export type NodeConfig = components["schemas"]["NodeConfig"];
 export type NodeConfigData = components["schemas"]["NodeConfigData"];
+export type NodeConfigState = components["schemas"]["NodeConfigState"];
 export type PortsData = components["schemas"]["PortsData"];
 export type ProcessesData = components["schemas"]["ProcessesData"];
 export type ProvisionDetailData = components["schemas"]["ProvisionDetailData"];
@@ -24,4 +25,3 @@ export type StoreUploadIntentRequest = components["schemas"]["StoreUploadIntentR
 export type UpdateUserData = components["schemas"]["UpdateUserData"];
 export type UploadPurpose = components["schemas"]["UploadPurpose"];
 export type UserData = components["schemas"]["UserData"];
-
