@@ -19,12 +19,12 @@ class SettingSeeder extends Seeder
 
         DB::table('settings')->updateOrInsert(
             ['key' => 'heartbeat_interval'],
-            ['value' => '5000', 'updated_at' => now(), 'created_at' => now()]
+            ['value' => '5', 'updated_at' => now(), 'created_at' => now()]
         );
 
         DB::table('settings')->updateOrInsert(
             ['key' => 'offline_threshold'],
-            ['value' => '15000', 'updated_at' => now(), 'created_at' => now()]
+            ['value' => '15', 'updated_at' => now(), 'created_at' => now()]
         );
 
         DB::table('agent_versions')->updateOrInsert(

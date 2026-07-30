@@ -59,17 +59,6 @@ export default function ServersIndex() {
     const [sortField, setSortField] = useState<string>("created_at");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-    const [showClientPicker, setShowClientPicker] = useState(false);
-    const [clientPickerSearch, setClientPickerSearch] = useState("");
-    const { data: allClients, isLoading: clientsLoading } = useClients();
-
-    const filteredClients = useMemo(() => {
-        if (!allClients) return [];
-        const q = clientPickerSearch.trim().toLowerCase();
-        if (!q) return allClients;
-        return allClients.filter((c) => c.name.toLowerCase().includes(q));
-    }, [allClients, clientPickerSearch]);
-
     const sortOptions = [
         { label: "Created At", value: "created_at" },
         { label: "Server Name", value: "name" },
@@ -85,21 +74,11 @@ export default function ServersIndex() {
 
     const filtered = useMemo(() => {
         if (!servers) return [];
-        let result = statusFilter
+        const result = statusFilter
             ? statusFilter === "pending_deletion"
                 ? servers.filter((s) => s.agent_deleted)
                 : servers.filter((s) => s.status === statusFilter && !s.agent_deleted)
             : [...servers];
-
-        if (search.trim()) {
-            const q = search.trim().toLowerCase();
-            result = result.filter(
-                (s) =>
-                    s.name.toLowerCase().includes(q) ||
-                    s.client_name?.toLowerCase().includes(q),
-            );
-        }
-
         return result.sort((a, b) => {
             const cmp = (() => {
                 switch (sortField) {
@@ -113,8 +92,7 @@ export default function ServersIndex() {
             })();
             return sortDir === "desc" ? -cmp : cmp;
         });
-    }, [servers, statusFilter, search, sortField, sortDir]);
-
+    }, [servers, statusFilter, sortField, sortDir]);
 
     const counts = useMemo(() => {
         if (!servers) return { online: 0, warning: 0, offline: 0, pending_installation: 0, waiting_for_installation: 0 };
@@ -243,7 +221,7 @@ export default function ServersIndex() {
                 )}
 
                 {isLoading ? (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
                         {Array.from({ length: 6 }).map((_, i) => (
                             <div
                                 key={i}
@@ -261,7 +239,7 @@ export default function ServersIndex() {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
                         {filtered.map((server) => {
                             const effectiveStatus = server.agent_deleted ? "pending_deletion" : (server.status ?? "offline");
                             const meta = STATUS_META[effectiveStatus] ?? STATUS_META.offline;

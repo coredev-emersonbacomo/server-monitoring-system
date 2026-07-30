@@ -2,54 +2,154 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Discord\Discord;
 use Discord\Builders\MessageBuilder;
+use Discord\Builders\Components\ActionRow;
+use Discord\Builders\Components\Button;
 use Discord\Parts\Embed\Embed;
 
 class NotificationService
 {
     /**
-     * Send an alert to a Discord text channel using an embed card.
+     * Send an alert to a Discord text channel using an embed card with link buttons.
      *
      * @param string $tokenId The Bot Token
      * @param string $roleId The Discord Role ID to mention
      * @param string $message The message content
      * @param string $channelId The Channel ID to send the message to
      * @param string $title The embed title
-     * @param string|null $url Optional URL link shown on the embed
+     * @param string|null $url Optional URL link for View Server button
      * @param string $color Hex color for the embed sidebar (default: red)
+     * @param string|null $dashboardUrl Optional URL link for Go to Dashboard button
      */
+    private function parseDiscordButton(string $message): array
+    {
+        $buttonUrl = null;
+        $buttonLabel = 'View Server Details';
+        $cleaned = $message;
+
+        if (preg_match('/<discord-button(?:\s+(?:href|url|detailsUrl)="([^"]*)")?\s*>([^<]*)<\/discord-button>/', $message, $matches)) {
+            $buttonUrl = !empty($matches[1]) ? $matches[1] : null;
+            $buttonLabel = !empty($matches[2]) ? $matches[2] : 'View Server Details';
+            $cleaned = trim(str_replace($matches[0], '', $message));
+        }
+
+        return [$cleaned, $buttonUrl, $buttonLabel];
+    }
+
+    private function parseDiscordFooter(string $message): array
+    {
+        $footer = null;
+        $cleaned = $message;
+
+        if (preg_match('/<discord-footer>([^<]*)<\/discord-footer>/', $message, $matches)) {
+            $footer = !empty($matches[1]) ? $matches[1] : null;
+            $cleaned = trim(str_replace($matches[0], '', $message));
+        }
+
+        return [$cleaned, $footer];
+    }
+
+    private function parseDiscordTitle(string $message): array
+    {
+        $title = '';
+        $cleaned = $message;
+
+        if (preg_match('/<discord-title>([^<]*)<\/discord-title>/', $message, $matches)) {
+            $title = $matches[1];
+            $cleaned = trim(str_replace($matches[0], '', $message));
+        }
+
+        return [$cleaned, $title];
+    }
+
+    private function parseEmailButton(string $message): array
+    {
+        $buttonUrl = null;
+        $buttonLabel = 'View Server Details';
+        $cleaned = $message;
+
+        if (preg_match('/<email-button(?:\s+(?:href|url|detailsUrl)="([^"]*)")?\s*>([^<]*)<\/email-button>/', $message, $matches)) {
+            $buttonUrl = !empty($matches[1]) ? $matches[1] : null;
+            $buttonLabel = !empty($matches[2]) ? $matches[2] : 'View Server Details';
+            $cleaned = trim(str_replace($matches[0], '', $message));
+        }
+
+        return [$cleaned, $buttonUrl, $buttonLabel];
+    }
+
     public function sendDiscordAlert(
         string $tokenId,
         string $roleId,
         string $message,
         string $channelId,
-        string $title = 'System Alert',
+        string $title = 'Server Monitor Alert',
         ?string $url = null,
         string $color = '#ED4245',
+        ?string $dashboardUrl = null,
     ) {
+        [$description, $buttonUrl, $buttonLabel] = $this->parseDiscordButton($message);
+        [$description, $footerContent] = $this->parseDiscordFooter($description);
+        [$description, $embedTitle] = $this->parseDiscordTitle($description);
+        $buttonUrl = $buttonUrl ?? $url;
+
         $discord = new Discord([
             'token' => $tokenId,
         ]);
 
-        $discord->on('ready', function (Discord $discord) use ($roleId, $message, $channelId, $title, $url, $color) {
+        $footerText = $footerContent ?? 'Server Monitoring System';
+
+        $discord->on('ready', function (Discord $discord) use ($roleId, $description, $channelId, $embedTitle, $buttonUrl, $buttonLabel, $color, $footerText) {
             $channel = $discord->getChannel($channelId);
 
             if ($channel) {
-                $embed = new Embed($discord);
-                $embed->setTitle($title);
-                $embed->setDescription($message);
-                $embed->setColor($color);
-                $embed->setTimestamp(now()->timestamp);
-                $embed->setFooter('Server Monitoring System');
+                $builder = MessageBuilder::new();
 
-                if ($url) {
-                    $embed->setURL($url);
+                if ($description !== '') {
+                    $embed = new Embed($discord);
+                    if ($embedTitle !== '') {
+                        $embed->setTitle($embedTitle);
+                    }
+                    $embed->setDescription($description);
+                    $embed->setColor($color);
+                    $embed->setTimestamp(now()->timestamp);
+                    $embed->setFooter($footerText);
+                    $builder->addEmbed($embed);
                 }
 
-                $builder = MessageBuilder::new()
-                    ->addEmbed($embed);
+                if ($buttonUrl) {
+                    $button = Button::new(Button::STYLE_LINK)
+                        ->setLabel($buttonLabel)
+                        ->setUrl($buttonUrl);
+
+                    $actionRow = ActionRow::new()
+                        ->addComponent($button);
+
+                    $builder->addComponent($actionRow);
+                }
+
+                $actionRow = ActionRow::new();
+
+                if ($url) {
+                    $actionRow->addComponent(
+                        Button::new(Button::STYLE_LINK)
+                            ->setLabel('View Server')
+                            ->setUrl($url)
+                            ->setEmoji('🔍')
+                    );
+                }
+
+                $dashUrl = $dashboardUrl ?? url('/dashboard');
+                $actionRow->addComponent(
+                    Button::new(Button::STYLE_LINK)
+                        ->setLabel('Go to Dashboard')
+                        ->setUrl($dashUrl)
+                        ->setEmoji('📊')
+                );
+
+                $builder->addComponent($actionRow);
 
                 if ($roleId) {
                     $builder->setContent("<@&{$roleId}>");
@@ -58,10 +158,15 @@ class NotificationService
 
                 $channel->sendMessage($builder)->then(function () use ($discord) {
                     $discord->close();
-                }, function () use ($discord) {
+                }, function (\Throwable $e) use ($discord) {
+                    Log::error('[discord] Failed to send message', [
+                        'channel_id' => $channelId,
+                        'error' => $e->getMessage(),
+                    ]);
                     $discord->close();
                 });
             } else {
+                Log::error('[discord] Channel not found', ['channel_id' => $channelId]);
                 $discord->close();
             }
         });
@@ -86,17 +191,20 @@ class NotificationService
         $receivers = is_array($receivers) ? $receivers : [$receivers];
 
         $appName = config('app.name', 'Server Monitor');
-        $buttonHtml = '';
 
-        if ($url) {
+        [$message, $buttonUrl, $buttonLabel] = $this->parseEmailButton($message);
+        $buttonUrl = $buttonUrl ?? $url;
+
+        $buttonHtml = '';
+        if ($buttonUrl) {
             $buttonHtml = "
                 <tr>
                     <td style=\"padding: 20px 30px 10px; text-align: center;\">
-                        <a href=\"{$url}\"
+                        <a href=\"{$buttonUrl}\"
                            style=\"background-color: #3b82f6; color: #ffffff; padding: 10px 24px;
                                   text-decoration: none; border-radius: 6px; font-weight: 600;
                                   font-size: 14px; display: inline-block;\">
-                            View Server Details
+                            {$buttonLabel}
                         </a>
                     </td>
                 </tr>";

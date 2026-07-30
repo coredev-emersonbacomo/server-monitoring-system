@@ -9,6 +9,7 @@ interface TemplateInputProps {
     onPointerDown?: (e: React.PointerEvent) => void;
     type?: string;
     className?: string;
+    channel?: string;
 }
 
 function highlightMatch(text: string, query: string): React.ReactNode {
@@ -24,7 +25,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
     );
 }
 
-export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDown, type = 'text', className }: TemplateInputProps) {
+export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDown, type = 'text', className, channel }: TemplateInputProps) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
@@ -32,28 +33,36 @@ export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDo
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
-    const filtered = filterVariables(query);
+    const filtered = filterVariables(query, channel);
     const showDropdown = open && filtered.length > 0;
 
     const checkForTrigger = useCallback((input: HTMLInputElement) => {
         const pos = input.selectionStart ?? 0;
         const textBefore = input.value.substring(0, pos);
-        const lastOpen = textBefore.lastIndexOf('{');
+        let lastOpen = textBefore.lastIndexOf('{');
+        let isTag = false;
+
         if (lastOpen === -1) {
-            setOpen(false);
-            return;
+            lastOpen = textBefore.lastIndexOf('<');
+            if (lastOpen === -1) {
+                setOpen(false);
+                return;
+            }
+            isTag = true;
         }
-        const lastClose = textBefore.lastIndexOf('}');
+
+        const closeChar = isTag ? '>' : '}';
+        const lastClose = textBefore.lastIndexOf(closeChar);
         if (lastClose > lastOpen) {
             setOpen(false);
             return;
         }
         const segment = textBefore.substring(lastOpen + 1);
-        if (segment.includes('}')) {
+        if (segment.includes(closeChar)) {
             setOpen(false);
             return;
         }
-        setQuery(segment);
+        setQuery((isTag ? '<' : '{') + segment);
         setInsertPos(lastOpen);
         setSelectedIndex(0);
         setOpen(true);
@@ -64,13 +73,39 @@ export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDo
         if (!input) return;
         const before = value.substring(0, insertPos);
         const after = input.value.substring(input.selectionStart ?? value.length);
-        const newVal = before + '{' + variable.key + '}' + after;
+        let newVal: string;
+        let cursorOffset: number;
+        if (variable.group === 'tag') {
+            const tagKey = variable.key;
+            const closing = tagKey.startsWith('</') ? '' : `</${tagKey.slice(1)}`;
+            const tagContent = tagKey === '<discord-button>'
+                ? '<discord-button detailsUrl=""></discord-button>'
+                : tagKey === '<discord-footer>'
+                ? '<discord-footer></discord-footer>'
+                : tagKey === '<discord-title>'
+                ? '<discord-title></discord-title>'
+                : tagKey === '<email-button>'
+                ? '<email-button url=""></email-button>'
+                : tagKey + closing;
+            newVal = before + tagContent + after;
+            cursorOffset = tagKey === '<discord-button>'
+                ? insertPos + '<discord-button detailsUrl="'.length
+                : tagKey === '<discord-footer>'
+                ? insertPos + '<discord-footer>'.length
+                : tagKey === '<discord-title>'
+                ? insertPos + '<discord-title>'.length
+                : tagKey === '<email-button>'
+                ? insertPos + '<email-button url="'.length
+                : insertPos + tagKey.length;
+        } else {
+            newVal = before + '{' + variable.key + '}' + after;
+            cursorOffset = insertPos + variable.key.length + 2;
+        }
         onChange(newVal);
         setOpen(false);
-        const cursorPos = insertPos + variable.key.length + 2;
         requestAnimationFrame(() => {
             input.focus();
-            input.setSelectionRange(cursorPos, cursorPos);
+            input.setSelectionRange(cursorOffset, cursorOffset);
         });
     }, [value, insertPos, onChange]);
 
@@ -170,7 +205,9 @@ export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDo
                             onMouseEnter={() => setSelectedIndex(i)}
                         >
                             <span className="font-mono text-foreground">
-                                {'{'}{highlightMatch(variable.key, query)}{'}'}
+                                {variable.group === 'tag'
+                                    ? highlightMatch(variable.key, query)
+                                    : <>{'{'}{highlightMatch(variable.key, query)}{'}'}</>}
                             </span>
                             <span className="text-muted-foreground text-[10px]">{variable.description}</span>
                         </button>

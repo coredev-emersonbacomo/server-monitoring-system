@@ -7,6 +7,7 @@ use App\Enums\ServerStatus;
 use App\Models\Activity;
 use App\Models\ActionItem;
 use App\Models\CustomActivityLog;
+use App\Models\ServerHealthLog;
 use App\Models\Server;
 use App\Models\Setting;
 use App\NodeConfig\Cache\NodeConfigCache;
@@ -79,6 +80,7 @@ class MonitorServer implements ShouldQueue
             ]);
 
             CustomActivityLog::create([
+                'type'         => 'server_health',
                 'logable_type' => get_class($server),
                 'logable_id'   => $server->id,
                 'user_id'      => null,
@@ -140,6 +142,7 @@ class MonitorServer implements ShouldQueue
             ]);
 
             CustomActivityLog::create([
+                'type'         => 'server_health',
                 'logable_type' => get_class($server),
                 'logable_id'   => $server->id,
                 'user_id'      => null,

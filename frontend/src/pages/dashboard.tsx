@@ -97,9 +97,9 @@ const ACTION_ICONS: Record<ActionItem["action_type"], typeof ShieldX> = {
 };
 
 const SEVERITY_BORDER: Record<ActionItem["severity"], string> = {
+    notice: "text-yellow-300 bg-yellow-300/10 border-yellow-300/20",
+    warning: "text-orange-400 bg-orange-400/10 border-orange-400/20",
     critical: "text-red-400 bg-red-500/10 border-red-500/20",
-    warning: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-    info: "text-blue-400 bg-blue-500/10 border-blue-500/20",
 };
 
 // ─── Completed Modal ──────────────────────────────────────────────────────────

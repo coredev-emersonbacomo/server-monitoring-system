@@ -6,6 +6,12 @@ param(
     [string]$AppUrl = "http://127.0.0.1:8000"
 )
 
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Host "ERROR: This script must be run as Administrator." -ForegroundColor Red
+    exit 1
+}
+
 $bootstrapUrl = "$AppUrl/api/v1/provision"
 $appDir = "C:\Program Files\MonitorAgent"
 $agentFile = "$appDir\MonitorAgent.exe"

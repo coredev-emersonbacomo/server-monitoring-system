@@ -92,7 +92,17 @@ class NodeConfigCompiler
                     'source_handle' => $sourceHandle,
                 ];
             } elseif ($type === 'condition') {
-                $conditions[] = $this->extractCondition($current);
+                $conditions[] = array_merge(
+                    ['type' => 'condition'],
+                    $this->extractCondition($current),
+                );
+                $conditionNodeIds[] = $currentId;
+            } elseif ($type === 'severity') {
+                $settings = $current['settings'] ?? [];
+                $conditions[] = [
+                    'type' => 'severity',
+                    'severity' => $settings['severity'] ?? 'warning',
+                ];
                 $conditionNodeIds[] = $currentId;
             } elseif (in_array($type, ['sustained', 'check_after'])) {
                 $timingNodes[] = $this->extractTiming($current);

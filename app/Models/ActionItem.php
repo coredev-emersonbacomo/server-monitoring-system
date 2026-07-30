@@ -22,11 +22,19 @@ class ActionItem extends Model
     protected static function booted(): void
     {
         static::saved(function ($actionItem) {
-            event(new \App\Events\ActionItemsUpdated());
+            try {
+                event(new \App\Events\ActionItemsUpdated());
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[action-items] Broadcast failed', ['error' => $e->getMessage()]);
+            }
         });
 
         static::deleted(function ($actionItem) {
-            event(new \App\Events\ActionItemsUpdated());
+            try {
+                event(new \App\Events\ActionItemsUpdated());
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[action-items] Broadcast failed', ['error' => $e->getMessage()]);
+            }
         });
     }
 

@@ -13,7 +13,7 @@ class CheckAfterNode extends BaseNode
         return [
             ['key' => 'duration', 'label' => 'Duration (ms)', 'type' => 'string', 'required' => true, 'default' => '600000'],
             ['key' => 'repeat_interval', 'label' => 'Repeat Interval (ms)', 'type' => 'string', 'default' => ''],
-            ['key' => 'repeat_max_repeats', 'label' => 'Max Repeats (0 = infinite)', 'type' => 'number', 'default' => 0],
+            ['key' => 'repeat_max_repeats', 'label' => 'Max Repeats (-1 = infinite)', 'type' => 'number', 'default' => -1],
         ];
     }
 
@@ -61,7 +61,7 @@ class CheckAfterNode extends BaseNode
 
         $firingState = ['phase' => 'firing', 'pending_input' => $pendingInput, 'repeat_count' => $repeatCount];
 
-        if ($cfg['has_repeat'] && ($cfg['max_repeats'] === 0 || $repeatCount < $cfg['max_repeats'])) {
+        if ($cfg['has_repeat'] && ($cfg['max_repeats'] <= 0 || $repeatCount < $cfg['max_repeats'])) {
             return NodeResult::withTimer(
                 $pendingInput,
                 new NodeTimer($cfg['repeat_interval_ms'], ['repeat_fire' => true]),
@@ -85,7 +85,7 @@ class CheckAfterNode extends BaseNode
         return [
             'duration_ms'        => $durationMs,
             'repeat_interval_ms' => $repeatIntervalMs,
-            'max_repeats'        => (int) ($settings['repeat_max_repeats'] ?? 0),
+            'max_repeats'        => (int) ($settings['repeat_max_repeats'] ?? -1),
             'has_repeat'         => $repeatIntervalMs > 0,
         ];
     }
