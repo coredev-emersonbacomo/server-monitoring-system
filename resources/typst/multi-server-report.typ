@@ -3,7 +3,7 @@
 
 #set page(
   paper: d.at("paper", default: "a4"),
-  flipped: d.at("orientation", default: "landscape") == "landscape",
+  flipped: d.at("orientation", default: "portrait") == "landscape",
   margin: (x: 18mm, y: 20mm),
   header: context [
     #set text(size: 9pt, fill: rgb("#888888"))
@@ -44,12 +44,26 @@
 
   section-title("Server Information")
   kpi-grid((
-    (label: "Status",        value: status-pill(item.at("status", default: "unknown"))),
-    (label: "Client",        value: if item.at("client_name", default: "") != "" { item.client_name } else { "—" }),
-    (label: "OS",            value: if item.at("operating_system", default: "") != "" { item.operating_system } else { "—" }),
-    (label: "CPU Model",     value: if item.at("cpu_model", default: "") != "" { item.cpu_model } else { "—" }, note: str(item.at("cpu_cores", default: "—")) + " cores"),
-    (label: "Memory",        value: if item.at("ram", default: "") != "" { item.ram } else { "—" }),
-    (label: "Disk",          value: if item.at("disk", default: "") != "" { item.disk } else { "—" }),
+    (label: "Status", value: status-pill(item.at("status", default: "unknown"))),
+    (label: "Client", value: if item.at("client_name", default: "") != "" { item.client_name } else { "—" }),
+    (label: "OS", value: if item.at("operating_system", default: "") != "" { item.operating_system } else { "—" }),
+    (
+      label: "CPU Model",
+      value: if item.at("cpu_model", default: "") != "" {
+        (
+          item.cpu_model
+            + if item.at("cpu_cores", default: none) != none {
+              " (" + str(item.cpu_cores) + " cores)"
+            } else { "" }
+        )
+      } else if item.at("cpu_cores", default: none) != none {
+        str(item.cpu_cores) + " cores"
+      } else {
+        "—"
+      },
+    ),
+    (label: "Memory", value: if item.at("ram", default: "") != "" { item.ram } else { "—" }),
+    (label: "Disk", value: if item.at("disk", default: "") != "" { item.disk } else { "—" }),
   ))
 
   if metrics.len() > 0 {
@@ -62,18 +76,24 @@
     data-table(
       headers: ("Metric", "Min", "Max", "Average"),
       rows: (
-        ("CPU Usage",
+        (
+          "CPU Usage",
           pct(calc.min(..cpu_vals)),
           pct(calc.max(..cpu_vals)),
-          pct(calc.round(cpu_vals.sum() / cpu_vals.len(), digits: 1))),
-        ("Memory Usage",
+          pct(calc.round(cpu_vals.sum() / cpu_vals.len(), digits: 1)),
+        ),
+        (
+          "Memory Usage",
           pct(calc.min(..mem_vals)),
           pct(calc.max(..mem_vals)),
-          pct(calc.round(mem_vals.sum() / mem_vals.len(), digits: 1))),
-        ("Disk Usage",
+          pct(calc.round(mem_vals.sum() / mem_vals.len(), digits: 1)),
+        ),
+        (
+          "Disk Usage",
           pct(calc.min(..disk_vals)),
           pct(calc.max(..disk_vals)),
-          pct(calc.round(disk_vals.sum() / disk_vals.len(), digits: 1))),
+          pct(calc.round(disk_vals.sum() / disk_vals.len(), digits: 1)),
+        ),
       ),
     )
   }
@@ -83,8 +103,8 @@
     section-title("SLA Uptime")
     grid(columns: (1fr, 1fr), gutter: 10pt)[
       #kpi-card("Uptime Percentage", pct(uptime.uptime_percentage))
-      #kpi-card("Outages", str(uptime.at("outage_count", default: 0)),
-        note: if uptime.at("last_downtime", default: "") != "" { "Last: " + uptime.last_downtime } else { none })
+      #kpi-card("Outages", str(uptime.at("outage_count", default: 0)), note: if uptime.at("last_downtime", default: "")
+        != "" { "Last: " + uptime.last_downtime } else { none })
     ]
     v(0.3em)
     progress-bar(uptime.uptime_percentage)

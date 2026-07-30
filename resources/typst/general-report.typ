@@ -4,7 +4,7 @@
 
 #set page(
   paper: d.at("paper", default: "a4"),
-  flipped: d.at("orientation", default: "landscape") == "landscape",
+  flipped: d.at("orientation", default: "portrait") == "landscape",
   margin: (x: 18mm, y: 20mm),
   header: context [
     #set text(size: 9pt, fill: rgb("#888888"))
@@ -40,8 +40,8 @@
   (label: "Total Clients",   value: str(d.at("total_clients", default: 0))),
   (label: "Total Users",     value: str(d.at("total_users", default: 0))),
   (label: "Active Alerts",   value: str(d.at("total_alerts", default: 0))),
-  (label: "Fleet Uptime",    value: if d.at("avg_uptime_percentage", default: none) != none { pct(d.at("avg_uptime_percentage", default: 0)) } else { "—" }),
-  (label: "Monthly Cost",    value: if d.at("monthly_cost", default: none) != none { fmt-money(d.at("monthly_cost", default: 0)) } else { "—" }),
+  (label: "Online Servers",  value: text(fill: green, weight: "bold")[#str(d.at("online_servers", default: 0))]),
+  (label: "Offline Servers", value: text(fill: red, weight: "bold")[#str(d.at("offline_servers", default: 0))]),
 ))
 
 // ── Server Performance ───────────────────────────────────────────────────────
@@ -141,44 +141,47 @@
 #v(0.5em)
 #section-title("Ownership & Recent Activity")
 
-#grid(columns: (1fr, 1fr), gutter: 10pt)[
-  #block[
+#grid(columns: (1fr), gutter: 10pt)[
+  #block(width: auto)[
     #text(size: 8.5pt, weight: "bold", fill: brand)[Servers per Client]
     #v(0.3em)
     #sub-table(
-      headers: ("Client", "Servers", "Share"),
+      headers: ("Client", "Servers", "Share", "Active Alerts"),
       rows: srv_per_client.map(c => (
         c.client_name,
         str(c.server_count),
         if d.at("total_servers", default: 0) > 0 {
           str(calc.round(c.server_count * 100 / d.at("total_servers", default: 0), digits: 1)) + "%"
         } else { "0%" },
+        {
+          let a = c.at("active_alerts", default: 0)
+          if a > 0 { text(fill: red, weight: "bold")[#str(a)] }
+          else { text(fill: text-muted)[-] }
+        },
       )),
     )
   ]
-  #block[
+  #block(width: auto)[
     #text(size: 8.5pt, weight: "bold", fill: brand)[Recently Added (Last 30 Days)]
     #v(0.3em)
-    #grid(columns: (1fr, 1fr), gutter: 6pt)[
+    #grid(columns: (1fr), gutter: 6pt)[
       #block[
-        #text(size: 7.5pt, fill: text-muted, weight: "medium")[Clients]
-        #v(0.2em)
+        #text(size: 7.5pt, weight: "medium")[Clients]
         #if recent_clients.len() > 0 {
           sub-table(
-            headers: ("Name", "Added"),
-            rows: recent_clients.map(c => (c.name, fmt-date(c.created_at))),
+            headers: ("Name", "Email", "Phone", "Added"),
+            rows: recent_clients.map(c => (c.name, c.email, c.phone, fmt-date(c.created_at))),
           )
         } else {
           text(size: 8pt, fill: text-muted)[None]
         }
       ]
       #block[
-        #text(size: 7.5pt, fill: text-muted, weight: "medium")[Servers]
-        #v(0.2em)
+        #text(size: 7.5pt, weight: "medium")[Servers]
         #if recent_servers.len() > 0 {
           sub-table(
-            headers: ("Name", "Added"),
-            rows: recent_servers.map(s => (s.name, fmt-date(s.created_at))),
+            headers: ("Name", "Client", "Hostname", "Added"),
+            rows: recent_servers.map(s => (s.name, s.assigned_client, s.hostname, fmt-date(s.created_at))),
           )
         } else {
           text(size: 8pt, fill: text-muted)[None]

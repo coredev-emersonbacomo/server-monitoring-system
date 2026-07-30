@@ -32,7 +32,7 @@ export function ReportsLayout() {
     const [view, setView] = useState<ReportView>("global");
     const [pickerOpen, setPickerOpen] = useState(false);
     const [filters, setFilters] = useState<string[]>([]);
-    const [orientation, setOrientation] = useState<ReportOrientation>("landscape");
+    const [orientation, setOrientation] = useState<ReportOrientation>("portrait");
     const navigate = useNavigate();
 
     const detailMatch = useMatch("/report/:type/:uuid");

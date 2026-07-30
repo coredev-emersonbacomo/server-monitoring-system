@@ -15,7 +15,7 @@ export function TypstPreview({
     template,
     data,
     paper = "a4",
-    orientation = "landscape",
+    orientation = "portrait",
 }: TypstPreviewProps) {
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);

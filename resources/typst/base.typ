@@ -15,11 +15,19 @@
 
 // ── Re-usable components ─────────────────────────────────────────────────────
 
-#let report-heading(title, subtitle) = {
+#let report-heading(title, subtitle, email: none, location: none, phone: none) = {
   block(below: 1.2em)[
     #text(size: 16pt, weight: "bold", fill: brand)[#title]
     #v(0.15em)
     #text(size: 9pt, fill: text-muted)[#subtitle]
+    #if email != none or location != none or phone != none {
+      v(0.1em)
+      text(size: 7.5pt, fill: text-muted)[
+        #if email != none { "Email: " + email }
+        #if location != none { "  |  Location: " + location }
+        #if phone != none { "  |  Contact: " + phone }
+      ]
+    }
   ]
 }
 
@@ -69,11 +77,11 @@
     else { str(status) }
   block(
     fill: bg,
-    inset: (x: 6pt, y: 2.5pt),
+    inset: (x: 8pt, y: 3pt),
     radius: 3pt,
     width: auto,
   )[
-    #set text(size: 8pt, weight: "bold", fill: fg)
+    #set text(size: 10pt, weight: "bold", fill: fg)
     #label
   ]
 }
@@ -152,12 +160,12 @@
   let hdr-cols = headers.len()
   table(
     columns: (1fr,) * hdr-cols,
-    stroke: 0.3pt + border-clr,
+    stroke: (x: none, y: 0.05pt),
     inset: 5pt,
     table.header(
       ..headers.map(h => table.cell(
         fill: rgb("#e8eaf6"),
-        inset: (x: 5pt, y: 3pt),
+        inset: (x: 6pt, y: 4pt),
       )[
         #set text(size: 7.5pt, weight: "bold", fill: brand)
         #h
@@ -165,8 +173,8 @@
     ),
     ..rows.map(row => (
       ..row.map(cell => table.cell(
-        fill: bg-light,
-        inset: (x: 5pt, y: 2.5pt),
+        // fill: bg-light,
+        inset: (x: 5pt, y: 3.5pt),
       )[
         #set text(size: 8pt, fill: text-dark)
         #cell

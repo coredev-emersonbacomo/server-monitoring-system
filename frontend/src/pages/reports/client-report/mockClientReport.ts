@@ -12,6 +12,9 @@ export interface ClientServerSummary {
 export interface ClientReport {
     uuid: string;
     name: string;
+    email: string;
+    location: string;
+    contact: string;
     total_servers: number;
     online_servers: number;
     offline_servers: number;
@@ -50,6 +53,9 @@ const MOCK_CLIENT_REPORTS: Record<string, ClientReport> = {
     "c-acme-logistics": {
         uuid: "c-acme-logistics",
         name: "Acme Logistics",
+        email: "contact@acmelogistics.com",
+        location: "Manila, Philippines",
+        contact: "+63-2-555-0101",
         total_servers: 5,
         online_servers: 4,
         offline_servers: 1,
@@ -67,6 +73,9 @@ const MOCK_CLIENT_REPORTS: Record<string, ClientReport> = {
     "c-globex": {
         uuid: "c-globex",
         name: "Globex Corp",
+        email: "info@globexcorp.com",
+        location: "New York, USA",
+        contact: "+1-555-0200",
         total_servers: 3,
         online_servers: 3,
         offline_servers: 0,
@@ -82,6 +91,9 @@ const MOCK_CLIENT_REPORTS: Record<string, ClientReport> = {
     "c-initech": {
         uuid: "c-initech",
         name: "Initech",
+        email: "support@initech.com",
+        location: "Austin, USA",
+        contact: "+1-555-0300",
         total_servers: 8,
         online_servers: 6,
         offline_servers: 2,

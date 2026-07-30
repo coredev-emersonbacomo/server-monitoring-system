@@ -4,7 +4,7 @@
 
 #set page(
   paper: d.at("paper", default: "a4"),
-  flipped: d.at("orientation", default: "landscape") == "landscape",
+  flipped: d.at("orientation", default: "portrait") == "landscape",
   margin: (x: 18mm, y: 20mm),
   header: context [
     #set text(size: 9pt, fill: rgb("#888888"))
@@ -35,6 +35,9 @@
 #report-heading(
   d.at("name", default: "Client Report"),
   d.at("report_subtitle", default: "Client-specific server overview"),
+  email: d.at("email", default: none),
+  location: d.at("location", default: none),
+  phone: d.at("contact", default: none),
 )
 
 // ── KPI Summary ──────────────────────────────────────────────────────────────

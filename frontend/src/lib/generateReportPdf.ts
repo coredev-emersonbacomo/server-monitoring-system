@@ -16,7 +16,7 @@ export async function generateReportPdf({
     data,
     filename,
     paper = "a4",
-    orientation = "landscape",
+    orientation = "portrait",
 }: ReportDownloadOptions): Promise<void> {
     const response = await jwtClient.post(
         "/v1/reports/compile",
