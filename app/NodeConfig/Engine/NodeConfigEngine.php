@@ -120,19 +120,31 @@ class NodeConfigEngine
         $conditionPassed = true;
         if ($branch['condition'] && $branch['condition_node_id']) {
             $conditionNode = $nodeMap[$branch['condition_node_id']] ?? null;
-            $conditionHandler = $this->registry->get('condition');
+            $conditionType = $branch['condition']['type'] ?? 'condition';
+            $conditionHandler = $this->registry->get($conditionType);
             $conditionSettings = $conditionNode['settings'] ?? $branch['condition'];
 
-            $inputValues = [$metricResult->value];
-            $conditionResult = $conditionHandler->evaluate($inputValues, $conditionSettings, $extraState);
-            $this->saveState($config->id, $serverId, $branch['condition_node_id'], $conditionResult);
+            $inputValues = $this->resolveNodeInputs($branch['condition_node_id'], $nodeMap, $conditionType, $branch, $metricResult);
 
-            $conditionPassed = $conditionResult->shouldPropagate && $conditionResult->value === true;
+            if ($conditionHandler) {
+                $conditionResult = $conditionHandler->evaluate($inputValues, $conditionSettings, $extraState);
+                $this->saveState($config->id, $serverId, $branch['condition_node_id'], $conditionResult);
 
-            if (!empty($conditionResult->outputs)) {
-                $outputs[$branch['condition_node_id']] = $conditionResult->outputs;
-            } elseif ($conditionResult->shouldPropagate) {
-                $outputs[$branch['condition_node_id']] = ['output' => $conditionResult->value];
+                if ($conditionType === 'severity') {
+                    $conditionPassed = $conditionResult->shouldPropagate && $conditionResult->value !== null;
+                } else {
+                    $conditionPassed = $conditionResult->shouldPropagate && $conditionResult->value === true;
+                }
+
+                if (!empty($conditionResult->outputs)) {
+                    $outputs[$branch['condition_node_id']] = $conditionResult->outputs;
+                } elseif ($conditionResult->shouldPropagate) {
+                    $outputs[$branch['condition_node_id']] = ['output' => $conditionResult->value];
+                }
+            } else {
+                Log::warning("[engine] Unknown condition type '{$conditionType}', skipping condition", [
+                    'node_id' => $branch['condition_node_id'],
+                ]);
             }
         }
 
@@ -985,6 +997,20 @@ class NodeConfigEngine
                 ['node_config_id' => $configId, 'node_id' => $scopedNodeId]
             )->update($values);
         }
+    }
+
+    private function resolveNodeInputs(
+        string $nodeId,
+        array $nodeMap,
+        string $nodeType,
+        array $branch,
+        mixed $metricResult,
+    ): array {
+        if ($nodeType === 'severity') {
+            return [$metricResult->value, null];
+        }
+
+        return [$metricResult->value];
     }
 
     private function buildUpstreamContext(array $branch, array $subBranch, mixed $value): array

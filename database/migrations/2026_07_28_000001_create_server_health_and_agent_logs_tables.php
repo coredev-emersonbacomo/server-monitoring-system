@@ -18,8 +18,9 @@ return new class extends Migration
             $table->string('logable_id')->nullable();
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
             $table->string('user')->nullable();
-            $table->string('action');
+            $table->string('title');
             $table->json('details')->nullable();
+            $table->string('severity')->nullable()->default('warning');
             $table->timestamps();
         });
 
@@ -48,7 +49,7 @@ return new class extends Migration
                         'logable_id'   => $log->logable_id,
                         'user_id'      => $log->user_id,
                         'user'         => $log->user,
-                        'action'       => $log->action,
+                        'title'        => $log->action,
                         'details'      => $log->details,
                         'created_at'   => $log->created_at,
                         'updated_at'   => $log->updated_at,

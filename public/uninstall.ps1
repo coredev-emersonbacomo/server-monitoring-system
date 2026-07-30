@@ -6,6 +6,12 @@ param(
     [string]$AppUrl = "{{APP_URL}}"
 )
 
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $isAdmin) {
+    Write-Host "ERROR: This script must be run as Administrator." -ForegroundColor Red
+    exit 1
+}
+
 $appDir = "C:\Program Files\MonitorAgent"
 $bootstrapFile = "$appDir\bootstrap.json"
 $logFile = "$env:TEMP\monitor-agent-uninstall.log"

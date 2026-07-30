@@ -96,8 +96,8 @@ class ProvisioningService
             'conflict' => false,
             'token' => $rawToken,
             'expires_at' => $expiresAt->toIso8601String(),
-            'linux_command' => 'curl -fsSL ' . url('/install/linux') . ' | bash -s -- ' . $rawToken,
-            'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/install/windows.ps1))) -ProvisionToken \'' . $rawToken . '\' -AppUrl `$APP_URL"',
+            'linux_command' => 'sudo curl -fsSL ' . url('/install/linux') . ' | sudo bash -s -- ' . $rawToken,
+            'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm $APP_URL/install/windows.ps1))) -ProvisionToken \'' . $rawToken . '\' -AppUrl $APP_URL"',
             'token_expires_in' => $expiresAt->timestamp,
         ];
     }
