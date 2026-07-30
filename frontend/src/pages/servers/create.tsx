@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import IndexHeader from "@/components/IndexHeader";
 import api from "@/api/api";
 import { Form, createFormStore, useForm } from "@/components/ui/form";
-
+import { useClient } from "@/hooks/useClients";
 const schema = z.object({
     name: z.string().min(1, "Server name is required"),
     description: z.string().max(255, "Maximum 255 characters").optional().default(""),
@@ -29,6 +29,8 @@ export default function CreateServer() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const clientUuid = searchParams.get("client_uuid") || null;
+
+    const { data: client, isLoading: clientLoading } = useClient(clientUuid ?? "");
 
     const store = useMemo(
         () => createFormStore({
@@ -120,7 +122,7 @@ export default function CreateServer() {
                                 </span>
                             </div>
 
-                            <CreateServerFields store={store} />
+                            <CreateServerFields store={store as any} clientName={client?.name} clientLoading={clientLoading} />
                         </div>
 
                         <div className="px-6 py-4 flex items-center justify-between bg-muted/30 rounded-b-xl">
@@ -145,12 +147,28 @@ export default function CreateServer() {
     );
 }
 
-function CreateServerFields({ store }: { store: ReturnType<typeof createFormStore> }) {
+function CreateServerFields({
+    store,
+    clientName,
+    clientLoading,
+}: {
+    store: ReturnType<typeof createFormStore>;
+    clientName?: string;
+    clientLoading?: boolean;
+}) {
     const form = useForm(store, (s) => s.form as z.infer<typeof schema>);
     const errors = useForm(store, (s) => s.errors);
 
     return (
         <>
+            <div>
+                <Label className="text-xs font-medium text-foreground/80">
+                    Client
+                </Label>
+                <div className="mt-1.5 flex items-center gap-2 px-3 py-2 rounded-md border border-input bg-muted/40 text-sm text-foreground/80">
+                    {clientLoading ? "Loading…" : (clientName ?? "Unknown client")}
+                </div>
+            </div>
             <div>
                 <FloatingInput
                     label="Server name"

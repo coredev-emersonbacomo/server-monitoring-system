@@ -6,6 +6,8 @@ import {
     ArrowDownWideNarrow,
     ArrowUpWideNarrow,
     ArrowUpDown,
+    Landmark,
+    X,
 } from "lucide-react";
 import {
     Popover,
@@ -46,6 +48,10 @@ interface IndexToolbarProps {
 
     onCreate?: () => void;
     createLabel?: string;
+
+    onViewByClient?: () => void;
+    viewByClientLabel?: string;
+    viewByClientLabel?: string;
 }
 
 function IndexToolbar({
@@ -67,6 +73,10 @@ function IndexToolbar({
 
     onCreate,
     createLabel,
+
+    onViewByClient,
+    viewByClientLabel = "View by Client",
+    onClearViewByClient,
 }: IndexToolbarProps) {
     return (
         <div className="flex items-center justify-between gap-3 flex-wrap sticky top-0 z-10 bg-background pt-9 pb-3">
@@ -192,6 +202,32 @@ function IndexToolbar({
                         </div>
                     </PopoverContent>
                 </Popover>
+
+                {onViewByClient && (
+                    <div className="flex items-center">
+                        <Button
+                            variant="outline"
+                            icon={<Landmark size={14} />}
+                            label={viewByClientLabel}
+                            className={cn(
+                                "cursor-pointer",
+                                onClearViewByClient &&
+                                "rounded-r-none border-r-0",
+                            )}
+                            onClick={onViewByClient}
+                        />
+                        {onClearViewByClient && (
+                            <button
+                                type="button"
+                                onClick={onClearViewByClient}
+                                className="h-9 px-2 flex items-center justify-center border border-border rounded-r-lg hover:bg-muted transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+                                title="Clear client filter"
+                            >
+                                <X size={13} />
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {onCreate && (

@@ -53,7 +53,7 @@ export function createFormStore<T extends Record<string, unknown>>(config: {
         for (const key of Object.keys(shape)) {
             const field = shape[key];
             if (field instanceof z.ZodDefault) {
-                out[key] = field._def.defaultValue();
+                out[key] = field._def.defaultValue as any;
             } else if (field instanceof z.ZodString) {
                 out[key] = "";
             } else if (field instanceof z.ZodNumber) {

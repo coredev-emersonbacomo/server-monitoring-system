@@ -31,7 +31,11 @@ class ClientController extends Controller
     /** @return ClientData[] */
     public function index(ClientsIndexData $data): array
     {
-        $query = Client::withCount(['servers', 'secopclients']);
+        $query = Client::withCount([
+                'servers',
+                'secopclients',
+                'servers as servers_online_count' => fn ($q) => $q->where('status', 'online'),
+            ]);
 
         if ($data->user_uuid) {
             $query->whereHas('secopclients', function ($q) use ($data) {
@@ -111,7 +115,10 @@ class ClientController extends Controller
 
     public function show(string $clientUuid): ClientData
     {
-        $client = Client::withCount('servers')->where('uuid', $clientUuid)->firstOrFail();
+        $client = Client::withCount([
+            'servers',
+            'servers as servers_online_count' => fn($q) => $q->where('status', 'online'),
+        ])->where('uuid', $clientUuid)->firstOrFail();
 
         return ClientData::fromModel($client);
     }
@@ -222,7 +229,10 @@ class ClientController extends Controller
             'details' => $details,
         ]);
 
-        $client->loadCount('servers');
+            $client->loadCount([
+                'servers',
+                'servers as servers_online_count' => fn ($q) => $q->where('status', 'online'),
+            ]);
 
         return ClientData::fromModel($client);
     }
