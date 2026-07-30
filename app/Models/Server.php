@@ -39,17 +39,17 @@ class Server extends Model
     protected function casts(): array
     {
         return [
-            'record_status' => RecordStatus::class,
-            'archived_at' => 'datetime',
-            'monthly_cost' => 'float',
-            'cost_offset' => 'float',
-            'cost_reset_at' => 'datetime',
-            'online_seconds' => 'integer',
-            'historical_cost' => 'float',
-            'accumulated_cost' => 'float',
-            'pending_monthly_cost' => 'float',
-            'rate_updated_at' => 'datetime',
-            'went_offline_at' => 'datetime',
+            'record_status'        => RecordStatus::class,
+            'archived_at'          => 'datetime',
+            'monthly_rate'         => 'float',
+            'remitted'             => 'float',
+            'cost_reset_at'        => 'datetime',
+            'online_seconds'       => 'integer',
+            'historical_cost'      => 'float',
+            'accumulated_cost'     => 'float',
+            'pending_monthly_rate' => 'float',
+            'rate_updated_at'      => 'datetime',
+            'went_offline_at'      => 'datetime',
         ];
     }
 

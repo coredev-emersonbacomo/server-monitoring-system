@@ -130,10 +130,12 @@ class SendNotification implements ShouldQueue
                 ]);
 
                 try {
-                    ServerHealthLog::create([
+                    CustomActivityLog::create([
+                        'type'         => 'server_health',
                         'logable_type' => 'server',
                         'logable_id'   => $this->serverId,
                         'user'         => 'system',
+                        'action'       => $title,
                         'title'        => $title,
                         'details'      => [
                             'channel'  => $channel,
@@ -143,7 +145,7 @@ class SendNotification implements ShouldQueue
                             'repeat'   => $isRepeat,
                             'node_id'  => $this->action['node_id'] ?? null,
                         ],
-                        'severity' => $severity,
+                        'severity'     => $severity,
                     ]);
                 } catch (\Throwable $e) {
                     Log::warning("[server-events] Failed to log notification in server_health_logs", [

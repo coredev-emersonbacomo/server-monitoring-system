@@ -76,15 +76,16 @@ class ProvisioningService
             'performed_by' => $user?->id,
         ]);
 
-        \App\Models\AgentLog::create([
+        \App\Models\CustomActivityLog::create([
+            'type'         => 'agent',
             'logable_type' => Server::class,
-            'logable_id' => (string) $server->uuid,
-            'user_id' => $user?->id,
-            'user' => $user ? "{$user->first_name} {$user->last_name}" : 'System',
-            'action' => 'Generate Installation Command',
-            'details' => json_encode([
-                'message' => "Generated installation command for server: {$server->name}",
-                'server_name' => $server->name,
+            'logable_id'   => (string) $server->uuid,
+            'user_id'      => $user?->id,
+            'user'         => $user ? "{$user->first_name} {$user->last_name}" : 'System',
+            'action'       => 'Generate Installation Command',
+            'details'      => json_encode([
+                'message'          => "Generated installation command for server: {$server->name}",
+                'server_name'      => $server->name,
                 'token_expires_at' => $expiresAt->toIso8601String(),
             ]),
         ]);
@@ -267,15 +268,16 @@ class ProvisioningService
                 'description' => 'Agent registration completed successfully.',
             ]);
 
-            \App\Models\AgentLog::create([
+            \App\Models\CustomActivityLog::create([
+                'type'         => 'agent',
                 'logable_type' => get_class($server),
-                'logable_id' => $server->id,
-                'user_id' => null,
-                'user' => 'System',
-                'action' => 'Agent Installed',
-                'details' => json_encode([
-                    'message' => "Agent installed successfully on server: {$server->name}",
-                    'server_name' => $server->name,
+                'logable_id'   => $server->id,
+                'user_id'      => null,
+                'user'         => 'System',
+                'action'       => 'Agent Installed',
+                'details'      => json_encode([
+                    'message'       => "Agent installed successfully on server: {$server->name}",
+                    'server_name'   => $server->name,
                     'agent_version' => $metadata['agent_version'] ?? '1.0',
                 ]),
             ]);

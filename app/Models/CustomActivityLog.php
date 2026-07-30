@@ -13,6 +13,7 @@ class CustomActivityLog extends Model
         'details' => 'array',
     ];
     protected $fillable = [
+        'type',
         'logable_type',
         'logable_id',
         'user_id',

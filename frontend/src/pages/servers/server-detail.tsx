@@ -28,6 +28,8 @@ import {
     History,
     Calendar,
     Server,
+    CreditCard,
+    Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useServer } from "@/hooks/useServer";
@@ -254,7 +256,7 @@ export default function ServerDetail() {
                     ? {
                         name: initial.name,
                         description: initial.description ?? "",
-                        monthly_cost: initial.monthly_cost ?? 0,
+                        monthly_cost: initial.monthly_rate ?? 0,
                     }
                     : null,
                 initialMode: "view",
@@ -272,9 +274,9 @@ export default function ServerDetail() {
         if (initial && mode === "view") {
             store.set("name")(initial.name);
             store.set("description")(initial.description ?? "");
-            store.set("monthly_cost")(String(initial.monthly_cost ?? 0));
+            store.set("monthly_cost")(String(initial.monthly_rate ?? 0));
         }
-    }, [initial?.name, initial?.description, mode, store, initial]);
+    }, [initial?.name, initial?.description, initial?.monthly_rate, mode, store, initial]);
     const [confirmText, setConfirmText] = useState("");
     const deleteServer = useDeleteServer();
     const isConfirmed = initial ? confirmText.trim() === initial.name : false;
@@ -557,13 +559,13 @@ export default function ServerDetail() {
         );
     }
 
-    const liveGrossCost = initial.gross_cost ?? 0;
+    const liveRunningBalance = initial.running_balance ?? 0;
     const liveNetCost = initial.net_cost ?? 0;
 
     const server = {
         ...initial,
         uptime_seconds: liveUptimeSeconds,
-        gross_cost: liveGrossCost,
+        running_balance: liveRunningBalance,
         net_cost: liveNetCost,
         stats:
             history.length > 0
@@ -635,6 +637,15 @@ export default function ServerDetail() {
                                     <MetricsTab
                                         server={server}
                                         handleDeletePort={handleDeletePort}
+                                    />
+                                </Tab.Item>
+                            )}
+
+                            {mode === "view" && (
+                                <Tab.Item icon={CreditCard} title="Billing">
+                                    <BillingTab
+                                        initial={initial}
+                                        setShowCostModal={setShowCostModal}
                                     />
                                 </Tab.Item>
                             )}
@@ -1058,35 +1069,62 @@ function ServerInfoTab({
                         </div>
                     </div>
                 ))}
+            </div>
 
-                <div className="flex-1 min-w-50 flex items-center gap-3 p-3.5 rounded-xl bg-primary/5 border border-primary/20 shadow-sm hover:shadow-md transition-all">
+            <DeleteModalDangerZone
+                initial={initial}
+                confirmText={confirmText}
+                setConfirmText={setConfirmText}
+                deleteServer={deleteServer}
+                isConfirmed={isConfirmed}
+                allClient={allClient}
+                navigate={navigate}
+                copyToClipboard={copyToClipboard}
+            />
+        </Form.Root>
+    );
+}
+
+function BillingTab({
+    initial,
+    setShowCostModal,
+}: {
+    initial: NonNullable<ReturnType<typeof useServer>["data"]>;
+    setShowCostModal: (v: boolean) => void;
+}) {
+    return (
+        <div className="flex flex-col gap-6 p-6 bg-card border border-border/60 rounded-b-xl shadow-sm">
+            {/* Top Metric Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Monthly Rate */}
+                <div className="flex items-center gap-3.5 p-4 rounded-xl bg-primary/5 border border-primary/20 shadow-sm">
                     <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
-                        <Banknote size={17} />
+                        <Banknote size={18} />
                     </div>
                     <div className="flex flex-col min-w-0 gap-0.5">
                         <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1.5">
-                            Monthly Cost
+                            Monthly Rate
                         </span>
-                        <span className="text-sm font-semibold text-foreground font-mono">
-                            ₱{(initial.monthly_cost ?? 0).toFixed(2)} /
-                            mo
+                        <span className="text-base font-semibold text-foreground font-mono">
+                            ₱{(initial?.monthly_rate ?? 0).toFixed(2)} / mo
                         </span>
                     </div>
                 </div>
 
+                {/* Running Balance */}
                 <div
                     onClick={() => setShowCostModal(true)}
-                    className="flex-1 min-w-50 group flex items-center gap-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 shadow-sm hover:border-emerald-500/60 hover:bg-emerald-500/15 transition-all cursor-pointer"
+                    className="group flex items-center gap-3.5 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 shadow-sm hover:border-emerald-500/60 hover:bg-emerald-500/15 transition-all cursor-pointer"
                     title="Click to view details or manage deductions"
                 >
                     <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
-                        <Coins size={17} />
+                        <Coins size={18} />
                     </div>
                     <div className="flex flex-col min-w-0 gap-0.5">
                         <span className="text-[10.5px] font-medium uppercase tracking-wider text-emerald-400/90">
-                            Cost
+                            Running Balance
                         </span>
-                        <span className="text-sm font-bold text-emerald-400 font-mono">
+                        <span className="text-base font-bold text-emerald-400 font-mono">
                             ₱
                             {(
                                 initial?.accumulated_cost ?? 0
@@ -1098,15 +1136,16 @@ function ServerInfoTab({
                     </div>
                 </div>
 
-                <div className="flex-1 min-w-50 flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all">
+                {/* Next Billing Date */}
+                <div className="flex items-center gap-3.5 p-4 rounded-xl bg-card border border-border/60 shadow-sm">
                     <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
-                        <Calendar size={17} />
+                        <Calendar size={18} />
                     </div>
                     <div className="flex flex-col min-w-0 gap-0.5">
                         <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
                             Next Billing Date
                         </span>
-                        <span className="text-sm font-semibold text-foreground wrap-break-word">
+                        <span className="text-base font-semibold text-foreground wrap-break-word">
                             {initial?.billing_date
                                 ? new Date(
                                     initial.billing_date,
@@ -1121,17 +1160,68 @@ function ServerInfoTab({
                 </div>
             </div>
 
-            <DeleteModalDangerZone
-                initial={initial}
-                confirmText={confirmText}
-                setConfirmText={setConfirmText}
-                deleteServer={deleteServer}
-                isConfirmed={isConfirmed}
-                allClient={allClient}
-                navigate={navigate}
-                copyToClipboard={copyToClipboard}
-            />
-        </Form.Root>
+            {/* Financial Overview & Actions Breakdown */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {/* Account Summary */}
+                <div className="flex flex-col gap-3 p-4 rounded-xl bg-muted/20 border border-border/60">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground pb-2 border-b border-border/40">
+                        <Receipt size={16} className="text-primary" />
+                        Billing Breakdown
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs py-1">
+                        <span className="text-muted-foreground">Monthly Base Rate</span>
+                        <span className="font-mono font-medium text-foreground">
+                            ₱{(initial?.monthly_rate ?? 0).toFixed(2)}
+                        </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs py-1">
+                        <span className="text-muted-foreground">Recorded Payments (Remitted)</span>
+                        <span className="font-mono font-medium text-emerald-400">
+                            ₱{(initial?.remitted ?? 0).toFixed(2)}
+                        </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs py-1">
+                        <span className="text-muted-foreground">Current Payment Due</span>
+                        <span className="font-mono font-medium text-amber-400">
+                            ₱{(initial?.net_cost ?? 0).toFixed(2)}
+                        </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs pt-2 border-t border-border/40 font-semibold">
+                        <span className="text-foreground">Total Running Balance</span>
+                        <span className="font-mono text-emerald-400 text-sm">
+                            ₱{(initial?.accumulated_cost ?? 0).toFixed(2)}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Quick Actions & Payment Management */}
+                <div className="flex flex-col gap-3 p-4 rounded-xl bg-muted/20 border border-border/60">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground pb-2 border-b border-border/40">
+                        <Coins size={16} className="text-emerald-400" />
+                        Payment & Deduction Actions
+                    </div>
+
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                        Record a payment or deduction for this server, adjust cost baselines, and review historical payment transactions.
+                    </p>
+
+                    <div className="mt-auto pt-2">
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            className="w-full"
+                            icon={<Coins size={14} />}
+                            label="Manage Payments & Deductions"
+                            onClick={() => setShowCostModal(true)}
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -1805,7 +1895,7 @@ function CostModal({
                 <div className="flex flex-col gap-4 py-2">
                     <div className="flex flex-col gap-2 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
                         <span className="text-xs uppercase tracking-wider font-semibold text-emerald-400/90">
-                            Cost
+                            Running Balance
                         </span>
                         <span className="text-3xl font-extrabold text-emerald-400 font-mono">
                             ₱
@@ -1823,7 +1913,7 @@ function CostModal({
                             </span>
                             <span>
                                 Payments Recorded: ₱
-                                {(initial?.cost_offset ?? 0).toFixed(
+                                {(initial?.remitted ?? 0).toFixed(
                                     2,
                                 )}
                             </span>
@@ -1898,8 +1988,24 @@ function CostModal({
                                 </p>
                             ) : (
                                 costLogs.map((log) => {
+                                    let detailsObj: Record<string, any> | null = null;
+                                    if (log.details) {
+                                        if (typeof log.details === "object") {
+                                            detailsObj = log.details;
+                                        } else if (typeof log.details === "string") {
+                                            try {
+                                                detailsObj = JSON.parse(log.details);
+                                            } catch {}
+                                        }
+                                    }
                                     const msg =
-                                        log.details?.message || log.action;
+                                        detailsObj?.message ||
+                                        (typeof log.details === "string" ? log.details : null) ||
+                                        log.action;
+
+                                    const beforeRate = detailsObj?.before?.monthly_rate ?? detailsObj?.before?.monthly_cost ?? detailsObj?.before?.hourly_cost;
+                                    const afterRate = detailsObj?.after?.monthly_rate ?? detailsObj?.after?.monthly_cost ?? detailsObj?.after?.hourly_cost;
+
                                     return (
                                         <div
                                             key={log.id}
@@ -1929,30 +2035,17 @@ function CostModal({
                                             <p className="text-[11px] text-muted-foreground">
                                                 {msg}
                                             </p>
-                                            {(log.details?.before?.monthly_cost || log.details?.before?.hourly_cost) &&
-                                                (log.details?.after?.monthly_cost || log.details?.after?.hourly_cost) && (
-                                                    <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
-                                                        <span>
-                                                            Before: ₱
-                                                            {
-                                                                log.details
-                                                                    .before
-                                                                    .monthly_cost ?? log.details.before.hourly_cost
-                                                            }
-                                                            /mo
-                                                        </span>
-                                                        <span>→</span>
-                                                        <span>
-                                                            After: ₱
-                                                            {
-                                                                log.details
-                                                                    .after
-                                                                    .monthly_cost ?? log.details.after.hourly_cost
-                                                            }
-                                                            /mo
-                                                        </span>
-                                                    </div>
-                                                )}
+                                            {beforeRate !== undefined && afterRate !== undefined && (
+                                                <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
+                                                    <span>
+                                                        Before: ₱{beforeRate}/mo
+                                                    </span>
+                                                    <span>→</span>
+                                                    <span>
+                                                        After: ₱{afterRate}/mo
+                                                    </span>
+                                                </div>
+                                            )}
                                             {log.user && (
                                                 <p className="text-[10px] text-muted-foreground/70">
                                                     By: {log.user}

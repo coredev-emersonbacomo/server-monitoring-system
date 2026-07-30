@@ -27,7 +27,7 @@ class ServerReportData extends Data
 
         public ServerUptimeData $uptime,
 
-        public float $gross_cost,
+        public float $running_balance,
         public float $net_cost,
         public float $accumulated_cost,
         public ?string $billing_date,

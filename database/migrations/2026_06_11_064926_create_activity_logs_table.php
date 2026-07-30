@@ -13,12 +13,15 @@ return new class extends Migration
     {
         Schema::create('activity_logs', function (Blueprint $blueprint) {
             $blueprint->id();
+            $blueprint->string('type')->default('activity')->index();
             $blueprint->string('logable_type')->nullable();
             $blueprint->string('logable_id')->nullable();
             $blueprint->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
             $blueprint->string('user')->nullable();
             $blueprint->string('action');
+            $blueprint->string('title')->nullable();
             $blueprint->json('details')->nullable();
+            $blueprint->string('severity')->nullable()->default('warning');
             $blueprint->timestamps();
         });
     }

@@ -16,6 +16,7 @@ class AuthUserData extends Data
         public string $phone_number,
         public ?string $last_login,
         public string $profile_picture_url,
+        public string $record_status = 'active',
     ) {}
 
     public static function fromModel(User $user): self
@@ -29,6 +30,7 @@ class AuthUserData extends Data
             phone_number: $user->phone_number,
             last_login: $user->last_login,
             profile_picture_url: $user->profile_picture_url,
+            record_status: $user->record_status ?? 'active',
         );
     }
 }

@@ -11,12 +11,14 @@ import {
     FileText,
     Server,
     User,
+    Banknote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     useActivityLogs,
     useServerHealthLogs,
     useAgentLogs,
+    useBillingLogs,
     type ActivityLogData,
 } from "@/hooks/useActivityLogs";
 import { Tab } from "@/components/ui/tab";
@@ -53,13 +55,20 @@ function actionBadgeClass(action: string): string {
 
 function getLogSubjectLabel(log: ActivityLogData): string {
     if (log.details) {
-        try {
-            let obj = JSON.parse(log.details);
-            if (typeof obj === "string") obj = JSON.parse(obj);
-            if (obj && typeof obj === "object" && (obj.server_name || obj.name)) {
+        if (typeof log.details === "object") {
+            const obj = log.details as Record<string, any>;
+            if (obj && (obj.server_name || obj.name)) {
                 return obj.server_name || obj.name;
             }
-        } catch {}
+        } else if (typeof log.details === "string") {
+            try {
+                let obj = JSON.parse(log.details);
+                if (typeof obj === "string") obj = JSON.parse(obj);
+                if (obj && typeof obj === "object" && (obj.server_name || obj.name)) {
+                    return obj.server_name || obj.name;
+                }
+            } catch {}
+        }
     }
     return shortModel(log.logable_type);
 }
@@ -108,17 +117,22 @@ function LogDetailModal({
     if (!log) return null;
 
     let parsed: Record<string, any> | null = null;
-    try {
-        if (log.details) {
-            let obj = JSON.parse(log.details);
-            if (typeof obj === "string") {
-                obj = JSON.parse(obj);
-            }
-            if (obj && typeof obj === "object") parsed = obj;
+    if (log.details) {
+        if (typeof log.details === "object") {
+            parsed = log.details;
+        } else if (typeof log.details === "string") {
+            try {
+                let obj = JSON.parse(log.details);
+                if (typeof obj === "string") {
+                    obj = JSON.parse(obj);
+                }
+                if (obj && typeof obj === "object") parsed = obj;
+            } catch {}
         }
-    } catch {}
+    }
 
-    const message = parsed?.message || log.details;
+    const rawMessage = parsed?.message ?? (typeof log.details === "string" ? log.details : null);
+    const message = typeof rawMessage === "object" && rawMessage !== null ? JSON.stringify(rawMessage) : rawMessage;
     const serverName = parsed?.server_name || parsed?.name;
     const isServerSubject = log.logable_type?.includes("Server");
 
@@ -470,6 +484,7 @@ export default function LogsPage() {
     const { data: activityLogs = [], isLoading: isLoadingActivity } = useActivityLogs();
     const { data: healthLogs = [], isLoading: isLoadingHealth } = useServerHealthLogs();
     const { data: agentLogs = [], isLoading: isLoadingAgent } = useAgentLogs();
+    const { data: billingLogs = [], isLoading: isLoadingBilling } = useBillingLogs();
 
     const [sortField, setSortField] = useState<SortableKey>("created_at");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -509,6 +524,7 @@ export default function LogsPage() {
     const sortedActivity = useMemo(() => sortFn(activityLogs), [activityLogs, sortField, sortDir]);
     const sortedHealth = useMemo(() => sortFn(healthLogs), [healthLogs, sortField, sortDir]);
     const sortedAgent = useMemo(() => sortFn(agentLogs), [agentLogs, sortField, sortDir]);
+    const sortedBilling = useMemo(() => sortFn(billingLogs), [billingLogs, sortField, sortDir]);
 
     return (
         <PageLayout>
@@ -521,6 +537,18 @@ export default function LogsPage() {
                             logs={sortedActivity}
                             isLoading={isLoadingActivity}
                             emptyMessage="No general activity logs recorded yet."
+                            sortField={sortField}
+                            sortDir={sortDir}
+                            onSort={handleSort}
+                            onSelectLog={setSelectedLog}
+                        />
+                    </Tab.Item>
+
+                    <Tab.Item icon={Banknote} title="Billing">
+                        <LogTable
+                            logs={sortedBilling}
+                            isLoading={isLoadingBilling}
+                            emptyMessage="No billing, payment, or deduction logs recorded yet."
                             sortField={sortField}
                             sortDir={sortDir}
                             onSort={handleSort}

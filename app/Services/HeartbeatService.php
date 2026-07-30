@@ -81,14 +81,15 @@ class HeartbeatService
                     'description' => 'Server transitioned to Online state.',
                 ]);
 
-                \App\Models\ServerHealthLog::create([
+                \App\Models\CustomActivityLog::create([
+                    'type'         => 'server_health',
                     'logable_type' => get_class($server),
-                    'logable_id' => $server->id,
-                    'user_id' => null,
-                    'user' => 'System',
-                    'action' => 'Agent Online',
-                    'details' => json_encode([
-                        'message' => "Agent came online for server: {$server->name}",
+                    'logable_id'   => $server->id,
+                    'user_id'      => null,
+                    'user'         => 'System',
+                    'action'       => 'Agent Online',
+                    'details'      => json_encode([
+                        'message'     => "Agent came online for server: {$server->name}",
                         'server_name' => $server->name,
                     ]),
                 ]);
