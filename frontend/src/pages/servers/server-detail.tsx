@@ -766,8 +766,7 @@ function AgentInstallationGuide({
                                 </label>
                                 <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
                                     <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
-                                        {provisionDetails?.windows_command ||
-                                            `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
+                                        {provisionDetails?.windows_command}
                                     </span>
                                     {provisionDetails?.windows_command && (
                                         <button

@@ -52,6 +52,34 @@ class NotificationService
         return [$cleaned, $footer];
     }
 
+    private function parseDiscordTitle(string $message): array
+    {
+        $title = '';
+        $cleaned = $message;
+
+        if (preg_match('/<discord-title>([^<]*)<\/discord-title>/', $message, $matches)) {
+            $title = $matches[1];
+            $cleaned = trim(str_replace($matches[0], '', $message));
+        }
+
+        return [$cleaned, $title];
+    }
+
+    private function parseEmailButton(string $message): array
+    {
+        $buttonUrl = null;
+        $buttonLabel = 'View Server Details';
+        $cleaned = $message;
+
+        if (preg_match('/<email-button(?:\s+(?:href|url|detailsUrl)="([^"]*)")?\s*>([^<]*)<\/email-button>/', $message, $matches)) {
+            $buttonUrl = !empty($matches[1]) ? $matches[1] : null;
+            $buttonLabel = !empty($matches[2]) ? $matches[2] : 'View Server Details';
+            $cleaned = trim(str_replace($matches[0], '', $message));
+        }
+
+        return [$cleaned, $buttonUrl, $buttonLabel];
+    }
+
     public function sendDiscordAlert(
         string $tokenId,
         string $roleId,
@@ -64,6 +92,7 @@ class NotificationService
     ) {
         [$description, $buttonUrl, $buttonLabel] = $this->parseDiscordButton($message);
         [$description, $footerContent] = $this->parseDiscordFooter($description);
+        [$description, $embedTitle] = $this->parseDiscordTitle($description);
         $buttonUrl = $buttonUrl ?? $url;
 
         $discord = new Discord([
@@ -72,7 +101,7 @@ class NotificationService
 
         $footerText = $footerContent ?? 'Server Monitoring System';
 
-        $discord->on('ready', function (Discord $discord) use ($roleId, $description, $channelId, $title, $buttonUrl, $buttonLabel, $color, $footerText) {
+        $discord->on('ready', function (Discord $discord) use ($roleId, $description, $channelId, $embedTitle, $buttonUrl, $buttonLabel, $color, $footerText) {
             $channel = $discord->getChannel($channelId);
 
             if ($channel) {
@@ -80,7 +109,9 @@ class NotificationService
 
                 if ($description !== '') {
                     $embed = new Embed($discord);
-                    $embed->setTitle($title);
+                    if ($embedTitle !== '') {
+                        $embed->setTitle($embedTitle);
+                    }
                     $embed->setDescription($description);
                     $embed->setColor($color);
                     $embed->setTimestamp(now()->timestamp);
@@ -160,17 +191,20 @@ class NotificationService
         $receivers = is_array($receivers) ? $receivers : [$receivers];
 
         $appName = config('app.name', 'Server Monitor');
-        $buttonHtml = '';
 
-        if ($url) {
+        [$message, $buttonUrl, $buttonLabel] = $this->parseEmailButton($message);
+        $buttonUrl = $buttonUrl ?? $url;
+
+        $buttonHtml = '';
+        if ($buttonUrl) {
             $buttonHtml = "
                 <tr>
                     <td style=\"padding: 20px 30px 10px; text-align: center;\">
-                        <a href=\"{$url}\"
+                        <a href=\"{$buttonUrl}\"
                            style=\"background-color: #3b82f6; color: #ffffff; padding: 10px 24px;
                                   text-decoration: none; border-radius: 6px; font-weight: 600;
                                   font-size: 14px; display: inline-block;\">
-                            View Server Details
+                            {$buttonLabel}
                         </a>
                     </td>
                 </tr>";

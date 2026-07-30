@@ -3,6 +3,7 @@
 namespace App\NodeConfig\Jobs;
 
 use App\Models\Server;
+use App\Models\ServerHealthLog;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
@@ -36,6 +37,8 @@ class SendNotification implements ShouldQueue
         $settings = $this->action['settings'];
         $context = $this->action['upstream_context'] ?? [];
 
+        $severity = $settings['severity'] ?? 'warning';
+
         $firstTriggerTs = isset($context['first_trigger_timestamp'])
             ? Carbon::parse($context['first_trigger_timestamp'])->format('Y-m-d H:i:s')
             : now()->format('Y-m-d H:i:s');
@@ -48,6 +51,7 @@ class SendNotification implements ShouldQueue
         $templateData = [
             'server' => $server,
             'runtime' => [
+                'severity' => $severity,
                 'metricName' => $context['metric_name'] ?? 'Unknown Metric',
                 'sustainValue' => $context['sustain_value'] ?? '',
                 'eventTimestamp' => $now->format('Y-m-d H:i:s'),
@@ -71,6 +75,13 @@ class SendNotification implements ShouldQueue
                 ],
             ],
         ];
+
+        $metricName = $templateData['runtime']['metricName'] ?? 'Unknown Metric';
+        $sustainValue = $templateData['runtime']['sustainValue'] ?? '';
+        $isOffline = isset($context['offlineTimestamp']) || $metricName === 'Server Status';
+        $title = $isOffline
+            ? "Server offline for {$templateData['runtime']['offlineDuration']}"
+            : ($sustainValue !== '' ? "{$metricName} above threshold for {$sustainValue}" : "{$metricName} alert triggered");
 
         $subject = $this->resolveTemplates($settings['subject'] ?? 'Alert triggered', $templateData);
         $message = $this->resolveTemplates($settings['message'] ?? '', $templateData);
@@ -105,6 +116,7 @@ class SendNotification implements ShouldQueue
                     'subject' => $subject,
                     'node' => $this->action['node_id'] ?? null,
                     'repeat' => $isRepeat,
+                    'severity' => $severity,
                 ]);
 
                 \App\Events\SystemTelemetryEvent::emit('notification_dispatched', [
@@ -114,7 +126,30 @@ class SendNotification implements ShouldQueue
                     'subject'     => $subject,
                     'node_id'     => $this->action['node_id'] ?? null,
                     'repeat'      => $isRepeat,
+                    'severity'    => $severity,
                 ]);
+
+                try {
+                    ServerHealthLog::create([
+                        'logable_type' => 'server',
+                        'logable_id'   => $this->serverId,
+                        'user'         => 'system',
+                        'title'        => $title,
+                        'details'      => [
+                            'channel'  => $channel,
+                            'subject'  => $subject,
+                            'message'  => $message,
+                            'severity' => $severity,
+                            'repeat'   => $isRepeat,
+                            'node_id'  => $this->action['node_id'] ?? null,
+                        ],
+                        'severity' => $severity,
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::warning("[server-events] Failed to log notification in server_health_logs", [
+                        'error' => $e->getMessage(),
+                    ]);
+                }
             }
         } catch (\Throwable $e) {
             Log::error("[server-events] Notification failed", [
@@ -155,7 +190,7 @@ class SendNotification implements ShouldQueue
             return false;
         }
 
-        $notifications->sendDiscordAlert($botToken, $roleId ?? '', $message, $channelId, 'System Alert', $url);
+        $notifications->sendDiscordAlert($botToken, $roleId ?? '', $message, $channelId, '', $url);
         return true;
     }
 

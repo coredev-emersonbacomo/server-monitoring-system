@@ -49,10 +49,11 @@ export function NodeSettingsPanel({
         if (nodeTypeDef?.type === "notification") {
             const channelKey = channel || "email";
             const channelSettings: Record<string, string[]> = {
-                email: ["channel", "subject", "message"],
-                sms: ["channel", "message"],
+                email: ["channel", "severity", "subject", "message"],
+                sms: ["channel", "severity", "message"],
                 discord: [
                     "channel",
+                    "severity",
                     "bot_token",
                     "channel_id",
                     "role_id",

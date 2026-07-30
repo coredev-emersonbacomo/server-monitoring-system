@@ -8,6 +8,7 @@ type ServerVarKey = `server.${keyof ServerData & string}`;
 type ClientVarKey = `server.client.${keyof ClientData & string}`;
 type MetricVarKey = `metric.${keyof StatPointData & string}`;
 type RuntimeVarKey =
+    | 'runtime.severity'
     | 'runtime.metricName'
     | 'runtime.sustainValue'
     | 'runtime.eventTimestamp'
@@ -86,6 +87,7 @@ const LABELS: Record<string, { label: string; group: TemplateVariable['group']; 
     'metric.netOut'                 : { label: 'NetOut', group: 'metric', description: 'NetOut (StatPointData)' },
     'metric.disk'                   : { label: 'Disk', group: 'metric', description: 'Disk (StatPointData)' },
     'server.url'                    : { label: 'URL', group: 'server', description: 'Server detail page URL' },
+    'runtime.severity'              : { label: 'Severity', group: 'runtime', description: 'Alert severity level (critical, warning, info)' },
     'runtime.metricName'            : { label: 'Metric Name', group: 'runtime', description: 'Name of the metric being evaluated' },
     'runtime.sustainValue'          : { label: 'Sustain Value', group: 'runtime', description: 'How long the condition has been sustained' },
     'runtime.eventTimestamp'              : { label: 'Event Timestamp', group: 'runtime', description: 'When the evaluation occurred' },
@@ -99,6 +101,8 @@ const LABELS: Record<string, { label: string; group: TemplateVariable['group']; 
     'runtime.repeat.max'            : { label: 'Repeat Max', group: 'runtime', description: 'Maximum number of repeats' },
     '<discord-button>'              : { label: 'Discord Button', group: 'tag', description: 'Insert a Discord link button tag' },
     '<discord-footer>'              : { label: 'Discord Footer', group: 'tag', description: 'Set the Discord embed footer text' },
+    '<discord-title>'               : { label: 'Discord Title', group: 'tag', description: 'Set the Discord embed title' },
+    '<email-button>'                : { label: 'Email Button', group: 'tag', description: 'Insert an email link button tag' },
     '<if-repeat>'                   : { label: 'If Repeat Block', group: 'tag', description: 'Insert a conditional repeat block' },
 };
 
@@ -106,12 +110,14 @@ export const TEMPLATE_VARIABLES: TemplateVariable[] = (Object.entries(LABELS)).m
     ([key, meta]) => ({ key, ...meta }),
 );
 
-export function filterVariables(query: string): TemplateVariable[] {
+export function filterVariables(query: string, channel?: string): TemplateVariable[] {
     const q = query.toLowerCase();
     const isTagQuery = q.startsWith('<');
     return TEMPLATE_VARIABLES.filter((v) => {
         if (isTagQuery && v.group !== 'tag') return false;
         if (!isTagQuery && v.group === 'tag') return false;
+        if (channel !== 'discord' && v.key.startsWith('<discord')) return false;
+        if (channel !== 'email' && v.key.startsWith('<email')) return false;
         const key = isTagQuery ? v.key : `{${v.key}}`;
         return key.toLowerCase().includes(q) || v.label.toLowerCase().includes(q);
     });

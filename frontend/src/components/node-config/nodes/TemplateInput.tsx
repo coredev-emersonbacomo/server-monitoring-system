@@ -9,6 +9,7 @@ interface TemplateInputProps {
     onPointerDown?: (e: React.PointerEvent) => void;
     type?: string;
     className?: string;
+    channel?: string;
 }
 
 function highlightMatch(text: string, query: string): React.ReactNode {
@@ -24,7 +25,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
     );
 }
 
-export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDown, type = 'text', className }: TemplateInputProps) {
+export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDown, type = 'text', className, channel }: TemplateInputProps) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
@@ -32,7 +33,7 @@ export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDo
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
-    const filtered = filterVariables(query);
+    const filtered = filterVariables(query, channel);
     const showDropdown = open && filtered.length > 0;
 
     const checkForTrigger = useCallback((input: HTMLInputElement) => {
@@ -81,12 +82,20 @@ export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDo
                 ? '<discord-button detailsUrl=""></discord-button>'
                 : tagKey === '<discord-footer>'
                 ? '<discord-footer></discord-footer>'
+                : tagKey === '<discord-title>'
+                ? '<discord-title></discord-title>'
+                : tagKey === '<email-button>'
+                ? '<email-button url=""></email-button>'
                 : tagKey + closing;
             newVal = before + tagContent + after;
             cursorOffset = tagKey === '<discord-button>'
                 ? insertPos + '<discord-button detailsUrl="'.length
                 : tagKey === '<discord-footer>'
                 ? insertPos + '<discord-footer>'.length
+                : tagKey === '<discord-title>'
+                ? insertPos + '<discord-title>'.length
+                : tagKey === '<email-button>'
+                ? insertPos + '<email-button url="'.length
                 : insertPos + tagKey.length;
         } else {
             newVal = before + '{' + variable.key + '}' + after;

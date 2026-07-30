@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { type LucideIcon } from "lucide-react";
 import React from "react";
+import { Link } from "react-router-dom";
 import { toLabelCase } from "@/utils/helpers";
 
 export interface Crumb {
@@ -36,7 +37,7 @@ const IndexHeader: React.FC<IndexHeaderProps> = ({
     }
 
     return (
-        <header className="shrink-0 h-[42px]">
+        <header className="shrink-0 h-10.5">
             <div className="h-full flex gap-4 items-center">
                 {Icon && (
                     <div className="p-2 bg-primary/10 rounded-lg shrink-0">
@@ -48,9 +49,7 @@ const IndexHeader: React.FC<IndexHeaderProps> = ({
                         <Breadcrumb>
                             <BreadcrumbList className="items-end">
                                 {trail.map((crumb, index) => (
-                                    <React.Fragment
-                                        key={crumb.href || index}
-                                    >
+                                    <React.Fragment key={crumb.href || index}>
                                         <BreadcrumbItem>
                                             {index === trail.length - 1 ? (
                                                 <BreadcrumbPage
@@ -69,14 +68,16 @@ const IndexHeader: React.FC<IndexHeaderProps> = ({
                                                           )}
                                                 </BreadcrumbPage>
                                             ) : (
-                                                <BreadcrumbLink
-                                                    href={crumb.href}
-                                                    className="text-foreground text-lg font-normal leading-none tracking-tight hover:text-blue-500"
-                                                >
-                                                    {toLabelCase(
-                                                        crumb.label,
-                                                        true,
-                                                    )}
+                                                <BreadcrumbLink asChild>
+                                                    <Link
+                                                        to={crumb.href!}
+                                                        className="text-foreground text-lg font-normal leading-none tracking-tight hover:text-blue-500"
+                                                    >
+                                                        {toLabelCase(
+                                                            crumb.label,
+                                                            true,
+                                                        )}
+                                                    </Link>
                                                 </BreadcrumbLink>
                                             )}
                                         </BreadcrumbItem>

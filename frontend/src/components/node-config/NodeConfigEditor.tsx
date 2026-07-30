@@ -379,15 +379,16 @@ export function NodeConfigEditor({
             }
             if (e.key === "Delete" || e.key === "Backspace") {
                 if (isInput) return;
-                const selected = nodesRef.current.filter((n) => n.selected);
-                if (selected.length === 0) return;
+                const selectedNodes = nodesRef.current.filter((n) => n.selected);
+                const selectedEdges = edgesRef.current.filter((e) => e.selected);
+                if (selectedNodes.length === 0 && selectedEdges.length === 0) return;
                 e.preventDefault();
-                const ids = new Set(selected.map((n) => n.id));
+                const ids = new Set(selectedNodes.map((n) => n.id));
                 suppressHistoryRef.current = true;
                 setNodes((nds) => nds.filter((n) => !ids.has(n.id)));
-                setEdges((eds) => eds.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
+                setEdges((eds) => eds.filter((e) => !ids.has(e.source) && !ids.has(e.target) && !e.selected));
                 setSelectedNode(null);
-                requestAnimationFrame(() => { suppressHistoryRef.current = false; pushSnapshot("Delete node"); });
+                requestAnimationFrame(() => { suppressHistoryRef.current = false; pushSnapshot("Delete"); });
             }
         };
         window.addEventListener("keydown", onKeyDown);

@@ -19,8 +19,9 @@ class ServerHealthLog extends Model
         'logable_id',
         'user_id',
         'user',
-        'action',
+        'title',
         'details',
+        'severity',
     ];
 
     public function logable(): MorphTo

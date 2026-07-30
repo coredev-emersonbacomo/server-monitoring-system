@@ -12,6 +12,7 @@ use App\NodeConfig\NodeTypes\CheckAfterNode;
 use App\NodeConfig\NodeTypes\LogicNode;
 use App\NodeConfig\NodeTypes\MetricNode;
 use App\NodeConfig\NodeTypes\NotificationNode;
+use App\NodeConfig\NodeTypes\SeverityNode;
 use App\NodeConfig\NodeTypes\SustainedNode;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
@@ -35,6 +36,9 @@ class AppServiceProvider extends ServiceProvider
         // Time nodes
         $registry->register(new CheckAfterNode);
         $registry->register(new SustainedNode);
+
+        // Severity node
+        $registry->register(new SeverityNode);
 
         // Action nodes (merged notification)
         $registry->register(new NotificationNode);
