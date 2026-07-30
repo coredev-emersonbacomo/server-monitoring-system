@@ -331,16 +331,16 @@ type metricsCollector struct{}
 
 func newMetricsCollector() *metricsCollector { return &metricsCollector{} }
 
-func (m *metricsCollector) GetCPUSpec() *CPUSpec          { return getCPUSpec() }
-func (m *metricsCollector) GetMemorySpec() string         { return getMemorySpec() }
-func (m *metricsCollector) GetDiskSpec() string           { return getDiskSpec() }
-func (m *metricsCollector) GetOS() string                 { return getOS() }
-func (m *metricsCollector) GetArch() string               { return getArch() }
-func (m *metricsCollector) GetHostname() string           { return getHostname() }
-func (m *metricsCollector) GetCPUUsage() *CPUMetrics      { return getCPUUsage() }
-func (m *metricsCollector) GetMemoryUsage() *MemoryMetrics { return getMemoryUsage() }
-func (m *metricsCollector) GetDiskUsage() *DiskMetrics     { return getDiskUsage() }
-func (m *metricsCollector) GetUptime() float64             { return getUptime() }
+func (m *metricsCollector) GetCPUSpec() *CPUSpec              { return getCPUSpec() }
+func (m *metricsCollector) GetMemorySpec() string             { return getMemorySpec() }
+func (m *metricsCollector) GetDiskSpec() string               { return getDiskSpec() }
+func (m *metricsCollector) GetOS() string                     { return getOS() }
+func (m *metricsCollector) GetArch() string                   { return getArch() }
+func (m *metricsCollector) GetHostname() string               { return getHostname() }
+func (m *metricsCollector) GetCPUUsage() *CPUMetrics          { return getCPUUsage() }
+func (m *metricsCollector) GetMemoryUsage() *MemoryMetrics    { return getMemoryUsage() }
+func (m *metricsCollector) GetDiskUsage() *DiskMetrics        { return getDiskUsage() }
+func (m *metricsCollector) GetUptime() float64                { return getUptime() }
 func (m *metricsCollector) GetNetworkStats() []NetworkMetrics { return getNetworkStats() }
-func (m *metricsCollector) GetTopProcesses() []ProcessInfo { return getTopProcesses() }
-func (m *metricsCollector) GetOpenDatabasePorts() []PortInfo { return getOpenDatabasePorts() }
+func (m *metricsCollector) GetTopProcesses() []ProcessInfo    { return getTopProcesses() }
+func (m *metricsCollector) GetOpenDatabasePorts() []PortInfo  { return getOpenDatabasePorts() }

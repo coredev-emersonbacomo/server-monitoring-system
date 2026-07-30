@@ -1,4 +1,14 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import {
+    createContext,
+    type ClipboardEvent,
+    type KeyboardEvent,
+    useContext,
+    useState,
+    useEffect,
+    useCallback,
+    useRef,
+    useMemo,
+} from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -28,6 +38,8 @@ import {
     History,
     Calendar,
     Server,
+    CreditCard,
+    Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useServer } from "@/hooks/useServer";
@@ -38,7 +50,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tab } from "@/components/ui/tab";
 import { ServerStatChart } from "@/components/dashboard/ServerStatChart";
-import type { StatPointData, ProvisionDetailData } from "@/types/models";
+import type {
+    StatPointData,
+    ProvisionDetailData,
+    ServerData,
+} from "@/types/models";
 import IndexHeader from "@/components/IndexHeader";
 import { useServerSocket } from "@/hooks/useServerSocket";
 import {
@@ -51,17 +67,93 @@ import {
 import { toast } from "sonner";
 import { useDeleteServer } from "@/hooks/useDeleteServer";
 import { NodeConfigEditor } from "@/components/node-config/NodeConfigEditor";
-import { Form, createFormStore, useForm } from "@/components/ui/form";
+import {
+    Form,
+    createFormStore,
+    useForm,
+    type FormStore,
+} from "@/components/ui/form";
 
+export type CopyKey =
+    | "linux"
+    | "windows"
+    | "uninstall_linux"
+    | "uninstall_windows";
+
+const blockedMonthlyCostKeys = new Set(["e", "E", "-"]);
+
+function blockInvalidMonthlyCostKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (blockedMonthlyCostKeys.has(e.key)) e.preventDefault();
+}
+
+function blockInvalidMonthlyCostPaste(e: ClipboardEvent<HTMLInputElement>) {
+    if (/[eE-]/.test(e.clipboardData.getData("text"))) e.preventDefault();
+}
+
+function setMonthlyCostValue(setValue: (value: string) => void, value: string) {
+    if (/[eE-]/.test(value)) return;
+    const numericValue = Number(value);
+    setValue(numericValue < 0 ? "0" : value);
+}
 const serverInfoSchema = z.object({
     name: z.string().min(1, "Server name is required."),
     description: z.string(),
-    hourly_cost: z.union([z.string(), z.number()]).transform((val) => {
+    monthly_cost: z.union([z.string(), z.number()]).transform((val) => {
         if (val === "" || val === undefined || val === null) return 0;
         const num = Number(val);
-        return isNaN(num) ? 0 : num;
+        return isNaN(num) ? 0 : Math.max(0, num);
     }),
 });
+
+type ServerInfoForm = z.infer<typeof serverInfoSchema>;
+type ServerDetailServer = ServerData & {
+    uptime_seconds?: number;
+    running_balance?: number;
+    net_cost?: number;
+};
+
+type ServerDetailContextValue = {
+    store: FormStore<ServerInfoForm>;
+    initial: ServerData;
+    server: ServerDetailServer;
+    mode: string;
+    form: ServerInfoForm;
+    confirmText: string;
+    setConfirmText: (value: string) => void;
+    deleteServer: ReturnType<typeof useDeleteServer>;
+    isConfirmed: boolean;
+    allClient: boolean;
+    navigate: ReturnType<typeof useNavigate>;
+    setShowCostModal: (open: boolean) => void;
+    copyToClipboard: (text: string, type: CopyKey) => void;
+    serverAlertTab: ReturnType<typeof useServerAlertTab>;
+    handleDeletePort: (id: number) => void;
+    showCostModal: boolean;
+    costLogs: any[];
+    isLoadingCostLogs: boolean;
+    deductAmount: string;
+    setDeductAmount: (value: string) => void;
+    submittingPayment: boolean;
+    handleCostAdjustment: (
+        type:
+            | "full_payment"
+            | "deduction"
+            | "top_up"
+            | "add_funds"
+            | "reset_usage",
+        amount?: number,
+    ) => void;
+};
+
+const ServerDetailContext = createContext<ServerDetailContextValue | null>(null);
+
+function useServerDetailContext() {
+    const context = useContext(ServerDetailContext);
+    if (!context) {
+        throw new Error("Server detail context is missing.");
+    }
+    return context;
+}
 
 // ─── Server Alert Tab ────────────────────────────────────────────────────────
 
@@ -313,16 +405,14 @@ export default function ServerDetail() {
         initial?.name ?? "Unknown",
         initial?.client_uuid ?? null,
         initial?.client_name ?? null,
-        (initial as Record<string, unknown>)?.alert_scope as string | undefined,
+        initial?.alert_scope,
     );
     const [provisionDetails, setProvisionDetails] =
         useState<ProvisionDetailData | null>(
             initial?.activeProvisionDetails ?? null,
         );
     const [generating, setGenerating] = useState(false);
-    const [copiedKey, setCopiedKey] = useState<
-        "linux" | "windows" | "uninstall_linux" | "uninstall_windows" | null
-    >(null);
+    const [copiedKey, setCopiedKey] = useState<CopyKey | null>(null);
     const [timeLeft, setTimeLeft] = useState<string>("");
 
     const store = useMemo(
@@ -333,12 +423,12 @@ export default function ServerDetail() {
                     ? {
                           name: initial.name,
                           description: initial.description ?? "",
-                          hourly_cost: (initial as any).hourly_cost ?? 0,
+                          monthly_cost: initial.monthly_rate ?? 0,
                       }
                     : null,
                 initialMode: "view",
             }),
-        [initial?.uuid],
+        [initial],
     );
 
     const form = useForm(
@@ -351,14 +441,15 @@ export default function ServerDetail() {
         if (initial && mode === "view") {
             store.set("name")(initial.name);
             store.set("description")(initial.description ?? "");
-            store.set("hourly_cost")(String((initial as any).hourly_cost ?? 0));
+            store.set("monthly_cost")(String(initial.monthly_rate ?? 0));
         }
     }, [
         initial?.name,
         initial?.description,
-        (initial as any)?.hourly_cost,
+        initial?.monthly_rate,
         mode,
         store,
+        initial,
     ]);
     const [confirmText, setConfirmText] = useState("");
     const deleteServer = useDeleteServer();
@@ -373,7 +464,7 @@ export default function ServerDetail() {
         queryFn: async () => {
             if (!initial?.client_uuid || !initial?.uuid) return [];
             const { data, error } = await api.GET(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-logs" as any,
+                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-logs",
                 {
                     params: {
                         path: {
@@ -384,7 +475,7 @@ export default function ServerDetail() {
                 },
             );
             if (error) return [];
-            return (data as any[]) ?? [];
+            return (data as []) ?? [];
         },
         enabled: !!initial?.client_uuid && !!initial?.uuid && showCostModal,
     });
@@ -401,18 +492,20 @@ export default function ServerDetail() {
         if (!initial?.client_uuid || !initial?.uuid) return;
         setSubmittingPayment(true);
         try {
-            const { error } = await api.POST(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-adjustment",
-                {
-                    params: {
-                        path: {
-                            clientUuid: initial.client_uuid,
-                            serverUuid: initial.uuid,
-                        },
+            const { error } = await (
+                api.POST as unknown as (
+                    url: string,
+                    options: unknown,
+                ) => Promise<{ error?: { message?: string } }>
+            )("/v1/clients/{clientUuid}/servers/{serverUuid}/cost-adjustment", {
+                params: {
+                    path: {
+                        clientUuid: initial.client_uuid,
+                        serverUuid: initial.uuid,
                     },
-                    body: { action: type as any, amount },
                 },
-            );
+                body: { action: type, amount },
+            });
             if (error) throw error;
             toast.success(
                 type === "reset_usage"
@@ -427,7 +520,8 @@ export default function ServerDetail() {
             queryClient.invalidateQueries({
                 queryKey: ["server-cost-logs", initial.uuid],
             });
-        } catch (err) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (err: any) {
             toast.error(err?.message || "Failed to update server credits.");
         } finally {
             setSubmittingPayment(false);
@@ -438,16 +532,16 @@ export default function ServerDetail() {
 
     useEffect(() => {
         if (initial) {
-            const serverUptime = (initial as any).uptime_seconds ?? 0;
+            const serverUptime = initial.uptime_seconds ?? 0;
             setLiveUptimeSeconds((prev) => Math.max(prev, serverUptime));
         }
-    }, [initial?.uptime_seconds]);
+    }, [initial, initial?.uptime_seconds]);
 
     useEffect(() => {
         if (initial?.cost_reset_at) {
-            setLiveUptimeSeconds((initial as any).uptime_seconds ?? 0);
+            setLiveUptimeSeconds(initial.uptime_seconds ?? 0);
         }
-    }, [initial?.cost_reset_at]);
+    }, [initial?.cost_reset_at, initial?.uptime_seconds]);
 
     useEffect(() => {
         if (!initial || initial.status !== "online") return;
@@ -455,7 +549,7 @@ export default function ServerDetail() {
             setLiveUptimeSeconds((prev) => prev + 1);
         }, 1000);
         return () => clearInterval(timer);
-    }, [initial?.status, initial?.cost_reset_at]);
+    }, [initial?.status, initial?.cost_reset_at, initial]);
 
     const [wsStatus, setWsStatus] = useState<string | null>(null);
     useServerSocket(uuid!, setWsStatus, () => {
@@ -486,7 +580,7 @@ export default function ServerDetail() {
             },
             { label: initial.name },
         ];
-    }, [initial, uuid, allClient]);
+    }, [initial, allClient]);
 
     const trailLoading = !initial;
 
@@ -583,10 +677,7 @@ export default function ServerDetail() {
         }
     };
 
-    const copyToClipboard = (
-        text: string,
-        type: "linux" | "windows" | "uninstall_linux" | "uninstall_windows",
-    ) => {
+    const copyToClipboard = (text: string, type: CopyKey) => {
         navigator.clipboard.writeText(text);
         setCopiedKey(type);
         toast.success("Command copied to clipboard!");
@@ -710,13 +801,13 @@ export default function ServerDetail() {
         );
     }
 
-    const liveGrossCost = (initial as any)?.gross_cost ?? 0;
-    const liveNetCost = (initial as any)?.net_cost ?? 0;
+    const liveRunningBalance = initial.running_balance ?? 0;
+    const liveNetCost = initial.net_cost ?? 0;
 
     const server = {
         ...initial,
         uptime_seconds: liveUptimeSeconds,
-        gross_cost: liveGrossCost,
+        running_balance: liveRunningBalance,
         net_cost: liveNetCost,
     };
     const status: keyof typeof STATUS_CONFIG = server.agent_deleted
@@ -725,11 +816,37 @@ export default function ServerDetail() {
           "pending_installation";
     const { icon: StatusIcon, label, color, bg } = STATUS_CONFIG[status];
     const isInstalled =
-        status === "online" || status === "warning" || status === "offline";
+        status === "online" || status === "warning" || status === "offline" || status === "waiting_for_first_heartbeat";
+
+    const serverDetailContextValue: ServerDetailContextValue = {
+        store,
+        initial,
+        server,
+        mode,
+        form,
+        confirmText,
+        setConfirmText,
+        deleteServer,
+        isConfirmed,
+        allClient,
+        navigate,
+        setShowCostModal,
+        copyToClipboard,
+        serverAlertTab,
+        handleDeletePort,
+        showCostModal,
+        costLogs,
+        isLoadingCostLogs,
+        deductAmount,
+        setDeductAmount,
+        submittingPayment,
+        handleCostAdjustment,
+    };
 
     return (
         <ChartZoomProvider>
-            <PageLayout>
+            <ServerDetailContext.Provider value={serverDetailContextValue}>
+                <PageLayout>
                 <IndexHeader
                     icon={Server}
                     trail={trail}
@@ -763,6 +880,7 @@ export default function ServerDetail() {
 
                         <Tab>
                             <Tab.Item icon={Info} title="Info">
+<<<<<<< HEAD
                                 <Form.Root store={store}>
                                     <Form.SubmitHandler
                                         handler={async (
@@ -1639,39 +1757,40 @@ export default function ServerDetail() {
                                             </div>
                                         </div>
                                     </div>
+=======
+                                <ServerInfoTab />
+                            </Tab.Item>
+                            {isInstalled && mode === "view" && (
+                                <Tab.Item icon={BarChart3} title="Metrics">
+                                    <MetricsTab />
+                                </Tab.Item>
+                            )}
+
+                            {mode === "view" && (
+                                <Tab.Item icon={CreditCard} title="Billing">
+                                    <BillingTab />
+>>>>>>> main
                                 </Tab.Item>
                             )}
 
                             {mode === "view" && (
                                 <Tab.Item icon={Bell} title="Alerts">
-                                    <AlertsTab
-                                        serverAlertTab={serverAlertTab}
-                                        initial={initial}
-                                    />
+                                    <AlertsTab />
                                 </Tab.Item>
                             )}
 
                             {mode === "view" && (
                                 <Tab.Item icon={Cpu} title="Agent">
-                                    <AgentTab server={server} />
+                                    <AgentTab />
                                 </Tab.Item>
                             )}
                         </Tab>
 
-                        <CostModal
-                            open={showCostModal}
-                            onOpenChange={setShowCostModal}
-                            initial={initial}
-                            costLogs={costLogs}
-                            isLoadingCostLogs={isLoadingCostLogs}
-                            deductAmount={deductAmount}
-                            setDeductAmount={setDeductAmount}
-                            submittingPayment={submittingPayment}
-                            handleCostAdjustment={handleCostAdjustment}
-                        />
+                        <CostModal />
                     </div>
                 </main>
-            </PageLayout>
+                </PageLayout>
+            </ServerDetailContext.Provider>
         </ChartZoomProvider>
     );
 }
@@ -1697,7 +1816,7 @@ function AgentInstallationGuide({
     timeLeft: string;
     generateProvisionToken: () => void;
     regenerateProvisionToken: () => void;
-    copyToClipboard: (text: string, type) => void;
+    copyToClipboard: (text: string, type: CopyKey) => void;
 }) {
     return (
         <div className="mb-6 p-5 rounded-xl border border-border bg-card/50 backdrop-blur-sm shadow-lg">
@@ -1769,8 +1888,7 @@ function AgentInstallationGuide({
                             </label>
                             <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
                                 <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
-                                    {provisionDetails?.windows_command ||
-                                        `powershell -ExecutionPolicy Bypass -Command "$token='<token>'; irm ${window.location.origin}/install/windows.ps1 | iex"`}
+                                    {provisionDetails?.windows_command}
                                 </span>
                                 {provisionDetails?.windows_command && (
                                     <button
@@ -1823,35 +1941,15 @@ function AgentInstallationGuide({
     );
 }
 
-function ServerInfoTab({
-    store,
-    initial,
-    server,
-    mode,
-    form,
-    confirmText,
-    setConfirmText,
-    deleteServer,
-    isConfirmed,
-    allClient,
-    navigate,
-    setShowCostModal,
-    copyToClipboard,
-}: {
-    store;
-    initial;
-    server;
-    mode: string;
-    form;
-    confirmText: string;
-    setConfirmText: (v: string) => void;
-    deleteServer;
-    isConfirmed: boolean;
-    allClient: boolean;
-    navigate;
-    setShowCostModal: (v: boolean) => void;
-    copyToClipboard: (text: string, type) => void;
-}) {
+function ServerInfoTab() {
+    const {
+        store,
+        initial,
+        server,
+        mode,
+        form,
+        navigate,
+    } = useServerDetailContext();
     const queryClient = useQueryClient();
     return (
         <Form.Root store={store}>
@@ -1874,10 +1972,10 @@ function ServerInfoTab({
                                 ? String(data.description).trim()
                                 : "";
                         const costNum =
-                            data.hourly_cost !== undefined &&
-                            data.hourly_cost !== null &&
-                            data.hourly_cost !== ""
-                                ? Number(data.hourly_cost)
+                            data.monthly_cost !== undefined &&
+                            data.monthly_cost !== null &&
+                            data.monthly_cost !== ""
+                                ? Number(data.monthly_cost)
                                 : 0;
 
                         const { error } = await api.PATCH(
@@ -1892,7 +1990,9 @@ function ServerInfoTab({
                                 body: {
                                     name: nameStr,
                                     description: descStr || undefined,
-                                    hourly_cost: isNaN(costNum) ? 0 : costNum,
+                                    monthly_cost: isNaN(costNum)
+                                        ? 0
+                                        : Math.max(0, costNum),
                                 },
                             },
                         );
@@ -1983,9 +2083,14 @@ function ServerInfoTab({
                                 type="number"
                                 step="0.01"
                                 min="0"
-                                value={form.hourly_cost ?? ""}
+                                value={form.monthly_cost ?? ""}
+                                onKeyDown={blockInvalidMonthlyCostKey}
+                                onPaste={blockInvalidMonthlyCostPaste}
                                 onChange={(e) =>
-                                    store.set("hourly_cost")(e.target.value)
+                                    setMonthlyCostValue(
+                                        store.set("monthly_cost"),
+                                        e.target.value,
+                                    )
                                 }
                                 className="text-sm font-mono"
                             />
@@ -2062,58 +2167,73 @@ function ServerInfoTab({
                         </div>
                     </div>
                 ))}
+            </div>
 
-                <div className="flex-1 min-w-50 flex items-center gap-3 p-3.5 rounded-xl bg-primary/5 border border-primary/20 shadow-sm hover:shadow-md transition-all">
+            <DeleteModalDangerZone />
+        </Form.Root>
+    );
+}
+
+function BillingTab() {
+    const { initial, setShowCostModal } = useServerDetailContext();
+    return (
+        <div className="flex flex-col gap-6 p-6 bg-card border border-border/60 rounded-b-xl shadow-sm">
+            {/* Top Metric Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Monthly Rate */}
+                <div className="flex items-center gap-3.5 p-4 rounded-xl bg-primary/5 border border-primary/20 shadow-sm">
                     <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
-                        <Banknote size={17} />
+                        <Banknote size={18} />
                     </div>
                     <div className="flex flex-col min-w-0 gap-0.5">
                         <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1.5">
-                            Monthly Cost
+                            Monthly Rate
                         </span>
-                        <span className="text-sm font-semibold text-foreground font-mono">
-                            ₱{((initial as any)?.hourly_cost ?? 0).toFixed(2)} /
-                            mo
+                        <span className="text-base font-semibold text-foreground font-mono">
+                            ₱{(initial?.monthly_rate ?? 0).toFixed(2)} / mo
                         </span>
                     </div>
                 </div>
 
+                {/* Running Balance */}
                 <div
                     onClick={() => setShowCostModal(true)}
-                    className="flex-1 min-w-50 group flex items-center gap-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 shadow-sm hover:border-emerald-500/60 hover:bg-emerald-500/15 transition-all cursor-pointer"
+                    className="group flex items-center gap-3.5 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 shadow-sm hover:border-emerald-500/60 hover:bg-emerald-500/15 transition-all cursor-pointer"
                     title="Click to view details or manage deductions"
                 >
                     <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
-                        <Coins size={17} />
+                        <Coins size={18} />
                     </div>
                     <div className="flex flex-col min-w-0 gap-0.5">
                         <span className="text-[10.5px] font-medium uppercase tracking-wider text-emerald-400/90">
-                            Cost
+                            Running Balance
                         </span>
-                        <span className="text-sm font-bold text-emerald-400 font-mono">
+                        <span className="text-base font-bold text-emerald-400 font-mono">
                             ₱
-                            {(
-                                (initial as any)?.accumulated_cost ?? 0
-                            ).toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                            })}
+                            {(initial?.accumulated_cost ?? 0).toLocaleString(
+                                undefined,
+                                {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                },
+                            )}
                         </span>
                     </div>
                 </div>
 
-                <div className="flex-1 min-w-50 flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all">
+                {/* Next Billing Date */}
+                <div className="flex items-center gap-3.5 p-4 rounded-xl bg-card border border-border/60 shadow-sm">
                     <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
-                        <Calendar size={17} />
+                        <Calendar size={18} />
                     </div>
                     <div className="flex flex-col min-w-0 gap-0.5">
                         <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
                             Next Billing Date
                         </span>
-                        <span className="text-sm font-semibold text-foreground wrap-break-word">
-                            {(initial as any)?.billing_date
+                        <span className="text-base font-semibold text-foreground wrap-break-word">
+                            {initial?.billing_date
                                 ? new Date(
-                                      (initial as any).billing_date,
+                                      initial.billing_date,
                                   ).toLocaleDateString(undefined, {
                                       month: "short",
                                       day: "numeric",
@@ -2125,39 +2245,92 @@ function ServerInfoTab({
                 </div>
             </div>
 
-            <DeleteModalDangerZone
-                initial={initial}
-                confirmText={confirmText}
-                setConfirmText={setConfirmText}
-                deleteServer={deleteServer}
-                isConfirmed={isConfirmed}
-                allClient={allClient}
-                navigate={navigate}
-                copyToClipboard={copyToClipboard}
-            />
-        </Form.Root>
+            {/* Financial Overview & Actions Breakdown */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {/* Account Summary */}
+                <div className="flex flex-col gap-3 p-4 rounded-xl bg-muted/20 border border-border/60">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground pb-2 border-b border-border/40">
+                        <Receipt size={16} className="text-primary" />
+                        Billing Breakdown
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs py-1">
+                        <span className="text-muted-foreground">
+                            Monthly Base Rate
+                        </span>
+                        <span className="font-mono font-medium text-foreground">
+                            ₱{(initial?.monthly_rate ?? 0).toFixed(2)}
+                        </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs py-1">
+                        <span className="text-muted-foreground">
+                            Recorded Payments (Remitted)
+                        </span>
+                        <span className="font-mono font-medium text-emerald-400">
+                            ₱{(initial?.remitted ?? 0).toFixed(2)}
+                        </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs py-1">
+                        <span className="text-muted-foreground">
+                            Current Payment Due
+                        </span>
+                        <span className="font-mono font-medium text-amber-400">
+                            ₱{(initial?.net_cost ?? 0).toFixed(2)}
+                        </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs pt-2 border-t border-border/40 font-semibold">
+                        <span className="text-foreground">
+                            Total Running Balance
+                        </span>
+                        <span className="font-mono text-emerald-400 text-sm">
+                            ₱{(initial?.accumulated_cost ?? 0).toFixed(2)}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Quick Actions & Payment Management */}
+                <div className="flex flex-col gap-3 p-4 rounded-xl bg-muted/20 border border-border/60">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground pb-2 border-b border-border/40">
+                        <Coins size={16} className="text-emerald-400" />
+                        Payment & Deduction Actions
+                    </div>
+
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                        Record a payment or deduction for this server, adjust
+                        cost baselines, and review historical payment
+                        transactions.
+                    </p>
+
+                    <div className="mt-auto pt-2">
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            className="w-full"
+                            icon={<Coins size={14} />}
+                            label="Manage Payments & Deductions"
+                            onClick={() => setShowCostModal(true)}
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
 
-function DeleteModalDangerZone({
-    initial,
-    confirmText,
-    setConfirmText,
-    deleteServer,
-    isConfirmed,
-    allClient,
-    navigate,
-    copyToClipboard,
-}: {
-    initial;
-    confirmText: string;
-    setConfirmText: (v: string) => void;
-    deleteServer;
-    isConfirmed: boolean;
-    allClient: boolean;
-    navigate;
-    copyToClipboard: (text: string, type) => void;
-}) {
+function DeleteModalDangerZone() {
+    const {
+        initial,
+        confirmText,
+        setConfirmText,
+        deleteServer,
+        isConfirmed,
+        allClient,
+        navigate,
+        copyToClipboard,
+    } = useServerDetailContext();
     return (
         <div className="mt-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5">
             <p className="text-xs font-semibold text-destructive uppercase tracking-wider mb-3">
@@ -2190,7 +2363,7 @@ function DeleteModalDangerZone({
                             undone.
                         </p>
 
-                        {initial && (initial as any).accumulated_cost > 0 && (
+                        {initial && (initial.accumulated_cost ?? 0) > 0 && (
                             <div className="flex items-start gap-2 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-600 dark:text-amber-400">
                                 <AlertTriangle className="size-4 shrink-0 mt-0.5" />
                                 <div>
@@ -2203,8 +2376,7 @@ function DeleteModalDangerZone({
                                         <strong className="text-amber-600 dark:text-amber-400">
                                             ₱
                                             {(
-                                                (initial as any)
-                                                    .accumulated_cost ?? 0
+                                                initial.accumulated_cost ?? 0
                                             ).toLocaleString(undefined, {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
@@ -2363,13 +2535,8 @@ function DeleteModalDangerZone({
     );
 }
 
-function MetricsTab({
-    server,
-    handleDeletePort,
-}: {
-    server;
-    handleDeletePort: (id: number) => void;
-}) {
+function MetricsTab() {
+    const { server, handleDeletePort } = useServerDetailContext();
     return (
         <div className="flex flex-col gap-6 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
             <div className="flex flex-col gap-6">
@@ -2532,7 +2699,8 @@ function MetricsTab({
     );
 }
 
-function AlertsTab({ serverAlertTab, initial }: { serverAlertTab; initial }) {
+function AlertsTab() {
+    const { serverAlertTab, initial } = useServerDetailContext();
     return (
         <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-6">
             <div>
@@ -2603,7 +2771,8 @@ function AlertsTab({ serverAlertTab, initial }: { serverAlertTab; initial }) {
     );
 }
 
-function AgentTab({ server }: { server }) {
+function AgentTab() {
+    const { server } = useServerDetailContext();
     return (
         <div className="flex flex-col gap-6 p-5 bg-card border border-t-0 border-border/60 rounded-b-lg min-h-75">
             <div className="flex items-center justify-between border-b border-border/30 pb-3">
@@ -2769,37 +2938,20 @@ function AgentTab({ server }: { server }) {
     );
 }
 
-function CostModal({
-    open,
-    onOpenChange,
-    initial,
-    costLogs,
-    isLoadingCostLogs,
-    deductAmount,
-    setDeductAmount,
-    submittingPayment,
-    handleCostAdjustment,
-}: {
-    open: boolean;
-    onOpenChange: (v: boolean) => void;
-    initial;
-    costLogs;
-    isLoadingCostLogs: boolean;
-    deductAmount: string;
-    setDeductAmount: (v: string) => void;
-    submittingPayment: boolean;
-    handleCostAdjustment: (
-        type:
-            | "full_payment"
-            | "deduction"
-            | "top_up"
-            | "add_funds"
-            | "reset_usage",
-        amount?: number,
-    ) => void;
-}) {
+function CostModal() {
+    const {
+        showCostModal,
+        setShowCostModal,
+        initial,
+        costLogs,
+        isLoadingCostLogs,
+        deductAmount,
+        setDeductAmount,
+        submittingPayment,
+        handleCostAdjustment,
+    } = useServerDetailContext();
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={showCostModal} onOpenChange={setShowCostModal}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-foreground">
@@ -2811,27 +2963,26 @@ function CostModal({
                 <div className="flex flex-col gap-4 py-2">
                     <div className="flex flex-col gap-2 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
                         <span className="text-xs uppercase tracking-wider font-semibold text-emerald-400/90">
-                            Cost
+                            Running Balance
                         </span>
                         <span className="text-3xl font-extrabold text-emerald-400 font-mono">
                             ₱
-                            {(
-                                (initial as any)?.accumulated_cost ?? 0
-                            ).toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                            })}
+                            {(initial?.accumulated_cost ?? 0).toLocaleString(
+                                undefined,
+                                {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                },
+                            )}
                         </span>
                         <div className="flex justify-between items-center text-[11px] text-muted-foreground pt-2 border-t border-emerald-500/20 mt-1 font-mono">
                             <span>
                                 Payment Due: ₱
-                                {((initial as any)?.net_cost ?? 0).toFixed(2)}
+                                {(initial?.net_cost ?? 0).toFixed(2)}
                             </span>
                             <span>
                                 Payments Recorded: ₱
-                                {((initial as any)?.cost_offset ?? 0).toFixed(
-                                    2,
-                                )}
+                                {(initial?.remitted ?? 0).toFixed(2)}
                             </span>
                         </div>
                     </div>
@@ -2904,8 +3055,37 @@ function CostModal({
                                 </p>
                             ) : (
                                 costLogs.map((log) => {
+                                    let detailsObj: Record<string, any> | null =
+                                        null;
+                                    if (log.details) {
+                                        if (typeof log.details === "object") {
+                                            detailsObj = log.details;
+                                        } else if (
+                                            typeof log.details === "string"
+                                        ) {
+                                            try {
+                                                detailsObj = JSON.parse(
+                                                    log.details,
+                                                );
+                                            } catch {}
+                                        }
+                                    }
                                     const msg =
-                                        log.details?.message || log.action;
+                                        detailsObj?.message ||
+                                        (typeof log.details === "string"
+                                            ? log.details
+                                            : null) ||
+                                        log.action;
+
+                                    const beforeRate =
+                                        detailsObj?.before?.monthly_rate ??
+                                        detailsObj?.before?.monthly_cost ??
+                                        detailsObj?.before?.hourly_cost;
+                                    const afterRate =
+                                        detailsObj?.after?.monthly_rate ??
+                                        detailsObj?.after?.monthly_cost ??
+                                        detailsObj?.after?.hourly_cost;
+
                                     return (
                                         <div
                                             key={log.id}
@@ -2935,28 +3115,17 @@ function CostModal({
                                             <p className="text-[11px] text-muted-foreground">
                                                 {msg}
                                             </p>
-                                            {log.details?.before?.hourly_cost &&
-                                                log.details?.after
-                                                    ?.hourly_cost && (
+                                            {beforeRate !== undefined &&
+                                                afterRate !== undefined && (
                                                     <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
                                                         <span>
                                                             Before: ₱
-                                                            {
-                                                                log.details
-                                                                    .before
-                                                                    .hourly_cost
-                                                            }
-                                                            /hr
+                                                            {beforeRate}/mo
                                                         </span>
                                                         <span>→</span>
                                                         <span>
-                                                            After: ₱
-                                                            {
-                                                                log.details
-                                                                    .after
-                                                                    .hourly_cost
-                                                            }
-                                                            /hr
+                                                            After: ₱{afterRate}
+                                                            /mo
                                                         </span>
                                                     </div>
                                                 )}

@@ -100,6 +100,14 @@ func getCPUSpec() *CPUSpec {
 			spec.Model = name
 		}
 	}
+
+	outCores, errCores := exec.Command("powershell", "-Command",
+		"(Get-CimInstance Win32_Processor | Measure-Object -Property NumberOfCores -Sum).Sum").Output()
+	if errCores == nil {
+		if n, err := strconv.Atoi(strings.TrimSpace(string(outCores))); err == nil && n > 0 {
+			spec.Cores = n
+		}
+	}
 	return spec
 }
 

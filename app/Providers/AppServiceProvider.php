@@ -12,9 +12,13 @@ use App\NodeConfig\NodeTypes\CheckAfterNode;
 use App\NodeConfig\NodeTypes\LogicNode;
 use App\NodeConfig\NodeTypes\MetricNode;
 use App\NodeConfig\NodeTypes\NotificationNode;
+use App\NodeConfig\NodeTypes\SeverityNode;
 use App\NodeConfig\NodeTypes\SustainedNode;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Broadcasting\Broadcasters\PusherBroadcaster;
+use Pusher\Pusher;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,6 +36,9 @@ class AppServiceProvider extends ServiceProvider
         // Time nodes
         $registry->register(new CheckAfterNode);
         $registry->register(new SustainedNode);
+
+        // Severity node
+        $registry->register(new SeverityNode);
 
         // Action nodes (merged notification)
         $registry->register(new NotificationNode);
@@ -69,6 +76,31 @@ class AppServiceProvider extends ServiceProvider
             $schedule->command('uploads:consistency-check')->daily();
         });
 
+        $makePusherBroadcaster = function ($app, $config) {
+            $options = $config['options'] ?? [];
+            if (isset($config['client_options'])) {
+                $options['client_options'] = $config['client_options'];
+            }
+            $pusher = new Pusher(
+                $config['key'],
+                $config['secret'],
+                $config['app_id'],
+                $options
+            );
 
+            return new class($pusher) extends PusherBroadcaster {
+                public function broadcast(array $channels, $event, array $payload = [])
+                {
+                    try {
+                        parent::broadcast($channels, $event, $payload);
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning('[broadcaster] Broadcast failed: ' . $e->getMessage());
+                    }
+                }
+            };
+        };
+
+        Broadcast::extend('reverb', $makePusherBroadcaster);
+        Broadcast::extend('pusher', $makePusherBroadcaster);
     }
 }

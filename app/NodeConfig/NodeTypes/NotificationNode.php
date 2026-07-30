@@ -2,6 +2,8 @@
 
 namespace App\NodeConfig\NodeTypes;
 
+use App\Enums\Severity;
+
 class NotificationNode extends BaseNode
 {
     public function getType(): string { return 'notification'; }
@@ -16,6 +18,7 @@ class NotificationNode extends BaseNode
                 'sms' => 'SMS',
                 'discord' => 'Discord',
             ]],
+            ['key' => 'severity', 'label' => 'Severity', 'type' => 'select', 'required' => false, 'default' => 'warning', 'options' => Severity::options()],
             ['key' => 'subject', 'label' => 'Subject', 'type' => 'string', 'default' => 'Alert triggered'],
             ['key' => 'bot_token', 'label' => 'Bot Token', 'type' => 'string', 'description' => 'Discord bot token'],
             ['key' => 'channel_id', 'label' => 'Channel ID', 'type' => 'string', 'description' => 'Discord channel ID'],
@@ -37,6 +40,8 @@ class NotificationNode extends BaseNode
             return NodeResult::noPropagate(null, []);
         }
 
-        return NodeResult::propagate(true, ['action_dispatched' => true]);
+        $severity = $settings['severity'] ?? 'warning';
+
+        return NodeResult::propagate(true, ['action_dispatched' => true, 'severity' => $severity]);
     }
 }

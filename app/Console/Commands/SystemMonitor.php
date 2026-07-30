@@ -18,7 +18,7 @@ class SystemMonitor extends Command
         $servers = \App\Models\Server::whereHas('agent')->get();
         foreach ($servers as $server) {
             $server->checkTokenExpiration();
-            MonitorServer::dispatch($server->uuid);
+            MonitorServer::dispatchSync($server->uuid);
         }
 
         $this->syncNoSecOpsClients();
@@ -26,9 +26,16 @@ class SystemMonitor extends Command
         $sweepAt = microtime(true);
         \Illuminate\Support\Facades\Cache::put('last_monitor_sweep_at', $sweepAt, now()->addMinutes(10));
 
+        $offlineServers = \App\Models\Server::where('servers.status', 'offline')
+            ->select('servers.uuid', 'servers.name', 'clients.name as client_name', 'servers.went_offline_at')
+            ->join('clients', 'clients.id', '=', 'servers.client_id')
+            ->get()
+            ->toArray();
+
         \App\Events\SystemTelemetryEvent::emit('system_monitor_sweep', [
-            'server_count' => $servers->count(),
-            'swept_at'     => $sweepAt,
+            'server_count'    => $servers->count(),
+            'swept_at'        => $sweepAt,
+            'offline_servers' => $offlineServers,
         ]);
 
         $this->info("Dispatched " . $servers->count() . " server monitor jobs.");

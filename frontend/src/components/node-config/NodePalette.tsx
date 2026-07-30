@@ -21,7 +21,7 @@ const CAPABILITIES = [
         targetCategories: ['time'],
         settings: {
             repeat_interval: '10000',
-            repeat_max_repeats: 0,
+            repeat_max_repeats: -1,
         },
     },
 ] as const;

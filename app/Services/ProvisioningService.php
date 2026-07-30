@@ -77,14 +77,15 @@ class ProvisioningService
         ]);
 
         \App\Models\CustomActivityLog::create([
+            'type'         => 'agent',
             'logable_type' => Server::class,
-            'logable_id' => (string) $server->uuid,
-            'user_id' => $user?->id,
-            'user' => $user ? "{$user->first_name} {$user->last_name}" : 'System',
-            'action' => 'Generate Installation Command',
-            'details' => json_encode([
-                'message' => "Generated installation command for server: {$server->name}",
-                'server_name' => $server->name,
+            'logable_id'   => (string) $server->uuid,
+            'user_id'      => $user?->id,
+            'user'         => $user ? "{$user->first_name} {$user->last_name}" : 'System',
+            'action'       => 'Generate Installation Command',
+            'details'      => json_encode([
+                'message'          => "Generated installation command for server: {$server->name}",
+                'server_name'      => $server->name,
                 'token_expires_at' => $expiresAt->toIso8601String(),
             ]),
         ]);
@@ -96,8 +97,8 @@ class ProvisioningService
             'conflict' => false,
             'token' => $rawToken,
             'expires_at' => $expiresAt->toIso8601String(),
-            'linux_command' => 'curl -fsSL ' . url('/install/linux') . ' | bash -s -- ' . $rawToken,
-            'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "`$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm `$APP_URL/install/windows.ps1))) -ProvisionToken \'' . $rawToken . '\' -AppUrl `$APP_URL"',
+            'linux_command' => 'sudo curl -fsSL ' . url('/install/linux') . ' | sudo bash -s -- ' . $rawToken,
+            'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm \'' . url('/install/windows.ps1') . '\'))) -ProvisionToken \'' . $rawToken . '\' -AppUrl \'' . url('/') . '\'"',
             'token_expires_in' => $expiresAt->timestamp,
         ];
     }
@@ -203,6 +204,7 @@ class ProvisioningService
                 'cpu_cores' => $cpuSpec['cores'] ?? $server->cpu_cores,
                 'ram' => $metadata['memory'] ?? $server->ram,
                 'disk' => $metadata['disk'] ?? $server->disk,
+                'status' => \App\Enums\ServerStatus::WaitingForFirstHeartbeat->value,
             ]);
 
             // Create Agent
@@ -268,20 +270,24 @@ class ProvisioningService
             ]);
 
             \App\Models\CustomActivityLog::create([
+                'type'         => 'agent',
                 'logable_type' => get_class($server),
-                'logable_id' => $server->id,
-                'user_id' => null,
-                'user' => 'System',
-                'action' => 'Agent Installed',
-                'details' => json_encode([
-                    'message' => "Agent installed successfully on server: {$server->name}",
-                    'server_name' => $server->name,
+                'logable_id'   => $server->id,
+                'user_id'      => null,
+                'user'         => 'System',
+                'action'       => 'Agent Installed',
+                'details'      => json_encode([
+                    'message'       => "Agent installed successfully on server: {$server->name}",
+                    'server_name'   => $server->name,
                     'agent_version' => $metadata['agent_version'] ?? '1.0',
                 ]),
             ]);
 
             // Broadcast event
             event(new RegistrationCompleted($server->uuid, $agent->id));
+            try {
+                \App\Events\ServerStatusUpdated::dispatch($server->uuid, \App\Enums\ServerStatus::WaitingForFirstHeartbeat->value, $server->name);
+            } catch (\Throwable $e) {}
 
             return [
                 'identity'           => $rawIdentity,
