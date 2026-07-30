@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { Landmark, RefreshCw, Loader2, Plus, MoreVertical, Trash2 } from "lucide-react";
+import { Landmark, RefreshCw, Loader2, Plus, MoreVertical, Trash2, Server, Users } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useClients, useDeleteClient } from "@/hooks/useClients";
 import PageLayout from "@/components/PageLayout";
@@ -69,19 +69,21 @@ function ClientCard({
         >
             <div className="relative size-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans gap-3 transition-shadow hover:shadow-md">
                 <div className="absolute top-3 left-4 right-4 flex justify-between items-center">
-                    <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                        <span
-                            className={cn(
-                                "w-1.5 h-1.5 rounded-full",
-                                client.servers_count > 0
-                                    ? "bg-emerald-500"
-                                    : "bg-muted-foreground/40",
-                            )}
-                        />
-                        {client.servers_count > 0
-                            ? `${client.servers_count} server${client.servers_count !== 1 ? "s" : ""}`
-                            : "No servers"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                            <span className="text-emerald-500 leading-none text-xs">
+                                {client.servers_online_count ?? 0}
+                            </span>
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                            <span className="text-red-500 leading-none text-xs">
+                                {client.servers_count - client.servers_online_count}
+                            </span>
+                        </span>
+                    </div>
+
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <button
@@ -119,6 +121,16 @@ function ClientCard({
                     />
                 </div>
 
+                <div className="flex items-center gap-3 text-xs text-muted-foreground leading-none">
+
+                    <Server className="size-4 shrink-0" />
+                    {client.servers_count ?? 0}
+                    <span className="flex items-center gap-1.5">
+                        <Users className="size-4 shrink-0" />
+                        {client.secops_count ?? 0}
+                    </span>
+                </div>
+
                 <div className="text-center w-full flex flex-col items-center gap-1.5">
                     {client.name}
                     <div className="flex flex-col items-center gap-1.5 mt-1 text-center w-full">
@@ -131,6 +143,8 @@ function ClientCard({
         </Link>
     );
 }
+
+
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 // Approximate card height + gap in px — the virtualizer measures real

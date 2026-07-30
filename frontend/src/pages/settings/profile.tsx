@@ -205,7 +205,7 @@ export const Profile: React.FC = () => {
 
     return (
         <PageLayout>
-            <div className="w-full flex flex-col min-h-0">
+            <Form.Root store={store} className="w-full flex-1 flex flex-col min-h-0">
                 {/* ── Banner / Hero ── */}
                 <div className="relative">
                     <div className="absolute inset-0 overflow-hidden rounded-t-xl">
@@ -331,10 +331,7 @@ export const Profile: React.FC = () => {
                 {/* ── Content ── */}
                 <div className="flex-1 -mt-12 relative z-20 px-6 sm:px-8 lg:px-10 pb-8">
                     <div className="max-w-3xl mx-auto flex flex-col gap-6">
-                        <Form.Root
-                            store={store}
-                            className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-8"
-                        >
+                        <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-8">
                             <Form.SubmitHandler
                                 handler={async (data: Record<string, unknown>) => {
                                     const payload: Record<string, unknown> = {
@@ -464,10 +461,10 @@ export const Profile: React.FC = () => {
                                     </section>
                                 </>
                             )}
-                        </Form.Root>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </Form.Root>
         </PageLayout>
     );
 };

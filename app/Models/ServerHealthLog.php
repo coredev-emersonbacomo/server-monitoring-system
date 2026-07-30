@@ -6,12 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class CustomActivityLog extends Model
+class ServerHealthLog extends Model
 {
     protected $table = 'activity_logs';
+
     protected $casts = [
         'details' => 'array',
     ];
+
     protected $fillable = [
         'type',
         'logable_type',
@@ -19,8 +21,23 @@ class CustomActivityLog extends Model
         'user_id',
         'user',
         'action',
+        'title',
         'details',
+        'severity',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $model) {
+            if (empty($model->type)) {
+                $model->type = 'server_health';
+            }
+            // If action is not set but title is, copy title into action
+            if (empty($model->action) && !empty($model->title)) {
+                $model->action = $model->title;
+            }
+        });
+    }
 
     public function logable(): MorphTo
     {

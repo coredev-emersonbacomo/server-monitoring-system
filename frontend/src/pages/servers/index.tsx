@@ -1,12 +1,21 @@
 import { useState, useMemo } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import PageLayout from "@/components/PageLayout";
-import { Server, Wifi, WifiOff, AlertTriangle, Search, Trash2 } from "lucide-react";
+import { Server, Wifi, WifiOff, AlertTriangle, Search, Trash2, Landmark } from "lucide-react";
 import { useServers } from "@/hooks/useServers";
+import { useClients } from "@/hooks/useClients";
 import { cn } from "@/lib/utils";
 import IndexToolbar from "@/components/IndexToolbar";
 import type { SortOption } from "@/components/IndexToolbar";
 import IndexHeader from "@/components/IndexHeader";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogClose,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 const STATUS_META: Record<
     string,
@@ -39,9 +48,12 @@ const STATUS_META: Record<
 };
 
 export default function ServersIndex() {
+    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
+    const [search, setSearch] = useState("");
     const statusFilter = searchParams.get("status");
     const clientUuid = searchParams.get("client_uuid") || undefined;
+    const [showClientFilterPicker, setShowClientFilterPicker] = useState(false);
 
     const { data: servers, isLoading } = useServers(clientUuid);
     const [sortField, setSortField] = useState<string>("created_at");
@@ -106,8 +118,11 @@ export default function ServersIndex() {
                 description={`Manage ${clientUuid ? clientName + "'s" : "all"} servers.`}
             />
 
-            <main className="w-full flex-1">
+            <main className="w-full flex-1 min-h-0 flex flex-col gap-5">
                 <IndexToolbar
+                    search={search}
+                    onSearchChange={setSearch}
+                    searchPlaceholder="Search servers…"
                     filterOptions={[
                         {
                             label: "All",
@@ -141,7 +156,7 @@ export default function ServersIndex() {
                         {
                             label: "Pending Deletion",
                             value: "pending_deletion",
-                            count: counts.pending_deletion,
+                            count: counts.pending_deletion ?? 0,
                             icon: <Trash2 className="size-3 text-orange-400" />,
                         },
                     ]}
@@ -150,14 +165,14 @@ export default function ServersIndex() {
                         setSearchParams(
                             value
                                 ? {
-                                      status: value,
-                                      ...(clientUuid
-                                          ? { client_id: String(clientUuid) }
-                                          : {}),
-                                  }
+                                    status: value,
+                                    ...(clientUuid
+                                        ? { client_uuid: String(clientUuid) }
+                                        : {}),
+                                }
                                 : clientUuid
-                                  ? { client_id: String(clientUuid) }
-                                  : {},
+                                    ? { client_uuid: String(clientUuid) }
+                                    : {},
                         )
                     }
                     filterLabel={
@@ -165,9 +180,9 @@ export default function ServersIndex() {
                             ? statusFilter === "pending_installation"
                                 ? "Pending Installation"
                                 : statusFilter === "waiting_for_installation"
-                                ? "Waiting For Installation"
-                                : statusFilter.charAt(0).toUpperCase() +
-                                  statusFilter.slice(1)
+                                    ? "Waiting For Installation"
+                                    : statusFilter.charAt(0).toUpperCase() +
+                                    statusFilter.slice(1)
                             : "All"
                     }
                     sortOptions={sortOptions as SortOption[]}
@@ -178,9 +193,35 @@ export default function ServersIndex() {
                         setSortDir((d) => (d === "desc" ? "asc" : "desc"))
                     }
                     sortLabel={currentSortLabel}
+                    onCreate={() =>
+                        clientUuid
+                            ? navigate(`/servers/create?client_uuid=${clientUuid}`)
+                            : setShowClientPicker(true)
+                    }
+                    createLabel="Add server"
+                    onViewByClient={() => setShowClientFilterPicker(true)}
+                    viewByClientLabel={
+                        clientUuid && clientName
+                            ? clientName
+                            : "View by Client"
+                    }
+                    onClearViewByClient={
+                        clientUuid
+                            ? () => setSearchParams({})
+                            : undefined
+                    }
                 />
+
+                {/* ── Count label ── */}
+                {!isLoading && (
+                    <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
+                        {filtered.length} server
+                        {filtered.length !== 1 ? "s" : ""}
+                    </p>
+                )}
+
                 {isLoading ? (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
                         {Array.from({ length: 6 }).map((_, i) => (
                             <div
                                 key={i}
@@ -198,7 +239,7 @@ export default function ServersIndex() {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
                         {filtered.map((server) => {
                             const effectiveStatus = server.agent_deleted ? "pending_deletion" : (server.status ?? "offline");
                             const meta = STATUS_META[effectiveStatus] ?? STATUS_META.offline;
@@ -237,6 +278,155 @@ export default function ServersIndex() {
                     </div>
                 )}
             </main>
+            <Dialog open={showClientPicker} onOpenChange={setShowClientPicker}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Select a Client</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-4">
+                        <p className="text-xs text-muted-foreground">
+                            Choose which client this server belongs to.
+                        </p>
+                        <div className="relative">
+                            <Search
+                                size={16}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                            />
+                            <input
+                                type="text"
+                                value={clientPickerSearch}
+                                onChange={(e) => setClientPickerSearch(e.target.value)}
+                                placeholder="Search clients…"
+                                className="w-full h-10 rounded-lg border border-border bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                autoFocus
+                            />
+                        </div>
+
+                        {clientsLoading ? (
+                            <div className="space-y-2">
+                                {[0, 1, 2].map((i) => (
+                                    <div
+                                        key={i}
+                                        className="h-10 bg-muted rounded animate-pulse"
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="space-y-2 max-h-64 overflow-y-auto">
+                                {filteredClients.map((c) => (
+                                    <button
+                                        key={c.uuid}
+                                        onClick={() => {
+                                            setShowClientPicker(false);
+                                            navigate(`/servers/create?client_uuid=${c.uuid}`);
+                                        }}
+                                        className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left border border-border/40 hover:border-border cursor-pointer"
+                                    >
+                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                            <Landmark size={14} className="text-primary" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-foreground truncate">
+                                                {c.name}
+                                            </p>
+                                            {c.location && (
+                                                <p className="text-xs text-muted-foreground truncate">
+                                                    {c.location}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </button>
+                                ))}
+                                {filteredClients.length === 0 && (
+                                    <p className="text-sm text-muted-foreground text-center py-4">
+                                        No matching clients found.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex justify-end gap-3 pt-2">
+                        <DialogClose asChild>
+                            <Button variant="outline" label="Cancel" />
+                        </DialogClose>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showClientFilterPicker} onOpenChange={setShowClientFilterPicker}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>View Servers by Client</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-4">
+                        <p className="text-xs text-muted-foreground">
+                            Select a client to view all of their servers.
+                        </p>
+                        <div className="relative">
+                            <Search
+                                size={16}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                            />
+                            <input
+                                type="text"
+                                value={clientPickerSearch}
+                                onChange={(e) => setClientPickerSearch(e.target.value)}
+                                placeholder="Search clients…"
+                                className="w-full h-10 rounded-lg border border-border bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                autoFocus
+                            />
+                        </div>
+
+                        {clientsLoading ? (
+                            <div className="space-y-2">
+                                {[0, 1, 2].map((i) => (
+                                    <div
+                                        key={i}
+                                        className="h-10 bg-muted rounded animate-pulse"
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="space-y-2 max-h-64 overflow-y-auto">
+                                {filteredClients.map((c) => (
+                                    <button
+                                        key={c.uuid}
+                                        onClick={() => {
+                                            setShowClientFilterPicker(false);
+                                            navigate(`/servers?client_uuid=${c.uuid}`);
+                                        }}
+                                        className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left border border-border/40 hover:border-border cursor-pointer"
+                                    >
+                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                            <Landmark size={14} className="text-primary" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-foreground truncate">
+                                                {c.name}
+                                            </p>
+                                            {c.location && (
+                                                <p className="text-xs text-muted-foreground truncate">
+                                                    {c.location}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </button>
+                                ))}
+                                {filteredClients.length === 0 && (
+                                    <p className="text-sm text-muted-foreground text-center py-4">
+                                        No matching clients found.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex justify-end gap-3 pt-2">
+                        <DialogClose asChild>
+                            <Button variant="outline" label="Cancel" />
+                        </DialogClose>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </PageLayout>
     );
 }

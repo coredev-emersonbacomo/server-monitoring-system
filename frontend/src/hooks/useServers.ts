@@ -34,5 +34,6 @@ export const useServers = (clientUuid?: string) => {
             if (error) throw error;
             return data;
         },
+        refetchInterval: 5000,
     });
 };

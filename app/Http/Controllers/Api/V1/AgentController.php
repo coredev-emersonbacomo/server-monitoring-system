@@ -239,15 +239,16 @@ class AgentController extends Controller
         ]);
 
         \App\Models\CustomActivityLog::create([
+            'type'         => 'agent',
             'logable_type' => Server::class,
-            'logable_id' => (string) $agent->server->uuid,
-            'user_id' => null,
-            'user' => 'System',
-            'action' => 'Agent Updating',
-            'details' => json_encode([
-                'message' => "Agent started download and update to v{$validated['version']} on server: {$agent->server->name}",
+            'logable_id'   => (string) $agent->server->uuid,
+            'user_id'      => null,
+            'user'         => 'System',
+            'action'       => 'Agent Updating',
+            'details'      => json_encode([
+                'message'     => "Agent started download and update to v{$validated['version']} on server: {$agent->server->name}",
                 'server_name' => $agent->server->name,
-                'version' => $validated['version'],
+                'version'     => $validated['version'],
             ]),
         ]);
 
@@ -290,15 +291,16 @@ class AgentController extends Controller
          ]);
  
          \App\Models\CustomActivityLog::create([
+             'type'         => 'agent',
              'logable_type' => Server::class,
-             'logable_id' => (string) $agent->server->uuid,
-             'user_id' => null,
-             'user' => 'System',
-             'action' => 'Agent Error',
-             'details' => json_encode([
-                 'message' => "Agent encountered error on server: {$agent->server->name}",
+             'logable_id'   => (string) $agent->server->uuid,
+             'user_id'      => null,
+             'user'         => 'System',
+             'action'       => 'Agent Error',
+             'details'      => json_encode([
+                 'message'     => "Agent encountered error on server: {$agent->server->name}",
                  'server_name' => $agent->server->name,
-                 'error' => $validated['error'],
+                 'error'       => $validated['error'],
                  'stack_trace' => $validated['stack_trace'] ?? '',
              ]),
          ]);
@@ -354,15 +356,16 @@ class AgentController extends Controller
         ]);
 
         \App\Models\CustomActivityLog::create([
+            'type'         => 'agent',
             'logable_type' => Server::class,
-            'logable_id' => (string) $server->uuid,
-            'user_id' => null,
-            'user' => 'Agent System',
-            'action' => 'Agent Uninstalled',
-            'details' => [
-                'message' => "Agent uninstalled on host: {$server->name}",
+            'logable_id'   => (string) $server->uuid,
+            'user_id'      => null,
+            'user'         => 'Agent System',
+            'action'       => 'Agent Uninstalled',
+            'details'      => [
+                'message'     => "Agent uninstalled on host: {$server->name}",
                 'server_name' => $server->name,
-                'platform' => $validated['platform'] ?? 'unknown',
+                'platform'    => $validated['platform'] ?? 'unknown',
             ],
         ]);
 

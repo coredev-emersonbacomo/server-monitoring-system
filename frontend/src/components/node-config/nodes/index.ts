@@ -3,7 +3,8 @@ import { MetricNode } from './MetricNode';
 import { ConditionNode } from './ConditionNode';
 import { LogicNode } from './LogicNode';
 import { TimeNode } from './TimeNode';
-import { ActionNode } from './ActionNode';
+import { SeverityNode } from './SeverityNode';
+import { NotifyNode } from './NotifyNode';
 
 export const nodeTypes: NodeTypes = {
     // Metric (unified - dropdown)
@@ -12,9 +13,11 @@ export const nodeTypes: NodeTypes = {
     condition: ConditionNode,
     // Logic (merged)
     logic: LogicNode,
+    // Severity
+    severity: SeverityNode,
     // Time
     check_after: TimeNode,
     sustained: TimeNode,
     // Notification (merged - terminal, no output)
-    notification: ActionNode,
+    notification: NotifyNode,
 };

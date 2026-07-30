@@ -71,28 +71,28 @@ export const ConditionNode = memo(({ id, data, type, selected }: NodeProps) => {
                 )}
             </div>
 
-            <div className="flex">
-                <NodeSocket type="target" position={Position.Left} id="input-a" def={inputADef} elongated
-                    label={`${inputADef?.label || 'A'}${aCount > 0 ? ` (${aCount})` : ''}`}>
-                    {!aConnected && (
-                        <input
-                            type="number"
-                            value={valueA.value}
-                            onChange={valueA.onChange}
-                            onBlur={valueA.onBlur}
-                            onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
-                            className="ml-1.5 mr-3 min-w-0 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
-                        />
-                    )}
-                </NodeSocket>
-                {aConnected && <div className="flex-1" />}
-                <NodeSocket type="source" position={Position.Right} id="output" def={outDef}
-                    label={outDef?.label || 'Result'} />
-            </div>
+            <div className="flex flex-col px-3 gap-1.5 py-3">
+                <div className="flex w-full">
+                    <NodeSocket type="target" position={Position.Left} id="input-a" def={inputADef} elongated
+                        label={`${inputADef?.label || 'A'}${aCount > 0 ? ` (${aCount})` : ''}`}>
+                        {!aConnected && (
+                            <input
+                                type="number"
+                                value={valueA.value}
+                                onChange={valueA.onChange}
+                                onBlur={valueA.onBlur}
+                                onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
+                                className="ml-1.5 min-w-0 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                        )}
+                    </NodeSocket>
+                    {aConnected && <div className="flex-1" />}
+                    <NodeSocket type="source" position={Position.Right} id="output" def={outDef}
+                        label={outDef?.label || 'Result'} />
+                </div>
 
-            <div className="flex px-3 py-2">
                 <Select value={operator} onValueChange={handleOperatorChange}>
-                    <SelectTrigger className="flex-1 h-7 text-xs font-semibold" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+                    <SelectTrigger className="h-7 text-xs font-semibold" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -101,58 +101,58 @@ export const ConditionNode = memo(({ id, data, type, selected }: NodeProps) => {
                         ))}
                     </SelectContent>
                 </Select>
-            </div>
 
-            {isBetween ? (
-                <>
-                    <div className="flex">
-                        <NodeSocket type="target" position={Position.Left} id="input-min" def={inputMinDef}
-                            label={inputMinDef?.label || 'Min'}>
-                            {!minConnected && (
+                {isBetween ? (
+                    <>
+                        <div className="flex w-full">
+                            <NodeSocket type="target" position={Position.Left} id="input-min" def={inputMinDef}
+                                label={inputMinDef?.label || 'Min'}>
+                                {!minConnected && (
+                                    <input
+                                        type="number"
+                                        value={min.value}
+                                        onChange={min.onChange}
+                                        onBlur={min.onBlur}
+                                        onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
+                                        className="ml-2 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                                    />
+                                )}
+                            </NodeSocket>
+                        </div>
+                        <div className="flex w-full">
+                            <NodeSocket type="target" position={Position.Left} id="input-max" def={inputMaxDef}
+                                label={inputMaxDef?.label || 'Max'}>
+                                {!maxConnected && (
+                                    <input
+                                        type="number"
+                                        value={maxVal.value}
+                                        onChange={maxVal.onChange}
+                                        onBlur={maxVal.onBlur}
+                                        onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
+                                        className="ml-2 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                                    />
+                                )}
+                            </NodeSocket>
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex w-full">
+                        <NodeSocket type="target" position={Position.Left} id="input-b" def={inputBDef} elongated
+                            label={`${inputBDef?.label || 'B'}${bCount > 0 ? ` (${bCount})` : ''}`}>
+                            {!bConnected && (
                                 <input
                                     type="number"
-                                    value={min.value}
-                                    onChange={min.onChange}
-                                    onBlur={min.onBlur}
+                                    value={threshold.value}
+                                    onChange={threshold.onChange}
+                                    onBlur={threshold.onBlur}
                                     onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
-                                    className="ml-2 mr-3 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                                    className="ml-1.5 min-w-0 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
                                 />
                             )}
                         </NodeSocket>
                     </div>
-                    <div className="flex">
-                        <NodeSocket type="target" position={Position.Left} id="input-max" def={inputMaxDef}
-                            label={inputMaxDef?.label || 'Max'}>
-                            {!maxConnected && (
-                                <input
-                                    type="number"
-                                    value={maxVal.value}
-                                    onChange={maxVal.onChange}
-                                    onBlur={maxVal.onBlur}
-                                    onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
-                                    className="ml-2 mr-3 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
-                                />
-                            )}
-                        </NodeSocket>
-                    </div>
-                </>
-            ) : (
-                <div className="flex pb-2.5">
-                    <NodeSocket type="target" position={Position.Left} id="input-b" def={inputBDef} elongated
-                        label={`${inputBDef?.label || 'B'}${bCount > 0 ? ` (${bCount})` : ''}`}>
-                        {!bConnected && (
-                            <input
-                                type="number"
-                                value={threshold.value}
-                                onChange={threshold.onChange}
-                                onBlur={threshold.onBlur}
-                                onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}
-                                className="ml-1.5 mr-3 min-w-0 flex-1 text-xs font-mono text-foreground bg-background border border-border/60 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
-                            />
-                        )}
-                    </NodeSocket>
-                </div>
-            )}
+                )}
+            </div>
         </BaseNode>
     );
 });

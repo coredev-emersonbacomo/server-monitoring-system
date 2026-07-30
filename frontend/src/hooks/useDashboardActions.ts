@@ -5,7 +5,7 @@ export interface ActionItem {
     id: number;
     action_type: "no_secops" | "server_offline";
     message: string;
-    severity: "critical" | "warning" | "info";
+    severity: "critical" | "warning" | "notice";
     server_uuid: string | null;
     client_uuid: string | null;
     client_name: string | null;

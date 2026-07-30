@@ -1,8 +1,4 @@
-import type { components } from '@/api/schema';
-
-type ServerData = components['schemas']['ServerData'];
-type ClientData = components['schemas']['ClientData'];
-type StatPointData = components['schemas']['StatPointData'];
+import type { ServerData, ClientData, StatPointData } from '@/types/models';
 
 type ServerVarKey = `server.${keyof ServerData & string}`;
 type ClientVarKey = `server.client.${keyof ClientData & string}`;
@@ -43,17 +39,17 @@ const LABELS: Record<TemplateVariableKey, { label: string; group: TemplateVariab
     'server.activities'             : { label: 'Activities', group: 'server', description: 'Activities (ServerData)' },
     'server.agent'                  : { label: 'Agent', group: 'server', description: 'Agent (ServerData)' },
     'server.alert_scope'            : { label: 'Alert Scope', group: 'server', description: 'Alert Scope (ServerData)' },
-    'server.hourly_cost'            : { label: 'Hourly Cost', group: 'server', description: 'Hourly Cost (ServerData)' },
-    'server.cost_offset'            : { label: 'Cost Offset', group: 'server', description: 'Cost Offset (ServerData)' },
+    'server.monthly_rate'           : { label: 'Monthly Rate', group: 'server', description: 'Monthly Rate (ServerData)' },
+    'server.remitted'               : { label: 'Remitted', group: 'server', description: 'Remitted (ServerData)' },
     'server.cost_reset_at'          : { label: 'Cost Reset At', group: 'server', description: 'Cost Reset At (ServerData)' },
     'server.historical_cost'        : { label: 'Historical Cost', group: 'server', description: 'Historical Cost (ServerData)' },
     'server.rate_updated_at'        : { label: 'Rate Updated At', group: 'server', description: 'Rate Updated At (ServerData)' },
     'server.uptime_seconds'         : { label: 'Uptime Seconds', group: 'server', description: 'Uptime Seconds (ServerData)' },
-    'server.gross_cost'             : { label: 'Gross Cost', group: 'server', description: 'Gross Cost (ServerData)' },
+    'server.running_balance'        : { label: 'Running Balance', group: 'server', description: 'Running Balance (ServerData)' },
     'server.net_cost'               : { label: 'Net Cost', group: 'server', description: 'Net Cost (ServerData)' },
     'server.accumulated_cost'       : { label: 'Accumulated Cost', group: 'server', description: 'Accumulated Cost (ServerData)' },
     'server.billing_date'           : { label: 'Billing Date', group: 'server', description: 'Billing Date (ServerData)' },
-    'server.pending_monthly_cost'   : { label: 'Pending Monthly Cost', group: 'server', description: 'Pending Monthly Cost (ServerData)' },
+    'server.pending_monthly_rate'   : { label: 'Pending Monthly Rate', group: 'server', description: 'Pending Monthly Rate (ServerData)' },
     'server.client.uuid'            : { label: 'Uuid', group: 'client', description: 'Uuid (ClientData)' },
     'server.client.name'            : { label: 'Name', group: 'client', description: 'Name (ClientData)' },
     'server.client.description'     : { label: 'Description', group: 'client', description: 'Description (ClientData)' },

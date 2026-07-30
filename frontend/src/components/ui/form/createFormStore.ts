@@ -14,6 +14,8 @@ export interface FormState<T extends Record<string, unknown>> {
     validationHandler: ((data: T) => Record<string, string> | null) | null;
     originalData: T | null;
     hasChanges: boolean;
+    canUndo: boolean;
+    canRedo: boolean;
 }
 
 export interface FormStore<T extends Record<string, unknown>> {
@@ -24,6 +26,8 @@ export interface FormStore<T extends Record<string, unknown>> {
     setMode: (mode: FormMode) => void;
     resetForm: () => void;
     validate: () => boolean;
+    undo: () => void;
+    redo: () => void;
 }
 
 function hasChanges<T extends Record<string, unknown>>(s: FormState<T>): boolean {
@@ -53,7 +57,7 @@ export function createFormStore<T extends Record<string, unknown>>(config: {
         for (const key of Object.keys(shape)) {
             const field = shape[key];
             if (field instanceof z.ZodDefault) {
-                out[key] = field._def.defaultValue();
+                out[key] = field._def.defaultValue as any;
             } else if (field instanceof z.ZodString) {
                 out[key] = "";
             } else if (field instanceof z.ZodNumber) {
@@ -87,21 +91,47 @@ export function createFormStore<T extends Record<string, unknown>>(config: {
 
     const getState = () => state;
 
+    const history: T[] = [];
+    let historyIndex = -1;
+
+    const pushHistory = (form: T) => {
+        history.splice(historyIndex + 1);
+        history.push({ ...form });
+        if (history.length > 50) history.shift();
+        historyIndex = history.length - 1;
+    };
+
     const setState = (partial: Partial<FormState<T>>) => {
         const next = { ...state, ...partial };
         next.hasChanges = hasChanges(next);
+        next.canUndo = historyIndex > 0;
+        next.canRedo = historyIndex < history.length - 1;
         state = next;
         notify();
     };
 
     const set = (key: keyof T) => (value: string) => {
+        pushHistory(state.form);
         setState({ form: { ...state.form, [key]: value } });
+    };
+
+    const undo = () => {
+        if (historyIndex < 1) return;
+        historyIndex--;
+        setState({ form: { ...history[historyIndex] } });
+    };
+
+    const redo = () => {
+        if (historyIndex >= history.length - 1) return;
+        historyIndex++;
+        setState({ form: { ...history[historyIndex] } });
     };
 
     const setMode = (mode: FormMode) => {
         const next: Partial<FormState<T>> = { mode };
         if (mode === "view") {
             if (originalData) {
+                pushHistory(state.form);
                 next.form = { ...originalData } as T;
                 next.originalData = originalData as T;
             }
@@ -114,6 +144,7 @@ export function createFormStore<T extends Record<string, unknown>>(config: {
     const resetForm = () => {
         const next: Partial<FormState<T>> = { errors: {}, externalDirty: false };
         if (originalData) {
+            pushHistory(state.form);
             next.form = { ...originalData } as T;
             next.originalData = originalData as T;
         }
@@ -152,6 +183,8 @@ export function createFormStore<T extends Record<string, unknown>>(config: {
         setMode,
         resetForm,
         validate,
+        undo,
+        redo,
     };
 }
 
