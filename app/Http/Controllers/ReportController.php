@@ -17,7 +17,7 @@ class ReportController extends Controller
      *   template: "client" | "server" | "general" | "multi-client" | "multi-server"
      *   data: object (report data, or { items: [...] } for multi templates)
      *   paper: "a4" | "letter" (default: "a4")
-     *   orientation: "landscape" | "portrait" (default: "landscape")
+     *   orientation: "landscape" | "portrait" (default: "portrait")
      */
     public function compile(Request $request)
     {
@@ -31,7 +31,7 @@ class ReportController extends Controller
         $template = $request->input('template');
         $data = $request->input('data');
         $paper = $request->input('paper', 'a4');
-        $orientation = $request->input('orientation', 'landscape');
+        $orientation = $request->input('orientation', 'portrait');
 
         // Add timestamp and layout settings
         $data['generated_at'] = now()->format('F j, Y H:i');
