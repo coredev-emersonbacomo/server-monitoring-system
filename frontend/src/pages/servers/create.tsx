@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { type ClipboardEvent, type KeyboardEvent, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import {
@@ -15,13 +15,28 @@ import IndexHeader from "@/components/IndexHeader";
 import api from "@/api/api";
 import { Form, createFormStore, useForm } from "@/components/ui/form";
 
+const blockedMonthlyCostKeys = new Set(["e", "E", "-"]);
+
+function blockInvalidMonthlyCostKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (blockedMonthlyCostKeys.has(e.key)) e.preventDefault();
+}
+
+function blockInvalidMonthlyCostPaste(e: ClipboardEvent<HTMLInputElement>) {
+    if (/[eE-]/.test(e.clipboardData.getData("text"))) e.preventDefault();
+}
+
+function setMonthlyCostValue(setValue: (value: string) => void, value: string) {
+    if (/[eE-]/.test(value)) return;
+    const numericValue = Number(value);
+    setValue(numericValue < 0 ? "0" : value);
+}
 const schema = z.object({
     name: z.string().min(1, "Server name is required"),
     description: z.string().max(255, "Maximum 255 characters").optional().default(""),
     monthly_cost: z.union([z.string(), z.number()]).transform((val) => {
         if (val === "" || val === undefined || val === null) return 0;
         const num = Number(val);
-        return isNaN(num) ? 0 : num;
+        return isNaN(num) ? 0 : Math.max(0, num);
     }),
 });
 
@@ -89,7 +104,7 @@ export default function CreateServer() {
                                         body: {
                                             name: String(data.name).trim(),
                                             description: (String(data.description ?? "").trim()) || "",
-                                            monthly_cost: Number(data.monthly_cost) || 0,
+                                            monthly_cost: Math.max(0, Number(data.monthly_cost) || 0),
                                         },
                                     },
                                 );
@@ -173,7 +188,11 @@ function CreateServerFields({ store }: { store: ReturnType<typeof createFormStor
                     step="0.01"
                     min="0"
                     value={String(form.monthly_cost ?? "")}
-                    onValueChange={store.set("monthly_cost")}
+                    onKeyDown={blockInvalidMonthlyCostKey}
+                    onPaste={blockInvalidMonthlyCostPaste}
+                    onValueChange={(value) =>
+                        setMonthlyCostValue(store.set("monthly_cost"), value)
+                    }
                 />
             </div>
 

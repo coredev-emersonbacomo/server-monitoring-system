@@ -134,7 +134,10 @@ console.log(
 
 // ── 2. Update schema.d.ts ──────────────────────────────────────────────────
 
-const importStatement = `import type * as Models from "../types/models";\n`;
+const modelNames = parsedSchemas.map((schema) => schema.name).join(",\n    ");
+const importStatement = `import type {
+    ${modelNames}
+} from "../types/models";\n`;
 if (!schemaContent.startsWith(importStatement)) {
     schemaContent = importStatement + schemaContent;
 }
@@ -161,7 +164,7 @@ for (const s of parsedSchemas) {
     if (s.docComment) {
         newSchemasBlock += `        ${s.docComment}\n`;
     }
-    newSchemasBlock += `        ${s.name}: Models.${s.name};\n`;
+    newSchemasBlock += `        ${s.name}: ${s.name};\n`;
 }
 newSchemasBlock += `    }`;
 
@@ -170,10 +173,15 @@ schemaContent =
     newSchemasBlock +
     schemaContent.substring(newSchemasEnd);
 
+schemaContent = schemaContent.replace(
+    /components\["schemas"\]\["([^"]+)"\]/g,
+    "$1",
+);
+
 fs.writeFileSync(schemaPath, schemaContent);
 
 console.log(
-    `[SUCCESS] Updated schema.d.ts components.schemas to reference Models interfaces.`,
+    `[SUCCESS] Updated schema.d.ts schema references to use model interfaces.`,
 );
 
 // ── 3. Generate templateVariables.ts ────────────────────────────────────────
