@@ -11,17 +11,24 @@ class ActivityLogController extends Controller
 {
     public function index()
     {
-        return $this->formatLogs(CustomActivityLog::latest()->get());
+        return $this->formatLogs(CustomActivityLog::where(function ($q) {
+            $q->whereNull('type')->orWhere('type', 'activity');
+        })->latest()->get());
     }
 
     public function serverHealth()
     {
-        return $this->formatLogs(ServerHealthLog::latest()->get());
+        return $this->formatLogs(CustomActivityLog::where('type', 'server_health')->latest()->get());
     }
 
     public function agent()
     {
-        return $this->formatLogs(AgentLog::latest()->get());
+        return $this->formatLogs(CustomActivityLog::where('type', 'agent')->latest()->get());
+    }
+
+    public function billing()
+    {
+        return $this->formatLogs(CustomActivityLog::where('type', 'billing')->latest()->get());
     }
 
     private function formatLogs($logs)

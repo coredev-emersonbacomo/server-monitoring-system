@@ -1,37 +1,19 @@
-import type { components } from '@/api/schema';
-
-type ServerData = components['schemas']['ServerData'];
-type ClientData = components['schemas']['ClientData'];
-type StatPointData = components['schemas']['StatPointData'];
+import type { ServerData, ClientData, StatPointData } from '@/types/models';
 
 type ServerVarKey = `server.${keyof ServerData & string}`;
 type ClientVarKey = `server.client.${keyof ClientData & string}`;
 type MetricVarKey = `metric.${keyof StatPointData & string}`;
-type RuntimeVarKey =
-    | 'runtime.severity'
-    | 'runtime.metricName'
-    | 'runtime.sustainValue'
-    | 'runtime.eventTimestamp'
-    | 'runtime.eventTimestampUnix'
-    | 'runtime.firstTriggerTimestamp'
-    | 'runtime.firstTriggerTimestampUnix'
-    | 'runtime.offlineTimestamp'
-    | 'runtime.offlineDuration'
-    | 'runtime.repeat.interval'
-    | 'runtime.repeat.countOfMessage'
-    | 'runtime.repeat.max';
 
-type TemplateVariableKey = ServerVarKey | ClientVarKey | MetricVarKey | RuntimeVarKey | 'server.url';
+type TemplateVariableKey = ServerVarKey | ClientVarKey | MetricVarKey;
 
 export interface TemplateVariable {
     key: TemplateVariableKey;
     label: string;
-    group: 'server' | 'client' | 'metric' | 'runtime' | 'tag';
+    group: 'server' | 'client' | 'metric';
     description: string;
-    tag?: string;
 }
 
-const LABELS: Record<string, { label: string; group: TemplateVariable['group']; description: string; tag?: string }> = {
+const LABELS: Record<TemplateVariableKey, { label: string; group: TemplateVariable['group']; description: string }> = {
     'server.name'                   : { label: 'Name', group: 'server', description: 'Name (ServerData)' },
     'server.description'            : { label: 'Description', group: 'server', description: 'Description (ServerData)' },
     'server.uuid'                   : { label: 'Uuid', group: 'server', description: 'Uuid (ServerData)' },
@@ -57,17 +39,17 @@ const LABELS: Record<string, { label: string; group: TemplateVariable['group']; 
     'server.activities'             : { label: 'Activities', group: 'server', description: 'Activities (ServerData)' },
     'server.agent'                  : { label: 'Agent', group: 'server', description: 'Agent (ServerData)' },
     'server.alert_scope'            : { label: 'Alert Scope', group: 'server', description: 'Alert Scope (ServerData)' },
-    'server.monthly_cost'           : { label: 'Monthly Cost', group: 'server', description: 'Monthly Cost (ServerData)' },
-    'server.cost_offset'            : { label: 'Cost Offset', group: 'server', description: 'Cost Offset (ServerData)' },
+    'server.monthly_rate'           : { label: 'Monthly Rate', group: 'server', description: 'Monthly Rate (ServerData)' },
+    'server.remitted'               : { label: 'Remitted', group: 'server', description: 'Remitted (ServerData)' },
     'server.cost_reset_at'          : { label: 'Cost Reset At', group: 'server', description: 'Cost Reset At (ServerData)' },
     'server.historical_cost'        : { label: 'Historical Cost', group: 'server', description: 'Historical Cost (ServerData)' },
     'server.rate_updated_at'        : { label: 'Rate Updated At', group: 'server', description: 'Rate Updated At (ServerData)' },
     'server.uptime_seconds'         : { label: 'Uptime Seconds', group: 'server', description: 'Uptime Seconds (ServerData)' },
-    'server.gross_cost'             : { label: 'Gross Cost', group: 'server', description: 'Gross Cost (ServerData)' },
+    'server.running_balance'        : { label: 'Running Balance', group: 'server', description: 'Running Balance (ServerData)' },
     'server.net_cost'               : { label: 'Net Cost', group: 'server', description: 'Net Cost (ServerData)' },
     'server.accumulated_cost'       : { label: 'Accumulated Cost', group: 'server', description: 'Accumulated Cost (ServerData)' },
     'server.billing_date'           : { label: 'Billing Date', group: 'server', description: 'Billing Date (ServerData)' },
-    'server.pending_monthly_cost'   : { label: 'Pending Monthly Cost', group: 'server', description: 'Pending Monthly Cost (ServerData)' },
+    'server.pending_monthly_rate'   : { label: 'Pending Monthly Rate', group: 'server', description: 'Pending Monthly Rate (ServerData)' },
     'server.client.uuid'            : { label: 'Uuid', group: 'client', description: 'Uuid (ClientData)' },
     'server.client.name'            : { label: 'Name', group: 'client', description: 'Name (ClientData)' },
     'server.client.description'     : { label: 'Description', group: 'client', description: 'Description (ClientData)' },
@@ -86,39 +68,15 @@ const LABELS: Record<string, { label: string; group: TemplateVariable['group']; 
     'metric.netIn'                  : { label: 'NetIn', group: 'metric', description: 'NetIn (StatPointData)' },
     'metric.netOut'                 : { label: 'NetOut', group: 'metric', description: 'NetOut (StatPointData)' },
     'metric.disk'                   : { label: 'Disk', group: 'metric', description: 'Disk (StatPointData)' },
-    'server.url'                    : { label: 'URL', group: 'server', description: 'Server detail page URL' },
-    'runtime.severity'              : { label: 'Severity', group: 'runtime', description: 'Alert severity level (critical, warning, info)' },
-    'runtime.metricName'            : { label: 'Metric Name', group: 'runtime', description: 'Name of the metric being evaluated' },
-    'runtime.sustainValue'          : { label: 'Sustain Value', group: 'runtime', description: 'How long the condition has been sustained' },
-    'runtime.eventTimestamp'              : { label: 'Event Timestamp', group: 'runtime', description: 'When the evaluation occurred' },
-    'runtime.eventTimestampUnix'          : { label: 'Event Timestamp (Unix)', group: 'runtime', description: 'Unix timestamp — use with Discord <t:> for local time' },
-    'runtime.firstTriggerTimestamp'       : { label: 'First Trigger Timestamp', group: 'runtime', description: 'When the condition first triggered' },
-    'runtime.firstTriggerTimestampUnix'   : { label: 'First Trigger Timestamp (Unix)', group: 'runtime', description: 'Unix timestamp — use with Discord <t:> for local time' },
-    'runtime.offlineTimestamp'      : { label: 'Offline Timestamp', group: 'runtime', description: 'When the server went offline' },
-    'runtime.offlineDuration'       : { label: 'Offline Duration', group: 'runtime', description: 'How long the server has been offline' },
-    'runtime.repeat.interval'       : { label: 'Repeat Interval', group: 'runtime', description: 'How often the alert repeats' },
-    'runtime.repeat.countOfMessage' : { label: 'Repeat Count', group: 'runtime', description: 'Current repeat message number' },
-    'runtime.repeat.max'            : { label: 'Repeat Max', group: 'runtime', description: 'Maximum number of repeats' },
-    '<discord-button>'              : { label: 'Discord Button', group: 'tag', description: 'Insert a Discord link button tag' },
-    '<discord-footer>'              : { label: 'Discord Footer', group: 'tag', description: 'Set the Discord embed footer text' },
-    '<discord-title>'               : { label: 'Discord Title', group: 'tag', description: 'Set the Discord embed title' },
-    '<email-button>'                : { label: 'Email Button', group: 'tag', description: 'Insert an email link button tag' },
-    '<if-repeat>'                   : { label: 'If Repeat Block', group: 'tag', description: 'Insert a conditional repeat block' },
 };
 
-export const TEMPLATE_VARIABLES: TemplateVariable[] = (Object.entries(LABELS)).map(
+export const TEMPLATE_VARIABLES: TemplateVariable[] = (Object.entries(LABELS) as [TemplateVariableKey, typeof LABELS[TemplateVariableKey]][]).map(
     ([key, meta]) => ({ key, ...meta }),
 );
 
-export function filterVariables(query: string, channel?: string): TemplateVariable[] {
+export function filterVariables(query: string): TemplateVariable[] {
     const q = query.toLowerCase();
-    const isTagQuery = q.startsWith('<');
-    return TEMPLATE_VARIABLES.filter((v) => {
-        if (isTagQuery && v.group !== 'tag') return false;
-        if (!isTagQuery && v.group === 'tag') return false;
-        if (channel !== 'discord' && v.key.startsWith('<discord')) return false;
-        if (channel !== 'email' && v.key.startsWith('<email')) return false;
-        const key = isTagQuery ? v.key : `{${v.key}}`;
-        return key.toLowerCase().includes(q) || v.label.toLowerCase().includes(q);
-    });
+    return TEMPLATE_VARIABLES.filter(
+        (v) => v.key.toLowerCase().includes(q) || v.label.toLowerCase().includes(q),
+    );
 }

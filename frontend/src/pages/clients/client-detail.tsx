@@ -344,8 +344,9 @@ export default function ClientDetail() {
             queryClient.invalidateQueries({
                 queryKey: ["clients", clientUuid],
             });
-        } catch (err: any) {
-            toast.error(err?.message || "Failed to apply deduction.");
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Failed to apply deduction.";
+            toast.error(msg);
         } finally {
             setSubmittingPayment(false);
         }
@@ -1050,7 +1051,8 @@ export default function ClientDetail() {
                                 </Tab.Item>
                             )}
 
-                            <Tab.Item icon={Banknote} title="Billing">
+                            {!showEdit && (
+                                <Tab.Item icon={Banknote} title="Billing">
                                 <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-6">
                                     {/* Summary Banner */}
                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border/60">
@@ -1076,10 +1078,7 @@ export default function ClientDetail() {
                                                     ₱
                                                     {servers
                                                         .reduce(
-                                                            (
-                                                                acc: number,
-                                                                s: any,
-                                                            ) =>
+                                                            (acc, s) =>
                                                                 acc +
                                                                 (s.accumulated_cost ??
                                                                     0),
@@ -1136,7 +1135,7 @@ export default function ClientDetail() {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-border/60">
-                                                    {servers.map((s: any) => {
+                                                    {servers.map((s) => {
                                                         const isOnline =
                                                             s.status ===
                                                             "online";
@@ -1308,6 +1307,7 @@ export default function ClientDetail() {
                                     )}
                                 </div>
                             </Tab.Item>
+                        )}
                         </Tab>
 
                         {mode === "view" && client && (
@@ -1749,10 +1749,25 @@ export default function ClientDetail() {
                                             No cost activity logs recorded yet.
                                         </p>
                                     ) : (
-                                        costLogs.map((log: any) => {
+                                        costLogs.map((log) => {
+                                            let detailsObj: Record<string, any> | null = null;
+                                            if (log.details) {
+                                                if (typeof log.details === "object") {
+                                                    detailsObj = log.details;
+                                                } else if (typeof log.details === "string") {
+                                                    try {
+                                                        detailsObj = JSON.parse(log.details);
+                                                    } catch {}
+                                                }
+                                            }
                                             const msg =
-                                                log.details?.message ||
+                                                detailsObj?.message ||
+                                                (typeof log.details === "string" ? log.details : null) ||
                                                 log.action;
+
+                                            const beforeRate = detailsObj?.before?.monthly_rate ?? detailsObj?.before?.monthly_cost ?? detailsObj?.before?.hourly_cost;
+                                            const afterRate = detailsObj?.after?.monthly_rate ?? detailsObj?.after?.monthly_cost ?? detailsObj?.after?.hourly_cost;
+
                                             return (
                                                 <div
                                                     key={log.id}
@@ -1782,32 +1797,17 @@ export default function ClientDetail() {
                                                     <p className="text-[11px] text-muted-foreground">
                                                         {msg}
                                                     </p>
-                                                    {(log.details?.before?.monthly_cost || log.details?.before?.hourly_cost) &&
-                                                        (log.details?.after?.monthly_cost || log.details?.after?.hourly_cost) && (
-                                                            <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
-                                                                <span>
-                                                                    Before: ₱
-                                                                    {
-                                                                        log
-                                                                            .details
-                                                                            .before
-                                                                            .monthly_cost ?? log.details.before.hourly_cost
-                                                                    }
-                                                                    /mo
-                                                                </span>
-                                                                <span>→</span>
-                                                                <span>
-                                                                    After: ₱
-                                                                    {
-                                                                        log
-                                                                            .details
-                                                                            .after
-                                                                            .hourly_cost
-                                                                    }
-                                                                    /mo
-                                                                </span>
-                                                            </div>
-                                                        )}
+                                                    {beforeRate !== undefined && afterRate !== undefined && (
+                                                        <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
+                                                            <span>
+                                                                Before: ₱{beforeRate}/mo
+                                                            </span>
+                                                            <span>→</span>
+                                                            <span>
+                                                                After: ₱{afterRate}/mo
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                     {log.user && (
                                                         <p className="text-[10px] text-muted-foreground/70">
                                                             By: {log.user}

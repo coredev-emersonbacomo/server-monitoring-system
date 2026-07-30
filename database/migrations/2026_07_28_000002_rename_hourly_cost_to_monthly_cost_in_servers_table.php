@@ -12,7 +12,24 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('servers', function (Blueprint $table) {
-            $table->renameColumn('hourly_cost', 'monthly_cost');
+            // hourly_cost → monthly_rate (via monthly_cost intermediary already done)
+            if (Schema::hasColumn('servers', 'hourly_cost') && !Schema::hasColumn('servers', 'monthly_cost')) {
+                $table->renameColumn('hourly_cost', 'monthly_rate');
+            } elseif (Schema::hasColumn('servers', 'hourly_cost')) {
+                $table->renameColumn('hourly_cost', 'monthly_cost');
+            }
+
+            if (Schema::hasColumn('servers', 'monthly_cost')) {
+                $table->renameColumn('monthly_cost', 'monthly_rate');
+            }
+
+            if (Schema::hasColumn('servers', 'cost_offset')) {
+                $table->renameColumn('cost_offset', 'remitted');
+            }
+
+            if (Schema::hasColumn('servers', 'pending_monthly_cost')) {
+                $table->renameColumn('pending_monthly_cost', 'pending_monthly_rate');
+            }
         });
     }
 
@@ -22,7 +39,15 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('servers', function (Blueprint $table) {
-            $table->renameColumn('monthly_cost', 'hourly_cost');
+            if (Schema::hasColumn('servers', 'monthly_rate')) {
+                $table->renameColumn('monthly_rate', 'hourly_cost');
+            }
+            if (Schema::hasColumn('servers', 'remitted')) {
+                $table->renameColumn('remitted', 'cost_offset');
+            }
+            if (Schema::hasColumn('servers', 'pending_monthly_rate')) {
+                $table->renameColumn('pending_monthly_rate', 'pending_monthly_cost');
+            }
         });
     }
 };

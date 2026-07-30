@@ -51,3 +51,16 @@ export const useAgentLogs = () => {
         },
     });
 };
+
+export const useBillingLogs = () => {
+    return useQuery<ActivityLogData[]>({
+        queryKey: ["billing-logs"],
+        queryFn: async () => {
+            const { data, error } = await api.GET("/v1/billing-logs" as any, {
+                params: {},
+            });
+            if (error) throw error;
+            return (data as ActivityLogData[]) ?? [];
+        },
+    });
+};

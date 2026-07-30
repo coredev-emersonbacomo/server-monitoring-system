@@ -79,7 +79,8 @@ class MonitorServer implements ShouldQueue
                 'description' => 'Server transitioned to Offline state.',
             ]);
 
-            ServerHealthLog::create([
+            CustomActivityLog::create([
+                'type'         => 'server_health',
                 'logable_type' => get_class($server),
                 'logable_id'   => $server->id,
                 'user_id'      => null,
@@ -140,7 +141,8 @@ class MonitorServer implements ShouldQueue
                 'description' => 'Server transitioned to Online state.',
             ]);
 
-            ServerHealthLog::create([
+            CustomActivityLog::create([
+                'type'         => 'server_health',
                 'logable_type' => get_class($server),
                 'logable_id'   => $server->id,
                 'user_id'      => null,
