@@ -75,6 +75,12 @@ class ReportController extends Controller
             $baseFile = resource_path('typst/base.typ');
             File::copy($baseFile, "{$workDir}/base.typ");
 
+            // Copy logo asset
+            $logoFile = resource_path('typst/coreDevLogo.png');
+            if (File::exists($logoFile)) {
+                File::copy($logoFile, "{$workDir}/coreDevLogo.png");
+            }
+
             // Run Typst compile
             // input.json is read by json("input.json") in the .typ template
             // Typst looks for it relative to the main .typ file

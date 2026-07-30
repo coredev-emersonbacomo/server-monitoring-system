@@ -5,18 +5,8 @@
 #set page(
   paper: d.at("paper", default: "a4"),
   flipped: d.at("orientation", default: "portrait") == "landscape",
-  margin: (x: 18mm, y: 20mm),
-  header: context [
-    #set text(size: 9pt, fill: rgb("#888888"))
-    #h(1fr)
-    #d.at("report_title", default: "Report")
-    #h(1fr)
-    #if counter(page).get().first() > 1 {
-      d.at("report_subtitle", default: "")
-    }
-    #v(-0.8em)
-    #line(length: 100%, stroke: 0.3pt + rgb("#dddddd"))
-  ],
+  margin: (top: 3cm, bottom: 2.5cm, x: 1.5cm),
+  header: page-header(d.at("report_title", default: "Report")),
   footer: context [
     #set text(size: 8pt, fill: rgb("#999999"))
     #line(length: 100%, stroke: 0.3pt + rgb("#dddddd"))
@@ -162,11 +152,12 @@
     )
   ]
   #block(width: auto)[
-    #text(size: 8.5pt, weight: "bold", fill: brand)[Recently Added (Last 30 Days)]
+    #text(size: 8.5pt, weight: "bold")[Recently Added (Last 30 Days)]
     #v(0.3em)
     #grid(columns: (1fr), gutter: 6pt)[
       #block[
         #text(size: 7.5pt, weight: "medium")[Clients]
+        #v(-1em)
         #if recent_clients.len() > 0 {
           sub-table(
             headers: ("Name", "Email", "Phone", "Added"),
@@ -178,6 +169,7 @@
       ]
       #block[
         #text(size: 7.5pt, weight: "medium")[Servers]
+        #v(-1em)
         #if recent_servers.len() > 0 {
           sub-table(
             headers: ("Name", "Client", "Hostname", "Added"),

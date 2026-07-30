@@ -1,9 +1,9 @@
-#set text(font: "DejaVu Sans", size: 10pt, fill: rgb("#222222"))
+#set text(font: "Open Sans", size: 10pt, fill: rgb("#222222"))
 #set par(justify: false)
 
 // ── Colours ──────────────────────────────────────────────────────────────────
-#let brand       = rgb("#1a237e")
-#let accent      = rgb("#3949ab")
+#let brand       = rgb("#ff6c00")
+#let accent      = rgb("#ff8f00")
 #let bg-light    = rgb("#f4f5f7")
 #let border-clr  = rgb("#dddddd")
 #let text-muted  = rgb("#777777")
@@ -17,7 +17,7 @@
 
 #let report-heading(title, subtitle, email: none, location: none, phone: none) = {
   block(below: 1.2em)[
-    #text(size: 16pt, weight: "bold", fill: brand)[#title]
+    #text(size: 16pt, weight: "bold")[#title]
     #v(0.15em)
     #text(size: 9pt, fill: text-muted)[#subtitle]
     #if email != none or location != none or phone != none {
@@ -86,25 +86,31 @@
   ]
 }
 
-#let progress-bar(pct, label: none) = {
-  let bar-color = if pct >= 98 { green }
-    else if pct >= 90 { amber }
+#let progress-bar(val, label: none) = {
+  let bar-color = if val >= 98 { green }
+    else if val >= 90 { amber }
     else { red }
-  let w = pct / 100
-  block(
-    width: 100%,
-    height: 10pt,
-    fill: rgb("#e0e0e0"),
-    radius: 2pt,
-  )[
-    #box(
-      width: w * 100%,
-      height: 100%,
-      fill: bar-color,
+  let w = val / 100
+  grid(
+    columns: (1fr, auto),
+    gutter: 6pt,
+    align: horizon,
+    block(
+      width: 100%,
+      height: 10pt,
+      fill: rgb("#e0e0e0"),
       radius: 2pt,
-      inset: 0pt,
-    )
-  ]
+    )[
+      #box(
+        width: w * 100%,
+        height: 100%,
+        fill: bar-color,
+        radius: 2pt,
+        inset: 0pt,
+      )
+    ],
+    text(size: 7.5pt, weight: "bold", fill: bar-color)[#str(calc.round(val, digits: 1))%],
+  )
   if label != none {
     v(0.15em)
     text(size: 7pt, fill: text-muted)[#label]
@@ -113,16 +119,16 @@
 
 #let callout-box(body) = {
   block(
-    fill: rgb("#f0f4ff"),
+    fill: rgb("#fff3e0"),
     inset: (x: 12pt, y: 10pt),
     radius: 4pt,
-    stroke: 0.5pt + rgb("#c5cae9"),
+    stroke: 0.5pt + rgb("#ffcc80"),
   )[#body]
 }
 
 #let section-title(title) = {
   block(above: 1em, below: 0.4em)[
-    #text(size: 10.5pt, weight: "bold", fill: brand)[#title]
+    #text(size: 10.5pt, weight: "bold")[#title]
   ]
 }
 
@@ -164,10 +170,10 @@
     inset: 5pt,
     table.header(
       ..headers.map(h => table.cell(
-        fill: rgb("#e8eaf6"),
+        fill: rgb("#fff3e0"),
         inset: (x: 6pt, y: 4pt),
       )[
-        #set text(size: 7.5pt, weight: "bold", fill: brand)
+        #set text(size: 7.5pt, weight: "bold", fill: amber)
         #h
       ])
     ),
@@ -199,4 +205,36 @@
 }
 #let fmt-date(iso) = {
   iso.split("T").at(0)
+}
+
+#let page-header(title) = context {
+  if counter(page).get().first() == 1 {
+    set text(size: 8.5pt, fill: rgb("#555555"))
+    grid(
+      columns: (1.5fr, 2fr, 1.5fr),
+      align: (left + horizon, center + horizon, right + horizon),
+      gutter: 10pt,
+      grid(
+        columns: (auto, auto),
+        gutter: 6pt,
+        align: horizon,
+        image("coreDevLogo.png", width: 20pt),
+        [
+          #text(weight: "bold", size: 9pt, fill: rgb("#222222"))[coreDev Solutions] \
+          #text(size: 7.5pt, fill: rgb("#777777"))[Cebu City, Cebu]
+        ],
+      ),
+      [#text(weight: "bold", size: 9.5pt, fill: rgb("#111111"))[#title]],
+      [#text(size: 8pt, fill: rgb("#666666"))[*Date:* #datetime.today().display("[month repr:long] [day], [year]")]],
+    )
+    v(4pt)
+    line(length: 100%, stroke: 0.5pt + rgb("#dddddd"))
+  } else {
+    set text(size: 8pt, fill: rgb("#888888"))
+    h(1fr)
+    title + " — continued"
+    h(1fr)
+    v(-0.8em)
+    line(length: 100%, stroke: 0.3pt + rgb("#dddddd"))
+  }
 }
