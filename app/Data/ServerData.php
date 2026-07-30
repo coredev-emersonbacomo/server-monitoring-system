@@ -97,7 +97,7 @@ class ServerData extends Data
                     token: $token,
                     expires_at: $activeToken->expires_at->copy()->utc()->toIso8601String(),
                     linux_command: 'sudo curl -fsSL ' . url('/install/linux') . ' | sudo bash -s -- ' . $token,
-                    windows_command: 'powershell -ExecutionPolicy Bypass -Command "$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm $APP_URL/install/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl $APP_URL"',
+                    windows_command: 'powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm \'' . url('/install/windows.ps1') . '\'))) -ProvisionToken \'' . $token . '\' -AppUrl \'' . url('/') . '\'"',
                 );
             }
         }
@@ -105,7 +105,7 @@ class ServerData extends Data
         $tokenModel = $server->provisionTokens()->latest()->first();
         $token = $tokenModel ? $tokenModel->token : '';
         $uninstallLinux = 'sudo curl -fsSL ' . url('/uninstall/linux') . ' | sudo bash -s -- ' . $token;
-        $uninstallWindows = 'powershell -ExecutionPolicy Bypass -Command "$APP_URL=\'' . url('/') . '\'; & ([scriptblock]::Create((irm $APP_URL/uninstall/windows.ps1))) -ProvisionToken \'' . $token . '\' -AppUrl $APP_URL"';
+        $uninstallWindows = 'powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm \'' . url('/uninstall/windows.ps1') . '\'))) -ProvisionToken \'' . $token . '\' -AppUrl \'' . url('/') . '\'"';
 
         $agent = $server->agent;
 
@@ -339,6 +339,11 @@ class ServerData extends Data
             status: (function () use ($server, $agent, $offlineThreshold): string {
                 if (!$agent || !$agent->registered_at) {
                     return $server->status ?? 'pending_installation';
+                }
+
+                // If server has registered but is waiting for its first heartbeat, don't mark offline
+                if ($server->status === \App\Enums\ServerStatus::WaitingForFirstHeartbeat->value) {
+                    return \App\Enums\ServerStatus::WaitingForFirstHeartbeat->value;
                 }
 
                 // Live health check: if last heartbeat is past the threshold, go offline immediately

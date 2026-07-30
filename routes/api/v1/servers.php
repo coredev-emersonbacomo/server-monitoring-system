@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\ServerController;
+use App\Http\Controllers\Api\V1\ServerReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:jwt')->group(function () {

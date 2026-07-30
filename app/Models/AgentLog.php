@@ -8,20 +8,32 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AgentLog extends Model
 {
-    protected $table = 'agent_logs';
+    protected $table = 'activity_logs';
 
     protected $casts = [
         'details' => 'array',
     ];
 
     protected $fillable = [
+        'type',
         'logable_type',
         'logable_id',
         'user_id',
         'user',
         'action',
+        'title',
         'details',
+        'severity',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $model) {
+            if (empty($model->type)) {
+                $model->type = 'agent';
+            }
+        });
+    }
 
     public function logable(): MorphTo
     {
