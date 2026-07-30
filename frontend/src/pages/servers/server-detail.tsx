@@ -578,7 +578,7 @@ export default function ServerDetail() {
         "pending_installation";
     const { icon: StatusIcon, label, color, bg } = STATUS_CONFIG[status];
     const isInstalled =
-        status === "online" || status === "warning" || status === "offline";
+        status === "online" || status === "warning" || status === "offline" || status === "waiting_for_first_heartbeat";
 
     return (
         <ChartZoomProvider>
