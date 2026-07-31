@@ -7,7 +7,7 @@ import { GuestLayout } from "./layouts/GuestLayout";
 import Clients from "./pages/clients/index/index";
 import UsersIndex from "./pages/users/index/index";
 import ClientDetail from "./pages/clients/detail/index";
-import LogsPage from "./pages/logs/index";
+import LogsPage from "./pages/system-logs/index";
 import ServerLayout from "./layouts/ServerLayout";
 import ServerDetail from "./pages/servers/detail/index";
 import CreateServer from "./pages/servers/create/index";

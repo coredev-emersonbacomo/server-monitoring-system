@@ -1,17 +1,8 @@
-import {
-    useState,
-    useEffect,
-    useCallback,
-    useMemo,
-} from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import api from "@/api/api";
 import {
-    Wifi,
-    WifiOff,
-    AlertTriangle,
-    Trash2,
     Info,
     BarChart3,
     Bell,
@@ -19,24 +10,20 @@ import {
     ArrowLeft,
     Loader2,
     Banknote,
-    Coins,
+    CreditCard,
+    Cpu,
+    Server,
 } from "lucide-react";
 
 import PageLayout from "@/components/PageLayout";
 import { ChartZoomProvider } from "@/contexts/ChartZoomContext";
 import { Button } from "@/components/ui/button";
 import { Tab } from "@/components/ui/tab";
-import type {
-    ProvisionDetailData,
-    ServerData,
-} from "@/types/models";
+import type { ProvisionDetailData } from "@/types/models";
 import IndexHeader from "@/components/IndexHeader";
 import { useServerSocket } from "@/hooks/useServerSocket";
 import { toast } from "sonner";
-import {
-    createFormStore,
-    useForm,
-} from "@/components/ui/form";
+import { createFormStore, useForm } from "@/components/ui/form";
 
 import { useServer } from "./hooks/useServer";
 import { useDeleteServer } from "./hooks/useDeleteServer";
@@ -164,20 +151,17 @@ export default function ServerDetail() {
                 schema: serverInfoSchema,
                 originalData: initial
                     ? {
-                        name: initial.name,
-                        description: initial.description ?? "",
-                        monthly_cost: initial.monthly_rate ?? 0,
-                    }
+                          name: initial.name,
+                          description: initial.description ?? "",
+                          monthly_cost: initial.monthly_rate ?? 0,
+                      }
                     : null,
                 initialMode: "view",
             }),
         [initial],
     );
 
-    const form = useForm(
-        store,
-        (s) => s.form,
-    );
+    const form = useForm(store, (s) => s.form);
     const mode = useForm(store, (s) => s.mode);
 
     useEffect(() => {
@@ -257,8 +241,6 @@ export default function ServerDetail() {
         toast.success("Copied to clipboard!");
         setTimeout(() => setCopiedKey(null), 2000);
     };
-
-    const [activeTab, setActiveTab] = useState("info");
 
     useServerSocket(uuid!);
 
@@ -357,7 +339,9 @@ export default function ServerDetail() {
                     toast.error("Failed to delete port.");
                 } else {
                     toast.success("Tracked port removed.");
-                    queryClient.invalidateQueries({ queryKey: ["server", uuid] });
+                    queryClient.invalidateQueries({
+                        queryKey: ["server", uuid],
+                    });
                 }
             } catch {
                 toast.error("An error occurred.");
@@ -402,14 +386,19 @@ export default function ServerDetail() {
     const statusKey = server.agent_deleted
         ? "pending_deletion"
         : (server.status as keyof typeof STATUS_CONFIG) in STATUS_CONFIG
-            ? (server.status as keyof typeof STATUS_CONFIG)
-            : "pending_installation";
+          ? (server.status as keyof typeof STATUS_CONFIG)
+          : "pending_installation";
     const {
         label: statusLabel,
         icon: StatusIcon,
         color: statusColor,
         bg: statusBg,
     } = STATUS_CONFIG[statusKey];
+    const isInstalled =
+        statusKey === "online" ||
+        statusKey === "warning" ||
+        statusKey === "offline" ||
+        statusKey === "waiting_for_first_heartbeat";
 
     const contextValue = {
         store,
@@ -443,21 +432,7 @@ export default function ServerDetail() {
                     <IndexHeader
                         title={server.name}
                         description={`Monitoring details and real-time metrics for ${server.name}`}
-                        backTo={
-                            allClient
-                                ? "/servers"
-                                : initial?.client_uuid
-                                    ? `/clients/${initial.client_uuid}`
-                                    : "/servers"
-                        }
-                        badge={
-                            <span
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusBg} ${statusColor}`}
-                            >
-                                <StatusIcon size={12} />
-                                {statusLabel}
-                            </span>
-                        }
+                        icon={Server}
                     />
 
                     <AgentInstallationGuide
@@ -472,47 +447,45 @@ export default function ServerDetail() {
                     />
 
                     <div>
-                        <Tab.Group
-                            active={activeTab}
-                            onChange={(t) => setActiveTab(t)}
-                        >
-                            <Tab.Item id="info" icon={Info} label="Server Info" />
-                            <Tab.Item
-                                id="metrics"
-                                icon={BarChart3}
-                                label="Metrics"
-                            />
-                            <Tab.Item
-                                id="billing"
-                                icon={Banknote}
-                                label="Billing & Cost"
-                            />
-                            <Tab.Item
-                                id="alerts"
-                                icon={Bell}
-                                label="Alert Configuration"
-                            />
-                            <Tab.Item id="agent" icon={Terminal} label="Agent" />
-                        </Tab.Group>
+                        <Tab>
+                            <Tab.Item icon={Info} title="Info">
+                                <ServerInfoTab />
+                            </Tab.Item>
+                            {isInstalled && mode === "view" && (
+                                <Tab.Item icon={BarChart3} title="Metrics">
+                                    <MetricsTab
+                                        timeSpan={timeSpan}
+                                        setTimeSpan={setTimeSpan}
+                                        timeSpanArgs={timeSpanArgs}
+                                        customFrom={customFrom}
+                                        setCustomFrom={setCustomFrom}
+                                        customTo={customTo}
+                                        setCustomTo={setCustomTo}
+                                        customUnitStr={customUnitStr}
+                                        setCustomUnitStr={setCustomUnitStr}
+                                        uuid={uuid!}
+                                    />
+                                </Tab.Item>
+                            )}
 
-                        {activeTab === "info" && <ServerInfoTab />}
-                        {activeTab === "metrics" && (
-                            <MetricsTab
-                                timeSpan={timeSpan}
-                                setTimeSpan={setTimeSpan}
-                                timeSpanArgs={timeSpanArgs}
-                                customFrom={customFrom}
-                                setCustomFrom={setCustomFrom}
-                                customTo={customTo}
-                                setCustomTo={setCustomTo}
-                                customUnitStr={customUnitStr}
-                                setCustomUnitStr={setCustomUnitStr}
-                                uuid={uuid!}
-                            />
-                        )}
-                        {activeTab === "billing" && <BillingTab />}
-                        {activeTab === "alerts" && <AlertsTab />}
-                        {activeTab === "agent" && <AgentTab />}
+                            {mode === "view" && (
+                                <Tab.Item icon={CreditCard} title="Billing">
+                                    <BillingTab />
+                                </Tab.Item>
+                            )}
+
+                            {mode === "view" && (
+                                <Tab.Item icon={Bell} title="Alerts">
+                                    <AlertsTab />
+                                </Tab.Item>
+                            )}
+
+                            {mode === "view" && (
+                                <Tab.Item icon={Cpu} title="Agent">
+                                    <AgentTab />
+                                </Tab.Item>
+                            )}
+                        </Tab>
                     </div>
 
                     <CostModal />
