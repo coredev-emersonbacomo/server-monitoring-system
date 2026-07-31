@@ -53,22 +53,17 @@ export default function ServersIndex() {
     const [search, setSearch] = useState("");
     const statusFilter = searchParams.get("status");
     const clientUuid = searchParams.get("client_uuid") || undefined;
+
+    // Client-picker dialogs (create-server flow + "view by client" flow)
+    const [showClientPicker, setShowClientPicker] = useState(false);
     const [showClientFilterPicker, setShowClientFilterPicker] = useState(false);
+    const [clientPickerSearch, setClientPickerSearch] = useState("");
+
+    const { data: clients, isLoading: clientsLoading } = useClients();
 
     const { data: servers, isLoading } = useServers(clientUuid);
     const [sortField, setSortField] = useState<string>("created_at");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-
-    const [showClientPicker, setShowClientPicker] = useState(false);
-    const [clientPickerSearch, setClientPickerSearch] = useState("");
-    const { data: allClients, isLoading: clientsLoading } = useClients();
-
-    const filteredClients = useMemo(() => {
-        if (!allClients) return [];
-        const q = clientPickerSearch.trim().toLowerCase();
-        if (!q) return allClients;
-        return allClients.filter((c) => c.name.toLowerCase().includes(q));
-    }, [allClients, clientPickerSearch]);
 
     const sortOptions = [
         { label: "Created At", value: "created_at" },
@@ -116,6 +111,16 @@ export default function ServersIndex() {
             pending_deletion: servers.filter((s) => s.agent_deleted).length,
         };
     }, [servers]);
+
+    // Shared search box for both client-picker dialogs. Only one dialog is ever
+    // open at a time, but leftover text carries over if you open the other one
+    // next — split into two state vars if that's not the behavior you want.
+    const filteredClients = useMemo(() => {
+        if (!clients) return [];
+        if (!clientPickerSearch.trim()) return clients;
+        const q = clientPickerSearch.toLowerCase();
+        return clients.filter((c) => c.name.toLowerCase().includes(q));
+    }, [clients, clientPickerSearch]);
 
     return (
         <PageLayout>
