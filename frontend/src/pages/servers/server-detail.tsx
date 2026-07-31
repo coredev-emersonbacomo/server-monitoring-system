@@ -51,7 +51,6 @@ import { Input } from "@/components/ui/input";
 import { Tab } from "@/components/ui/tab";
 import { ServerStatChart } from "@/components/dashboard/ServerStatChart";
 import type {
-    StatPointData,
     ProvisionDetailData,
     ServerData,
 } from "@/types/models";
@@ -143,6 +142,28 @@ type ServerDetailContextValue = {
             | "reset_usage",
         amount?: number,
     ) => void;
+};
+
+type TimeSpan =
+    | "1H"
+    | "1D"
+    | "1W"
+    | "1M"
+    | "3M"
+    | "6M"
+    | "1Y"
+    | "3Y"
+    | "6Y"
+    | "9Y"
+    | "12Y"
+    | "Custom";
+
+type TimeSpanArgs = {
+    subtract?: string;
+    unit: number;
+    minUnit?: number;
+    fromTime?: string;
+    toTime?: string;
 };
 
 const ServerDetailContext = createContext<ServerDetailContextValue | null>(null);
@@ -309,19 +330,6 @@ export default function ServerDetail() {
     const [searchParams] = useSearchParams();
     const allClient = searchParams.get("client") === "all";
 
-    type TimeSpan =
-        | "1H"
-        | "1D"
-        | "1W"
-        | "1M"
-        | "3M"
-        | "6M"
-        | "1Y"
-        | "3Y"
-        | "6Y"
-        | "9Y"
-        | "12Y"
-        | "Custom";
     const [timeSpan, setTimeSpan] = useState<TimeSpan>("1H");
 
     // For Custom range
@@ -551,7 +559,7 @@ export default function ServerDetail() {
         return () => clearInterval(timer);
     }, [initial?.status, initial?.cost_reset_at, initial]);
 
-    const [wsStatus, setWsStatus] = useState<string | null>(null);
+    const [, setWsStatus] = useState<string | null>(null);
     useServerSocket(uuid!, setWsStatus, () => {
         toast.success("Agent successfully uninstalled!");
         queryClient.invalidateQueries({
@@ -708,74 +716,6 @@ export default function ServerDetail() {
         }
     };
 
-    const startEditInfo = () => {
-        if (!initial) return;
-        setEditName(initial.name);
-        setEditDescription(initial.description ?? "");
-        setIsEditingInfo(true);
-    };
-
-    const cancelEditInfo = () => {
-        setIsEditingInfo(false);
-    };
-
-    const saveInfo = async () => {
-        if (!initial) return;
-        if (!editName.trim()) {
-            toast.error("Server name is required.");
-            return;
-        }
-        if (!initial.client_uuid) {
-            toast.error("Missing client reference for this server.");
-            return;
-        }
-        setSavingInfo(true);
-        try {
-            const { error } = await (api.PATCH as any)(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}",
-                {
-                    params: {
-                        path: {
-                            clientUuid: initial.client_uuid,
-                            serverUuid: initial.uuid,
-                        },
-                    },
-                    body: {
-                        name: editName.trim(),
-                        description: editDescription.trim() || undefined,
-                    },
-                },
-            );
-            if (error) {
-                toast.error("Failed to update server info.");
-            } else {
-                toast.success("Server info updated.");
-                setIsEditingInfo(false);
-                queryClient.setQueryData(
-                    ["server", initial.uuid],
-                    (old: typeof initial) =>
-                        old
-                            ? {
-                                  ...old,
-                                  name: editName.trim(),
-                                  description:
-                                      editDescription.trim() || undefined,
-                              }
-                            : old,
-                );
-            }
-        } catch {
-            toast.error("An error occurred.");
-        } finally {
-            setSavingInfo(false);
-        }
-    };
-
-    const resetDialog = () => {
-        setShowDelete(false);
-        setConfirmText("");
-    };
-
     if (isLoading) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
@@ -880,896 +820,28 @@ export default function ServerDetail() {
 
                         <Tab>
                             <Tab.Item icon={Info} title="Info">
-<<<<<<< HEAD
-                                <Form.Root store={store}>
-                                    <Form.SubmitHandler
-                                        handler={async (
-                                            data: Record<string, unknown>,
-                                        ) => {
-                                            console.log("[server-detail] submitHandler called", { data });
-                                            if (!initial?.client_uuid) {
-                                                toast.error(
-                                                    "Missing client reference for this server.",
-                                                );
-                                                return;
-                                            }
-                                            try {
-                                                const nameStr = data.name ? String(data.name).trim() : "";
-                                                const descStr = data.description && String(data.description).trim() !== "undefined" && String(data.description).trim() !== "null" ? String(data.description).trim() : "";
-                                                const costNum = data.hourly_cost !== undefined && data.hourly_cost !== null && data.hourly_cost !== "" ? Number(data.hourly_cost) : 0;
-
-                                                const { error } =
-                                                    await api.PATCH(
-                                                        "/v1/clients/{clientUuid}/servers/{serverUuid}",
-                                                        {
-                                                            params: {
-                                                                path: {
-                                                                    clientUuid:
-                                                                        initial.client_uuid,
-                                                                    serverUuid:
-                                                                        initial.uuid,
-                                                                },
-                                                            },
-                                                            body: {
-                                                                name: nameStr,
-                                                                description: descStr || undefined,
-                                                                hourly_cost: isNaN(costNum) ? 0 : costNum,
-                                                            },
-                                                        },
-                                                    );
-                                                if (error) {
-                                                    toast.error(
-                                                        "Failed to update server info.",
-                                                    );
-                                                } else {
-                                                    toast.success(
-                                                        "Server info updated.",
-                                                    );
-                                                    store.setMode("view");
-                                                    queryClient.invalidateQueries(
-                                                        {
-                                                            queryKey: [
-                                                                "server",
-                                                                initial.uuid,
-                                                            ],
-                                                        },
-                                                    );
-                                                }
-                                            } catch {
-                                                toast.error(
-                                                    "An error occurred.",
-                                                );
-                                            }
-                                        }}
-                                    />
-                                    <div className="flex flex-col gap-3 p-4 bg-card border border-t-0 border-b-0 border-border/60">
-                                        <div className="flex items-start justify-between gap-4">
-                                            <div className="min-w-0 flex-1">
-                                                {mode !== "view" ? (
-                                                    <div>
-                                                        <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                            Server name
-                                                        </label>
-                                                        <Input
-                                                            value={form.name}
-                                                            onChange={(e) =>
-                                                                store.set(
-                                                                    "name",
-                                                                )(
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            className="text-sm"
-                                                            autoFocus
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <div>
-                                                        <div className="flex flex-col gap-1.5">
-                                                            <h3 className="text-2xl font-semibold text-foreground">
-                                                                {form.name}
-                                                            </h3>
-                                                            {initial?.client_uuid && initial?.client_name && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => navigate(`/clients/${initial.client_uuid}`)}
-                                                                    className="inline-flex items-center gap-1.5 w-fit text-xs font-medium text-muted-foreground border-b border-transparent hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
-                                                                    title={`Go to ${initial.client_name}`}
-                                                                >
-                                                                    <Building2 size={11} className="shrink-0 opacity-70" />
-                                                                    {initial.client_name}
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                        {form.description && (
-                                                            <p className="text-sm text-muted-foreground mt-1">
-                                                                {form.description}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                {mode !== "view" ? (
-                                                    <>
-                                                        <Form.Buttons.Cancel />
-                                                        <Form.Buttons.Submit />
-                                                    </>
-                                                ) : (
-                                                    <Form.Buttons.Edit />
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {mode !== "view" && (
-                                            <>
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                        Monthly Cost (₱ / mo)
-                                                    </label>
-                                                    <Input
-                                                        type="number"
-                                                        step="0.01"
-                                                        min="0"
-                                                        value={form.hourly_cost ?? ""}
-                                                        onChange={(e) =>
-                                                            store.set(
-                                                                "hourly_cost",
-                                                            )(e.target.value)
-                                                        }
-                                                        className="text-sm font-mono"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                                        Description
-                                                    </label>
-                                                    <textarea
-                                                        value={form.description}
-                                                        onChange={(e) =>
-                                                            store.set(
-                                                                "description",
-                                                            )(e.target.value)
-                                                        }
-                                                        rows={2}
-                                                        maxLength={255}
-                                                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                                                    />
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-wrap items-start gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
-                                        {[
-                                            {
-                                                icon: Cpu,
-                                                label: "CPU Model",
-                                                value: server.cpu_model ?? "Unknown",
-                                                wide: true,
-                                            },
-                                            {
-                                                icon: Cpu,
-                                                label: "CPU Cores",
-                                                value: `${server.cpu_cores ?? "?"} cores`,
-                                            },
-                                            {
-                                                icon: MemoryStick,
-                                                label: "Memory",
-                                                value: server.ram ? `${server.ram} GB` : "Waiting for Agent",
-                                            },
-                                            {
-                                                icon: HardDrive,
-                                                label: "Disk",
-                                                value: server.disk ? `${server.disk} GB` : "Waiting for Agent",
-                                            },
-                                            {
-                                                icon: Monitor,
-                                                label: "OS",
-                                                value: server.operating_system ?? "Waiting for Agent",
-                                            },
-                                        ].map(({ icon: ItemIcon, label, value, wide }) => (
-                                            <div
-                                                key={label}
-                                                className={cn(
-                                                    "group flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all",
-                                                    wide ? "flex-[2_2_320px] min-w-[320px]" : "flex-1 min-w-[200px]",
-                                                )}
-                                            >
-                                                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
-                                                    <ItemIcon size={17} />
-                                                </div>
-                                                <div className="flex flex-col min-w-0 gap-0.5">
-                                                    <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
-                                                        {label}
-                                                    </span>
-                                                    <span className="text-sm font-semibold text-foreground wrap-break-word whitespace-nowrap overflow-hidden text-ellipsis">
-                                                        {value}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
-
-                                        {/* Monthly Cost Card */}
-                                        <div className="flex-1 min-w-[200px] flex items-center gap-3 p-3.5 rounded-xl bg-primary/5 border border-primary/20 shadow-sm hover:shadow-md transition-all">
-                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
-                                                <Banknote size={17} />
-                                            </div>
-                                            <div className="flex flex-col min-w-0 gap-0.5">
-                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80 flex items-center gap-1.5">
-                                                    Monthly Cost
-                                                </span>
-                                                <span className="text-sm font-semibold text-foreground font-mono">
-                                                    ₱{((initial as any)?.hourly_cost ?? 0).toFixed(2)} / mo
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Cost Card (Clickable) */}
-                                        <div
-                                            onClick={() => setShowCostModal(true)}
-                                            className="flex-1 min-w-[200px] group flex items-center gap-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 shadow-sm hover:border-emerald-500/60 hover:bg-emerald-500/15 transition-all cursor-pointer"
-                                            title="Click to view details or manage deductions"
-                                        >
-                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
-                                                <Coins size={17} />
-                                            </div>
-                                            <div className="flex flex-col min-w-0 gap-0.5">
-                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-emerald-400/90">
-                                                    Cost
-                                                </span>
-                                                <span className="text-sm font-bold text-emerald-400 font-mono">
-                                                    ₱{((initial as any)?.accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Next Billing Date Card */}
-                                        <div className="flex-1 min-w-[200px] flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all">
-                                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
-                                                <Calendar size={17} />
-                                            </div>
-                                            <div className="flex flex-col min-w-0 gap-0.5">
-                                                <span className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground/80">
-                                                    Next Billing Date
-                                                </span>
-                                                <span className="text-sm font-semibold text-foreground wrap-break-word">
-                                                    {(initial as any)?.billing_date
-                                                        ? new Date((initial as any).billing_date).toLocaleDateString(undefined, {
-                                                            month: "short",
-                                                            day: "numeric",
-                                                            year: "numeric",
-                                                        })
-                                                        : "N/A"}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5">
-                                        <p className="text-xs font-semibold text-destructive uppercase tracking-wider mb-3">
-                                            Danger Zone
-                                        </p>
-                                        <Form.DeleteModal
-                                            buttonProps={{
-                                                variant: "danger",
-                                                size: "sm",
-                                                icon: <Trash2 size={13} />,
-                                            }}
-                                            onOpenChange={(open) => {
-                                                if (!open) setConfirmText("");
-                                            }}
-                                            modal={(show) => (
-                                                <DialogContent className="sm:max-w-md">
-                                                    <DialogHeader>
-                                                        <DialogTitle className="flex items-center gap-2 text-destructive">
-                                                            <Trash2 size={16} />
-                                                            Delete server
-                                                        </DialogTitle>
-                                                    </DialogHeader>
-
-                                                    <p className="text-sm text-muted-foreground">
-                                                        This will permanently stop monitoring{" "}
-                                                        <strong className="text-foreground">
-                                                            {initial?.name}
-                                                        </strong>{" "}
-                                                        and remove all collected metrics. This cannot be undone.
-                                                    </p>
-
-                                                    {initial &&
-                                                        (initial as any).accumulated_cost > 0 && (
-                                                            <div className="flex items-start gap-2 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-600 dark:text-amber-400">
-                                                                <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-                                                                <div>
-                                                                    <p className="font-semibold text-foreground">
-                                                                        Outstanding Cost Balance
-                                                                    </p>
-                                                                    <p className="text-muted-foreground mt-0.5">
-                                                                        This server has an outstanding balance of{" "}
-                                                                        <strong className="text-amber-600 dark:text-amber-400">
-                                                                            ₱{((initial as any).accumulated_cost ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                        </strong>. You must settle all deductions before this server can be deleted.
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                    {initial &&
-                                                        !initial.agent_deleted && (
-                                                            <div className="flex flex-col gap-3 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
-                                                                <div className="flex items-start gap-2">
-                                                                    <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-                                                                    <div>
-                                                                        <p className="font-semibold text-foreground">
-                                                                            Agent Uninstallation Required
-                                                                        </p>
-                                                                        <p className="text-muted-foreground mt-0.5">
-                                                                            You must uninstall the agent service from the target machine before you can delete this server. Run the command for your operating system:
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="flex flex-col gap-2.5 mt-1 text-foreground">
-                                                                    <div>
-                                                                        <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                                                            Linux (bash)
-                                                                        </label>
-                                                                        <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
-                                                                            <span className="flex-1 whitespace-pre-wrap break-all">
-                                                                                {initial.uninstall_linux_command}
-                                                                            </span>
-                                                                            <button
-                                                                                onClick={() =>
-                                                                                    copyToClipboard(
-                                                                                        initial.uninstall_linux_command!,
-                                                                                        "uninstall_linux",
-                                                                                    )
-                                                                                }
-                                                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                                            >
-                                                                                {copiedKey === "uninstall_linux" ? (
-                                                                                    <Check className="size-3.5 text-emerald-400" />
-                                                                                ) : (
-                                                                                    <Copy className="size-3.5" />
-                                                                                )}
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div>
-                                                                        <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                                                            Windows (PowerShell)
-                                                                        </label>
-                                                                        <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
-                                                                            <span className="flex-1 whitespace-pre-wrap break-all">
-                                                                                {initial.uninstall_windows_command}
-                                                                            </span>
-                                                                            <button
-                                                                                onClick={() =>
-                                                                                    copyToClipboard(
-                                                                                        initial.uninstall_windows_command!,
-                                                                                        "uninstall_windows",
-                                                                                    )
-                                                                                }
-                                                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                                                            >
-                                                                                {copiedKey === "uninstall_windows" ? (
-                                                                                    <Check className="size-3.5 text-emerald-400" />
-                                                                                ) : (
-                                                                                    <Copy className="size-3.5" />
-                                                                                )}
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                    <div className="flex flex-col gap-2 pt-1">
-                                                        <label className="text-xs text-muted-foreground">
-                                                            Type{" "}
-                                                            <strong className="text-foreground font-mono">
-                                                                {initial?.name}
-                                                            </strong>{" "}
-                                                            to confirm
-                                                        </label>
-                                                        <Input
-                                                            value={confirmText}
-                                                            onChange={(e) =>
-                                                                setConfirmText(e.target.value)
-                                                            }
-                                                            placeholder={initial?.name}
-                                                            autoFocus
-                                                            className="font-mono text-sm"
-                                                        />
-                                                    </div>
-
-                                                    <div className="flex justify-end gap-3 pt-2">
-                                                        <Form.Buttons.Cancel
-                                                            onClick={() => {
-                                                                show(false);
-                                                                setConfirmText("");
-                                                            }}
-                                                        />
-                                                        <Form.Button
-                                                            variant="danger"
-                                                            disabled={
-                                                                !isConfirmed ||
-                                                                deleteServer.isPending
-                                                            }
-                                                            onClick={async () => {
-                                                                if (
-                                                                    !initial ||
-                                                                    !isConfirmed ||
-                                                                    !initial.client_uuid
-                                                                )
-                                                                    return;
-                                                                try {
-                                                                    await deleteServer.mutateAsync({
-                                                                        clientUuid: initial.client_uuid,
-                                                                        serverUuid: initial.uuid,
-                                                                    });
-                                                                    toast.success(
-                                                                        `${initial.name} has been deleted.`,
-                                                                    );
-                                                                    if (allClient) {
-                                                                        navigate("/servers");
-                                                                    } else {
-                                                                        navigate(
-                                                                            `/clients/${initial.client_uuid}`,
-                                                                        );
-                                                                    }
-                                                                } catch (err: unknown) {
-                                                                    const msg =
-                                                                        (
-                                                                            err as {
-                                                                                message?: string;
-                                                                            }
-                                                                        )?.message ||
-                                                                        "Failed to delete server. Please try again.";
-                                                                    toast.error(msg);
-                                                                }
-                                                            }}
-                                                        >
-                                                            {deleteServer.isPending
-                                                                ? "Deleting…"
-                                                                : "Delete server"}
-                                                        </Form.Button>
-                                                    </div>
-                                                </DialogContent>
-                                            )}
-                                        >
-                                            Delete this server
-                                        </Form.DeleteModal>
-                                    </div>
-                                </Form.Root>
-                            </Tab.Item>
-                            {isInstalled && mode === "view" && (
-                                <Tab.Item icon={BarChart3} title="Metrics">
-                                    <div className="flex flex-col gap-6 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
-                                        {/* Ports and Processes */}
-                                        <div className="flex flex-col gap-6">
-                                            {/* Processes */}
-                                            <div className="bg-card/50 border border-border/50 rounded-xl p-4 shadow-sm">
-                                                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                                                    <Cpu
-                                                        size={16}
-                                                        className="text-primary"
-                                                    />{" "}
-                                                    Top Processes
-                                                </h3>
-                                                {server?.processes &&
-                                                    server.processes.length > 0 ? (
-                                                    <div className="overflow-x-auto">
-                                                        <table className="w-full text-left text-xs">
-                                                            <thead>
-                                                                <tr className="text-muted-foreground border-b border-border/30">
-                                                                    <th className="pb-2 font-medium">
-                                                                        PID
-                                                                    </th>
-                                                                    <th className="pb-2 font-medium">
-                                                                        Name
-                                                                    </th>
-                                                                    <th className="pb-2 font-medium text-right">
-                                                                        CPU
-                                                                    </th>
-                                                                    <th className="pb-2 font-medium text-right">
-                                                                        RAM
-                                                                    </th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="divide-y divide-border/20">
-                                                                {server.processes.map(
-                                                                    (p) => (
-                                                                        <tr
-                                                                            key={
-                                                                                p.pid
-                                                                            }
-                                                                            className="hover:bg-muted/10"
-                                                                        >
-                                                                            <td className="py-2 text-muted-foreground">
-                                                                                {
-                                                                                    p.pid
-                                                                                }
-                                                                            </td>
-                                                                            <td
-                                                                                className="py-2 font-medium text-foreground max-w-30 truncate"
-                                                                                title={
-                                                                                    p.name
-                                                                                }
-                                                                            >
-                                                                                {
-                                                                                    p.name
-                                                                                }
-                                                                            </td>
-                                                                            <td className="py-2 text-right text-foreground">
-                                                                                {p.cpu !=
-                                                                                    null
-                                                                                    ? `${p.cpu.toFixed(1)}%`
-                                                                                    : "-"}
-                                                                            </td>
-                                                                            <td className="py-2 text-right text-foreground">
-                                                                                {p.memory !=
-                                                                                    null
-                                                                                    ? `${p.memory.toFixed(1)} MB`
-                                                                                    : "-"}
-                                                                            </td>
-                                                                        </tr>
-                                                                    ),
-                                                                )}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-xs text-muted-foreground py-4 text-center">
-                                                        No processes reported.
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            {/* Open Ports */}
-                                            <div className="bg-card/50 border border-border/50 rounded-xl p-4 shadow-sm">
-                                                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                                                    <Link2
-                                                        size={16}
-                                                        className="text-primary"
-                                                    />{" "}
-                                                    Exposed Ports
-                                                </h3>
-                                                {server?.ports &&
-                                                    server.ports.length > 0 ? (
-                                                    <div className="overflow-x-auto">
-                                                        <table className="w-full text-left text-xs">
-                                                            <thead>
-                                                                <tr className="text-muted-foreground border-b border-border/30">
-                                                                    <th className="pb-2 font-medium">
-                                                                        Port
-                                                                    </th>
-                                                                    <th className="pb-2 font-medium">
-                                                                        Proto
-                                                                    </th>
-                                                                    <th className="pb-2 font-medium">
-                                                                        Process
-                                                                    </th>
-                                                                    <th className="pb-2 font-medium text-right">
-                                                                        State
-                                                                    </th>
-                                                                    <th className="pb-2 font-medium text-right">
-                                                                        Ping
-                                                                    </th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="divide-y divide-border/20">
-                                                                {server.ports.map(
-                                                                    (
-                                                                        p,
-                                                                        idx,
-                                                                    ) => (
-                                                                        <tr
-                                                                            key={
-                                                                                idx
-                                                                            }
-                                                                            className="hover:bg-muted/10"
-                                                                        >
-                                                                            <td className="py-2 font-semibold text-foreground">
-                                                                                {
-                                                                                    p.port
-                                                                                }
-                                                                            </td>
-                                                                            <td className="py-2 text-muted-foreground uppercase">
-                                                                                {
-                                                                                    p.protocol
-                                                                                }
-                                                                            </td>
-                                                                            <td className="py-2 text-foreground font-medium">
-                                                                                {p.process ||
-                                                                                    "unknown"}
-                                                                            </td>
-                                                                            <td className="py-2 text-right flex items-center justify-end gap-1.5">
-                                                                                <span
-                                                                                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${p.state ===
-                                                                                        "listening"
-                                                                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                                                                        : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
-                                                                                        }`}
-                                                                                >
-                                                                                    {
-                                                                                        p.state
-                                                                                    }
-                                                                                </span>
-                                                                                {p.id && (
-                                                                                    <button
-                                                                                        onClick={() =>
-                                                                                            handleDeletePort(
-                                                                                                p.id,
-                                                                                            )
-                                                                                        }
-                                                                                        className="p-1 rounded text-red-500/80 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
-                                                                                        title="Delete tracked port"
-                                                                                    >
-                                                                                        <Trash2
-                                                                                            size={
-                                                                                                12
-                                                                                            }
-                                                                                        />
-                                                                                    </button>
-                                                                                )}
-                                                                            </td>
-                                                                            <td className="py-2 text-right text-foreground">
-                                                                                {p.ping_status ===
-                                                                                    "offline"
-                                                                                    ? "offline"
-                                                                                    : p.ping_status ===
-                                                                                        "online"
-                                                                                        ? `${p.ping_time}ms`
-                                                                                        : "-"}
-                                                                            </td>
-                                                                        </tr>
-                                                                    ),
-                                                                )}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-xs text-muted-foreground py-4 text-center">
-                                                        No open exposed ports.
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="pt-6 border-t border-border/60">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <h3 className="text-sm font-semibold text-foreground">
-                                                    System Resources
-                                                </h3>
-                                                <div className="flex items-center gap-2">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        icon={
-                                                            <RefreshCw
-                                                                size={13}
-                                                            />
-                                                        }
-                                                        label="Refresh"
-                                                        onClick={() =>
-                                                            queryClient.invalidateQueries(
-                                                                {
-                                                                    queryKey: [
-                                                                        "server",
-                                                                        uuid,
-                                                                    ],
-                                                                },
-                                                            )
-                                                        }
-                                                    />
-                                                    <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
-                                                        {(
-                                                            [
-                                                                "1H",
-                                                                "1D",
-                                                                "1W",
-                                                                "1M",
-                                                                "3M",
-                                                                "6M",
-                                                            ] as TimeSpan[]
-                                                        ).map((span) => (
-                                                            <button
-                                                                key={span}
-                                                                onClick={() =>
-                                                                    setTimeSpan(
-                                                                        span,
-                                                                    )
-                                                                }
-                                                                className={cn(
-                                                                    "px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer",
-                                                                    timeSpan ===
-                                                                        span
-                                                                        ? "bg-background text-foreground shadow-sm border border-border"
-                                                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                                                                )}
-                                                            >
-                                                                {span}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                    <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
-                                                        {(
-                                                            [
-                                                                "1Y",
-                                                                "3Y",
-                                                                "6Y",
-                                                                "9Y",
-                                                                "12Y",
-                                                                "Custom",
-                                                            ] as TimeSpan[]
-                                                        ).map((span) => (
-                                                            <button
-                                                                key={span}
-                                                                onClick={() =>
-                                                                    setTimeSpan(
-                                                                        span,
-                                                                    )
-                                                                }
-                                                                className={cn(
-                                                                    "px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer",
-                                                                    timeSpan ===
-                                                                        span
-                                                                        ? "bg-background text-foreground shadow-sm border border-border"
-                                                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                                                                )}
-                                                            >
-                                                                {span}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {timeSpan === "Custom" && (
-                                                <div className="flex flex-wrap items-center gap-4 mb-6 bg-muted/20 p-3 rounded-lg border border-border/50">
-                                                    <div className="flex items-center gap-2">
-                                                        <label className="text-xs text-muted-foreground font-medium">
-                                                            From:
-                                                        </label>
-                                                        <input
-                                                            type="datetime-local"
-                                                            value={customFrom}
-                                                            onChange={(e) =>
-                                                                setCustomFrom(
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 dark:[&::-webkit-calendar-picker-indicator]:invert"
-                                                        />
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <label className="text-xs text-muted-foreground font-medium">
-                                                            Until:
-                                                        </label>
-                                                        <input
-                                                            type="datetime-local"
-                                                            value={customTo}
-                                                            onChange={(e) =>
-                                                                setCustomTo(
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 dark:[&::-webkit-calendar-picker-indicator]:invert"
-                                                        />
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <label className="text-xs text-muted-foreground font-medium">
-                                                            Unit:
-                                                        </label>
-                                                        <select
-                                                            value={
-                                                                customUnitStr
-                                                            }
-                                                            onChange={(e) =>
-                                                                setCustomUnitStr(
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                                                        >
-                                                            <option value="auto">
-                                                                Auto
-                                                            </option>
-                                                            <option
-                                                                value="1"
-                                                                disabled={
-                                                                    (
-                                                                        timeSpanArgs as any
-                                                                    )?.minUnit >
-                                                                    1
-                                                                }
-                                                            >
-                                                                Minute
-                                                            </option>
-                                                            <option
-                                                                value="2"
-                                                                disabled={
-                                                                    (
-                                                                        timeSpanArgs as any
-                                                                    )?.minUnit >
-                                                                    2
-                                                                }
-                                                            >
-                                                                Hour
-                                                            </option>
-                                                            <option
-                                                                value="3"
-                                                                disabled={
-                                                                    (
-                                                                        timeSpanArgs as any
-                                                                    )?.minUnit >
-                                                                    3
-                                                                }
-                                                            >
-                                                                Day
-                                                            </option>
-                                                            <option
-                                                                value="4"
-                                                                disabled={
-                                                                    (
-                                                                        timeSpanArgs as any
-                                                                    )?.minUnit >
-                                                                    4
-                                                                }
-                                                            >
-                                                                Week
-                                                            </option>
-                                                            <option
-                                                                value="5"
-                                                                disabled={
-                                                                    (
-                                                                        timeSpanArgs as any
-                                                                    )?.minUnit >
-                                                                    5
-                                                                }
-                                                            >
-                                                                Month
-                                                            </option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            <div className="grid grid-cols-1 gap-6">
-                                                {CHARTS.map((cfg) => (
-                                                    <ServerStatChart
-                                                        key={cfg.dataKey}
-                                                        title={cfg.title}
-                                                        data={
-                                                            server?.stats || []
-                                                        }
-                                                        dataKey={cfg.dataKey}
-                                                        color={cfg.color}
-                                                        unit={cfg.unit}
-                                                        yDomain={cfg.yDomain}
-                                                        timeSpan={timeSpan}
-                                                    />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-=======
                                 <ServerInfoTab />
                             </Tab.Item>
                             {isInstalled && mode === "view" && (
                                 <Tab.Item icon={BarChart3} title="Metrics">
-                                    <MetricsTab />
+                                    <MetricsTab
+                                        timeSpan={timeSpan}
+                                        setTimeSpan={setTimeSpan}
+                                        timeSpanArgs={timeSpanArgs}
+                                        customFrom={customFrom}
+                                        setCustomFrom={setCustomFrom}
+                                        customTo={customTo}
+                                        setCustomTo={setCustomTo}
+                                        customUnitStr={customUnitStr}
+                                        setCustomUnitStr={setCustomUnitStr}
+                                        uuid={uuid!}
+                                    />
                                 </Tab.Item>
                             )}
 
                             {mode === "view" && (
                                 <Tab.Item icon={CreditCard} title="Billing">
                                     <BillingTab />
->>>>>>> main
                                 </Tab.Item>
                             )}
 
@@ -2306,7 +1378,7 @@ function BillingTab() {
 
                     <div className="mt-auto pt-2">
                         <Button
-                            variant="primary"
+                            variant="default"
                             size="sm"
                             className="w-full"
                             icon={<Coins size={14} />}
@@ -2535,8 +1607,31 @@ function DeleteModalDangerZone() {
     );
 }
 
-function MetricsTab() {
+function MetricsTab({
+    timeSpan,
+    setTimeSpan,
+    timeSpanArgs,
+    customFrom,
+    setCustomFrom,
+    customTo,
+    setCustomTo,
+    customUnitStr,
+    setCustomUnitStr,
+    uuid,
+}: {
+    timeSpan: TimeSpan;
+    setTimeSpan: (value: TimeSpan) => void;
+    timeSpanArgs: TimeSpanArgs | undefined;
+    customFrom: string;
+    setCustomFrom: (value: string) => void;
+    customTo: string;
+    setCustomTo: (value: string) => void;
+    customUnitStr: string;
+    setCustomUnitStr: (value: string) => void;
+    uuid: string;
+}) {
     const { server, handleDeletePort } = useServerDetailContext();
+    const queryClient = useQueryClient();
     return (
         <div className="flex flex-col gap-6 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
             <div className="flex flex-col gap-6">
@@ -2682,18 +1777,158 @@ function MetricsTab() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 pt-6 border-t border-border/60">
-                {CHARTS.map((cfg) => (
-                    <ServerStatChart
-                        key={cfg.dataKey}
-                        title={cfg.title}
-                        data={server?.stats || []}
-                        dataKey={cfg.dataKey}
-                        color={cfg.color}
-                        unit={cfg.unit}
-                        yDomain={cfg.yDomain}
-                    />
-                ))}
+            <div className="pt-6 border-t border-border/60">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-foreground">
+                        System Resources
+                    </h3>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            icon={<RefreshCw size={13} />}
+                            label="Refresh"
+                            onClick={() =>
+                                queryClient.invalidateQueries({
+                                    queryKey: ["server", uuid],
+                                })
+                            }
+                        />
+                        <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
+                            {(
+                                [
+                                    "1H",
+                                    "1D",
+                                    "1W",
+                                    "1M",
+                                    "3M",
+                                    "6M",
+                                ] as TimeSpan[]
+                            ).map((span) => (
+                                <button
+                                    key={span}
+                                    onClick={() => setTimeSpan(span)}
+                                    className={cn(
+                                        "px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer",
+                                        timeSpan === span
+                                            ? "bg-background text-foreground shadow-sm border border-border"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                                    )}
+                                >
+                                    {span}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
+                            {(
+                                [
+                                    "1Y",
+                                    "3Y",
+                                    "6Y",
+                                    "9Y",
+                                    "12Y",
+                                    "Custom",
+                                ] as TimeSpan[]
+                            ).map((span) => (
+                                <button
+                                    key={span}
+                                    onClick={() => setTimeSpan(span)}
+                                    className={cn(
+                                        "px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer",
+                                        timeSpan === span
+                                            ? "bg-background text-foreground shadow-sm border border-border"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                                    )}
+                                >
+                                    {span}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {timeSpan === "Custom" && (
+                    <div className="flex flex-wrap items-center gap-4 mb-6 bg-muted/20 p-3 rounded-lg border border-border/50">
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground font-medium">
+                                From:
+                            </label>
+                            <input
+                                type="datetime-local"
+                                value={customFrom}
+                                onChange={(e) => setCustomFrom(e.target.value)}
+                                className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 dark:[&::-webkit-calendar-picker-indicator]:invert"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground font-medium">
+                                Until:
+                            </label>
+                            <input
+                                type="datetime-local"
+                                value={customTo}
+                                onChange={(e) => setCustomTo(e.target.value)}
+                                className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 dark:[&::-webkit-calendar-picker-indicator]:invert"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground font-medium">
+                                Unit:
+                            </label>
+                            <select
+                                value={customUnitStr}
+                                onChange={(e) => setCustomUnitStr(e.target.value)}
+                                className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+                            >
+                                <option value="auto">Auto</option>
+                                <option
+                                    value="1"
+                                    disabled={(timeSpanArgs?.minUnit ?? 1) > 1}
+                                >
+                                    Minute
+                                </option>
+                                <option
+                                    value="2"
+                                    disabled={(timeSpanArgs?.minUnit ?? 1) > 2}
+                                >
+                                    Hour
+                                </option>
+                                <option
+                                    value="3"
+                                    disabled={(timeSpanArgs?.minUnit ?? 1) > 3}
+                                >
+                                    Day
+                                </option>
+                                <option
+                                    value="4"
+                                    disabled={(timeSpanArgs?.minUnit ?? 1) > 4}
+                                >
+                                    Week
+                                </option>
+                                <option
+                                    value="5"
+                                    disabled={(timeSpanArgs?.minUnit ?? 1) > 5}
+                                >
+                                    Month
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                )}
+                <div className="grid grid-cols-1 gap-6">
+                    {CHARTS.map((cfg) => (
+                        <ServerStatChart
+                            key={cfg.dataKey}
+                            title={cfg.title}
+                            data={server?.stats || []}
+                            dataKey={cfg.dataKey}
+                            color={cfg.color}
+                            unit={cfg.unit}
+                            yDomain={cfg.yDomain}
+                            timeSpan={timeSpan}
+                        />
+                    ))}
+                </div>
             </div>
         </div>
     );

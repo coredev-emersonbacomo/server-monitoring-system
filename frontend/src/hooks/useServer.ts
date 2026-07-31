@@ -15,10 +15,10 @@ export const useServer = (
         queryKey: ["server", serverUuid, timeSubtract, timeUnit, fromTime, toTime],
         queryFn: async () => {
             const { data, error } = await api.GET("/v1/servers/{serverUuid}", {
-                params: { 
+                params: {
                     path: { serverUuid },
-                    query: { 
-                        time_subtract: timeSubtract, 
+                    query: {
+                        time_subtract: timeSubtract,
                         time_unit: timeUnit,
                         from_time: fromTime,
                         to_time: toTime,
@@ -29,10 +29,7 @@ export const useServer = (
             return data;
         },
         enabled: !!serverUuid,
-<<<<<<< HEAD
         placeholderData: keepPreviousData,
-=======
         refetchInterval: 3000,
->>>>>>> main
     });
 };
