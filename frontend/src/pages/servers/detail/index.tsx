@@ -12,6 +12,7 @@ import {
     Banknote,
     CreditCard,
     Cpu,
+    Server,
 } from "lucide-react";
 
 import PageLayout from "@/components/PageLayout";
@@ -150,10 +151,10 @@ export default function ServerDetail() {
                 schema: serverInfoSchema,
                 originalData: initial
                     ? {
-                          name: initial.name,
-                          description: initial.description ?? "",
-                          monthly_cost: initial.monthly_rate ?? 0,
-                      }
+                        name: initial.name,
+                        description: initial.description ?? "",
+                        monthly_cost: initial.monthly_rate ?? 0,
+                    }
                     : null,
                 initialMode: "view",
             }),
@@ -385,8 +386,8 @@ export default function ServerDetail() {
     const statusKey = server.agent_deleted
         ? "pending_deletion"
         : (server.status as keyof typeof STATUS_CONFIG) in STATUS_CONFIG
-          ? (server.status as keyof typeof STATUS_CONFIG)
-          : "pending_installation";
+            ? (server.status as keyof typeof STATUS_CONFIG)
+            : "pending_installation";
     const {
         label: statusLabel,
         icon: StatusIcon,
@@ -431,14 +432,7 @@ export default function ServerDetail() {
                     <IndexHeader
                         title={server.name}
                         description={`Monitoring details and real-time metrics for ${server.name}`}
-                        badge={
-                            <span
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusBg} ${statusColor}`}
-                            >
-                                <StatusIcon size={12} />
-                                {statusLabel}
-                            </span>
-                        }
+                        icon={Server}
                     />
 
                     <AgentInstallationGuide
