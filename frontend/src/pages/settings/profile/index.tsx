@@ -7,9 +7,7 @@ import {
     Mail,
     User,
     AtSign,
-    UserCircle,
     ChevronLeft,
-    Pencil,
     Upload,
     Eye,
     EyeOff,
@@ -18,7 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { useUpdateProfile } from "@/hooks/useUpdateProfile";
+import { useUpdateProfile } from "./hooks/useUpdateProfile";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import PageLayout from "@/components/PageLayout";
 import { Form, createFormStore, useForm } from "@/components/ui/form";
@@ -43,9 +41,21 @@ function PasswordStrength({ password }: { password: string }) {
     const passedCount = checks.filter((c) => c.passed).length;
 
     const strengthLabel =
-        passedCount <= 1 ? "Weak" : passedCount === 2 ? "Fair" : passedCount === 3 ? "Good" : "Strong";
+        passedCount <= 1
+            ? "Weak"
+            : passedCount === 2
+              ? "Fair"
+              : passedCount === 3
+                ? "Good"
+                : "Strong";
     const strengthColor =
-        passedCount <= 1 ? "bg-destructive" : passedCount === 2 ? "bg-amber-500" : passedCount === 3 ? "bg-blue-500" : "bg-emerald-500";
+        passedCount <= 1
+            ? "bg-destructive"
+            : passedCount === 2
+              ? "bg-amber-500"
+              : passedCount === 3
+                ? "bg-blue-500"
+                : "bg-emerald-500";
 
     return (
         <div className="flex flex-col gap-1.5">
@@ -79,7 +89,9 @@ function PasswordStrength({ password }: { password: string }) {
                         key={c.label}
                         className={cn(
                             "text-[11px] flex items-center gap-1",
-                            c.passed ? "text-emerald-500" : "text-muted-foreground",
+                            c.passed
+                                ? "text-emerald-500"
+                                : "text-muted-foreground",
                         )}
                     >
                         {c.passed ? "✓" : "○"} {c.label}
@@ -121,22 +133,23 @@ export const Profile: React.FC = () => {
     const updateProfile = useUpdateProfile();
 
     const store = useMemo(
-        () => createFormStore({
-            schema: profileSchema,
-            originalData: user
-                ? {
-                    first_name: user.first_name,
-                    last_name: user.last_name,
-                    email: user.email,
-                    username: user.username,
-                    phone_number: user.phone_number || "",
-                    password: "",
-                    password_confirmation: "",
-                }
-                : null,
-            initialMode: "view",
-        }),
-        [user?.uuid],
+        () =>
+            createFormStore({
+                schema: profileSchema,
+                originalData: user
+                    ? {
+                          first_name: user.first_name,
+                          last_name: user.last_name,
+                          email: user.email,
+                          username: user.username,
+                          phone_number: user.phone_number || "",
+                          password: "",
+                          password_confirmation: "",
+                      }
+                    : null,
+                initialMode: "view",
+            }),
+        [user],
     );
 
     const mode = useForm(store, (s) => s.mode);
@@ -170,7 +183,9 @@ export const Profile: React.FC = () => {
             <PageLayout>
                 <div className="flex items-center justify-center min-h-[60vh] gap-3">
                     <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
-                    <p className="text-muted-foreground text-sm">Loading profile...</p>
+                    <p className="text-muted-foreground text-sm">
+                        Loading profile...
+                    </p>
                 </div>
             </PageLayout>
         );
@@ -181,7 +196,10 @@ export const Profile: React.FC = () => {
             <PageLayout>
                 <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center">
                     <div className="bg-muted p-3 rounded-full">
-                        <ShieldCheck size={28} className="text-muted-foreground" />
+                        <ShieldCheck
+                            size={28}
+                            className="text-muted-foreground"
+                        />
                     </div>
                     <p className="text-muted-foreground text-sm">
                         Please log in to view your profile.
@@ -195,7 +213,9 @@ export const Profile: React.FC = () => {
     const email = user.email ?? "";
     const username = user.username ?? email.split("@")[0];
     const phone_number = user.phone_number
-        ? user.phone_number.replace(/\D/g, "").replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")
+        ? user.phone_number
+              .replace(/\D/g, "")
+              .replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")
         : "—";
     const avatarSrc =
         avatarPreview ||
@@ -205,7 +225,10 @@ export const Profile: React.FC = () => {
 
     return (
         <PageLayout>
-            <Form.Root store={store} className="w-full flex-1 flex flex-col min-h-0">
+            <Form.Root
+                store={store}
+                className="w-full flex-1 flex flex-col min-h-0"
+            >
                 {/* ── Banner / Hero ── */}
                 <div className="relative">
                     <div className="absolute inset-0 overflow-hidden rounded-t-xl">
@@ -233,9 +256,7 @@ export const Profile: React.FC = () => {
                             <div className="flex items-center gap-2">
                                 <Form.Buttons.Cancel />
                                 <Form.Buttons.Submit />
-                                {mode === "view" && (
-                                    <Form.Buttons.Edit />
-                                )}
+                                {mode === "view" && <Form.Buttons.Edit />}
                             </div>
                         </div>
 
@@ -277,7 +298,11 @@ export const Profile: React.FC = () => {
                                             </Label>
                                             <input
                                                 value={form.first_name}
-                                                onChange={(e) => store.set("first_name")(e.target.value)}
+                                                onChange={(e) =>
+                                                    store.set("first_name")(
+                                                        e.target.value,
+                                                    )
+                                                }
                                                 placeholder="First name"
                                                 className="w-full text-xl sm:text-2xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
                                             />
@@ -288,7 +313,11 @@ export const Profile: React.FC = () => {
                                             </Label>
                                             <input
                                                 value={form.last_name}
-                                                onChange={(e) => store.set("last_name")(e.target.value)}
+                                                onChange={(e) =>
+                                                    store.set("last_name")(
+                                                        e.target.value,
+                                                    )
+                                                }
                                                 placeholder="Last name"
                                                 className="w-full text-xl sm:text-2xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
                                             />
@@ -321,7 +350,9 @@ export const Profile: React.FC = () => {
                                                 : "bg-red-400",
                                         )}
                                     />
-                                    {user.record_status === "active" ? "Active" : "Inactive"}
+                                    {user.record_status === "active"
+                                        ? "Active"
+                                        : "Inactive"}
                                 </span>
                             </div>
                         )}
@@ -333,7 +364,9 @@ export const Profile: React.FC = () => {
                     <div className="max-w-3xl mx-auto flex flex-col gap-6">
                         <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-8">
                             <Form.SubmitHandler
-                                handler={async (data: Record<string, unknown>) => {
+                                handler={async (
+                                    data: Record<string, unknown>,
+                                ) => {
                                     const payload: Record<string, unknown> = {
                                         userUuid: user.uuid,
                                         firstName: data.first_name,
@@ -345,7 +378,8 @@ export const Profile: React.FC = () => {
 
                                     if (data.password) {
                                         payload.password = data.password;
-                                        payload.passwordConfirmation = data.password_confirmation;
+                                        payload.passwordConfirmation =
+                                            data.password_confirmation;
                                     }
 
                                     if (avatarFile) {
@@ -353,15 +387,27 @@ export const Profile: React.FC = () => {
                                     }
 
                                     try {
-                                        await updateProfile.mutateAsync(payload as never);
+                                        await updateProfile.mutateAsync(
+                                            payload as never,
+                                        );
                                         await refreshUser();
                                         store.setMode("view");
                                     } catch (err: unknown) {
-                                        const errorData = err as Record<string, Record<string, string[]>>;
+                                        const errorData = err as Record<
+                                            string,
+                                            Record<string, string[]>
+                                        >;
                                         if (errorData?.errors) {
-                                            const mapped: Record<string, string> = {};
-                                            for (const [k, v] of Object.entries(errorData.errors)) {
-                                                mapped[k] = Array.isArray(v) ? v[0] : String(v);
+                                            const mapped: Record<
+                                                string,
+                                                string
+                                            > = {};
+                                            for (const [k, v] of Object.entries(
+                                                errorData.errors,
+                                            )) {
+                                                mapped[k] = Array.isArray(v)
+                                                    ? v[0]
+                                                    : String(v);
                                             }
                                             store.setState({ errors: mapped });
                                         }
@@ -372,8 +418,12 @@ export const Profile: React.FC = () => {
                             {/* Basic Information */}
                             <section className="space-y-4">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-foreground">Basic Information</h3>
-                                    <p className="text-xs text-muted-foreground mt-0.5">Your account details.</p>
+                                    <h3 className="text-sm font-semibold text-foreground">
+                                        Basic Information
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Your account details.
+                                    </p>
                                 </div>
                                 {mode !== "view" ? (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -382,14 +432,18 @@ export const Profile: React.FC = () => {
                                                 type="email"
                                                 label="Email Address"
                                                 value={form.email}
-                                                onValueChange={store.set("email")}
+                                                onValueChange={store.set(
+                                                    "email",
+                                                )}
                                             />
                                         </div>
                                         <div>
                                             <FloatingInput
                                                 label="Username"
                                                 value={form.username}
-                                                onValueChange={store.set("username")}
+                                                onValueChange={store.set(
+                                                    "username",
+                                                )}
                                             />
                                         </div>
                                         <div>
@@ -397,8 +451,12 @@ export const Profile: React.FC = () => {
                                                 label="Phone Number"
                                                 value={form.phone_number}
                                                 onValueChange={(value) => {
-                                                    const digits = value.replace(/\D/g, "").slice(0, 11);
-                                                    store.set("phone_number")(digits);
+                                                    const digits = value
+                                                        .replace(/\D/g, "")
+                                                        .slice(0, 11);
+                                                    store.set("phone_number")(
+                                                        digits,
+                                                    );
                                                 }}
                                                 maxLength={11}
                                             />
@@ -406,9 +464,21 @@ export const Profile: React.FC = () => {
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
-                                        <InfoBlock icon={<Mail size={15} />} label="Email" value={email} />
-                                        <InfoBlock icon={<AtSign size={15} />} label="Username" value={`@${username}`} />
-                                        <InfoBlock icon={<User size={15} />} label="Phone Number" value={phone_number} />
+                                        <InfoBlock
+                                            icon={<Mail size={15} />}
+                                            label="Email"
+                                            value={email}
+                                        />
+                                        <InfoBlock
+                                            icon={<AtSign size={15} />}
+                                            label="Username"
+                                            value={`@${username}`}
+                                        />
+                                        <InfoBlock
+                                            icon={<User size={15} />}
+                                            label="Phone Number"
+                                            value={phone_number}
+                                        />
                                     </div>
                                 )}
                             </section>
@@ -419,42 +489,71 @@ export const Profile: React.FC = () => {
                                     <div className="h-px bg-border" />
                                     <section className="space-y-4">
                                         <div>
-                                            <h3 className="text-sm font-semibold text-foreground">Change Password</h3>
+                                            <h3 className="text-sm font-semibold text-foreground">
+                                                Change Password
+                                            </h3>
                                             <p className="text-xs text-muted-foreground mt-0.5">
-                                                Leave blank to keep the current password.
+                                                Leave blank to keep the current
+                                                password.
                                             </p>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
                                                 <div className="relative">
                                                     <FloatingInput
-                                                        type={showPassword ? "text" : "password"}
+                                                        type={
+                                                            showPassword
+                                                                ? "text"
+                                                                : "password"
+                                                        }
                                                         label="New Password"
                                                         value={form.password}
-                                                        onValueChange={store.set("password")}
+                                                        onValueChange={store.set(
+                                                            "password",
+                                                        )}
                                                         className="pr-9"
                                                     />
                                                     <button
                                                         type="button"
-                                                        onClick={() => setShowPassword((p) => !p)}
+                                                        onClick={() =>
+                                                            setShowPassword(
+                                                                (p) => !p,
+                                                            )
+                                                        }
                                                         className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground"
                                                         tabIndex={-1}
                                                     >
-                                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                        {showPassword ? (
+                                                            <EyeOff className="w-4 h-4" />
+                                                        ) : (
+                                                            <Eye className="w-4 h-4" />
+                                                        )}
                                                     </button>
                                                 </div>
                                                 {form.password && (
                                                     <div className="mt-2">
-                                                        <PasswordStrength password={form.password} />
+                                                        <PasswordStrength
+                                                            password={
+                                                                form.password
+                                                            }
+                                                        />
                                                     </div>
                                                 )}
                                             </div>
                                             <div>
                                                 <FloatingInput
-                                                    type={showPassword ? "text" : "password"}
+                                                    type={
+                                                        showPassword
+                                                            ? "text"
+                                                            : "password"
+                                                    }
                                                     label="Confirm Password"
-                                                    value={form.password_confirmation}
-                                                    onValueChange={store.set("password_confirmation")}
+                                                    value={
+                                                        form.password_confirmation
+                                                    }
+                                                    onValueChange={store.set(
+                                                        "password_confirmation",
+                                                    )}
                                                 />
                                             </div>
                                         </div>

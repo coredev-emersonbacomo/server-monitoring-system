@@ -9,7 +9,7 @@ import {
     ResponsiveContainer,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import { useDashboardUsage } from "@/hooks/useDashboardUsage";
+import { useDashboardUsage } from "../hooks/useDashboardUsage";
 import type { MetricKey, TimeUnit } from "@/types/dashboard";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,15 +25,27 @@ const TIME_SPAN_TO_UNIT: Record<TimeSpan, TimeUnit> = {
 
 // Distinct colors for up to ~12 servers
 const SERIES_COLORS = [
-    "#8b5cf6", "#10b981", "#f59e0b", "#3b82f6", "#f43f5e",
-    "#06b6d4", "#a78bfa", "#34d399", "#fbbf24", "#60a5fa",
-    "#fb7185", "#22d3ee",
+    "#8b5cf6",
+    "#10b981",
+    "#f59e0b",
+    "#3b82f6",
+    "#f43f5e",
+    "#06b6d4",
+    "#a78bfa",
+    "#34d399",
+    "#fbbf24",
+    "#60a5fa",
+    "#fb7185",
+    "#22d3ee",
 ];
 
 function fmtTime(ts: number, timeSpan: TimeSpan): string {
     const d = new Date(ts);
     if (timeSpan === "1W") {
-        return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        return d.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+        });
     }
     if (timeSpan === "1D") {
         return d.toLocaleTimeString("en-US", { hour: "numeric", hour12: true });
@@ -71,7 +83,6 @@ interface MergedPoint {
 }
 
 interface DashboardMetricChartInnerProps {
-    title: string;
     metric: MetricKey;
     unit?: string;
     yDomain?: [number | "auto", number | "auto"];
@@ -79,7 +90,6 @@ interface DashboardMetricChartInnerProps {
 }
 
 function DashboardMetricChartInner({
-    title,
     metric,
     unit = "",
     yDomain = ["auto", "auto"],
@@ -119,7 +129,7 @@ function DashboardMetricChartInner({
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center w-full h-[200px]">
+            <div className="flex items-center justify-center w-full h-50">
                 <span className="text-xs text-muted-foreground animate-pulse">
                     Loading…
                 </span>
@@ -167,7 +177,7 @@ function DashboardMetricChartInner({
 
     return (
         <div className="flex flex-col gap-3">
-            <div >
+            <div>
                 <ResponsiveContainer width="100%" height={200}>
                     <LineChart
                         data={mergedData}
@@ -294,7 +304,6 @@ export function DashboardMetricChart({
                 {title}
             </span>
             <DashboardMetricChartInner
-                title={title}
                 metric={metric}
                 unit={unit}
                 yDomain={yDomain}
