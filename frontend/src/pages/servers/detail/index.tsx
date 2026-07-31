@@ -431,8 +431,17 @@ export default function ServerDetail() {
                         icon={StatusIcon ?? Server}
                     />
 
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <span
+                            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${statusBg} ${statusColor}`}
+                        >
+                            <StatusIcon size={14} />
+                            {statusLabel}
+                        </span>
+                    </div>
+
                     <AgentInstallationGuide
-                        status={server.status}
+                        status={statusKey}
                         provisionDetails={provisionDetails}
                         generating={generating}
                         copiedKey={copiedKey}
