@@ -130,27 +130,29 @@ const router = createBrowserRouter([
                         element: <Profile />,
                     },
                     {
-                        element: <ReportsLayout />, children: [{
-                            path: "/report",
-                            element: <ReportIndexPage />,
-                        },
-                        {
-                            path: "/report/servers/:uuid",
-                            element: <ReportIndexPage />,
-                        },
-                        {
-                            path: "/report/clients/:uuid",
-                            element: <ReportIndexPage />,
-                        },
-                        {
-                            path: "/report/servers",
-                            element: <MultiReportsPreview />,
-                        },
-                        {
-                            path: "/report/clients",
-                            element: <MultiReportsPreview />,
-                        },
-                        ]
+                        element: <ReportsLayout />,
+                        children: [
+                            {
+                                path: "/report",
+                                element: <ReportIndexPage />,
+                            },
+                            {
+                                path: "/report/servers/:uuid",
+                                element: <ReportIndexPage />,
+                            },
+                            {
+                                path: "/report/clients/:uuid",
+                                element: <ReportIndexPage />,
+                            },
+                            {
+                                path: "/report/servers",
+                                element: <MultiReportsPreview />,
+                            },
+                            {
+                                path: "/report/clients",
+                                element: <MultiReportsPreview />,
+                            },
+                        ],
                     },
 
                     {
@@ -164,7 +166,6 @@ const router = createBrowserRouter([
                 ],
             },
         ],
-
     },
     {
         path: "/printReport",
