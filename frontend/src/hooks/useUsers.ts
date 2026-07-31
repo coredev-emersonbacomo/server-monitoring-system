@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
+import type { UserData } from "@/types/models";
 import type {
     UsersStorePayload as CreateUserPayload,
     UsersUpdatePayload as UpdateUserPayload,
-    UserData,
-} from "@/types/models";
+} from "@/types/users";
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 

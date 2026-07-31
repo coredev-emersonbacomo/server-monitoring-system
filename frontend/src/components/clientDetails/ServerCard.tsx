@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Monitor, Network, Globe, Cpu, MemoryStick, Wifi, WifiOff, AlertTriangle, Trash2 } from "lucide-react";
+import { Monitor, Globe, Cpu, MemoryStick, Wifi, WifiOff, AlertTriangle, Trash2 } from "lucide-react";
 import type { ServerData } from "@/types/models";
 
 const STATUS_CONFIG = {

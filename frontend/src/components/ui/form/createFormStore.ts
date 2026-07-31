@@ -84,6 +84,8 @@ export function createFormStore<T extends Record<string, unknown>>(config: {
         validationHandler: null,
         originalData: originalData ?? null,
         hasChanges: false,
+        canUndo: false,
+        canRedo: false,
     };
 
     const listeners = new Set<() => void>();

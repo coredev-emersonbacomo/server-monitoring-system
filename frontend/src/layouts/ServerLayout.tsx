@@ -80,7 +80,7 @@ export default function ServerLayout() {
                             const isActive = server.uuid === uuid;
                             const statusKey = server.agent_deleted
                                 ? "pending_deletion"
-                                : (server.status in STATUS_META ? server.status : "unknown");
+                                : ((server.status ?? "") in STATUS_META ? server.status : "unknown");
                             const meta = STATUS_META[statusKey as keyof typeof STATUS_META] ?? STATUS_META.unknown;
                             const Icon = meta.icon;
                             return (

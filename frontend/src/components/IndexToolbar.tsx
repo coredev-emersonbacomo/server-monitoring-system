@@ -51,7 +51,7 @@ interface IndexToolbarProps {
 
     onViewByClient?: () => void;
     viewByClientLabel?: string;
-    viewByClientLabel?: string;
+    onClearViewByClient?: () => void;
 }
 
 function IndexToolbar({

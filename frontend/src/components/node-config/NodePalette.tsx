@@ -1,11 +1,13 @@
-import { useCallback, type DragEvent } from 'react';
-import type { NodeTypeDefinition, NodeCategory } from '@/types/node-config';
+import { useCallback, type ComponentType, type CSSProperties, type DragEvent } from 'react';
+import type { NodeTypeDefinition } from '@/types/node-config';
 import { NODE_CATEGORIES } from '@/types/node-config';
 import {
-    Activity, GitCompare, GitBranch, Clock, Timer, Mail, Repeat, Puzzle,
+    Activity, GitCompare, GitBranch, Clock, Mail, Repeat, Puzzle,
 } from 'lucide-react';
 
-const CATEGORY_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+type CategoryIconProps = { size?: number; className?: string; style?: CSSProperties };
+
+const CATEGORY_ICONS: Record<string, ComponentType<CategoryIconProps>> = {
     metric: Activity,
     condition: GitCompare,
     logic: GitBranch,

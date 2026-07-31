@@ -17,7 +17,6 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import IndexHeader from "@/components/IndexHeader";
 import IndexToolbar from "@/components/IndexToolbar";
@@ -73,13 +72,13 @@ function ClientCard({
                         <span className="flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                             <span className="text-emerald-500 leading-none text-xs">
-                                {client.servers_online_count ?? 0}
+                                {(client as unknown as { servers_online_count?: number }).servers_online_count ?? 0}
                             </span>
                         </span>
                         <span className="flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
                             <span className="text-red-500 leading-none text-xs">
-                                {client.servers_count - client.servers_online_count}
+                                {client.servers_count - ((client as unknown as { servers_online_count?: number }).servers_online_count as number)}
                             </span>
                         </span>
                     </div>

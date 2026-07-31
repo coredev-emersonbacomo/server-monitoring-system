@@ -53,15 +53,13 @@ export default function SystemSettings() {
     const updateSettings = useUpdateSettings();
 
     const store = useMemo(
-        () => createFormStore({
+        () => createFormStore<Record<string, unknown>>({
             schema,
             originalData: { secop_limit_per_client: "2" },
             initialMode: "edit",
         }),
         [],
     );
-
-    const mode = useForm(store, (s) => s.mode);
 
     // Guard: ensure user is authenticated via UUID
     useEffect(() => {
@@ -103,7 +101,6 @@ export default function SystemSettings() {
             <SystemSettingsContent
                 store={store}
                 updateSettings={updateSettings}
-                settings={settings}
             />
         </PageLayout>
     );
@@ -112,11 +109,9 @@ export default function SystemSettings() {
 function SystemSettingsContent({
     store,
     updateSettings,
-    settings,
 }: {
     store: ReturnType<typeof createFormStore>;
     updateSettings: ReturnType<typeof useUpdateSettings>;
-    settings: any;
 }) {
     const form = useForm(store, (s) => s.form as z.infer<typeof schema>);
     const hasChanges = useForm(store, (s) => s.hasChanges);

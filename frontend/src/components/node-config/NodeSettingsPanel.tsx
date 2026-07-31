@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Node } from "@xyflow/react";
 import type {
-    NodeConfigNode,
     NodeTypeDefinition,
     NodeSettingDefinition,
 } from "@/types/node-config";
@@ -8,7 +8,7 @@ import { X, Puzzle } from "lucide-react";
 import { DurationInput } from "./nodes/DurationInput";
 
 interface NodeSettingsPanelProps {
-    node: NodeConfigNode | null;
+    node: Node | null;
     nodeTypeDef: NodeTypeDefinition | null;
     onUpdate: (id: string, settings: Record<string, unknown>) => void;
     onDelete: (id: string) => void;

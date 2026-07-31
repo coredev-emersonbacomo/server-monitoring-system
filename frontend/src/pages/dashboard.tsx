@@ -18,9 +18,6 @@ import {
     ScrollText,
     X,
     Link2Off,
-    Cpu,
-    Database,
-    HardDrive,
     Clock,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";

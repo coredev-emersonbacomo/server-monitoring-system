@@ -22,11 +22,9 @@ export default function ClientReportTable() {
 
     async function handleGenerate(uuid: string, name: string) {
         const report = await mockGetClientReport(uuid);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { metrics, ...reportData } = report;
         await generateReportPdf({
             template: "client",
-            data: reportData,
+            data: report,
             filename: `client-report-${name.toLowerCase().replace(/\s+/g, "-")}.pdf`,
         });
     }

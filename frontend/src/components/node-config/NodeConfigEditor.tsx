@@ -24,7 +24,6 @@ import {
     SelectionMode,
     type ReactFlowInstance,
     type IsValidConnection,
-    type OnSelectionChangeFunc,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -302,6 +301,8 @@ export function NodeConfigEditor({
 
     const onPaneMouseDown = useCallback((e: React.MouseEvent) => {
         if (e.button === 2) {
+            const target = e.target as HTMLElement;
+            if (!target.closest(".react-flow__pane")) return;
             e.preventDefault();
             rightDragRef.current = { startX: e.clientX, startY: e.clientY };
             setSelBox({ x: e.clientX, y: e.clientY, w: 0, h: 0 });
@@ -850,6 +851,7 @@ export function NodeConfigEditor({
                         onDragLeave={onDragLeave}
                         onDrop={onDrop}
                         onContextMenu={onContextMenu}
+                        onMouseDown={onPaneMouseDown}
                     >
                         <ReactFlow
                             colorMode={theme}
@@ -861,7 +863,6 @@ export function NodeConfigEditor({
                             isValidConnection={isValidConnection}
                             onNodeClick={onNodeClick}
                             onPaneClick={onPaneClick}
-                            onPaneMouseDown={onPaneMouseDown}
                             nodeTypes={nodeTypes}
                             fitView
                             minZoom={0.3}

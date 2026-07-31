@@ -59,6 +59,17 @@ export default function ServersIndex() {
     const [sortField, setSortField] = useState<string>("created_at");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
+    const [showClientPicker, setShowClientPicker] = useState(false);
+    const [clientPickerSearch, setClientPickerSearch] = useState("");
+    const { data: allClients, isLoading: clientsLoading } = useClients();
+
+    const filteredClients = useMemo(() => {
+        if (!allClients) return [];
+        const q = clientPickerSearch.trim().toLowerCase();
+        if (!q) return allClients;
+        return allClients.filter((c) => c.name.toLowerCase().includes(q));
+    }, [allClients, clientPickerSearch]);
+
     const sortOptions = [
         { label: "Created At", value: "created_at" },
         { label: "Server Name", value: "name" },

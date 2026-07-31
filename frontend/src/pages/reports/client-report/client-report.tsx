@@ -26,7 +26,7 @@ export default function ClientReportPage({ uuidOverride }: { uuidOverride?: stri
 
             <div className="report-section">
                 <h2 className="text-sm font-semibold text-gray-700 mb-2">Overview</h2>
-                <div class="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                     <table className="w-full text-sm" style={BORDER}>
                         <tbody>
                             <tr>

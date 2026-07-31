@@ -279,7 +279,7 @@ function UsageSection({
     const prevScrollLeft = useRef(0);
     const isAtRightEdge = useRef(true);
     const prevUnit = useRef(unit);
-    const [containerWidth, setContainerWidth] = useState(0);
+    const [, setContainerWidth] = useState(0);
 
     const [yLabelPositions, setYLabelPositions] = useState<
         { value: number; top: number }[]
@@ -633,11 +633,11 @@ function UsageSection({
                                                 const anchor = "middle";
                                                 const adjustedX =
                                                     index === 0
-                                                        ? x + 5
+                                                        ? Number(x) + 5
                                                         : index ===
                                                             visibleTicksCount -
                                                                 1
-                                                          ? x - 5
+                                                          ? Number(x) - 5
                                                           : x;
                                                 const d = new Date(
                                                     payload.value,

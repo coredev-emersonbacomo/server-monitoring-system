@@ -27,15 +27,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Form, createFormStore, useForm } from "@/components/ui/form";
 
-function formatUptime(seconds: number): string {
-    if (!seconds || seconds <= 0) return "0s";
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    if (hrs > 0) return `${hrs}h ${mins}m ${secs}s`;
-    if (mins > 0) return `${mins}m ${secs}s`;
-    return `${secs}s`;
-}
 import { z } from "zod";
 import { toast } from "sonner";
 import {
@@ -160,7 +151,7 @@ export default function ClientDetail() {
     const clientAlertTab = useClientAlertTab(
         clientUuid ?? "",
         client?.name ?? "",
-        (client as Record<string, unknown>)?.alert_scope as string | undefined,
+        client?.alert_scope as string | undefined,
     );
 
     // ── Mutations ──────────────────────────────────────────────────────────────
@@ -1136,9 +1127,6 @@ export default function ClientDetail() {
                                                 </thead>
                                                 <tbody className="divide-y divide-border/60">
                                                     {servers.map((s) => {
-                                                        const isOnline =
-                                                            s.status ===
-                                                            "online";
                                                         const costVal =
                                                             s.accumulated_cost ??
                                                             0;
@@ -1235,8 +1223,8 @@ export default function ClientDetail() {
                                                                 <td className="py-3.5 px-4 font-mono text-foreground font-medium">
                                                                     ₱
                                                                     {(
-                                                                        s.monthly_cost ??
-                                                                        0
+                                                                        (s as unknown as { monthly_cost?: number })
+                                                                            .monthly_cost ?? 0
                                                                     ).toFixed(
                                                                         2,
                                                                     )}{" "}

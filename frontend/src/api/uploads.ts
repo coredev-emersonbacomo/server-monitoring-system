@@ -11,7 +11,7 @@ export async function requestUploadIntent(
         body: payload as never,
     });
     if (error) throw error;
-    return data as UploadIntentResponse;
+    return data as unknown as UploadIntentResponse;
 }
 
 export async function getUploadIntent(
@@ -21,7 +21,7 @@ export async function getUploadIntent(
         params: { path: { uploadIntent: intentId } },
     });
     if (error) throw error;
-    return data as UploadIntentResponse;
+    return data as unknown as UploadIntentResponse;
 }
 
 export async function updateProfileApi(
@@ -40,8 +40,8 @@ export async function updateClientApi(
     clientUuid: string,
     payload: Record<string, unknown>,
 ): Promise<unknown> {
-    const { data, error } = await api.PUT("/v1/clients/{uuid}", {
-        params: { path: { uuid: clientUuid } },
+    const { data, error } = await api.PUT("/v1/clients/{clientUuid}", {
+        params: { path: { clientUuid } },
         body: payload as never,
     });
     if (error) throw error;
