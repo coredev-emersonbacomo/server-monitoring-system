@@ -2,7 +2,7 @@ import jwtClient from "@/api/jwtClient";
 
 interface ReportDownloadOptions {
     template: "client" | "server" | "general" | "multi-client" | "multi-server";
-    data: Record<string, unknown>;
+    data: object;
     filename: string;
     paper?: string;
     orientation?: "landscape" | "portrait";

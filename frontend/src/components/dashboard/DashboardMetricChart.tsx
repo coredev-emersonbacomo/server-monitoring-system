@@ -71,7 +71,6 @@ interface MergedPoint {
 }
 
 interface DashboardMetricChartInnerProps {
-    title: string;
     metric: MetricKey;
     unit?: string;
     yDomain?: [number | "auto", number | "auto"];
@@ -79,7 +78,6 @@ interface DashboardMetricChartInnerProps {
 }
 
 function DashboardMetricChartInner({
-    title,
     metric,
     unit = "",
     yDomain = ["auto", "auto"],
@@ -219,13 +217,13 @@ function DashboardMetricChartInner({
                             labelFormatter={(v) =>
                                 fmtDatetime(Number(v), timeSpan)
                             }
-                            formatter={(v: unknown, name: string) => {
+                            formatter={(v: unknown, name?: string | number) => {
                                 const s = series.find(
                                     (s) => s.server_uuid === name,
                                 );
                                 return [
                                     `${Number(v).toFixed(1)}${unit}`,
-                                    s?.server_name ?? name,
+                                    s?.server_name ?? name ?? "",
                                 ];
                             }}
                             cursor={{
@@ -294,7 +292,6 @@ export function DashboardMetricChart({
                 {title}
             </span>
             <DashboardMetricChartInner
-                title={title}
                 metric={metric}
                 unit={unit}
                 yDomain={yDomain}

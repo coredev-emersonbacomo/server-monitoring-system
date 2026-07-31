@@ -6,7 +6,7 @@ type TemplateType = "client" | "server" | "general" | "multi-client" | "multi-se
 
 interface TypstPreviewProps {
     template: TemplateType;
-    data: Record<string, unknown>;
+    data: object;
     paper?: string;
     orientation?: ReportOrientation;
 }

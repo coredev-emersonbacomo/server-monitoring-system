@@ -29,10 +29,7 @@ export const useServer = (
             return data;
         },
         enabled: !!serverUuid,
-<<<<<<< HEAD
         placeholderData: keepPreviousData,
-=======
         refetchInterval: 3000,
->>>>>>> main
     });
 };

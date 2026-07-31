@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { mockGetClientReport } from "./client-report/mockClientReport";
 import { mockGetServerReport } from "./server-report/mockServerReport";
 import { mockGetGeneralReport } from "./general-report/mockGeneralReport";
+import type { ClientReport } from "./client-report/mockClientReport";
+import type { ServerReport } from "./server-report/mockServerReport";
 import type { ReportOutletContext } from "@/layouts/ReportsLayout";
 import { TypstPreview } from "./TypstPreview";
 
@@ -17,12 +19,10 @@ function ReportWithUuid({
     isServer: boolean;
     orientation: ReportOutletContext["orientation"];
 }) {
-    const { data, isLoading, error } = useQuery({
+    const { data, isLoading, error } = useQuery<ClientReport | ServerReport>({
         queryKey: [isServer ? "server-report" : "client-report", uuid],
         queryFn: () =>
-            isServer
-                ? mockGetServerReport(uuid)
-                : mockGetClientReport(uuid),
+            isServer ? mockGetServerReport(uuid) : mockGetClientReport(uuid),
         enabled: !!uuid,
     });
 
@@ -45,14 +45,10 @@ function ReportWithUuid({
         );
     }
 
-    // Strip metrics (too large for PDF, chart SVGs handled separately)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { metrics, ...reportData } = data;
-
     return (
         <TypstPreview
             template={isServer ? "server" : "client"}
-            data={reportData}
+            data={data}
             orientation={orientation}
         />
     );
@@ -126,21 +122,21 @@ export default function ReportIndexPage() {
                 <div
                     className={`w-full bg-white text-black shadow-lg rounded-sm p-12 ${
                         orientation === "landscape"
-                            ? "max-w-[66rem] min-h-[51rem]"
-                            : "max-w-[51rem] min-h-[66rem]"
+                            ? "max-w-264 min-h-204"
+                            : "max-w-204 min-h-264"
                     }`}
                 >
                     <div
                         className={`flex flex-col items-center justify-center h-full gap-3 text-center ${
                             orientation === "landscape"
-                                ? "min-h-[45rem]"
-                                : "min-h-[60rem]"
+                                ? "min-h-180"
+                                : "min-h-240"
                         }`}
                     >
                         <FileText className="w-10 h-10 text-gray-300" />
                         <p className="text-gray-500 font-medium">
-                            No{" "}
-                            {view === "servers" ? "server" : "client"} selected
+                            No {view === "servers" ? "server" : "client"}{" "}
+                            selected
                         </p>
                         <p className="text-sm text-gray-400 max-w-xs">
                             Click &quot;Select{" "}

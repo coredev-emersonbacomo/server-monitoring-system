@@ -25,7 +25,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
     );
 }
 
-export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDown, type = 'text', className, channel }: TemplateInputProps) {
+export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDown, type = 'text', className }: TemplateInputProps) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
@@ -33,7 +33,7 @@ export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDo
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
-    const filtered = filterVariables(query, channel);
+    const filtered = filterVariables(query);
     const showDropdown = open && filtered.length > 0;
 
     const checkForTrigger = useCallback((input: HTMLInputElement) => {
@@ -75,8 +75,8 @@ export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDo
         const after = input.value.substring(input.selectionStart ?? value.length);
         let newVal: string;
         let cursorOffset: number;
-        if (variable.group === 'tag') {
-            const tagKey = variable.key;
+        if ((variable.group as string) === 'tag') {
+            const tagKey: string = variable.key;
             const closing = tagKey.startsWith('</') ? '' : `</${tagKey.slice(1)}`;
             const tagContent = tagKey === '<discord-button>'
                 ? '<discord-button detailsUrl=""></discord-button>'
@@ -205,7 +205,7 @@ export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDo
                             onMouseEnter={() => setSelectedIndex(i)}
                         >
                             <span className="font-mono text-foreground">
-                                {variable.group === 'tag'
+                                {(variable.group as string) === 'tag'
                                     ? highlightMatch(variable.key, query)
                                     : <>{'{'}{highlightMatch(variable.key, query)}{'}'}</>}
                             </span>

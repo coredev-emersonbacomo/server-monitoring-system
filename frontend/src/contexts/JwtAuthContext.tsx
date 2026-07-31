@@ -10,10 +10,12 @@ import { setAccessToken, refreshAccessToken } from "@/api/tokenManager";
 import api from "@/api/api";
 import type {
     AuthUserData,
-    JwtAuthLoginPayload,
     SecurityActivityData,
-    SessionResource,
 } from "@/types/models";
+import type {
+    JwtAuthLoginPayload,
+    SessionResource,
+} from "@/types/auth";
 
 interface JwtAuthContextType {
     user: AuthUserData | null;
@@ -197,7 +199,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
         try {
             const response = await api.GET("/v1/sessions");
             if (mountedRef.current) {
-                setSessions(response.data?.data ?? []);
+                setSessions((response.data?.data as SessionResource[] | undefined) ?? []);
             }
         } catch {
             if (mountedRef.current) {

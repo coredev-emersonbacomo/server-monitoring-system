@@ -1,11 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { requestUploadIntent } from "@/api/uploads";
 import { directUpload } from "@/services/directUpload";
-import type {
-    UploadIntentResponse,
-    UploadResult,
-    RequestUploadIntentInput,
-} from "@/types/upload";
+import type { RequestUploadIntentInput } from "@/types/upload";
 
 interface UseDirectUploadInput {
     purpose: RequestUploadIntentInput["purpose"];

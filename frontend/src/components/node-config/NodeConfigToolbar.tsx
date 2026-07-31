@@ -79,7 +79,7 @@ export function NodeConfigToolbar({
                 <input
                     type="text"
                     value={name}
-                    onChange={(e) => onNameChange(e.target.value)}
+                    onChange={(e) => onNameChange?.(e.target.value)}
                     placeholder="Config name..."
                     className="flex-1 px-3 py-1.5 text-sm font-semibold rounded-lg border border-border/60 bg-background
                         text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
