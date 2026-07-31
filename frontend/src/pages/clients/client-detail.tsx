@@ -315,7 +315,7 @@ export default function ClientDetail() {
         setSubmittingPayment(true);
         try {
             const { error } = await api.POST(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-adjustment",
+                "/v1/clients/{clientUuid}/servers/{serverUuid}/adjust-cost",
                 {
                     params: {
                         path: {

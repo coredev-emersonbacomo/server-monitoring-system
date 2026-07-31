@@ -1530,7 +1530,7 @@ export interface paths {
         patch: operations["v1.server.updateAlertScope_0"];
         trace?: never;
     };
-    "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-adjustment": {
+    "/v1/clients/{clientUuid}/servers/{serverUuid}/adjust-cost": {
         parameters: {
             query?: never;
             header?: never;
@@ -1642,7 +1642,7 @@ export interface paths {
         patch: operations["v1.server.updateAlertScope_0"];
         trace?: never;
     };
-    "/clients/{clientUuid}/servers/{serverUuid}/cost-adjustment": {
+    "/clients/{clientUuid}/servers/{serverUuid}/adjust-cost": {
         parameters: {
             query?: never;
             header?: never;

@@ -178,9 +178,8 @@ export default function ClientDetail() {
     const [serverFilter, setServerFilter] = useState<
         "all" | "online" | "offline"
     >("all");
-    const [selectedServerForCost, setSelectedServerForCost] = useState<
-        ServerData | null
-    >(null);
+    const [selectedServerForCost, setSelectedServerForCost] =
+        useState<ServerData | null>(null);
     const [deductAmount, setDeductAmount] = useState("");
     const [submittingPayment, setSubmittingPayment] = useState(false);
 
@@ -205,19 +204,19 @@ export default function ClientDetail() {
             schema: clientSchema,
             originalData: client
                 ? {
-                    name: client.name,
-                    description: client.description ?? "",
-                    location: client.location,
-                    email: client.email,
-                    contact_number: client.contact_number,
-                }
+                      name: client.name,
+                      description: client.description ?? "",
+                      location: client.location,
+                      email: client.email,
+                      contact_number: client.contact_number,
+                  }
                 : {
-                    name: "",
-                    description: "",
-                    location: "",
-                    email: "",
-                    contact_number: "",
-                },
+                      name: "",
+                      description: "",
+                      location: "",
+                      email: "",
+                      contact_number: "",
+                  },
             initialMode: "view",
         });
     }, [isCreate, client]);
@@ -301,7 +300,7 @@ export default function ClientDetail() {
                 },
             );
             if (error) return [];
-            return (data) ?? [];
+            return data ?? [];
         },
         enabled: !!clientUuid && !!selectedServerForCost?.uuid,
     });
@@ -311,7 +310,7 @@ export default function ClientDetail() {
         setSubmittingPayment(true);
         try {
             const { error } = await api.POST(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-adjustment",
+                "/v1/clients/{clientUuid}/servers/{serverUuid}/adjust-cost",
                 {
                     params: {
                         path: {
@@ -335,7 +334,10 @@ export default function ClientDetail() {
                 queryKey: ["clients", clientUuid],
             });
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Failed to apply deduction.";
+            const msg =
+                err instanceof Error
+                    ? err.message
+                    : "Failed to apply deduction.";
             toast.error(msg);
         } finally {
             setSubmittingPayment(false);
@@ -511,14 +513,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                        backgroundImage: `url(${bannerPreview})`,
-                                        backgroundSize: "cover",
-                                        backgroundPosition: "top center",
-                                    }
+                                          backgroundImage: `url(${bannerPreview})`,
+                                          backgroundSize: "cover",
+                                          backgroundPosition: "top center",
+                                      }
                                     : {
-                                        background:
-                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                    }
+                                          background:
+                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                      }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -537,7 +539,9 @@ export default function ClientDetail() {
                                         <input
                                             value={form.name}
                                             onChange={(e) =>
-                                                store.set("name")(e.target.value)
+                                                store.set("name")(
+                                                    e.target.value,
+                                                )
                                             }
                                             placeholder="Client name"
                                             className="w-full text-2xl sm:text-3xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 outline-none pb-1 placeholder:text-muted-foreground/40 text-foreground"
@@ -577,7 +581,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                        defaultBanner,
+                                                            defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -670,7 +674,9 @@ export default function ClientDetail() {
                                     <textarea
                                         value={form.description}
                                         onChange={(e) =>
-                                            store.set("description")(e.target.value)
+                                            store.set("description")(
+                                                e.target.value,
+                                            )
                                         }
                                         placeholder="Brief description about the client..."
                                         rows={2}
@@ -678,7 +684,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none break-all",
                                             errors.description &&
-                                            "border-destructive",
+                                                "border-destructive",
                                         )}
                                     />
                                 </div>
@@ -704,7 +710,9 @@ export default function ClientDetail() {
                                     store={store}
                                     className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-8"
                                 >
-                                    <Form.SubmitHandler handler={handleSubmit} />
+                                    <Form.SubmitHandler
+                                        handler={handleSubmit}
+                                    />
                                     {/* Basic Information */}
                                     <section className="space-y-4">
                                         <SectionHeader
@@ -722,7 +730,7 @@ export default function ClientDetail() {
                                                         )}
                                                         className={cn(
                                                             errors.location &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                     {errors.location && (
@@ -766,7 +774,7 @@ export default function ClientDetail() {
                                                         )}
                                                         className={cn(
                                                             errors.email &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                     {errors.email && (
@@ -808,7 +816,7 @@ export default function ClientDetail() {
                                                         }}
                                                         className={cn(
                                                             errors.contact_number &&
-                                                            "border-destructive",
+                                                                "border-destructive",
                                                         )}
                                                     />
                                                     {errors.contact_number && (
@@ -829,7 +837,7 @@ export default function ClientDetail() {
                                                     <p className="text-base font-semibold text-foreground">
                                                         {formatPhoneNumber(
                                                             client?.contact_number ||
-                                                            "",
+                                                                "",
                                                         )}
                                                     </p>
                                                 </Field>
@@ -1095,8 +1103,8 @@ export default function ClientDetail() {
                                                     className="opacity-30"
                                                 />
                                                 <p className="text-sm font-medium">
-                                                    No servers registered for this
-                                                    client.
+                                                    No servers registered for
+                                                    this client.
                                                 </p>
                                             </div>
                                         ) : (
@@ -1111,7 +1119,8 @@ export default function ClientDetail() {
                                                                 Status
                                                             </th>
                                                             <th className="py-3 px-4">
-                                                                Next Billing Date
+                                                                Next Billing
+                                                                Date
                                                             </th>
                                                             <th className="py-3 px-4">
                                                                 Monthly Rate
@@ -1161,7 +1170,7 @@ export default function ClientDetail() {
                                                                             const isOnline =
                                                                                 !isPendingDeletion &&
                                                                                 s.status ===
-                                                                                "online";
+                                                                                    "online";
                                                                             return (
                                                                                 <span
                                                                                     className={cn(
@@ -1169,8 +1178,8 @@ export default function ClientDetail() {
                                                                                         isPendingDeletion
                                                                                             ? "bg-orange-500/10 text-orange-500 border-orange-500/20"
                                                                                             : isOnline
-                                                                                                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                                                                                                : "bg-muted text-muted-foreground border-border",
+                                                                                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                                                                                              : "bg-muted text-muted-foreground border-border",
                                                                                     )}
                                                                                 >
                                                                                     <span
@@ -1179,18 +1188,18 @@ export default function ClientDetail() {
                                                                                             isPendingDeletion
                                                                                                 ? "bg-orange-500"
                                                                                                 : isOnline
-                                                                                                    ? "bg-emerald-500 animate-pulse"
-                                                                                                    : "bg-muted-foreground",
+                                                                                                  ? "bg-emerald-500 animate-pulse"
+                                                                                                  : "bg-muted-foreground",
                                                                                         )}
                                                                                     />
                                                                                     {isPendingDeletion
                                                                                         ? "Pending Deletion"
                                                                                         : isOnline
-                                                                                            ? "Online"
-                                                                                            : s.status ===
-                                                                                                "pending_installation"
-                                                                                                ? "Pending"
-                                                                                                : "Offline"}
+                                                                                          ? "Online"
+                                                                                          : s.status ===
+                                                                                              "pending_installation"
+                                                                                            ? "Pending"
+                                                                                            : "Offline"}
                                                                                 </span>
                                                                             );
                                                                         })()}
@@ -1206,15 +1215,15 @@ export default function ClientDetail() {
                                                                             <span>
                                                                                 {s.billing_date
                                                                                     ? new Date(
-                                                                                        s.billing_date,
-                                                                                    ).toLocaleDateString(
-                                                                                        undefined,
-                                                                                        {
-                                                                                            month: "short",
-                                                                                            day: "numeric",
-                                                                                            year: "numeric",
-                                                                                        },
-                                                                                    )
+                                                                                          s.billing_date,
+                                                                                      ).toLocaleDateString(
+                                                                                          undefined,
+                                                                                          {
+                                                                                              month: "short",
+                                                                                              day: "numeric",
+                                                                                              year: "numeric",
+                                                                                          },
+                                                                                      )
                                                                                     : "N/A"}
                                                                             </span>
                                                                         </div>
@@ -1268,8 +1277,8 @@ export default function ClientDetail() {
                                                                 colSpan={4}
                                                                 className="py-3.5 px-4 text-muted-foreground uppercase tracking-wider text-xs"
                                                             >
-                                                                Total (All Client
-                                                                Servers)
+                                                                Total (All
+                                                                Client Servers)
                                                             </td>
                                                             <td className="py-3.5 px-4 text-right font-mono text-base font-bold text-emerald-500">
                                                                 ₱
@@ -1342,8 +1351,8 @@ export default function ClientDetail() {
                                                         ? "All"
                                                         : serverFilter ===
                                                             "online"
-                                                            ? "Online"
-                                                            : "Offline"}
+                                                          ? "Online"
+                                                          : "Offline"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -1370,9 +1379,9 @@ export default function ClientDetail() {
                                                         onClick={() =>
                                                             setServerFilter(
                                                                 opt.value as
-                                                                | "all"
-                                                                | "online"
-                                                                | "offline",
+                                                                    | "all"
+                                                                    | "online"
+                                                                    | "offline",
                                                             )
                                                         }
                                                         className={cn(
@@ -1657,8 +1666,7 @@ export default function ClientDetail() {
                                     <span>
                                         Payments Recorded: ₱
                                         {(
-                                            selectedServerForCost?.remitted ??
-                                            0
+                                            selectedServerForCost?.remitted ?? 0
                                         ).toFixed(2)}
                                     </span>
                                 </div>
@@ -1738,23 +1746,45 @@ export default function ClientDetail() {
                                     ) : (
                                         costLogs.map((log) => {
                                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                            let detailsObj: Record<string, any> | null = null;
+                                            let detailsObj: Record<
+                                                string,
+                                                any
+                                            > | null = null;
                                             if (log.details) {
-                                                if (typeof log.details === "object") {
+                                                if (
+                                                    typeof log.details ===
+                                                    "object"
+                                                ) {
                                                     detailsObj = log.details;
-                                                } else if (typeof log.details === "string") {
+                                                } else if (
+                                                    typeof log.details ===
+                                                    "string"
+                                                ) {
                                                     try {
-                                                        detailsObj = JSON.parse(log.details);
-                                                    } catch { /* empty */ }
+                                                        detailsObj = JSON.parse(
+                                                            log.details,
+                                                        );
+                                                    } catch {
+                                                        /* empty */
+                                                    }
                                                 }
                                             }
                                             const msg =
                                                 detailsObj?.message ||
-                                                (typeof log.details === "string" ? log.details : null) ||
+                                                (typeof log.details === "string"
+                                                    ? log.details
+                                                    : null) ||
                                                 log.action;
 
-                                            const beforeRate = detailsObj?.before?.monthly_rate ?? detailsObj?.before?.monthly_cost;
-                                            const afterRate = detailsObj?.after?.monthly_rate ?? detailsObj?.after?.monthly_cost;
+                                            const beforeRate =
+                                                detailsObj?.before
+                                                    ?.monthly_rate ??
+                                                detailsObj?.before
+                                                    ?.monthly_cost;
+                                            const afterRate =
+                                                detailsObj?.after
+                                                    ?.monthly_rate ??
+                                                detailsObj?.after?.monthly_cost;
 
                                             return (
                                                 <div
@@ -1785,17 +1815,23 @@ export default function ClientDetail() {
                                                     <p className="text-[11px] text-muted-foreground">
                                                         {msg}
                                                     </p>
-                                                    {beforeRate !== undefined && afterRate !== undefined && (
-                                                        <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
-                                                            <span>
-                                                                Before: ₱{beforeRate}/mo
-                                                            </span>
-                                                            <span>→</span>
-                                                            <span>
-                                                                After: ₱{afterRate}/mo
-                                                            </span>
-                                                        </div>
-                                                    )}
+                                                    {beforeRate !== undefined &&
+                                                        afterRate !==
+                                                            undefined && (
+                                                            <div className="text-[11px] font-mono text-emerald-400/90 flex items-center gap-1.5 mt-0.5">
+                                                                <span>
+                                                                    Before: ₱
+                                                                    {beforeRate}
+                                                                    /mo
+                                                                </span>
+                                                                <span>→</span>
+                                                                <span>
+                                                                    After: ₱
+                                                                    {afterRate}
+                                                                    /mo
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     {log.user && (
                                                         <p className="text-[10px] text-muted-foreground/70">
                                                             By: {log.user}
