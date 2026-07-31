@@ -55,6 +55,7 @@ export interface ClientData {
             contact_number: string;
             banner_image_url: string;
             servers_count: number;
+            servers_online_count: number;
             secops_count: number;
             created_at: string;
             updated_at: string;
@@ -74,6 +75,23 @@ export interface CustomActivityLog {
             created_at: string | null;
             /** Format: date-time */
             updated_at: string | null;
+            type: string;
+            title: string | null;
+            severity: string | null;
+        }
+
+/** CustomActivityLogData */
+export interface CustomActivityLogData {
+            id: number;
+            type?: string | null;
+            logable_type?: string | null;
+            logable_id?: string | null;
+            user_id?: number | null;
+            user?: string | null;
+            action: string;
+            details?: string | null;
+            created_at?: string | null;
+            updated_at?: string | null;
         }
 
 /** DashboardStatsData */
@@ -252,6 +270,42 @@ export interface ServerData {
             pending_monthly_rate?: number | null;
         }
 
+/** ServerReportData */
+export interface ServerReportData {
+            uuid: string;
+            name: string;
+            description?: string | null;
+            client_name?: string | null;
+            host_name?: string | null;
+            cpu_model?: string | null;
+            cpu_cores?: number | null;
+            ram?: string | null;
+            disk?: string | null;
+            operating_system?: string | null;
+            status: string;
+            record_status: string;
+            last_seen?: string | null;
+            metrics: Record<string, never>;
+            uptime: ServerUptimeData;
+            running_balance: number;
+            net_cost: number;
+            accumulated_cost: number;
+            billing_date?: string | null;
+            activities: {
+                type: string;
+                description: string;
+                created_at: string;
+            }[];
+        }
+
+/** ServerUptimeData */
+export interface ServerUptimeData {
+            uptime_seconds: number;
+            uptime_percentage: number;
+            outage_count: number;
+            last_downtime?: string | null;
+        }
+
 /** StatPointData */
 export interface StatPointData {
             timestamp: number;
@@ -266,6 +320,12 @@ export interface StatPointData {
 export interface StoreUploadIntentRequest {
             purpose: UploadPurpose;
         }
+
+/**
+         * TimeUnits
+         * @enum {integer}
+         */
+export type TimeUnits = 1 | 2 | 3 | 4 | 5;
 
 /** UpdateUserData */
 export interface UpdateUserData {

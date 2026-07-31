@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Data\CreateServerData;
+use App\Data\CustomActivityLogData;
 use App\Data\ServerData;
 use App\Data\StatPointData;
 use App\Data\UpdateServerData;
@@ -269,13 +270,12 @@ class ServerController extends Controller
                 'Payment Deduction', 
                 'Reset Cost Baseline', 
                 'Update Monthly Rate', 
-                'Update Hourly Rate',
                 'Agent Uninstalled'
             ])
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json($logs);
+        return CustomActivityLogData::collect($logs->map(fn(CustomActivityLog $log) => CustomActivityLogData::fromModel($log)));
     }
 
     public function destroy(string $clientUuid, string $serverUuid)

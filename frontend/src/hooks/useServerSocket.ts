@@ -93,11 +93,11 @@ export function useServerSocket(
 
         const onConnected = () => {
             console.info("[WS] Connected to Reverb");
-            onStatusRef.current("connected");
+            onStatusRef.current?.("connected");
         };
         const onDisconnected = () => {
             console.info("[WS] Disconnected from Reverb");
-            onStatusRef.current("disconnected");
+            onStatusRef.current?.("disconnected");
         };
 
         echo.connector.pusher.connection.bind("connected", onConnected);
@@ -105,7 +105,7 @@ export function useServerSocket(
 
         // Fire immediately if already connected
         if (echo.connector.pusher.connection.state === "connected") {
-            onStatusRef.current("connected");
+            onStatusRef.current?.("connected");
         }
 
         echo.private(channelName)
