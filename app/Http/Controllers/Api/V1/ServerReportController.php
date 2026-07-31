@@ -7,6 +7,7 @@ use App\Data\ServerReportData;
 use App\Data\ServerUptimeData;
 use App\Models\Server;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 
 class ServerReportController extends Controller
 {

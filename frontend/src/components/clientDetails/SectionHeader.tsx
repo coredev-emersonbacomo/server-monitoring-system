@@ -1,18 +1,2 @@
-export default function SectionHeader({
-    title,
-    description,
-}: {
-    title: string;
-    description?: string;
-}) {
-    return (
-        <div>
-            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-            {description && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                    {description}
-                </p>
-            )}
-        </div>
-    );
-}
+// Re-exported from new location. Import from @/pages/clients/detail/components/SectionHeader instead.
+export { default } from "@/pages/clients/detail/components/SectionHeader";

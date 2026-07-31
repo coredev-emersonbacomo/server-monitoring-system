@@ -4,6 +4,7 @@ import type {
     AuthUserData,
     ClientData,
     CustomActivityLog,
+    CustomActivityLogData,
     DashboardStatsData,
     GlobalAlert,
     NodeConfig,
@@ -15,8 +16,11 @@ import type {
     SecopsUserData,
     SecurityActivityData,
     ServerData,
+    ServerReportData,
+    ServerUptimeData,
     StatPointData,
     StoreUploadIntentRequest,
+    TimeUnits,
     UpdateUserData,
     UploadPurpose,
     UserData
@@ -1469,7 +1473,7 @@ export interface paths {
          *       template: "client" | "server" | "general" | "multi-client" | "multi-server"
          *       data: object (report data, or { items: [...] } for multi templates)
          *       paper: "a4" | "letter" (default: "a4")
-         *       orientation: "landscape" | "portrait" (default: "landscape")
+         *       orientation: "landscape" | "portrait" (default: "portrait")
          */
         post: operations["report.compile"];
         delete?: never;
@@ -1697,6 +1701,38 @@ export interface paths {
         put?: never;
         post?: never;
         delete: operations["v1.server.destroyPort_0"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/servers/{server}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.serverReport.show_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/servers/{server}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.serverReport.show_0"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2136,6 +2172,8 @@ export interface components {
         ClientData: ClientData;
         /** CustomActivityLog */
         CustomActivityLog: CustomActivityLog;
+        /** CustomActivityLogData */
+        CustomActivityLogData: CustomActivityLogData;
         /** DashboardStatsData */
         DashboardStatsData: DashboardStatsData;
         /** GlobalAlert */
@@ -2158,10 +2196,19 @@ export interface components {
         SecurityActivityData: SecurityActivityData;
         /** ServerData */
         ServerData: ServerData;
+        /** ServerReportData */
+        ServerReportData: ServerReportData;
+        /** ServerUptimeData */
+        ServerUptimeData: ServerUptimeData;
         /** StatPointData */
         StatPointData: StatPointData;
         /** StoreUploadIntentRequest */
         StoreUploadIntentRequest: StoreUploadIntentRequest;
+        /**
+         * TimeUnits
+         * @enum {integer}
+         */
+        TimeUnits: TimeUnits;
         /** UpdateUserData */
         UpdateUserData: UpdateUserData;
         /**
@@ -4203,7 +4250,7 @@ export interface operations {
     "v1.dashboard.usage_0": {
         parameters: {
             query: {
-                unit: "second" | "minute" | "hour" | "day" | "week" | "month";
+                unit: "minute" | "hour" | "day" | "week" | "month";
                 metric: "cpu" | "memory" | "disk";
                 before?: number | null;
             };
@@ -4225,10 +4272,7 @@ export interface operations {
                             server_uuid: string;
                             server_name: string;
                             client_name: string;
-                            points: {
-                                timestamp: string;
-                                value: string | null;
-                            }[];
+                            points: string | string[];
                         }[];
                         top: {
                             server_uuid: string;
@@ -4360,7 +4404,7 @@ export interface operations {
     "v1.dashboard.usage_0": {
         parameters: {
             query: {
-                unit: "second" | "minute" | "hour" | "day" | "week" | "month";
+                unit: "minute" | "hour" | "day" | "week" | "month";
                 metric: "cpu" | "memory" | "disk";
                 before?: number | null;
             };
@@ -4382,10 +4426,7 @@ export interface operations {
                             server_uuid: string;
                             server_name: string;
                             client_name: string;
-                            points: {
-                                timestamp: string;
-                                value: string | null;
-                            }[];
+                            points: string | string[];
                         }[];
                         top: {
                             server_uuid: string;
@@ -6034,7 +6075,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": CustomActivityLog[];
+                    "application/json": CustomActivityLogData[];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -6042,7 +6083,12 @@ export interface operations {
     };
     "v1.server.showWithStats_0": {
         parameters: {
-            query?: never;
+            query: {
+                time_unit: TimeUnits;
+                time_subtract?: string | null;
+                from_time?: string | null;
+                to_time?: string | null;
+            };
             header?: never;
             path: {
                 serverUuid: string;
@@ -6285,7 +6331,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": CustomActivityLog[];
+                    "application/json": CustomActivityLogData[];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -6293,7 +6339,12 @@ export interface operations {
     };
     "v1.server.showWithStats_0": {
         parameters: {
-            query?: never;
+            query: {
+                time_unit: TimeUnits;
+                time_subtract?: string | null;
+                from_time?: string | null;
+                to_time?: string | null;
+            };
             header?: never;
             path: {
                 serverUuid: string;
@@ -6338,6 +6389,56 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.serverReport.show_0": {
+        parameters: {
+            query?: {
+                hours?: number;
+            };
+            header?: never;
+            path: {
+                /** @description The server UUID */
+                server: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ServerReportData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": ServerReportData;
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "v1.serverReport.show_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The server UUID */
+                server: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `ServerReportData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": ServerReportData;
+                };
+            };
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
     "v1.session.index_0": {

@@ -58,6 +58,7 @@ const LABELS: Record<TemplateVariableKey, { label: string; group: TemplateVariab
     'server.client.contact_number'  : { label: 'Contact Number', group: 'client', description: 'Contact Number (ClientData)' },
     'server.client.banner_image_url': { label: 'Banner Image Url', group: 'client', description: 'Banner Image Url (ClientData)' },
     'server.client.servers_count'   : { label: 'Servers Count', group: 'client', description: 'Servers Count (ClientData)' },
+    'server.client.servers_online_count': { label: 'Servers Online Count', group: 'client', description: 'Servers Online Count (ClientData)' },
     'server.client.secops_count'    : { label: 'Secops Count', group: 'client', description: 'Secops Count (ClientData)' },
     'server.client.created_at'      : { label: 'Created At', group: 'client', description: 'Created At (ClientData)' },
     'server.client.updated_at'      : { label: 'Updated At', group: 'client', description: 'Updated At (ClientData)' },
