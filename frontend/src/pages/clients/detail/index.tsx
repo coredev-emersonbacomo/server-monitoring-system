@@ -56,11 +56,11 @@ import {
 import { cn } from "@/lib/utils";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { uploadFile } from "@/lib/uploadToast";
-import FormSkeleton from "@/components/clientDetails/FormSkeleton";
-import Field from "@/components/clientDetails/Field";
-import SectionHeader from "@/components/clientDetails/SectionHeader";
-import ServerCard from "@/components/clientDetails/ServerCard";
-import ServerCardSkeleton from "@/components/clientDetails/ServerCardSkeleton";
+import FormSkeleton from "./components/FormSkeleton";
+import Field from "./components/Field";
+import SectionHeader from "./components/SectionHeader";
+import ServerCard from "./components/ServerCard";
+import ServerCardSkeleton from "./components/ServerCardSkeleton";
 import { Search, Filter, ChevronDown } from "lucide-react";
 import {
     Popover,
@@ -1745,9 +1745,9 @@ export default function ClientDetail() {
                                         </p>
                                     ) : (
                                         costLogs.map((log) => {
-                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                             let detailsObj: Record<
                                                 string,
+                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                                 any
                                             > | null = null;
                                             if (log.details) {

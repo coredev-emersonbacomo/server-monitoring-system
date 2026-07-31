@@ -1,7 +1,7 @@
 import { Cpu, Link2, Trash2, RefreshCw } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { ServerStatChart } from "@/components/dashboard/ServerStatChart";
+import { ServerStatChart } from "@/pages/dashboard/components/ServerStatChart";
 import { cn } from "@/lib/utils";
 import { useServerDetailContext } from "../context/ServerDetailContext";
 import { CHARTS } from "../constants/charts";
@@ -162,8 +162,8 @@ export function MetricsTab({
                                                 {p.ping_status === "offline"
                                                     ? "offline"
                                                     : p.ping_status === "online"
-                                                        ? `${p.ping_time}ms`
-                                                        : "-"}
+                                                      ? `${p.ping_time}ms`
+                                                      : "-"}
                                             </td>
                                         </tr>
                                     ))}
@@ -278,7 +278,9 @@ export function MetricsTab({
                             </label>
                             <select
                                 value={customUnitStr}
-                                onChange={(e) => setCustomUnitStr(e.target.value)}
+                                onChange={(e) =>
+                                    setCustomUnitStr(e.target.value)
+                                }
                                 className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
                             >
                                 <option value="auto">Auto</option>
