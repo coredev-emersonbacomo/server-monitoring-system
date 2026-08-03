@@ -6,16 +6,26 @@ type TemplateType = "client" | "server" | "general" | "multi-client" | "multi-se
 
 interface TypstPreviewProps {
     template: TemplateType;
-    data: object;
+    /** Explicit data payload — use when you already have the data on the frontend. */
+    data?: object;
+    /** Single entity UUID — backend fetches data automatically. */
+    uuid?: string;
+    /** Multiple entity UUIDs — backend fetches each and wraps as { items: [...] }. */
+    uuids?: string[];
     paper?: string;
     orientation?: ReportOrientation;
+    /** Metrics window in hours for server reports (default: 24). */
+    hours?: number;
 }
 
 export function TypstPreview({
     template,
     data,
+    uuid,
+    uuids,
     paper = "a4",
     orientation = "portrait",
+    hours = 24,
 }: TypstPreviewProps) {
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -30,17 +40,26 @@ export function TypstPreview({
             setError(null);
 
             try {
+                // Build the payload — backend fetches data when uuid/uuids given
+                const payload: Record<string, unknown> = { template, paper, orientation };
+
+                if (uuids && uuids.length > 0) {
+                    payload.uuids = uuids;
+                    payload.hours = hours;
+                } else if (uuid) {
+                    payload.uuid = uuid;
+                    payload.hours = hours;
+                } else if (data) {
+                    payload.data = data;
+                } else {
+                    // general report — no uuid needed, backend fetches all
+                    payload.data = {};
+                }
+
                 const response = await jwtClient.post(
                     "/v1/reports/compile",
-                    {
-                        template,
-                        data,
-                        paper,
-                        orientation,
-                    },
-                    {
-                        responseType: "blob",
-                    },
+                    payload,
+                    { responseType: "blob" },
                 );
 
                 if (cancelled) return;
@@ -81,10 +100,8 @@ export function TypstPreview({
 
         return () => {
             cancelled = true;
-            // Don't revoke URL here — the object element still needs it
-            // It gets revoked on next compile or unmount
         };
-    }, [template, data, paper, orientation]);
+    }, [template, data, uuid, uuids, paper, orientation, hours]);
 
     // Revoke on unmount
     useEffect(() => {

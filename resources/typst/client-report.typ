@@ -32,7 +32,7 @@
 
 // ── KPI Summary ──────────────────────────────────────────────────────────────
 #section-title("KPI Summary")
-#kpi-grid((
+#kpi-table((
   (label: "Total Servers", value: str(d.at("total_servers", default: 0))),
   (label: "Online",        value: text(fill: green, weight: "bold")[#str(d.at("online_servers", default: 0))]),
   (label: "Offline",       value: text(fill: red, weight: "bold")[#str(d.at("offline_servers", default: 0))]),
@@ -53,7 +53,7 @@
       if s.at("memory_usage", default: none) != none { pct(s.memory_usage) } else { "—" },
       if s.at("disk_usage", default: none) != none { pct(s.disk_usage) } else { "—" },
       if s.at("uptime_percentage", default: none) != none { pct(s.uptime_percentage) } else { "—" },
-      if s.at("last_seen", default: "") != "" { fmt-date(s.last_seen) } else { "—" },
+      if s.at("last_seen", default: none) != none { fmt-date(s.last_seen) } else { "—" },
     )),
   )
 }
