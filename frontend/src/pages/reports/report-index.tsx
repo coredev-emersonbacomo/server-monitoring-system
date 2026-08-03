@@ -1,12 +1,6 @@
 // path: frontend/src/pages/reports/report-index.tsx
 import { useOutletContext, useParams, useLocation } from "react-router-dom";
 import { FileText } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { mockGetClientReport } from "./client-report/mockClientReport";
-import { mockGetServerReport } from "./server-report/mockServerReport";
-import { mockGetGeneralReport } from "./general-report/mockGeneralReport";
-import type { ClientReport } from "./client-report/mockClientReport";
-import type { ServerReport } from "./server-report/mockServerReport";
 import type { ReportOutletContext } from "@/layouts/ReportsLayout";
 import { TypstPreview } from "./TypstPreview";
 
@@ -19,36 +13,10 @@ function ReportWithUuid({
     isServer: boolean;
     orientation: ReportOutletContext["orientation"];
 }) {
-    const { data, isLoading, error } = useQuery<ClientReport | ServerReport>({
-        queryKey: [isServer ? "server-report" : "client-report", uuid],
-        queryFn: () =>
-            isServer ? mockGetServerReport(uuid) : mockGetClientReport(uuid),
-        enabled: !!uuid,
-    });
-
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center py-20">
-                <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                    <p className="text-sm">Loading report data...</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (error || !data) {
-        return (
-            <div className="flex items-center justify-center py-20">
-                <p className="text-sm text-red-600">Failed to load report.</p>
-            </div>
-        );
-    }
-
     return (
         <TypstPreview
             template={isServer ? "server" : "client"}
-            data={data}
+            uuid={uuid}
             orientation={orientation}
         />
     );
@@ -59,34 +27,9 @@ function GeneralReportWithPreview({
 }: {
     orientation: ReportOutletContext["orientation"];
 }) {
-    const { data, isLoading, error } = useQuery({
-        queryKey: ["general-report"],
-        queryFn: mockGetGeneralReport,
-    });
-
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center py-20">
-                <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                    <p className="text-sm">Loading report data...</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (error || !data) {
-        return (
-            <div className="flex items-center justify-center py-20">
-                <p className="text-sm text-red-600">Failed to load report.</p>
-            </div>
-        );
-    }
-
     return (
         <TypstPreview
             template="general"
-            data={data}
             orientation={orientation}
         />
     );
