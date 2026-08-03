@@ -109,9 +109,11 @@ function ClientCard({
                         <DropdownMenuContent align="end" sideOffset={4}>
                             <DropdownMenuItem
                                 onClick={(e) => {
-                                    e.preventDefault();
                                     e.stopPropagation();
-                                    onDelete(client);
+                                    // Defer so Radix closes the DropdownMenu (and
+                                    // restores body pointer-events) before the
+                                    // Dialog increments its overlay counter.
+                                    setTimeout(() => onDelete(client), 0);
                                 }}
                                 className="text-destructive focus:text-destructive cursor-pointer"
                             >

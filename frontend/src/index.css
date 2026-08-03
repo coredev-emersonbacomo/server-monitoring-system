@@ -225,3 +225,8 @@
 .react-flow__node.selected {
     box-shadow: none !important;
 }
+
+.react-flow__node[data-cap-target] {
+    box-shadow: 0 0 0 3px #10b981, 0 0 12px 4px #10b98140 !important;
+    border-radius: 0.75rem !important;
+}

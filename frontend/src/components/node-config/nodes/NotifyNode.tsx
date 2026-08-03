@@ -102,25 +102,21 @@ export const NotifyNode = memo(({ id, data, type, selected }: NodeProps) => {
                 </Select>
 
                 {channel === "email" && (
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-medium uppercase text-muted-foreground shrink-0">
-                            Subj
-                        </span>
-                        <TemplateInput
-                            value={subject}
-                            onChange={(v) => handleStringChange("subject", v)}
-                            onClick={(e) => e.stopPropagation()}
-                            onPointerDown={(e) => e.stopPropagation()}
-                            className="flex-1 text-xs text-foreground bg-background border border-input rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
-                        />
-                    </div>
+                    <TemplateInput
+                        value={subject}
+                        onChange={(v) => handleStringChange("subject", v)}
+                        onClick={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        rows={2}
+                        label="Subject"
+                    />
                 )}
 
                 {channel === "discord" && (
                     <>
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] font-medium uppercase text-muted-foreground shrink-0">
-                                Token
+                                Bot Token
                             </span>
                             <input
                                 type="password"
@@ -140,46 +136,50 @@ export const NotifyNode = memo(({ id, data, type, selected }: NodeProps) => {
                             <span className="text-[10px] font-medium uppercase text-muted-foreground shrink-0">
                                 Channel
                             </span>
-                            <TemplateInput
+                            <input
+                                type="text"
                                 value={channelId}
-                                onChange={(v) =>
-                                    handleStringChange("channel_id", v)
+                                onChange={(e) =>
+                                    handleStringChange(
+                                        "channel_id",
+                                        e.target.value,
+                                    )
                                 }
                                 onClick={(e) => e.stopPropagation()}
                                 onPointerDown={(e) => e.stopPropagation()}
-                                className="flex-1 text-xs text-foreground bg-background border border-input rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                                className="flex-1 min-w-0 w-full text-xs text-foreground bg-background border border-input rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
                             />
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] font-medium uppercase text-muted-foreground shrink-0">
                                 Role
                             </span>
-                            <TemplateInput
+                            <input
+                                type="text"
                                 value={roleId}
-                                onChange={(v) =>
-                                    handleStringChange("role_id", v)
+                                onChange={(e) =>
+                                    handleStringChange(
+                                        "role_id",
+                                        e.target.value,
+                                    )
                                 }
                                 onClick={(e) => e.stopPropagation()}
                                 onPointerDown={(e) => e.stopPropagation()}
-                                className="flex-1 text-xs text-foreground bg-background border border-input rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                                className="flex-1 min-w-0 w-full text-xs text-foreground bg-background border border-input rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
                             />
                         </div>
                     </>
                 )}
 
-                <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-medium uppercase text-muted-foreground shrink-0">
-                        Msg
-                    </span>
-                    <TemplateInput
-                        value={message}
-                        onChange={(v) => handleStringChange("message", v)}
-                        onClick={(e) => e.stopPropagation()}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        channel={channel}
-                        className="flex-1 text-xs text-foreground bg-background border border-input rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
-                    />
-                </div>
+                <TemplateInput
+                    value={message}
+                    onChange={(v) => handleStringChange("message", v)}
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    channel={channel}
+                    rows={2}
+                    label="Message"
+                />
             </div>
         </BaseNode>
     );

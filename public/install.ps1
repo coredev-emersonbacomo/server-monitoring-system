@@ -3,7 +3,7 @@ param(
     [string]$ProvisionToken,
 
     [Parameter(Mandatory=$false)]
-    [string]$AppUrl = "http://127.0.0.1:8000"
+    [string]$AppUrl = "{{APP_URL}}"
 )
 
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -12,7 +12,7 @@ if (-not $isAdmin) {
     exit 1
 }
 
-$bootstrapUrl = "$AppUrl/api/v1/provision"
+$bootstrapUrl = "$($AppUrl.TrimEnd('/'))/api/v1/provision"
 $appDir = "C:\Program Files\MonitorAgent"
 $agentFile = "$appDir\MonitorAgent.exe"
 $logFile = "$env:TEMP\monitor-agent-install.log"
