@@ -32,11 +32,11 @@
 #section-title("Server Information")
 #kpi-grid((
   (label: "Status",        value: status-pill(d.at("status", default: "unknown"))),
-  (label: "Client",        value: if d.at("client_name", default: "") != "" { d.client_name } else { "—" }),
-  (label: "OS",            value: if d.at("operating_system", default: "") != "" { d.operating_system } else { "—" }),
-  (label: "CPU Model",     value: if d.at("cpu_model", default: "") != "" { d.cpu_model } else { "—" }, note: str(d.at("cpu_cores", default: "—")) + " cores"),
-  (label: "Memory",        value: if d.at("ram", default: "") != "" { d.ram } else { "—" }),
-  (label: "Disk",          value: if d.at("disk", default: "") != "" { d.disk } else { "—" }),
+  (label: "Client",        value: if d.at("client_name", default: none) != none { d.client_name } else { "—" }),
+  (label: "OS",            value: if d.at("operating_system", default: none) != none { d.operating_system } else { "—" }),
+  (label: "CPU Model",     value: if d.at("cpu_model", default: none) != none { d.cpu_model } else { "—" }, note: str(d.at("cpu_cores", default: "—")) + " cores"),
+  (label: "Memory",        value: if d.at("ram", default: none) != none { d.ram } else { "—" }),
+  (label: "Disk",          value: if d.at("disk", default: none) != none { d.disk } else { "—" }),
 ))
 
 // ── Metrics Summary ──────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@
   grid(columns: (1fr, 1fr), gutter: 10pt)[
     #kpi-card("Uptime Percentage", pct(uptime.uptime_percentage))
     #kpi-card("Outages", str(uptime.at("outage_count", default: 0)),
-      note: if uptime.at("last_downtime", default: "") != "" { "Last: " + uptime.last_downtime } else { none })
+      note: if uptime.at("last_downtime", default: none) != none { "Last: " + uptime.last_downtime } else { none })
   ]
   v(0.3em)
   progress-bar(uptime.uptime_percentage)
