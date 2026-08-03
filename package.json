@@ -16,7 +16,7 @@
     "resetdb": "php artisan optimize:clear && php artisan migrate:fresh --seed && php artisan system:monitor && npm run loadtestfactory",
     "compileagent:go": "powershell -ExecutionPolicy Bypass -File scripts/build-agent.ps1",
     "compileagent": "npm run compileagent:go",
-    "loadtestfactory": "type database\\seeders\\load-test-factory.php | php artisan tinker"
+    "loadtestfactory": "php artisan tinker --execute=\"require 'database/seeders/load-test-factory.php';\""
   },
   "workspaces": [
     "frontend"

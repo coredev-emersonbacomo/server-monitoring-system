@@ -60,10 +60,6 @@
 }
 
 #let status-pill(status) = {
-  let bg = if status == "online" or status == "healthy" { rgb("#e8f5e9") }
-    else if status == "warning" { rgb("#fff3e0") }
-    else if status == "offline" or status == "critical" or status == "down" { rgb("#ffebee") }
-    else { rgb("#f5f5f5") }
   let fg = if status == "online" or status == "healthy" { green }
     else if status == "warning" { amber }
     else if status == "offline" or status == "critical" or status == "down" { red }
@@ -75,13 +71,8 @@
     else if status == "down" { "Down" }
     else if status == "healthy" { "Healthy" }
     else { str(status) }
-  block(
-    fill: bg,
-    inset: (x: 8pt, y: 3pt),
-    radius: 3pt,
-    width: auto,
-  )[
-    #set text(size: 10pt, weight: "bold", fill: fg)
+
+  text(size: 8pt, fill: fg)[
     #label
   ]
 }
@@ -204,7 +195,7 @@
   "₱" + str(calc.round(value, digits: 2))
 }
 #let fmt-date(iso) = {
-  iso.split("T").at(0)
+  if iso == none or iso == "" { "—" } else { iso.split("T").at(0) }
 }
 
 #let page-header(title) = context {

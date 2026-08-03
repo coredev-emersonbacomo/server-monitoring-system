@@ -1,3 +1,5 @@
+<?php
+//
 // Initialize test data
 User::factory(25)->create();
 Client::factory(10)->create();
