@@ -628,7 +628,7 @@ export default function LogsPage() {
         <PageLayout>
             <IndexHeader icon={ScrollText} title="Logs" />
 
-            <main className="py-6 w-full flex-1 min-h-0">
+            <main className="w-full flex-1 min-h-0">
                 <Tab>
                     <Tab.Item icon={Terminal} title="Activity">
                         <LogTable

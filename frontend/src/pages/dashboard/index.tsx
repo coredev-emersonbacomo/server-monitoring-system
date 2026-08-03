@@ -18,27 +18,24 @@ import {
     ScrollText,
     X,
     Link2Off,
-    Cpu,
-    Database,
-    HardDrive,
     Clock,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { useDashboardStats } from "@/hooks/useDashboard";
+import { useDashboardStats } from "./hooks/useDashboard";
 import {
     useDashboardActions,
     useCompletedActions,
     useClaimAction,
     useUpdateActionStatus,
     type ActionItem,
-} from "@/hooks/useDashboardActions";
+} from "./hooks/useDashboardActions";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { getEchoInstance } from "@/hooks/useServerSocket";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import IndexHeader from "@/components/IndexHeader";
-import { DashboardChartsSection } from "@/components/dashboard/DashboardMetricChart";
+import { DashboardChartsSection } from "./components/DashboardMetricChart";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -245,7 +242,7 @@ export default function Dashboard() {
         <PageLayout>
             <IndexHeader icon={Activity} title="Dashboard" />
 
-            <main className="py-6 w-full flex-1 min-h-0">
+            <main className="w-full flex-1 min-h-0">
                 {statsError && (
                     <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/10 p-4 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-2 text-sm text-destructive">
