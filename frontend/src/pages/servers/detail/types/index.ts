@@ -6,7 +6,7 @@ export const serverInfoSchema = z.object({
     monthly_cost: z.union([z.string(), z.number()]).transform((val) => {
         if (val === "" || val === undefined || val === null) return 0;
         const num = Number(val);
-        return isNaN(num) ? 0 : Math.max(0, num);
+        return isNaN(num) ? 0 : Math.min(999999999, Math.max(0, num));
     }),
 });
 

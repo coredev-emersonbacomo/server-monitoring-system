@@ -73,7 +73,7 @@ function getEcho(): Echo<"reverb"> {
 
 export function useServerSocket(
     serverUuid: string,
-    onStatus: (status: WsStatus) => void,
+    onStatus?: (status: WsStatus) => void,
     onAgentUninstalled?: () => void,
 ) {
     const queryClient = useQueryClient();
