@@ -1,5 +1,14 @@
 import { Link } from "react-router-dom";
-import { Monitor, Network, Globe, Cpu, MemoryStick, Wifi, WifiOff, AlertTriangle, Trash2 } from "lucide-react";
+import {
+    Monitor,
+    Globe,
+    Cpu,
+    MemoryStick,
+    Wifi,
+    WifiOff,
+    AlertTriangle,
+    Trash2,
+} from "lucide-react";
 import type { ServerData } from "@/types/models";
 
 const STATUS_CONFIG = {
@@ -59,8 +68,8 @@ export default function ServerCard({ server }: { server: ServerData }) {
     const statusKey: StatusKey = server.agent_deleted
         ? "pending_deletion"
         : (server.status as StatusKey) in STATUS_CONFIG
-            ? (server.status as StatusKey)
-            : "pending_installation";
+          ? (server.status as StatusKey)
+          : "pending_installation";
     const { label, icon: StatusIcon, color, bg } = STATUS_CONFIG[statusKey];
 
     return (
@@ -72,12 +81,13 @@ export default function ServerCard({ server }: { server: ServerData }) {
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                     <Monitor className="w-5 h-5 text-primary" />
                 </div>
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${bg} ${color}`}>
+                <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${bg} ${color}`}
+                >
                     <StatusIcon size={10} />
                     {label}
                 </span>
             </div>
-
 
             <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">

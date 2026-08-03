@@ -33,14 +33,18 @@ First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 Event: <t:{runtime.eventTimestampUnix}:f>
 First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 <email-button url="{server.url}">View Server Details</email-button>']],
-            ['id' => 'discord_30',       'type' => 'notification','position' => ['x' => 860,  'y' => 460], 'settings' => ['label' => 'Discord 30s','channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '<discord-title>Server Alert ({runtime.severity})</discord-title>
-:rotating_light: [{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!
+            ['id' => 'discord_30',       'type' => 'notification','position' => ['x' => 860,  'y' => 460], 'settings' => ['label' => 'Discord 30s','channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '{runtime.discordRoleCallout} [{server.client.name}] {server.name}\'s {runtime.metricName} ({runtime.severity})
+<discord-embed>
+<discord-embed-title>:rotating_light: Server Alert ({runtime.severity})</discord-embed-title>
+
+<b>[{server.client.name}] {server.name}\'s {runtime.metricName}</b> has been above 85% for {runtime.sustainValue}!
 
 Event: <t:{runtime.eventTimestampUnix}:f>
 First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 <if-repeat>
 <discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>
 </if-repeat>
+</discord-embed>
 <discord-button url="{server.url}">View Server Details</discord-button>']],
 
             // ── Bottom section: Server Status Offline ────────────────────
@@ -54,14 +58,18 @@ First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 <email-button url="{server.url}">View Server Details</email-button>']],
 
             ['id' => 'check_after_10m',  'type' => 'check_after', 'position' => ['x' => -60,  'y' => 670], 'settings' => ['label' => 'Check After 10s', 'duration' => '10000', 'repeat_interval' => '10000', 'repeat_max_repeats' => -1]],
-            ['id' => 'discord_offline',  'type' => 'notification','position' => ['x' => 200,  'y' => 670], 'settings' => ['label' => 'Discord Offline', 'channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '<discord-title>Server Alert ({runtime.severity})</discord-title>
-:rotating_light: [{server.client.name}] {server.name} has been offline for {runtime.offlineDuration}
+            ['id' => 'discord_offline',  'type' => 'notification','position' => ['x' => 200,  'y' => 670], 'settings' => ['label' => 'Discord Offline', 'channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '{runtime.discordRoleCallout} [{server.client.name}] {server.name} — ({runtime.severity})
+<discord-embed>
+<discord-embed-title>:rotating_light: Server Alert ({runtime.severity})</discord-embed-title>
+
+<b>[{server.client.name}] {server.name}</b> has been offline for {runtime.offlineDuration}
 
 Event: <t:{runtime.eventTimestampUnix}:f>
 First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 <if-repeat>
 <discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>
 </if-repeat>
+</discord-embed>
 <discord-button url="{server.url}">View Server Details</discord-button>']],
         ];
 

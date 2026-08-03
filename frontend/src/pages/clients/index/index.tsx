@@ -109,7 +109,6 @@ function ClientCard({
                         <DropdownMenuContent align="end" sideOffset={4}>
                             <DropdownMenuItem
                                 onClick={(e) => {
-                                    e.preventDefault();
                                     e.stopPropagation();
                                     onDelete(client);
                                 }}

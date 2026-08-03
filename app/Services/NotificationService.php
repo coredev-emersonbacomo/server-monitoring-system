@@ -2,37 +2,21 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Discord\Discord;
-use Discord\Builders\MessageBuilder;
-use Discord\Builders\Components\ActionRow;
-use Discord\Builders\Components\Button;
-use Discord\Parts\Embed\Embed;
 
 class NotificationService
 {
-    /**
-     * Send an alert to a Discord text channel using an embed card with link buttons.
-     *
-     * @param string $tokenId The Bot Token
-     * @param string $roleId The Discord Role ID to mention
-     * @param string $message The message content
-     * @param string $channelId The Channel ID to send the message to
-     * @param string $title The embed title
-     * @param string|null $url Optional URL link for View Server button
-     * @param string $color Hex color for the embed sidebar (default: red)
-     * @param string|null $dashboardUrl Optional URL link for Go to Dashboard button
-     */
     private function parseDiscordButton(string $message): array
     {
         $buttonUrl = null;
-        $buttonLabel = 'View Server Details';
+        $buttonLabel = 'Button';
         $cleaned = $message;
 
         if (preg_match('/<discord-button(?:\s+(?:href|url|detailsUrl)="([^"]*)")?\s*>([^<]*)<\/discord-button>/', $message, $matches)) {
             $buttonUrl = !empty($matches[1]) ? $matches[1] : null;
-            $buttonLabel = !empty($matches[2]) ? $matches[2] : 'View Server Details';
+            $buttonLabel = !empty($matches[2]) ? $matches[2] : 'Button';
             $cleaned = trim(str_replace($matches[0], '', $message));
         }
 
@@ -52,17 +36,30 @@ class NotificationService
         return [$cleaned, $footer];
     }
 
-    private function parseDiscordTitle(string $message): array
+    private function parseDiscordEmbedTitle(string $message): array
     {
         $title = '';
         $cleaned = $message;
 
-        if (preg_match('/<discord-title>([^<]*)<\/discord-title>/', $message, $matches)) {
+        if (preg_match('/<discord-embed-title>([^<]*)<\/discord-embed-title>/', $message, $matches)) {
             $title = $matches[1];
             $cleaned = trim(str_replace($matches[0], '', $message));
         }
 
         return [$cleaned, $title];
+    }
+
+    private function parseDiscordEmbed(string $message): array
+    {
+        $embedInner = null;
+        $cleaned = $message;
+
+        if (preg_match('/<discord-embed\s*>(.*?)<\/discord-embed>/s', $message, $matches)) {
+            $embedInner = trim($matches[1]);
+            $cleaned = trim(preg_replace('/<discord-embed\s*>(.*?)<\/discord-embed>/s', '', $message));
+        }
+
+        return [$cleaned, $embedInner];
     }
 
     private function parseEmailButton(string $message): array
@@ -80,98 +77,94 @@ class NotificationService
         return [$cleaned, $buttonUrl, $buttonLabel];
     }
 
+    /**
+     * Send an alert to a Discord text channel using an embed card with link buttons.
+     *
+     * @param string $tokenId The Bot Token
+     * @param string $roleId The Discord Role ID to mention
+     * @param string $message The message content
+     * @param string $channelId The Channel ID to send the message to
+     * @param string $color Hex color for the embed sidebar (default: red)
+     */
     public function sendDiscordAlert(
         string $tokenId,
         string $roleId,
         string $message,
         string $channelId,
-        string $title = 'Server Monitor Alert',
-        ?string $url = null,
         string $color = '#ED4245',
-        ?string $dashboardUrl = null,
     ) {
-        [$description, $buttonUrl, $buttonLabel] = $this->parseDiscordButton($message);
-        [$description, $footerContent] = $this->parseDiscordFooter($description);
-        [$description, $embedTitle] = $this->parseDiscordTitle($description);
-        $buttonUrl = $buttonUrl ?? $url;
+        [$message, $buttonUrl, $buttonLabel] = $this->parseDiscordButton($message);
+        [$outerContent, $embedInner] = $this->parseDiscordEmbed($message);
 
-        $discord = new Discord([
-            'token' => $tokenId,
-        ]);
+        if ($embedInner !== null) {
+            [$embedInner, $footerContent] = $this->parseDiscordFooter($embedInner);
+            [$embedInner, $embedTitle] = $this->parseDiscordEmbedTitle($embedInner);
+            $content = $outerContent;
+            $description = $embedInner;
+        } else {
+            [$outerContent, $footerContent] = $this->parseDiscordFooter($outerContent);
+            [$outerContent, $embedTitle] = $this->parseDiscordEmbedTitle($outerContent);
+            $lines = preg_split('/\r?\n/', trim($outerContent), 2);
+            $content = trim($lines[0]);
+            $description = isset($lines[1]) ? trim($lines[1]) : '';
+        }
 
         $footerText = $footerContent ?? 'Server Monitoring System';
 
-        $discord->on('ready', function (Discord $discord) use ($roleId, $description, $channelId, $embedTitle, $buttonUrl, $buttonLabel, $color, $footerText) {
-            $channel = $discord->getChannel($channelId);
+        $payload = [];
+        if ($content !== '') {
+            $payload['content'] = "\u{200B}\n" . $content;
+        }
+        if ($roleId) {
+            $payload['allowed_mentions'] = ['roles' => [$roleId]];
+        }
 
-            if ($channel) {
-                $builder = MessageBuilder::new();
-
-                if ($description !== '') {
-                    $embed = new Embed($discord);
-                    if ($embedTitle !== '') {
-                        $embed->setTitle($embedTitle);
-                    }
-                    $embed->setDescription($description);
-                    $embed->setColor($color);
-                    $embed->setTimestamp(now()->timestamp);
-                    $embed->setFooter($footerText);
-                    $builder->addEmbed($embed);
-                }
-
-                if ($buttonUrl) {
-                    $button = Button::new(Button::STYLE_LINK)
-                        ->setLabel($buttonLabel)
-                        ->setUrl($buttonUrl);
-
-                    $actionRow = ActionRow::new()
-                        ->addComponent($button);
-
-                    $builder->addComponent($actionRow);
-                }
-
-                $actionRow = ActionRow::new();
-
-                if ($url) {
-                    $actionRow->addComponent(
-                        Button::new(Button::STYLE_LINK)
-                            ->setLabel('View Server')
-                            ->setUrl($url)
-                            ->setEmoji('🔍')
-                    );
-                }
-
-                $dashUrl = $dashboardUrl ?? url('/dashboard');
-                $actionRow->addComponent(
-                    Button::new(Button::STYLE_LINK)
-                        ->setLabel('Go to Dashboard')
-                        ->setUrl($dashUrl)
-                        ->setEmoji('📊')
-                );
-
-                $builder->addComponent($actionRow);
-
-                if ($roleId) {
-                    $builder->setContent("<@&{$roleId}>");
-                    $builder->setAllowedMentions(['roles' => [$roleId]]);
-                }
-
-                $channel->sendMessage($builder)->then(function () use ($discord) {
-                    $discord->close();
-                }, function (\Throwable $e) use ($discord) {
-                    Log::error('[discord] Failed to send message', [
-                        'channel_id' => $channelId,
-                        'error' => $e->getMessage(),
-                    ]);
-                    $discord->close();
-                });
-            } else {
-                Log::error('[discord] Channel not found', ['channel_id' => $channelId]);
-                $discord->close();
+        if ($description !== '' || $embedTitle !== '') {
+            $embed = [
+                'color'     => hexdec(ltrim($color, '#')),
+                'timestamp' => now()->toIso8601String(),
+                'footer'    => ['text' => $footerText],
+            ];
+            if ($description !== '') {
+                $embed['description'] = "\u{200B}\n" . $description . "\n\u{200B}";
             }
-        });
+            if ($embedTitle !== '') {
+                $embed['title'] = $embedTitle;
+            }
+            $payload['embeds'] = [$embed];
+        }
 
-        $discord->run();
+        $components = [];
+        if ($buttonUrl) {
+            $components[] = [
+                'type'       => 1,
+                'components' => [[
+                    'type'  => 2,
+                    'style' => 5,
+                    'label' => $buttonLabel,
+                    'url'   => $buttonUrl,
+                ]],
+            ];
+        }
+        $payload['components'] = $components;
+
+        $response = Http::timeout(15)
+            ->withHeaders([
+                'Authorization' => 'Bot ' . $tokenId,
+                'Content-Type'  => 'application/json',
+            ])
+            ->post("https://discord.com/api/v10/channels/{$channelId}/messages", $payload);
+
+        if (!$response->successful()) {
+            Log::error('[discord] Failed to send message', [
+                'channel_id' => $channelId,
+                'status'     => $response->status(),
+                'error'      => $response->body(),
+            ]);
+            return false;
+        }
+
+        return true;
     }
 
     /**

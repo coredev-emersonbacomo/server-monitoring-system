@@ -48,7 +48,6 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                         <DropdownMenuContent align="end" sideOffset={4}>
                             <DropdownMenuItem
                                 onClick={(e) => {
-                                    e.preventDefault();
                                     e.stopPropagation();
                                     onDelete(uuid);
                                 }}

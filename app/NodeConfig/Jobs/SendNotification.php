@@ -4,6 +4,7 @@ namespace App\NodeConfig\Jobs;
 
 use App\Models\Server;
 use App\Models\ServerHealthLog;
+use App\Models\CustomActivityLog;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
@@ -38,6 +39,7 @@ class SendNotification implements ShouldQueue
         $context = $this->action['upstream_context'] ?? [];
 
         $severity = $settings['severity'] ?? 'warning';
+        $channel = $settings['channel'] ?? 'email';
 
         $firstTriggerTs = isset($context['first_trigger_timestamp'])
             ? Carbon::parse($context['first_trigger_timestamp'])->format('Y-m-d H:i:s')
@@ -73,6 +75,9 @@ class SendNotification implements ShouldQueue
                     'countOfMessage' => $repeatCount,
                     'max' => (int) ($context['repeat_max'] ?? -1) === -1 ? 'inf' : (int) ($context['repeat_max'] ?? -1),
                 ],
+                'discordRoleCallout' => $channel === 'discord'
+                    ? (!empty($settings['role_id']) ? "<@&{$settings['role_id']}>" : '')
+                    : '',
             ],
         ];
 
@@ -93,7 +98,11 @@ class SendNotification implements ShouldQueue
         }
 
         $message = trim($message);
-        $channel = $settings['channel'] ?? 'email';
+
+        // Discord renders Markdown, not HTML — convert <b> bold tags to **.
+        if ($channel === 'discord') {
+            $message = str_replace(['<b>', '</b>'], '**', $message);
+        }
 
         if ($message === '' && $channel !== 'discord') {
             return;
@@ -184,6 +193,15 @@ class SendNotification implements ShouldQueue
         $channelId = $settings['channel_id'] ?? null;
         $roleId = $settings['role_id'] ?? null;
 
+        if (filter_var(env('MUTE_DISCORD', false), FILTER_VALIDATE_BOOL)) {
+            Log::info('[server-events] Discord muted (MUTE_DISCORD) — would post', [
+                'bot_token_configured' => !empty($botToken),
+                'channel_id' => $channelId,
+                'message' => $message,
+            ]);
+            return true;
+        }
+
         if (!$botToken || !$channelId) {
             Log::warning('[server-events] Discord notification skipped: missing bot_token or channel_id', [
                 'bot_token_configured' => !empty($botToken),
@@ -192,8 +210,7 @@ class SendNotification implements ShouldQueue
             return false;
         }
 
-        $notifications->sendDiscordAlert($botToken, $roleId ?? '', $message, $channelId, '', $url);
-        return true;
+        return $notifications->sendDiscordAlert($botToken, $roleId ?? '', $message, $channelId);
     }
 
     private function resolveTemplates(string $text, array $data): string
