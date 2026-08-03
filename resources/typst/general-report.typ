@@ -35,8 +35,7 @@
 ))
 
 // ── Server Performance ───────────────────────────────────────────────────────
-#let tops = d.at("top_servers", default: ())
-#let worsts = d.at("worst_servers", default: ())
+#let attention = d.at("need_attention_servers", default: ())
 #let sla_servers = d.at("sla_servers", default: ())
 #let srv_per_client = d.at("servers_per_client", default: ())
 #let recent_clients = d.at("recent_clients", default: ())
@@ -44,29 +43,15 @@
 #let insights = d.at("insights", default: ())
 #let charts = d.at("charts", default: none)
 
-#if tops.len() > 0 and worsts.len() > 0 {
+#if attention.len() > 0 {
   section-title("Server Performance")
-  grid(columns: (1fr, 1fr), gutter: 10pt)[
+  grid(columns: (1fr), gutter: 10pt)[
     #block[
-      #text(size: 8.5pt, weight: "bold", fill: green)[Top Performing]
+      #text(size: 8.5pt, weight: "bold", fill: red)[Need Attention]
       #v(0.3em)
       #sub-table(
         headers: ("Server", "CPU", "Memory", "Status", "Uptime"),
-        rows: tops.map(s => (
-          s.name,
-          pct(s.cpu_usage),
-          pct(s.memory_usage),
-          status-pill(s.status),
-          pct(s.uptime_percentage),
-        )),
-      )
-    ]
-    #block[
-      #text(size: 8.5pt, weight: "bold", fill: red)[Worst Performing]
-      #v(0.3em)
-      #sub-table(
-        headers: ("Server", "CPU", "Memory", "Status", "Uptime"),
-        rows: worsts.map(s => (
+        rows: attention.map(s => (
           s.name,
           pct(s.cpu_usage),
           pct(s.memory_usage),
