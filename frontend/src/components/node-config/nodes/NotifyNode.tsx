@@ -108,7 +108,7 @@ export const NotifyNode = memo(({ id, data, type, selected }: NodeProps) => {
                         onClick={(e) => e.stopPropagation()}
                         onPointerDown={(e) => e.stopPropagation()}
                         rows={2}
-                        label="Subj"
+                        label="Subject"
                     />
                 )}
 
@@ -170,7 +170,7 @@ export const NotifyNode = memo(({ id, data, type, selected }: NodeProps) => {
                     onPointerDown={(e) => e.stopPropagation()}
                     channel={channel}
                     rows={2}
-                    label="Msg"
+                    label="Message"
                 />
             </div>
         </BaseNode>
