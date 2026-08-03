@@ -32,7 +32,7 @@
 
 // ── KPI Summary ──────────────────────────────────────────────────────────────
 #section-title("KPI Summary")
-#kpi-grid((
+#kpi-table((
   (label: "Total Servers", value: str(d.at("total_servers", default: 0))),
   (label: "Online",        value: text(fill: green, weight: "bold")[#str(d.at("online_servers", default: 0))]),
   (label: "Offline",       value: text(fill: red, weight: "bold")[#str(d.at("offline_servers", default: 0))]),
