@@ -1,33 +1,38 @@
-import { useEffect, useState } from "react";
-import { mockGetClientList } from "./client-report/mockClientList";
-import { mockGetServerList } from "./server-report/mockServerList";
+import { useState } from "react";
+import { useClients } from "@/hooks/useClients"; // Adjust import paths
+import { useServers } from "@/hooks/useServers";
 
 type EntityType = "clients" | "servers";
-type PickerItem = any;
 
 interface EntityPickerModalProps {
     type: EntityType;
     onSelect: (uuids: string[]) => void;
     onClose: () => void;
+    queryParams?: {
+        exclude_user_uuid?: string;
+        user_uuid?: string;
+        available_only?: boolean;
+    };
 }
 
-export function EntityPickerModal({ type, onSelect, onClose }: EntityPickerModalProps) {
-    const [items, setItems] = useState<PickerItem[]>([]);
-    const [loading, setLoading] = useState(true);
+export function EntityPickerModal({
+    type,
+    onSelect,
+    onClose,
+    queryParams,
+}: EntityPickerModalProps) {
     const [search, setSearch] = useState("");
     const [selected, setSelected] = useState<Set<string>>(new Set());
 
-    useEffect(() => {
-        setLoading(true);
-        const fetcher = type === "servers" ? mockGetServerList : mockGetClientList;
-        fetcher().then((data) => {
-            setItems(data);
-            setLoading(false);
-        });
-    }, [type]);
+    // Fetch lists conditionally based on the active modal type
+    const clientsQuery = useClients(type === "clients" ? queryParams : undefined);
+    const serversQuery = useServers();
 
-    const filtered = items.filter((i) =>
-        i.name.toLowerCase().includes(search.toLowerCase())
+    const activeQuery = type === "clients" ? clientsQuery : serversQuery;
+    const { data: items = [], isLoading, error } = activeQuery;
+
+    const filtered = items.filter((item: any) =>
+        item.name?.toLowerCase().includes(search.toLowerCase())
     );
 
     const toggle = (uuid: string) => {
@@ -46,7 +51,7 @@ export function EntityPickerModal({ type, onSelect, onClose }: EntityPickerModal
         if (selected.size === filtered.length) {
             setSelected(new Set());
         } else {
-            setSelected(new Set(filtered.map((i) => i.uuid)));
+            setSelected(new Set(filtered.map((item: any) => item.uuid)));
         }
     };
 
@@ -84,7 +89,7 @@ export function EntityPickerModal({ type, onSelect, onClose }: EntityPickerModal
                     className="w-full mb-3 px-3 py-2.5 rounded-lg border border-border bg-sidebar-hover text-sm outline-none"
                 />
 
-                {!loading && filtered.length > 0 && (
+                {!isLoading && !error && filtered.length > 0 && (
                     <button
                         onClick={toggleAll}
                         className="mb-2 text-xs text-muted-foreground hover:text-foreground w-fit"
@@ -94,20 +99,27 @@ export function EntityPickerModal({ type, onSelect, onClose }: EntityPickerModal
                 )}
 
                 <div className="max-h-[24rem] overflow-y-auto flex flex-col gap-1">
-                    {loading && (
+                    {isLoading && (
                         <p className="text-sm text-muted-foreground py-8 text-center">
                             Loading...
                         </p>
                     )}
 
-                    {!loading && filtered.length === 0 && (
+                    {error && (
+                        <p className="text-sm text-destructive py-8 text-center">
+                            Failed to load {type}.
+                        </p>
+                    )}
+
+                    {!isLoading && !error && filtered.length === 0 && (
                         <p className="text-sm text-muted-foreground py-8 text-center">
                             No {type} found.
                         </p>
                     )}
 
-                    {!loading &&
-                        filtered.map((item) => {
+                    {!isLoading &&
+                        !error &&
+                        filtered.map((item: any) => {
                             const isChecked = selected.has(item.uuid);
                             return (
                                 <label
@@ -128,13 +140,10 @@ export function EntityPickerModal({ type, onSelect, onClose }: EntityPickerModal
                                             "status" in item && item.status === "online"
                                                 ? "text-xs text-green-500"
                                                 : "status" in item
-                                                    ? "text-xs text-red-500"
-                                                    : "text-xs text-muted-foreground"
+                                                ? "text-xs text-red-500"
+                                                : "text-xs text-muted-foreground"
                                         }
                                     >
-                                        {"status" in item
-                                            ? item.status
-                                            : `${(item as any).total_servers} servers`}
                                     </span>
                                 </label>
                             );

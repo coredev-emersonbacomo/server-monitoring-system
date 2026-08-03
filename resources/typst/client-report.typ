@@ -53,7 +53,7 @@
       if s.at("memory_usage", default: none) != none { pct(s.memory_usage) } else { "—" },
       if s.at("disk_usage", default: none) != none { pct(s.disk_usage) } else { "—" },
       if s.at("uptime_percentage", default: none) != none { pct(s.uptime_percentage) } else { "—" },
-      if s.at("last_seen", default: "") != "" { fmt-date(s.last_seen) } else { "—" },
+      if s.at("last_seen", default: none) != none { fmt-date(s.last_seen) } else { "—" },
     )),
   )
 }
