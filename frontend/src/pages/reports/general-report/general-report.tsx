@@ -6,7 +6,8 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from "recharts";
-import { mockGetGeneralReport } from "./mockGeneralReport";
+import jwtClient from "@/api/jwtClient";
+import type { GeneralReport } from "../reportTypes";
 import { ReportHeader } from "../ReportHeader";
 
 const CLIENT_COLORS = [
@@ -20,7 +21,10 @@ const BORDER = { border: "1px solid #d1d5db" };
 export default function GeneralReport() {
     const { data: report, isLoading, error } = useQuery({
         queryKey: ["general-report"],
-        queryFn: mockGetGeneralReport, // TODO: swap to real API
+        queryFn: async () => {
+            const { data } = await jwtClient.get("/v1/reports/general");
+            return data as GeneralReport;
+        },
     });
 
     if (isLoading) return <div className="p-8">Loading global report...</div>;

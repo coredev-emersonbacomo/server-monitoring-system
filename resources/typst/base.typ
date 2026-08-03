@@ -31,39 +31,32 @@
   ]
 }
 
-#let kpi-card(label, value, note: none) = {
-  let c = if note != none { bg-light } else { bg-light }
-  block(
-    width: 100%,
-    fill: c,
-    inset: (x: 10pt, y: 8pt),
-    radius: 4pt,
+#let kpi-table(items) = {
+  table(
+    columns: (1fr, 2.5fr),
     stroke: 0.3pt + border-clr,
-  )[
-    #text(size: 8pt, fill: text-muted, weight: "medium")[#label]
-    #v(0.2em)
-    #text(size: 13pt, weight: "bold", fill: text-dark)[#value]
-    #if note != none {
-      v(0.1em)
-      text(size: 7.5pt, fill: text-muted)[#note]
-    }
-  ]
-}
-
-#let kpi-grid(items, columns: 3) = {
-  let cols = (1fr,) * columns
-  grid(
-    columns: cols,
-    gutter: 8pt,
-    ..items.map(i => kpi-card(i.at("label"), i.at("value"), note: i.at("note", default: none))),
+    inset: (x: 8pt, y: 7pt),
+    align: (left + horizon, left + horizon),
+    ..items.map(item => (
+      table.cell(fill: bg-light)[
+        #set text(size: 8.5pt, weight: "bold", fill: text-dark)
+        #item.at("label")
+      ],
+      table.cell()[
+        #set text(size: 9pt, fill: text-dark)
+        #let val = item.at("value")
+        #let note = item.at("note", default: none)
+        #val
+        #if note != none [
+          #h(0.4em)
+          #text(size: 8pt, fill: text-muted)[(#note)]
+        ]
+      ]
+    )).flatten()
   )
 }
 
 #let status-pill(status) = {
-  let bg = if status == "online" or status == "healthy" { rgb("#e8f5e9") }
-    else if status == "warning" { rgb("#fff3e0") }
-    else if status == "offline" or status == "critical" or status == "down" { rgb("#ffebee") }
-    else { rgb("#f5f5f5") }
   let fg = if status == "online" or status == "healthy" { green }
     else if status == "warning" { amber }
     else if status == "offline" or status == "critical" or status == "down" { red }
@@ -75,13 +68,8 @@
     else if status == "down" { "Down" }
     else if status == "healthy" { "Healthy" }
     else { str(status) }
-  block(
-    fill: bg,
-    inset: (x: 8pt, y: 3pt),
-    radius: 3pt,
-    width: auto,
-  )[
-    #set text(size: 10pt, weight: "bold", fill: fg)
+
+  text(size: 8pt, fill: fg)[
     #label
   ]
 }
@@ -204,7 +192,7 @@
   "₱" + str(calc.round(value, digits: 2))
 }
 #let fmt-date(iso) = {
-  iso.split("T").at(0)
+  if iso == none or iso == "" { "—" } else { iso.split("T").at(0) }
 }
 
 #let page-header(title) = context {

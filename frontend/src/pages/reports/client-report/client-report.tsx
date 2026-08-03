@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-import { mockGetClientReport } from "./mockClientReport";
+import jwtClient from "@/api/jwtClient";
+import type { ClientReport } from "../reportTypes";
 import { ReportHeader } from "../ReportHeader";
 
 const BORDER = { border: "1px solid #d1d5db" };
@@ -10,7 +11,10 @@ export default function ClientReportPage({ uuidOverride }: { uuidOverride?: stri
 
     const { data: report, isLoading, error } = useQuery({
         queryKey: ["client-report", uuid],
-        queryFn: () => mockGetClientReport(uuid!), // TODO: swap to real API
+        queryFn: async () => {
+            const { data } = await jwtClient.get(`/v1/reports/client/${uuid}`);
+            return data as ClientReport;
+        },
         enabled: !!uuid,
     });
 

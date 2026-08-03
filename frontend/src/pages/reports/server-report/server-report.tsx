@@ -2,7 +2,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 
-import { mockGetServerReport } from "./mockServerReport";
+import jwtClient from "@/api/jwtClient";
+import type { ServerReport } from "../reportTypes";
 import { ReportHeader } from "../ReportHeader";
 export default function ServerReportPage({ uuidOverride }: { uuidOverride?: string } = {}) {
     const { uuid: paramUuid } = useParams<{ uuid: string }>();
@@ -10,7 +11,12 @@ export default function ServerReportPage({ uuidOverride }: { uuidOverride?: stri
 
     const { data: report, isLoading, error } = useQuery({
         queryKey: ["server-report", uuid],
-        queryFn: () => mockGetServerReport(uuid!),
+        queryFn: async () => {
+            const { data } = await jwtClient.get(`/v1/servers/${uuid}/report`, {
+                params: { hours: 24 },
+            });
+            return data as ServerReport;
+        },
         enabled: !!uuid,
         refetchInterval: 30_000, // keep metrics fresh
     });
