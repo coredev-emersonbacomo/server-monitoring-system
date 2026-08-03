@@ -51,11 +51,27 @@
 }
 
 #let kpi-grid(items, columns: 3) = {
-  let cols = (1fr,) * columns
-  grid(
-    columns: cols,
-    gutter: 8pt,
-    ..items.map(i => kpi-card(i.at("label"), i.at("value"), note: i.at("note", default: none))),
+  table(
+    columns: (1fr, 2.5fr),
+    stroke: 0.3pt + border-clr,
+    inset: (x: 8pt, y: 7pt),
+    align: (left + horizon, left + horizon),
+    ..items.map(item => (
+      table.cell(fill: bg-light)[
+        #set text(size: 8.5pt, weight: "bold", fill: text-dark)
+        #item.at("label")
+      ],
+      table.cell()[
+        #set text(size: 9pt, fill: text-dark)
+        #let val = item.at("value")
+        #let note = item.at("note", default: none)
+        #val
+        #if note != none [
+          #h(0.4em)
+          #text(size: 8pt, fill: text-muted)[(#note)]
+        ]
+      ]
+    )).flatten()
   )
 }
 
