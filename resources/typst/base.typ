@@ -31,26 +31,7 @@
   ]
 }
 
-#let kpi-card(label, value, note: none) = {
-  let c = if note != none { bg-light } else { bg-light }
-  block(
-    width: 100%,
-    fill: c,
-    inset: (x: 10pt, y: 8pt),
-    radius: 4pt,
-    stroke: 0.3pt + border-clr,
-  )[
-    #text(size: 8pt, fill: text-muted, weight: "medium")[#label]
-    #v(0.2em)
-    #text(size: 13pt, weight: "bold", fill: text-dark)[#value]
-    #if note != none {
-      v(0.1em)
-      text(size: 7.5pt, fill: text-muted)[#note]
-    }
-  ]
-}
-
-#let kpi-grid(items, columns: 3) = {
+#let kpi-table(items) = {
   table(
     columns: (1fr, 2.5fr),
     stroke: 0.3pt + border-clr,
