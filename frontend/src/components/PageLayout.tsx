@@ -9,7 +9,7 @@ export default function PageLayout({
     return (
         <div
             className={cn(
-                "flex-1 flex flex-col min-h-0 bg-background text-foreground",
+                "flex-1 flex gap-8 flex-col min-h-0 bg-background text-foreground",
                 className,
             )}
             {...props}
