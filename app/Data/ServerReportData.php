@@ -34,6 +34,13 @@ class ServerReportData extends Data
 
         /** @var array{type: string, description: string, created_at: string}[] */
         public array $activities = [],
+
+        /** @var float[] */
+        public array $cpu_7d = [],
+        /** @var float[] */
+        public array $memory_7d = [],
+        /** @var float[] */
+        public array $disk_7d = [],
     ) {
     }
 }
