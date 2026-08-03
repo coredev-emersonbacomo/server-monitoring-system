@@ -17,6 +17,7 @@ use App\Models\Server;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class ReportController extends Controller
@@ -224,6 +225,38 @@ class ReportController extends Controller
             'network_tbytes' => (int) ($u->network_tbytes ?? 0),
         ]));
 
+        // Fetch 7-day aggregated stats for CPU, Memory, Disk
+        try {
+            $aggData = DB::table('server_updates_agg_hour')
+                ->selectRaw('cpu, memory, disk')
+                ->where('server_id', $server->id)
+                ->where('timestamp', '>=', now()->subDays(7))
+                ->orderBy('timestamp')
+                ->get();
+        } catch (\Throwable $e) {
+            if (str_contains($e->getMessage(), 'has not been populated')) {
+                DB::statement("REFRESH MATERIALIZED VIEW server_updates_agg_hour");
+                $aggData = DB::table('server_updates_agg_hour')
+                    ->selectRaw('cpu, memory, disk')
+                    ->where('server_id', $server->id)
+                    ->where('timestamp', '>=', now()->subDays(7))
+                    ->orderBy('timestamp')
+                    ->get();
+            } else {
+                throw $e;
+            }
+        }
+
+        $cpu7d = [];
+        $memory7d = [];
+        $disk7d = [];
+
+        foreach ($aggData as $row) {
+            $cpu7d[] = round((float) $row->cpu, 1);
+            $memory7d[] = round((float) $row->memory, 1);
+            $disk7d[] = round((float) $row->disk, 1);
+        }
+
         return ServerReportData::from([
             'uuid'             => $server->uuid,
             'name'             => $server->name,
@@ -239,6 +272,9 @@ class ReportController extends Controller
             'last_seen'        => $lastSeenAt?->toIso8601String(),
             'metrics'          => $metrics,
             'uptime'           => $this->calcUptime($server, $updates, $hours),
+            'cpu_7d'           => $cpu7d,
+            'memory_7d'        => $memory7d,
+            'disk_7d'          => $disk7d,
         ]);
     }
 
