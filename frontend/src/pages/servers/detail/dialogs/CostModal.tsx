@@ -126,22 +126,15 @@ export function CostModal() {
                                     (initial?.net_cost ?? 0) <= 0
                                 }
                                 onClick={() =>
-                                    handleCostAdjustment("full_payment")
+                                    handleCostAdjustment(
+                                        "deduction",
+                                        initial?.net_cost ?? 0,
+                                    )
                                 }
                                 label={`Pay Full Due (₱${(
                                     initial?.net_cost ?? 0
                                 ).toFixed(2)})`}
                                 className="text-xs text-emerald-400 hover:text-emerald-300 border-emerald-500/30"
-                            />
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={submittingPayment}
-                                onClick={() =>
-                                    handleCostAdjustment("reset_usage")
-                                }
-                                label="Reset Balance Baseline"
-                                className="text-xs text-amber-500 hover:text-amber-400 border-amber-500/30"
                             />
                         </div>
                     </div>
@@ -173,36 +166,49 @@ export function CostModal() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/20 font-mono">
-                                        {costLogs.map((log: any) => (
-                                            <tr
-                                                key={log.id}
-                                                className="hover:bg-muted/10"
-                                            >
-                                                <td className="p-2.5 text-muted-foreground font-sans">
-                                                    {new Date(
-                                                        log.created_at,
-                                                    ).toLocaleString()}
-                                                </td>
-                                                <td className="p-2.5 capitalize font-sans text-foreground">
-                                                    {log.action_type?.replace(
-                                                        "_",
-                                                        " ",
-                                                    ) ?? "adjustment"}
-                                                </td>
-                                                <td className="p-2.5 text-right text-emerald-400">
-                                                    ₱
-                                                    {Number(
-                                                        log.amount ?? 0,
-                                                    ).toFixed(2)}
-                                                </td>
-                                                <td className="p-2.5 text-right text-muted-foreground">
-                                                    ₱
-                                                    {Number(
-                                                        log.balance_after ?? 0,
-                                                    ).toFixed(2)}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {costLogs.map((log: any) => {
+                                            const actionLabel =
+                                                log.action ??
+                                                log.action_type ??
+                                                "Adjustment";
+                                            const amountVal =
+                                                log.details?.payment_amount ??
+                                                log.details?.amount ??
+                                                log.details?.monthly_cost ??
+                                                log.amount ??
+                                                null;
+                                            const balanceVal =
+                                                log.details?.total_payments ??
+                                                log.details?.balance_after ??
+                                                log.balance_after ??
+                                                null;
+
+                                            return (
+                                                <tr
+                                                    key={log.id}
+                                                    className="hover:bg-muted/10"
+                                                >
+                                                    <td className="p-2.5 text-muted-foreground font-sans">
+                                                        {new Date(
+                                                            log.created_at,
+                                                        ).toLocaleString()}
+                                                    </td>
+                                                    <td className="p-2.5 capitalize font-sans text-foreground">
+                                                        {actionLabel}
+                                                    </td>
+                                                    <td className="p-2.5 text-right text-emerald-400">
+                                                        {amountVal !== null
+                                                            ? `₱${Number(amountVal).toFixed(2)}`
+                                                            : "—"}
+                                                    </td>
+                                                    <td className="p-2.5 text-right text-muted-foreground">
+                                                        {balanceVal !== null
+                                                            ? `₱${Number(balanceVal).toFixed(2)}`
+                                                            : "—"}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>

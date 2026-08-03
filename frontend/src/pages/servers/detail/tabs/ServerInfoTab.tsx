@@ -85,6 +85,17 @@ export function ServerInfoTab() {
                             toast.error("Failed to update server info.");
                         } else {
                             toast.success("Server info updated.");
+                            const newForm = {
+                                name: nameStr,
+                                description: descStr,
+                                monthly_cost: isNaN(costNum) ? 0 : Math.max(0, costNum),
+                            };
+                            store.setState({
+                                form: newForm,
+                                originalData: newForm,
+                                externalDirty: false,
+                                hasChanges: false,
+                            });
                             store.setMode("view");
                             queryClient.invalidateQueries({
                                 queryKey: ["server", initial.uuid],
