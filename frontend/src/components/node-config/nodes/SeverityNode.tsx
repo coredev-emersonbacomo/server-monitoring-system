@@ -45,7 +45,7 @@ export const SeverityNode = memo(({ id, data, type, selected }: NodeProps) => {
                         label={outDef?.label || 'Severity'} />
                 </div>
 
-                <SeverityNodeSocket nodeType={type} value={severity} onChange={handleChange} />
+                <SeverityNodeSocket nodeType={type} value={severity} onChange={handleChange} inputSocket={false} />
             </div>
         </BaseNode>
     );

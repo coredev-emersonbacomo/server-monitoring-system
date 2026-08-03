@@ -26,10 +26,44 @@ interface Props {
     nodeType: string;
     value: string;
     onChange: (value: string) => void;
+    inputSocket?: boolean;
 }
 
-export function SeverityNodeSocket({ nodeType, value, onChange }: Props) {
+export function SeverityNodeSocket({
+    nodeType,
+    value,
+    onChange,
+    inputSocket = true,
+}: Props) {
     const sevInDef = getInputType(nodeType, "severity");
+
+    const select = (
+        <Select value={value} onValueChange={onChange}>
+            <SelectTrigger
+                className="h-7 text-xs font-semibold"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+            >
+                <AlertTriangle
+                    size={12}
+                    style={{ color: COLORS[value] || COLORS.warning }}
+                    className="mr-1"
+                />
+                <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+                {OPTIONS.map((sv) => (
+                    <SelectItem key={sv.value} value={sv.value}>
+                        {sv.label}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
+
+    if (!inputSocket) {
+        return select;
+    }
 
     return (
         <NodeSocket
@@ -37,29 +71,7 @@ export function SeverityNodeSocket({ nodeType, value, onChange }: Props) {
             position={Position.Left}
             id="severity"
             def={sevInDef}
-            right={
-                <Select value={value} onValueChange={onChange}>
-                    <SelectTrigger
-                        className="h-7 text-xs font-semibold"
-                        onClick={(e) => e.stopPropagation()}
-                        onPointerDown={(e) => e.stopPropagation()}
-                    >
-                        <AlertTriangle
-                            size={12}
-                            style={{ color: COLORS[value] || COLORS.warning }}
-                            className="mr-1"
-                        />
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {OPTIONS.map((sv) => (
-                            <SelectItem key={sv.value} value={sv.value}>
-                                {sv.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            }
+            right={select}
         />
     );
 }

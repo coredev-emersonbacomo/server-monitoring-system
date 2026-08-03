@@ -20,7 +20,7 @@ import { ChartZoomProvider } from "@/contexts/ChartZoomContext";
 import { Button } from "@/components/ui/button";
 import { Tab } from "@/components/ui/tab";
 import type { ProvisionDetailData } from "@/types/models";
-import IndexHeader from "@/components/IndexHeader";
+import IndexHeader, { type Crumb } from "@/components/IndexHeader";
 import { useServerSocket } from "@/hooks/useServerSocket";
 import { toast } from "sonner";
 import { createFormStore, useForm } from "@/components/ui/form";
@@ -230,8 +230,34 @@ export default function ServerDetail() {
     };
 
     const regenerateProvisionToken = async () => {
-        setProvisionDetails(null);
-        await generateProvisionToken();
+        if (!initial?.client_uuid) {
+            toast.error("Missing client reference.");
+            return;
+        }
+        setGenerating(true);
+        try {
+            const { data, error } = await api.POST(
+                "/v1/servers/{uuid}/provision/regenerate",
+                {
+                    params: {
+                        path: {
+                            uuid: initial.uuid,
+                        },
+                    },
+                },
+            );
+            if (error) {
+                toast.error("Failed to regenerate token.");
+            } else {
+                setProvisionDetails(data as unknown as ProvisionDetailData);
+                toast.success("Provision token regenerated!");
+                queryClient.invalidateQueries({ queryKey: ["server", uuid] });
+            }
+        } catch {
+            toast.error("An error occurred.");
+        } finally {
+            setGenerating(false);
+        }
     };
 
     const copyToClipboard = (text: string, type: CopyKey) => {
@@ -377,6 +403,18 @@ export default function ServerDetail() {
     }
 
     const server: ServerDetailServer = initial;
+    const trail: Crumb[] = allClient
+        ? [{ label: "Servers", href: "/servers" }, { label: server.name }]
+        : [
+              { label: "Clients", href: "/clients" },
+              {
+                  label: server.client_name ?? "Client",
+                  href: server.client_uuid
+                      ? `/clients/${server.client_uuid}`
+                      : undefined,
+              },
+              { label: server.name },
+          ];
     const statusKey = server.agent_deleted
         ? "pending_deletion"
         : (server.status as keyof typeof STATUS_CONFIG) in STATUS_CONFIG
@@ -426,9 +464,10 @@ export default function ServerDetail() {
             <ChartZoomProvider>
                 <PageLayout title={`${server.name} Details`}>
                     <IndexHeader
+                        icon={Server}
                         title={server.name}
                         description={`Monitoring details and real-time metrics for ${server.name}`}
-                        icon={StatusIcon ?? Server}
+                        trail={trail}
                     />
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">

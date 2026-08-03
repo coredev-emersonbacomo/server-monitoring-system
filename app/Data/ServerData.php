@@ -97,7 +97,7 @@ class ServerData extends Data
                     token: $token,
                     expires_at: $activeToken->expires_at->copy()->utc()->toIso8601String(),
                     linux_command: 'sudo curl -fsSL ' . url('/install/linux') . ' | sudo bash -s -- ' . $token,
-                    windows_command: 'powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm \'' . url('/install/windows.ps1') . '\'))) -ProvisionToken \'' . $token . '\' -AppUrl \'' . url('/') . '\'"',
+                    windows_command: \App\Services\WindowsCommand::make('/install/windows.ps1', $token, rtrim(url('/'), '/')),
                 );
             }
         }
@@ -105,7 +105,7 @@ class ServerData extends Data
         $tokenModel = $server->provisionTokens()->latest()->first();
         $token = $tokenModel ? $tokenModel->token : '';
         $uninstallLinux = 'sudo curl -fsSL ' . url('/uninstall/linux') . ' | sudo bash -s -- ' . $token;
-        $uninstallWindows = 'powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm \'' . url('/uninstall/windows.ps1') . '\'))) -ProvisionToken \'' . $token . '\' -AppUrl \'' . url('/') . '\'"';
+        $uninstallWindows = \App\Services\WindowsCommand::make('/uninstall/windows.ps1', $token, rtrim(url('/'), '/'));
 
         $agent = $server->agent;
 

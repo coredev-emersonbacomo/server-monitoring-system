@@ -566,19 +566,20 @@ class NodeConfigEngine
                 'duration_ms'    => $s['timing']['duration_ms'] ?? 0,
             ], $subBranch['timing_chain']);
 
-            $lastStepMeta = end($chainStepsMeta);
+            $firstStepMeta = $chainStepsMeta[0] ?? [];
             $firstTriggerTimestamp = now()->toISOString();
             $timers[] = [
                 'node_config_id' => $config->id,
                 'node_id'        => $chainRootNodeId,
-                'delay_ms'       => $lastStepMeta['duration_ms'],
+                'delay_ms'       => $firstStepMeta['duration_ms'] ?? 0,
                 'context'        => array_merge(
                     $extraState,
                     $timingState,
                     $timingResult->timer->context,
                     [
-                        'chain_steps_meta'  => $chainStepsMeta,
-                        'first_trigger_timestamp' => $firstTriggerTimestamp,
+                        'chain_steps_meta'          => $chainStepsMeta,
+                        'first_trigger_timestamp'   => $firstTriggerTimestamp,
+                        'chain_step_index'          => 0,
                     ],
                 ),
             ];
@@ -588,10 +589,9 @@ class NodeConfigEngine
     }
 
     /**
-     * Fire the single chain timer. Evaluates all steps from least to most
-     * (shortest duration window to longest). If any step fails its DB check,
-     * the chain is cancelled and resets to idle. If all pass, the action fires
-     * and a repeat timer is scheduled if configured.
+     * Fire a chain timer. Non-repeat fires evaluate a single step (given by
+     * chain_step_index) and cascade to the next step; repeat fires only
+     * re-check the last step. If a step's DB check fails, the chain resets.
      */
     private function fireTimerForChain(
         NodeConfig $config,
@@ -600,12 +600,8 @@ class NodeConfigEngine
         array $context,
         ?int $serverId,
     ): array {
-        $timers          = [];
-        $actions         = [];
-        $chain           = $subBranch['timing_chain'];
-        $chainRootNodeId = $subBranch['timing_node_id'];
         $nodeMap         = $this->buildNodeMap($config->getParsedConfig()['nodes'] ?? []);
-        $timingHandler   = $this->registry->get('sustained');
+        $chainRootNodeId = $subBranch['timing_node_id'];
 
         // ── Guard: live condition must still hold ────────────────
         if (!$this->liveConditionStillHolds($branch, $serverId)) {
@@ -613,107 +609,228 @@ class NodeConfigEngine
                 'server_id' => $serverId,
                 'chain'     => $chainRootNodeId,
             ]);
-            NodeTaskScheduler::cancelByNode($chainRootNodeId, $branch['metric'], $serverId);
-            $this->saveState(
-                $config->id, $serverId, $chainRootNodeId,
-                new NodeResult(false, false, null, ['phase' => 'idle'], [], true),
-                $branch['metric'],
-            );
+            $this->resetChain($config, $branch, $serverId, $chainRootNodeId, true);
+            return ['timers' => [], 'actions' => []];
+        }
+
+        return ($context['repeat_fire'] ?? false)
+            ? $this->fireChainRepeat($config, $branch, $subBranch, $context, $serverId, $nodeMap)
+            : $this->fireChainStep($config, $branch, $subBranch, $context, $serverId, $nodeMap);
+    }
+
+    /**
+     * Non-repeat chain fire: evaluate the step at chain_step_index, fire its
+     * action, and either cascade to the next step's timer or — for the last
+     * step — run the final action + repeat handling.
+     */
+    private function fireChainStep(
+        NodeConfig $config,
+        array $branch,
+        array $subBranch,
+        array $context,
+        ?int $serverId,
+        array $nodeMap,
+    ): array {
+        $chain           = $subBranch['timing_chain'];
+        $chainRootNodeId = $subBranch['timing_node_id'];
+        $lastStepIdx     = count($chain) - 1;
+        $stepIdx         = (int) ($context['chain_step_index'] ?? 0);
+
+        if ($stepIdx > $lastStepIdx) {
             return ['timers' => [], 'actions' => []];
         }
 
         $persistedStates = $this->loadStates($config->id, $serverId, $branch['metric']);
+        $timingResult = $this->evaluateChainStepTiming(
+            $config, $branch, $context, $serverId, $nodeMap, $persistedStates, $chain, $chainRootNodeId, $stepIdx,
+        );
 
-        // ── Evaluate steps from least to most ──────────────────
-        // Each step checks the DB for a longer duration window.
-        // If any fails, the entire chain cancels.
-        // On repeat fire, skip earlier steps — only the last step
-        // is re-checked; prior step states remain frozen.
-        $lastResult = null;
-        $lastStepIdx = count($chain) - 1;
-        $isRepeatFire = $context['repeat_fire'] ?? false;
-
-        foreach ($chain as $stepIdx => $step) {
-            if ($isRepeatFire && $stepIdx !== $lastStepIdx) {
-                continue;
-            }
-            $stepTimingState = $persistedStates[$step['timing_node_id']] ?? [];
-            $baseTimingState = array_merge(
-                $persistedStates[$chainRootNodeId] ?? [],
-                $stepTimingState,
-            );
-            $baseTimingState['timer_fire'] = true;
-            $baseTimingState = array_merge($baseTimingState, $context);
-
-            if ($branch['condition']) {
-                $baseTimingState['threshold']   = $branch['condition']['threshold'];
-                $baseTimingState['operator']    = $branch['condition']['operator'];
-                $baseTimingState['metric_type'] = $branch['metric'];
-                if ($serverId !== null) {
-                    $baseTimingState['server_id'] = $serverId;
-                }
-            }
-
-            $stepTimingNode = $nodeMap[$step['timing_node_id']] ?? null;
-            $stepSettings   = $stepTimingNode['settings'] ?? [];
-
-            $timingResult = $timingHandler->evaluate([], $stepSettings, $baseTimingState);
-            $this->saveState($config->id, $serverId, $step['timing_node_id'], $timingResult, $branch['metric']);
-
-            if (!$timingResult->shouldPropagate || $timingResult->value !== true) {
-                Log::info("[chain-fire] Step {$stepIdx} ({$step['timing_node_id']}) DB check FAILED — resetting chain", [
-                    'chain_root' => $chainRootNodeId,
-                    'server_id'  => $serverId,
-                ]);
-                NodeTaskScheduler::cancelByNode($chainRootNodeId, $branch['metric'], $serverId);
-                $this->saveState(
-                    $config->id, $serverId, $chainRootNodeId,
-                    new NodeResult(false, false, null, ['phase' => 'idle'], [], false),
-                    $branch['metric'],
-                );
-                return ['timers' => [], 'actions' => []];
-            }
-
-            // ── Fire intermediate action when a step passes ────
-            if (!$isRepeatFire && $stepIdx !== $lastStepIdx && !empty($step['action_node_id'])) {
-                $actionNode     = $nodeMap[$step['action_node_id']] ?? null;
-                $actionType     = $actionNode['type'] ?? ($step['action']['type'] ?? 'notification');
-                $actionHandler  = $this->registry->get($actionType) ?? $this->registry->get('notification');
-                $actionSettings = $actionNode['settings'] ?? ($step['action'] ?? []);
-
-                $actionState = $persistedStates[$step['action_node_id']] ?? [];
-                $actionState = array_merge($actionState, $context);
-                $actionState['sustain_value'] = $this->formatDuration($step['timing']['duration_ms'] ?? 0);
-
-                $actionResult = $actionHandler->evaluate([true], $actionSettings, $actionState);
-                $this->saveState($config->id, $serverId, $step['action_node_id'], $actionResult, $branch['metric']);
-
-                if ($actionResult->shouldPropagate && $actionResult->value) {
-                    $upstreamContext = $this->buildUpstreamContext($branch, $subBranch, null);
-                    $upstreamContext = array_merge($upstreamContext, $context, [
-                        'sustain_value' => $this->formatDuration($step['timing']['duration_ms'] ?? 0),
-                    ]);
-                    $actions[] = [
-                        'node_id'          => $step['action_node_id'],
-                        'type'             => $actionType,
-                        'settings'         => $actionSettings,
-                        'value'            => true,
-                        'upstream_context' => $upstreamContext,
-                    ];
-                }
-            }
-
-            $lastResult = $timingResult;
+        if ($timingResult === null) {
+            $this->resetChain($config, $branch, $serverId, $chainRootNodeId, false);
+            return ['timers' => [], 'actions' => []];
         }
 
-        // ── All steps passed ──────────────────────────────────────
-        $lastStep = $chain[$lastStepIdx];
+        // ── Last step reached → final action + repeat handling ──
+        if ($stepIdx === $lastStepIdx) {
+            $this->saveState($config->id, $serverId, $chainRootNodeId, $timingResult, $branch['metric']);
+            return $this->fireLastStepAction(
+                $config, $branch, $subBranch, $chain[$lastStepIdx],
+                $context, $serverId, $nodeMap, $persistedStates, $timingResult,
+            );
+        }
 
-        // Save the last step's result to the chain root so the heartbeat
-        // sees the correct phase (firing with repeat vs idle).
-        $this->saveState($config->id, $serverId, $chainRootNodeId, $lastResult, $branch['metric']);
+        // ── Intermediate step: fire this step's action, then cascade ──
+        $actions = [];
+        $step = $chain[$stepIdx];
+        if (!empty($step['action_node_id'])) {
+            $actions = $this->fireStepAction($config, $branch, $subBranch, $step, $context, $serverId, $nodeMap, $persistedStates);
+        }
 
-        // ── Fire action (if the last step has one) ────────────────
+        $chainStepsMeta = $context['chain_steps_meta'] ?? [];
+        $currentMeta    = $chainStepsMeta[$stepIdx] ?? [];
+        $nextMeta       = $chainStepsMeta[$stepIdx + 1] ?? [];
+        $nextDelay      = ($nextMeta['duration_ms'] ?? 0) - ($currentMeta['duration_ms'] ?? 0);
+
+        $timers[] = [
+            'node_config_id' => $config->id,
+            'node_id'        => $chainRootNodeId,
+            'delay_ms'       => max(0, $nextDelay),
+            'context'        => array_merge($context, [
+                'chain_step_index' => $stepIdx + 1,
+            ]),
+        ];
+
+        return ['timers' => $timers, 'actions' => $actions];
+    }
+
+    /**
+     * Repeat fire: only the last step is re-checked; prior step states stay frozen.
+     */
+    private function fireChainRepeat(
+        NodeConfig $config,
+        array $branch,
+        array $subBranch,
+        array $context,
+        ?int $serverId,
+        array $nodeMap,
+    ): array {
+        $chain           = $subBranch['timing_chain'];
+        $chainRootNodeId = $subBranch['timing_node_id'];
+        $lastStepIdx     = count($chain) - 1;
+        $lastStep        = $chain[$lastStepIdx];
+
+        $persistedStates = $this->loadStates($config->id, $serverId, $branch['metric']);
+        $timingResult = $this->evaluateChainStepTiming(
+            $config, $branch, $context, $serverId, $nodeMap, $persistedStates, $chain, $chainRootNodeId, $lastStepIdx,
+        );
+
+        if ($timingResult === null) {
+            $this->resetChain($config, $branch, $serverId, $chainRootNodeId, false);
+            return ['timers' => [], 'actions' => []];
+        }
+
+        $this->saveState($config->id, $serverId, $chainRootNodeId, $timingResult, $branch['metric']);
+
+        return $this->fireLastStepAction(
+            $config, $branch, $subBranch, $lastStep,
+            $context, $serverId, $nodeMap, $persistedStates, $timingResult,
+        );
+    }
+
+    /**
+     * Evaluate one chain step's timing node against the DB window.
+     * Returns the NodeResult, or null when the step fails (chain resets).
+     */
+    private function evaluateChainStepTiming(
+        NodeConfig $config,
+        array $branch,
+        array $context,
+        ?int $serverId,
+        array $nodeMap,
+        array $persistedStates,
+        array $chain,
+        string $chainRootNodeId,
+        int $stepIdx,
+    ): ?NodeResult {
+        $timingHandler = $this->registry->get('sustained');
+        $step = $chain[$stepIdx];
+
+        $baseTimingState = array_merge(
+            $persistedStates[$chainRootNodeId] ?? [],
+            $persistedStates[$step['timing_node_id']] ?? [],
+        );
+        $baseTimingState['timer_fire'] = true;
+        $baseTimingState = array_merge($baseTimingState, $context);
+
+        if ($branch['condition']) {
+            $baseTimingState['threshold']   = $branch['condition']['threshold'];
+            $baseTimingState['operator']    = $branch['condition']['operator'];
+            $baseTimingState['metric_type'] = $branch['metric'];
+            if ($serverId !== null) {
+                $baseTimingState['server_id'] = $serverId;
+            }
+        }
+
+        $stepTimingNode = $nodeMap[$step['timing_node_id']] ?? null;
+        $stepSettings   = $stepTimingNode['settings'] ?? [];
+
+        $timingResult = $timingHandler->evaluate([], $stepSettings, $baseTimingState);
+        $this->saveState($config->id, $serverId, $step['timing_node_id'], $timingResult, $branch['metric']);
+
+        if (!$timingResult->shouldPropagate || $timingResult->value !== true) {
+            Log::info("[chain-fire] Step {$stepIdx} ({$step['timing_node_id']}) DB check FAILED — resetting chain", [
+                'chain_root' => $chainRootNodeId,
+                'server_id'  => $serverId,
+            ]);
+            return null;
+        }
+
+        return $timingResult;
+    }
+
+    /**
+     * Fire an intermediate chain step's action node.
+     */
+    private function fireStepAction(
+        NodeConfig $config,
+        array $branch,
+        array $subBranch,
+        array $step,
+        array $context,
+        ?int $serverId,
+        array $nodeMap,
+        array $persistedStates,
+    ): array {
+        $actions = [];
+
+        $actionNode     = $nodeMap[$step['action_node_id']] ?? null;
+        $actionType     = $actionNode['type'] ?? ($step['action']['type'] ?? 'notification');
+        $actionHandler  = $this->registry->get($actionType) ?? $this->registry->get('notification');
+        $actionSettings = $actionNode['settings'] ?? ($step['action'] ?? []);
+
+        $actionState = $persistedStates[$step['action_node_id']] ?? [];
+        $actionState = array_merge($actionState, $context);
+        $actionState['sustain_value'] = $this->formatDuration($step['timing']['duration_ms'] ?? 0);
+
+        $actionResult = $actionHandler->evaluate([true], $actionSettings, $actionState);
+        $this->saveState($config->id, $serverId, $step['action_node_id'], $actionResult, $branch['metric']);
+
+        if ($actionResult->shouldPropagate && $actionResult->value) {
+            $upstreamContext = $this->buildUpstreamContext($branch, $subBranch, null);
+            $upstreamContext = array_merge($upstreamContext, $context, [
+                'sustain_value' => $this->formatDuration($step['timing']['duration_ms'] ?? 0),
+            ]);
+            $actions[] = [
+                'node_id'          => $step['action_node_id'],
+                'type'             => $actionType,
+                'settings'         => $actionSettings,
+                'value'            => true,
+                'upstream_context' => $upstreamContext,
+            ];
+        }
+
+        return $actions;
+    }
+
+    /**
+     * Fire the last step's action, schedule its repeat timer, handle any
+     * post_action, and reset the chain when no repeat timer was scheduled.
+     */
+    private function fireLastStepAction(
+        NodeConfig $config,
+        array $branch,
+        array $subBranch,
+        array $lastStep,
+        array $context,
+        ?int $serverId,
+        array $nodeMap,
+        array $persistedStates,
+        NodeResult $lastResult,
+    ): array {
+        $timers  = [];
+        $actions = [];
+        $chainRootNodeId = $subBranch['timing_node_id'];
+
         if ($lastStep['action_node_id']) {
             $actionNode     = $nodeMap[$lastStep['action_node_id']] ?? null;
             $actionType     = $actionNode['type'] ?? ($lastStep['action']['type'] ?? 'notification');
@@ -797,15 +914,28 @@ class NodeConfigEngine
 
         // ── Reset chain if no repeat timer was scheduled ─────────
         if (empty($timers)) {
-            NodeTaskScheduler::cancelByNode($chainRootNodeId, $branch['metric'], $serverId);
-            $this->saveState(
-                $config->id, $serverId, $chainRootNodeId,
-                new NodeResult(false, false, null, ['phase' => 'idle'], [], false),
-                $branch['metric'],
-            );
+            $this->resetChain($config, $branch, $serverId, $chainRootNodeId, false);
         }
 
         return ['timers' => $timers, 'actions' => $actions];
+    }
+
+    /**
+     * Cancel a chain's timers and reset its root state to idle.
+     */
+    private function resetChain(
+        NodeConfig $config,
+        array $branch,
+        ?int $serverId,
+        string $chainRootNodeId,
+        bool $cancelTimers,
+    ): void {
+        NodeTaskScheduler::cancelByNode($chainRootNodeId, $branch['metric'], $serverId);
+        $this->saveState(
+            $config->id, $serverId, $chainRootNodeId,
+            new NodeResult(false, false, null, ['phase' => 'idle'], [], $cancelTimers),
+            $branch['metric'],
+        );
     }
 
 
