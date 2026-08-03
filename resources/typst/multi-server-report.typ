@@ -33,7 +33,7 @@
   )
 
   section-title("Server Information")
-  kpi-grid((
+  kpi-table((
     (label: "Status", value: status-pill(item.at("status", default: "unknown"))),
     (label: "Client", value: if item.at("client_name", default: "") != "" { item.client_name } else { "—" }),
     (label: "OS", value: if item.at("operating_system", default: "") != "" { item.operating_system } else { "—" }),
@@ -91,13 +91,32 @@
   if uptime != none {
     v(0.5em)
     section-title("SLA Uptime")
-    grid(columns: (1fr, 1fr), gutter: 10pt)[
-      #kpi-card("Uptime Percentage", pct(uptime.uptime_percentage))
-      #kpi-card("Outages", str(uptime.at("outage_count", default: 0)), note: if uptime.at("last_downtime", default: "")
-        != "" { "Last: " + uptime.last_downtime } else { none })
-    ]
-    v(0.3em)
-    progress-bar(uptime.uptime_percentage)
+    table(
+      columns: (1.2fr, 2.8fr),
+      stroke: 0.3pt + border-clr,
+      inset: (x: 10pt, y: 8pt),
+      align: (left + horizon, left + horizon),
+      table.cell(fill: bg-light)[
+        #set text(size: 8.5pt, weight: "bold", fill: text-dark)
+        Uptime Percentage
+      ],
+      table.cell()[
+        #progress-bar(uptime.uptime_percentage)
+      ],
+      table.cell(fill: bg-light)[
+        #set text(size: 8.5pt, weight: "bold", fill: text-dark)
+        Outages
+      ],
+      table.cell()[
+        #set text(size: 9pt, fill: text-dark)
+        #str(uptime.at("outage_count", default: 0))
+        #let last = uptime.at("last_downtime", default: none)
+        #if last != none [
+          #h(0.4em)
+          #text(size: 8pt, fill: text-muted)[(Last: #last)]
+        ]
+      ]
+    )
   }
 
   if charts != none and "cpu" in charts {

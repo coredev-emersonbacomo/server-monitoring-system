@@ -35,7 +35,7 @@
   )
 
   section-title("Overview")
-  kpi-grid((
+  kpi-table((
     (label: "Total Servers", value: str(item.at("total_servers", default: 0))),
     (label: "Online",        value: text(fill: green, weight: "bold")[#str(item.at("online_servers", default: 0))]),
     (label: "Offline",       value: text(fill: red, weight: "bold")[#str(item.at("offline_servers", default: 0))]),
