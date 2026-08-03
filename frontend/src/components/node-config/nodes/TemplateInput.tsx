@@ -127,7 +127,7 @@ export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDo
                     onPointerDown={onPointerDown}
                     rows={rows ?? 2}
                     className={
-                        `w-full resize-none overflow-hidden text-xs text-foreground bg-background border border-input rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring`
+                        `w-full resize-none overflow-hidden text-xs text-foreground bg-background border border-input rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring ${rows ? 'h-[44px]' : ''}`
                     }
                     placeholder={label ? `${label} template` : "Message template"}
                     spellCheck={false}

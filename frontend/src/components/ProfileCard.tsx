@@ -49,7 +49,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                             <DropdownMenuItem
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    onDelete(uuid);
+                                    setTimeout(() => onDelete(uuid), 0);
                                 }}
                                 className="text-destructive focus:text-destructive cursor-pointer"
                             >

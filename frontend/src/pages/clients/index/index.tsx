@@ -110,7 +110,10 @@ function ClientCard({
                             <DropdownMenuItem
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    onDelete(client);
+                                    // Defer so Radix closes the DropdownMenu (and
+                                    // restores body pointer-events) before the
+                                    // Dialog increments its overlay counter.
+                                    setTimeout(() => onDelete(client), 0);
                                 }}
                                 className="text-destructive focus:text-destructive cursor-pointer"
                             >
@@ -293,15 +296,6 @@ export default function Clients() {
     const [sortField, setSortField] = useState<string>("created_at");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
     const [deleting, setDeleting] = useState<ClientData | null>(null);
-
-    // Radix UI manages body pointer-events via reference counting for modal
-    // overlays. When the DropdownMenu and Dialog open/close in quick succession
-    // the counter can get stuck above zero and the body style is never restored.
-    useEffect(() => {
-        if (!deleting) {
-            document.body.style.pointerEvents = "";
-        }
-    }, [deleting]);
 
     // ── Filtering & Sorting ────────────────────────────────────────────────────
     const filtered = useMemo(() => {
