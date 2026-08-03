@@ -4,8 +4,23 @@ import type {
     NodeTypeDefinition,
     NodeSettingDefinition,
 } from "@/types/node-config";
-import { X, Puzzle } from "lucide-react";
+import { X, Puzzle, Maximize2 } from "lucide-react";
 import { DurationInput } from "./nodes/DurationInput";
+import {
+    Select,
+    SelectTrigger,
+    SelectValue,
+    SelectContent,
+    SelectItem,
+} from "@/components/ui/select";
+import { useTemplateAutocomplete } from "./useTemplateAutocomplete";
+import { TemplateDropdown } from "./template-dropdown";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 
 interface NodeSettingsPanelProps {
     node: Node | null;
@@ -24,7 +39,6 @@ export function NodeSettingsPanel({
 }: NodeSettingsPanelProps) {
     const handleChange = useCallback(
         (key: string, value: unknown) => {
-            if (!node) return;
             onUpdate(node.id, {
                 ...((node.data as Record<string, unknown>) || {}),
                 [key]: value,
@@ -33,11 +47,7 @@ export function NodeSettingsPanel({
         [node, onUpdate],
     );
 
-    if (!node) {
-        return null;
-    }
-
-    const settings = (node.data as Record<string, unknown>) || {};
+    const settings = node ? ((node.data as Record<string, unknown>) || {}) : {};
     const channel = settings.channel as string | undefined;
     const repeatIntervalMs =
         parseInt((settings.repeat_interval as string) || "0", 10) || 0;
@@ -74,6 +84,10 @@ export function NodeSettingsPanel({
         return filtered;
     }, [nodeTypeDef, channel, hasRepeat]);
 
+    if (!node) {
+        return null;
+    }
+
     return (
         <div className="w-72 max-h-120 bg-card border border-border/40 ring-1 ring-foreground/30 rounded-lg shadow-lg overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-border/40">
@@ -94,14 +108,23 @@ export function NodeSettingsPanel({
             </div>
 
             <div className="p-4 flex flex-col gap-4">
-                {settingDefs.map((def) => (
-                    <SettingField
-                        key={def.key}
-                        def={def}
-                        value={settings[def.key] ?? def.default ?? ""}
-                        onChange={(v) => handleChange(def.key, v)}
-                    />
-                ))}
+                {settingDefs.map((def) =>
+                    def.key === "message" || def.key === "subject" ? (
+                        <MessageField
+                            key={def.key}
+                            def={def}
+                            value={settings[def.key] ?? def.default ?? ""}
+                            onChange={(v) => handleChange(def.key, v)}
+                        />
+                    ) : (
+                        <SettingField
+                            key={def.key}
+                            def={def}
+                            value={settings[def.key] ?? def.default ?? ""}
+                            onChange={(v) => handleChange(def.key, v)}
+                        />
+                    ),
+                )}
 
                 {settingDefs.length === 0 && (
                     <p className="text-xs text-muted-foreground">
@@ -256,6 +279,132 @@ interface SettingFieldProps {
     onChange: (value: unknown) => void;
 }
 
+function MessageField({ def, value, onChange, rows = 2 }: SettingFieldProps & { rows?: number }) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+                <label
+                    htmlFor={`setting-${def.key}`}
+                    className="text-xs font-medium text-muted-foreground"
+                >
+                    {def.label}
+                    {def.required && (
+                        <span className="text-red-400 ml-0.5">*</span>
+                    )}
+                </label>
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setOpen(true);
+                    }}
+                    className="p-1 hover:bg-accent rounded-md transition-colors"
+                    title="Expand message editor"
+                >
+                    <Maximize2
+                        size={12}
+                        className="text-muted-foreground"
+                    />
+                </button>
+            </div>
+            <AutoSizeTextarea
+                id={`setting-${def.key}`}
+                value={String(value)}
+                onChange={(v) => onChange(v)}
+                placeholder={def.description || ""}
+                rows={rows}
+            />
+            <MessageDialog
+                open={open}
+                onOpenChange={setOpen}
+                value={String(value)}
+                onChange={(v) => onChange(v)}
+                title={`${def.label} Template`}
+            />
+        </div>
+    );
+}
+
+function MessageDialog({
+    open,
+    onOpenChange,
+    value,
+    onChange,
+    title,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    value: string;
+    onChange: (value: string) => void;
+    title?: string;
+}) {
+    const ref = useRef<HTMLTextAreaElement>(null);
+    const [local, setLocal] = useState(value);
+    useEffect(() => {
+        if (value !== local) setLocal(value);
+    }, [value, local]);
+
+    const ac = useTemplateAutocomplete(
+        local,
+        (v) => {
+            onChange(v);
+            setLocal(v);
+        },
+        ref,
+    );
+
+    useEffect(() => {
+        if (open && ref.current) {
+            requestAnimationFrame(() => ref.current?.focus());
+        }
+    }, [open]);
+
+    const handleChange = useCallback(
+        (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+            onChange(e.target.value);
+            setLocal(e.target.value);
+            ac.handleChange(e);
+        },
+        [ac, onChange],
+    );
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>{title ?? "Message Template"}</DialogTitle>
+                </DialogHeader>
+                <div className="relative">
+                    <textarea
+                        ref={ref}
+                        value={local}
+                        onChange={handleChange}
+                        onKeyDown={ac.handleKeyDown}
+                        onFocus={(e) => ac.handleFocus(e.currentTarget)}
+                        onBlur={() => setTimeout(() => ac.close(), 50)}
+                        onClick={(e) => ac.handleClick(e.currentTarget)}
+                        rows={16}
+                        className="w-full h-[50vh] p-3 text-xs font-mono text-foreground bg-background border border-border/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                    />
+                    {ac.showDropdown && (
+                        <TemplateDropdown
+                            filtered={ac.filtered}
+                            selectedIndex={ac.selectedIndex}
+                            query={ac.query}
+                            caret={ac.caret}
+                            onSelect={ac.insertVariable}
+                            onHover={ac.setSelectedIndex}
+                            onClose={ac.close}
+                        />
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 function autoResize(textarea: HTMLTextAreaElement) {
     textarea.style.height = "auto";
     textarea.style.height = `${textarea.scrollHeight}px`;
@@ -267,35 +416,74 @@ function AutoSizeTextarea({
     onChange,
     placeholder,
     className,
+    rows = 1,
 }: {
     id: string;
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
     className?: string;
+    rows?: number;
 }) {
     const ref = useRef<HTMLTextAreaElement>(null);
+    const [local, setLocal] = useState(value);
+    useEffect(() => {
+        if (value !== local) setLocal(value);
+    }, [value, local]);
+
+    const ac = useTemplateAutocomplete(
+        local,
+        (v) => {
+            onChange(v);
+            setLocal(v);
+        },
+        ref,
+    );
 
     useEffect(() => {
         if (ref.current) autoResize(ref.current);
     }, [value]);
 
+    const handleChange = useCallback(
+        (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+            onChange(e.target.value);
+            setLocal(e.target.value);
+            ac.handleChange(e);
+            autoResize(e.target);
+        },
+        [ac, onChange],
+    );
+
     return (
-        <textarea
-            ref={ref}
-            id={id}
-            value={value}
-            onChange={(e) => {
-                onChange(e.target.value);
-                autoResize(e.target);
-            }}
-            rows={1}
-            className={
-                className ??
-                "px-2.5 py-1.5 text-sm rounded-lg border border-border/60 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none overflow-hidden"
-            }
-            placeholder={placeholder}
-        />
+        <div className="relative">
+            <textarea
+                ref={ref}
+                id={id}
+                value={local}
+                onChange={handleChange}
+                onKeyDown={ac.handleKeyDown}
+                onFocus={(e) => ac.handleFocus(e.currentTarget)}
+                onBlur={() => setTimeout(() => ac.close(), 50)}
+                onClick={(e) => ac.handleClick(e.currentTarget)}
+                rows={rows}
+                className={
+                    className ??
+                    "w-full px-2.5 py-1.5 text-sm rounded-lg border border-border/60 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none overflow-hidden"
+                }
+                placeholder={placeholder}
+            />
+            {ac.showDropdown && (
+                <TemplateDropdown
+                    filtered={ac.filtered}
+                    selectedIndex={ac.selectedIndex}
+                    query={ac.query}
+                    caret={ac.caret}
+                    onSelect={ac.insertVariable}
+                    onHover={ac.setSelectedIndex}
+                    onClose={ac.close}
+                />
+            )}
+        </div>
     );
 }
 
@@ -314,19 +502,21 @@ function SettingField({ def, value, onChange }: SettingFieldProps) {
                         <span className="text-red-400 ml-0.5">*</span>
                     )}
                 </label>
-                <select
-                    id={id}
-                    value={String(value)}
-                    onChange={(e) => onChange(e.target.value)}
-                    className="px-2.5 py-1.5 text-sm rounded-lg border border-border/60 bg-background text-foreground
-                        focus:outline-none focus:ring-2 focus:ring-primary/30"
-                >
-                    {Object.entries(def.options).map(([optValue, optLabel]) => (
-                        <option key={optValue} value={optValue}>
-                            {optLabel}
-                        </option>
-                    ))}
-                </select>
+                 <Select value={String(value)} onValueChange={(v) => onChange(v)}>
+                     <SelectTrigger
+                         id={id}
+                         className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-border/60 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                     >
+                         <SelectValue />
+                     </SelectTrigger>
+                     <SelectContent>
+                         {Object.entries(def.options).map(([optValue, optLabel]) => (
+                             <SelectItem key={optValue} value={optValue}>
+                                 {optLabel}
+                             </SelectItem>
+                         ))}
+                     </SelectContent>
+                 </Select>
             </div>
         );
     }

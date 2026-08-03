@@ -98,7 +98,7 @@ class ProvisioningService
             'token' => $rawToken,
             'expires_at' => $expiresAt->toIso8601String(),
             'linux_command' => 'sudo curl -fsSL ' . url('/install/linux') . ' | sudo bash -s -- ' . $rawToken,
-            'windows_command' => 'powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm \'' . url('/install/windows.ps1') . '\'))) -ProvisionToken \'' . $rawToken . '\' -AppUrl \'' . url('/') . '\'"',
+            'windows_command' => \App\Services\WindowsCommand::make('/install/windows.ps1', $rawToken, rtrim(url('/'), '/')),
             'token_expires_in' => $expiresAt->timestamp,
         ];
     }
