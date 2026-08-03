@@ -12,6 +12,7 @@ import {
     Banknote,
     CreditCard,
     Cpu,
+    Server,
 } from "lucide-react";
 
 import PageLayout from "@/components/PageLayout";
@@ -130,7 +131,7 @@ export default function ServerDetail() {
 
     const queryClient = useQueryClient();
     const serverAlertTab = useServerAlertTab(
-        uuid!,
+        initial?.uuid ?? "",
         initial?.name ?? "Unknown",
         initial?.client_uuid ?? null,
         initial?.client_name ?? null,
@@ -205,12 +206,11 @@ export default function ServerDetail() {
         setGenerating(true);
         try {
             const { data, error } = await api.POST(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}/generate-provision-token",
+                "/v1/servers/{uuid}/provision",
                 {
                     params: {
                         path: {
-                            clientUuid: initial.client_uuid,
-                            serverUuid: uuid!,
+                            uuid: initial.uuid,
                         },
                     },
                 },
@@ -252,12 +252,12 @@ export default function ServerDetail() {
     const [submittingPayment, setSubmittingPayment] = useState(false);
 
     // Fetch cost logs for the modal
-    const { data: costLogs, isLoading: isLoadingCostLogs } = useQuery<any[]>({
+    const { data: costLogs, isLoading: isLoadingCostLogs } = useQuery({
         queryKey: ["server", uuid, "cost-logs"],
         queryFn: async () => {
             if (!initial?.client_uuid) return [];
             const { data, error } = await api.GET(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-logs" as any,
+                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-logs",
                 {
                     params: {
                         path: {
@@ -268,25 +268,20 @@ export default function ServerDetail() {
                 },
             );
             if (error) throw error;
-            return data as any[];
+            return data;
         },
         enabled: showCostModal && !!initial?.client_uuid,
     });
 
     const handleCostAdjustment = async (
-        type:
-            | "full_payment"
-            | "deduction"
-            | "top_up"
-            | "add_funds"
-            | "reset_usage",
+        type: "deduction" | "top_up" | "add_funds" | "reset_usage",
         amount?: number,
     ) => {
         if (!initial?.client_uuid) return;
         setSubmittingPayment(true);
         try {
             const { error } = await api.POST(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}/adjust-cost" as any,
+                "/v1/clients/{clientUuid}/servers/{serverUuid}/adjust-cost",
                 {
                     params: {
                         path: {
@@ -295,9 +290,9 @@ export default function ServerDetail() {
                         },
                     },
                     body: {
-                        action_type: type,
-                        amount: amount ?? undefined,
-                    } as any,
+                        action: type,
+                        amount: amount,
+                    },
                 },
             );
 
@@ -387,12 +382,14 @@ export default function ServerDetail() {
         : (server.status as keyof typeof STATUS_CONFIG) in STATUS_CONFIG
           ? (server.status as keyof typeof STATUS_CONFIG)
           : "pending_installation";
+
     const {
         label: statusLabel,
         icon: StatusIcon,
         color: statusColor,
         bg: statusBg,
     } = STATUS_CONFIG[statusKey];
+
     const isInstalled =
         statusKey === "online" ||
         statusKey === "warning" ||
@@ -431,18 +428,20 @@ export default function ServerDetail() {
                     <IndexHeader
                         title={server.name}
                         description={`Monitoring details and real-time metrics for ${server.name}`}
-                        badge={
-                            <span
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusBg} ${statusColor}`}
-                            >
-                                <StatusIcon size={12} />
-                                {statusLabel}
-                            </span>
-                        }
+                        icon={StatusIcon ?? Server}
                     />
 
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <span
+                            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${statusBg} ${statusColor}`}
+                        >
+                            <StatusIcon size={14} />
+                            {statusLabel}
+                        </span>
+                    </div>
+
                     <AgentInstallationGuide
-                        status={server.status}
+                        status={statusKey}
                         provisionDetails={provisionDetails}
                         generating={generating}
                         copiedKey={copiedKey}

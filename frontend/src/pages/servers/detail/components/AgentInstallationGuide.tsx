@@ -22,35 +22,42 @@ export function AgentInstallationGuide({
     regenerateProvisionToken: () => void;
     copyToClipboard: (text: string, type: CopyKey) => void;
 }) {
-    return (
-        <div className="mb-6 p-5 rounded-xl border border-border bg-card/50 backdrop-blur-sm shadow-lg">
-            <div className="flex items-center gap-2.5 mb-4 text-foreground font-semibold">
-                <Terminal className="size-5 text-primary" />
-                <h2>Agent Installation Guide</h2>
-            </div>
-
-            {status === "pending_installation" && !provisionDetails && (
-                <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                        To start monitoring this server, you must install the
-                        lightweight monitoring agent on the machine.
-                    </p>
-                    <Button
-                        variant="default"
-                        label={
-                            generating
-                                ? "Generating..."
-                                : "Generate Installation Command"
-                        }
-                        onClick={generateProvisionToken}
-                        disabled={generating}
-                    />
+    if (
+        [
+            "pending_installation",
+            "waiting_for_installation",
+            "waiting_for_first_heartbeat",
+        ].includes(status)
+    )
+        return (
+            <div className="p-5 rounded-xl border border-border bg-card/50 backdrop-blur-sm shadow-lg">
+                <div className="flex items-center gap-2.5 mb-4 text-foreground font-semibold">
+                    <Terminal className="size-5 text-primary" />
+                    <h2>Agent Installation Guide</h2>
                 </div>
-            )}
 
-            {(status === "waiting_for_installation" ||
-                status === "waiting_for_first_heartbeat" ||
-                provisionDetails) && (
+                {status === "pending_installation" && !provisionDetails && (
+                    <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                            To start monitoring this server, you must install
+                            the lightweight monitoring agent on the machine.
+                        </p>
+                        <Button
+                            variant="default"
+                            label={
+                                generating
+                                    ? "Generating..."
+                                    : "Generate Installation Command"
+                            }
+                            onClick={generateProvisionToken}
+                            disabled={generating}
+                        />
+                    </div>
+                )}
+
+                {(status === "waiting_for_installation" ||
+                    status === "waiting_for_first_heartbeat" ||
+                    provisionDetails) && (
                     <div className="space-y-5">
                         <p className="text-sm text-muted-foreground">
                             Run the appropriate command directly on your server.
@@ -141,6 +148,6 @@ export function AgentInstallationGuide({
                         </div>
                     </div>
                 )}
-        </div>
-    );
+            </div>
+        );
 }

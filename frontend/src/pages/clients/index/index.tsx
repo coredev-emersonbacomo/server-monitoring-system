@@ -1,5 +1,14 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { Landmark, RefreshCw, Loader2, Plus, MoreVertical, Trash2, Server, Users } from "lucide-react";
+import {
+    Landmark,
+    RefreshCw,
+    Loader2,
+    Plus,
+    MoreVertical,
+    Trash2,
+    Server,
+    Users,
+} from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useClients, useDeleteClient } from "@/hooks/useClients";
 import PageLayout from "@/components/PageLayout";
@@ -17,7 +26,6 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import IndexHeader from "@/components/IndexHeader";
 import IndexToolbar from "@/components/IndexToolbar";
@@ -79,7 +87,8 @@ function ClientCard({
                         <span className="flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
                             <span className="text-red-500 leading-none text-xs">
-                                {client.servers_count - client.servers_online_count}
+                                {client.servers_count -
+                                    client.servers_online_count}
                             </span>
                         </span>
                     </div>
@@ -122,7 +131,6 @@ function ClientCard({
                 </div>
 
                 <div className="flex items-center gap-3 text-xs text-muted-foreground leading-none">
-
                     <Server className="size-4 shrink-0" />
                     {client.servers_count ?? 0}
                     <span className="flex items-center gap-1.5">
@@ -143,7 +151,6 @@ function ClientCard({
         </Link>
     );
 }
-
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 
