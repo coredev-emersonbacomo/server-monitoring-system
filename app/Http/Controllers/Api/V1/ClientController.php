@@ -250,6 +250,28 @@ class ClientController extends Controller
     {
         $client = Client::where('uuid', $clientUuid)->firstOrFail();
 
+        $runningAgentServer = $client->servers()
+            ->where(function ($q) {
+                $q->whereNull('agent_deleted')->orWhere('agent_deleted', false);
+            })
+            ->whereHas('agent', function ($q) {
+                $q->whereNotNull('registered_at');
+            })
+            ->first();
+
+        if ($runningAgentServer) {
+            return response()->json([
+                'message' => "Cannot delete client while server '{$runningAgentServer->name}' still has an active agent running. Please uninstall all server agents first."
+            ], 422);
+        }
+
+        $totalCost = (float) $client->servers()->sum('accumulated_cost');
+        if ($totalCost > 0) {
+            return response()->json([
+                'message' => 'Cannot delete client with an outstanding cost balance. Please settle all server deductions first before deleting.'
+            ], 422);
+        }
+
         if ($client->banner_image_storage_key) {
             $folder = config('uploads.purposes.client_banner.folder');
             DeleteStorageAsset::dispatch($client->banner_image_storage_key, $folder);

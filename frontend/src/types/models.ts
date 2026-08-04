@@ -60,6 +60,7 @@ export interface ClientData {
             created_at: string;
             updated_at: string;
             alert_scope?: string;
+            record_status?: string;
         }
 
 /** CustomActivityLog */

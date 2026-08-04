@@ -7,6 +7,7 @@ enum RecordStatus: string
     case Active = 'active';
     case Online = 'online';
     case Offline = 'offline';
+    case Archived = 'archived';
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum RecordStatus: string
             self::Active => 'Active',
             self::Online => 'Online',
             self::Offline => 'Offline',
+            self::Archived => 'Archived',
         };
     }
 
