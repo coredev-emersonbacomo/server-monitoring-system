@@ -373,6 +373,7 @@ export const Profile: React.FC = () => {
                                         lastName: data.last_name,
                                         email: data.email,
                                         username: data.username,
+                                        phoneNumber: data.phone_number,
                                         status: user.record_status,
                                     };
 
