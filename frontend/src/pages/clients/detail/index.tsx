@@ -429,13 +429,19 @@ export default function ClientDetail() {
         }
     };
 
+    const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
     const handleDelete = async () => {
         try {
             await deleteClient.mutateAsync(clientUuid!);
             toast.success("Client deleted.");
             navigate("/clients");
-        } catch {
-            toast.error("Failed to delete client.");
+        } catch (err: any) {
+            toast.error(
+                err?.response?.data?.message ||
+                    err?.message ||
+                    "Failed to delete client.",
+            );
         }
     };
 
@@ -1554,10 +1560,19 @@ export default function ClientDetail() {
                 </div>
 
                 {/* ── Delete dialog ── */}
-                <Dialog open={showDelete} onOpenChange={setShowDelete}>
-                    <DialogContent className="sm:max-w-sm">
+                <Dialog
+                    open={showDelete}
+                    onOpenChange={(open) => {
+                        setShowDelete(open);
+                        if (!open) setDeleteConfirmText("");
+                    }}
+                >
+                    <DialogContent className="sm:max-w-md">
                         <DialogHeader>
-                            <DialogTitle>Delete Client</DialogTitle>
+                            <DialogTitle className="flex items-center gap-2 text-destructive">
+                                <Trash2 size={16} />
+                                Delete Client
+                            </DialogTitle>
                         </DialogHeader>
                         <p className="text-sm text-muted-foreground">
                             This will permanently delete{" "}
@@ -1566,25 +1581,109 @@ export default function ClientDetail() {
                             </strong>{" "}
                             and all associated data. This cannot be undone.
                         </p>
-                        <div className="flex justify-end gap-3 pt-2">
-                            <DialogClose asChild>
-                                <Button
-                                    variant="outline"
-                                    label="Cancel"
-                                    onClick={() => setShowDelete(false)}
-                                />
-                            </DialogClose>
-                            <Button
-                                variant="danger"
-                                label={
-                                    deleteClient.isPending
-                                        ? "Deleting…"
-                                        : "Delete"
-                                }
-                                disabled={deleteClient.isPending}
-                                onClick={handleDelete}
-                            />
-                        </div>
+
+                        {(() => {
+                            const totalAccumulatedCost = servers.reduce(
+                                (acc, s) => acc + (s.accumulated_cost ?? 0),
+                                0,
+                            );
+                            const hasRunningAgents = servers.some(
+                                (s) => !s.agent_deleted && s.agent,
+                            );
+
+                            return (
+                                <>
+                                    {totalAccumulatedCost > 0 && (
+                                        <div className="flex items-start gap-2 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-600 dark:text-amber-400">
+                                            <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="font-semibold text-foreground">
+                                                    Outstanding Cost Balance
+                                                </p>
+                                                <p className="text-muted-foreground mt-0.5">
+                                                    This client has servers with an outstanding balance of{" "}
+                                                    <strong className="text-amber-600 dark:text-amber-400">
+                                                        ₱
+                                                        {totalAccumulatedCost.toLocaleString(
+                                                            undefined,
+                                                            {
+                                                                minimumFractionDigits: 2,
+                                                                maximumFractionDigits: 2,
+                                                            },
+                                                        )}
+                                                    </strong>
+                                                    . You must settle all deductions before this client can be deleted.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {hasRunningAgents && (
+                                        <div className="flex items-start gap-2 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
+                                            <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="font-semibold text-foreground">
+                                                    Active Server Agents Running
+                                                </p>
+                                                <p className="text-muted-foreground mt-0.5">
+                                                    You must uninstall the agent service on all associated servers before you can delete this client.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="flex flex-col gap-2 pt-1">
+                                        <label className="text-xs text-muted-foreground">
+                                            Type{" "}
+                                            <strong className="text-foreground font-mono">
+                                                {client?.name}
+                                            </strong>{" "}
+                                            to confirm
+                                        </label>
+                                        <Input
+                                            value={deleteConfirmText}
+                                            onChange={(e) =>
+                                                setDeleteConfirmText(
+                                                    e.target.value,
+                                                )
+                                            }
+                                            placeholder={client?.name}
+                                            autoFocus
+                                            className="font-mono text-sm"
+                                        />
+                                    </div>
+
+                                    <div className="flex justify-end gap-3 pt-2">
+                                        <DialogClose asChild>
+                                            <Button
+                                                variant="outline"
+                                                label="Cancel"
+                                                onClick={() => {
+                                                    setShowDelete(false);
+                                                    setDeleteConfirmText("");
+                                                }}
+                                            />
+                                        </DialogClose>
+                                        <Button
+                                            variant="danger"
+                                            label={
+                                                deleteClient.isPending
+                                                    ? "Deleting…"
+                                                    : "Delete"
+                                            }
+                                            disabled={
+                                                deleteConfirmText !==
+                                                    client?.name ||
+                                                deleteClient.isPending ||
+                                                totalAccumulatedCost > 0 ||
+                                                hasRunningAgents
+                                            }
+                                            onClick={handleDelete}
+                                        />
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </DialogContent>
                 </Dialog>
 

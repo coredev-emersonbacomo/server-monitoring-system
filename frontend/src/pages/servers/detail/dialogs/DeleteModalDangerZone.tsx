@@ -79,7 +79,7 @@ export function DeleteModalDangerZone() {
                             </div>
                         )}
 
-                        {initial && !initial.agent_deleted && (
+                        {initial && initial.agent && !initial.agent_deleted && (
                             <div className="flex flex-col gap-3 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
                                 <div className="flex items-start gap-2">
                                     <AlertTriangle className="size-4 shrink-0 mt-0.5" />
