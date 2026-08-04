@@ -1,4 +1,3 @@
-import type { KeyboardEvent, ClipboardEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Building2, Cpu, MemoryStick, HardDrive, Monitor } from "lucide-react";
 import api from "@/api/api";
@@ -8,22 +7,6 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useServerDetailContext } from "../context/ServerDetailContext";
 import { DeleteModalDangerZone } from "../dialogs/DeleteModalDangerZone";
-
-const blockedMonthlyCostKeys = new Set(["e", "E", "-"]);
-
-function blockInvalidMonthlyCostKey(e: KeyboardEvent<HTMLInputElement>) {
-    if (blockedMonthlyCostKeys.has(e.key)) e.preventDefault();
-}
-
-function blockInvalidMonthlyCostPaste(e: ClipboardEvent<HTMLInputElement>) {
-    if (/[eE-]/.test(e.clipboardData.getData("text"))) e.preventDefault();
-}
-
-function setMonthlyCostValue(setValue: (value: string) => void, value: string) {
-    if (/[eE-]/.test(value)) return;
-    const numericValue = Number(value);
-    setValue(numericValue < 0 ? "0" : value);
-}
 
 export function ServerInfoTab() {
     const {
@@ -56,12 +39,6 @@ export function ServerInfoTab() {
                                 String(data.description).trim() !== "null"
                                 ? String(data.description).trim()
                                 : "";
-                        const costNum =
-                            data.monthly_cost !== undefined &&
-                                data.monthly_cost !== null &&
-                                data.monthly_cost !== ""
-                                ? Number(data.monthly_cost)
-                                : 0;
 
                         const { error } = await api.PATCH(
                             "/v1/clients/{clientUuid}/servers/{serverUuid}",
@@ -75,9 +52,6 @@ export function ServerInfoTab() {
                                 body: {
                                     name: nameStr,
                                     description: descStr || undefined,
-                                    monthly_cost: isNaN(costNum)
-                                        ? 0
-                                        : Math.max(0, costNum),
                                 },
                             },
                         );
@@ -88,7 +62,6 @@ export function ServerInfoTab() {
                             const newForm = {
                                 name: nameStr,
                                 description: descStr,
-                                monthly_cost: isNaN(costNum) ? 0 : Math.max(0, costNum),
                             };
                             store.setState({
                                 form: newForm,
@@ -170,42 +143,20 @@ export function ServerInfoTab() {
                 </div>
 
                 {mode !== "view" && (
-                    <>
-                        <div>
-                            <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                Monthly Cost (₱ / mo)
-                            </label>
-                            <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={form.monthly_cost ?? ""}
-                                onKeyDown={blockInvalidMonthlyCostKey}
-                                onPaste={blockInvalidMonthlyCostPaste}
-                                onChange={(e) =>
-                                    setMonthlyCostValue(
-                                        store.set("monthly_cost"),
-                                        e.target.value,
-                                    )
-                                }
-                                className="text-sm font-mono"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                Description
-                            </label>
-                            <textarea
-                                value={form.description}
-                                onChange={(e) =>
-                                    store.set("description")(e.target.value)
-                                }
-                                rows={2}
-                                maxLength={255}
-                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-                            />
-                        </div>
-                    </>
+                    <div>
+                        <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                            Description
+                        </label>
+                        <textarea
+                            value={form.description}
+                            onChange={(e) =>
+                                store.set("description")(e.target.value)
+                            }
+                            rows={2}
+                            maxLength={255}
+                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                        />
+                    </div>
                 )}
             </div>
             <div className="flex flex-wrap items-start gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
