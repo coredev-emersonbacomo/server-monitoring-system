@@ -72,6 +72,7 @@
           } else { "—" }
         ),
       )),
+      widths: (1.2fr, 0.8fr, 1.5fr, 1fr, 1fr, 1fr),
     )
 
     v(0.5em)
