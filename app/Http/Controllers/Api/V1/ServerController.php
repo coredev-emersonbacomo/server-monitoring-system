@@ -32,42 +32,42 @@ class ServerController extends Controller
     }
 
     public function store(CreateServerData $data, string $clientUuid): ServerData
-    {
-        $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
-        $clientId = $clientModel->id;
+{
+    $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
+    $clientId = $clientModel->id;
 
-        try {
-            $server = Server::create([
-                'client_id'    => $clientId,
-                'name'         => $data->name,
-                'description'  => $data->description,
-                'host_name'    => $data->host_name ?? $data->name,
-                'monthly_rate' => $data->subscription_fee ?? 0.0,
-            ]);
+    try {
+        $server = Server::create([
+            'client_id'        => $clientId,
+            'name'             => $data->name,
+            'description'      => $data->description,
+            'host_name'        => $data->host_name ?? $data->name,
+            'subscription_fee' => $data->subscription_fee ?? 0.0,
+        ]);
 
-            $actor = auth()->user();
+        $actor = auth()->user();
 
-            CustomActivityLog::create([
-                'logable_type' => Server::class,
-                'logable_id'   => (string) $server->uuid,
-                'user_id'      => $actor?->id,
-                'user'         => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
-                'action'       => 'Create Server',
-                'details'      => [
-                    'message'          => "Create server: {$server->name}",
-                    'name'             => $server->name,
-                    'host_name'        => $server->host_name,
-                    'client_uuid'      => $clientModel->uuid,
-                    'client_name'      => $clientModel->name,
-                    'subscription_fee' => $server->monthly_rate,
-                ],
-            ]);
+        CustomActivityLog::create([
+            'logable_type' => Server::class,
+            'logable_id'   => (string) $server->uuid,
+            'user_id'      => $actor?->id,
+            'user'         => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action'       => 'Create Server',
+            'details'      => [
+                'message'          => "Create server: {$server->name}",
+                'name'             => $server->name,
+                'host_name'        => $server->host_name,
+                'client_uuid'      => $clientModel->uuid,
+                'client_name'      => $clientModel->name,
+                'subscription_fee' => $server->subscription_fee,
+            ],
+        ]);
 
-            return ServerData::fromModel($server);
-        } catch (\RuntimeException $e) {
-            abort(500, 'Installation failed: ' . $e->getMessage());
-        }
+        return ServerData::fromModel($server);
+    } catch (\RuntimeException $e) {
+        abort(500, 'Installation failed: ' . $e->getMessage());
     }
+}
 
     public function show(string $clientUuid, string $serverUuid): ServerData
     {
