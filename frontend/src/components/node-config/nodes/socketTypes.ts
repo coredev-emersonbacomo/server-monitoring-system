@@ -10,7 +10,7 @@ export const TYPE_COLORS: Record<SocketDataType, string> = {
     boolean: '#34d399',
     any: '#9ca3af',
     event: '#f59e0b',
-    severity: '#ef4444',
+    severity: '#fb923c',
 };
 
 export const OUTPUT_TYPES: Record<string, HandleTypeDef> = {

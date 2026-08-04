@@ -226,7 +226,7 @@ class NotificationService
                                     <h2 style=\"margin: 0 0 16px; color: #1f2937; font-size: 20px; font-weight: 600;\">
                                         {$subject}
                                     </h2>
-                                    <div id=\"alert-message\" style=\"color: #374151; font-size: 15px; line-height: 1.6;\">
+                                    <div style=\"color: #374151; font-size: 15px; line-height: 1.6;\">
                                         {$escapedMessage}
                                     </div>
                                 </td>
@@ -244,16 +244,6 @@ class NotificationService
                     </td>
                 </tr>
             </table>
-        <script>
-        (function () {
-            var el = document.getElementById('alert-message');
-            if (!el) return;
-            el.innerHTML = el.innerHTML.replace(/\\b(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z)\\b/g, function (m) {
-                var d = new Date(m);
-                return isNaN(d.getTime()) ? m : d.toLocaleString();
-            });
-        })();
-        </script>
         </body>
         </html>";
 

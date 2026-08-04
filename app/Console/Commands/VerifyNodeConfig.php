@@ -27,7 +27,7 @@ class VerifyNodeConfig extends Command
             return self::FAILURE;
         }
 
-        $this->info("Config loaded: {$config->name} (ID: {$config->id}, enabled: " . ($config->enabled ? 'yes' : 'no') . ")");
+        $this->info("Config loaded: {$config->name} (ID: {$config->id})");
         $this->newLine();
 
         $configData = $config->getParsedConfig();

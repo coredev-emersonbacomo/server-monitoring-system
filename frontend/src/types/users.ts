@@ -4,6 +4,7 @@ export interface UsersStorePayload {
     email: string;
     username: string;
     phone_number: string;
+    timezone?: string;
     password: string;
     password_confirmation: string;
     upload_intent_id?: string;
@@ -16,6 +17,7 @@ export interface UsersUpdatePayload {
     email: string;
     username: string;
     phone_number: string;
+    timezone?: string;
     password?: string | null;
     password_confirmation?: string | null;
     upload_intent_id?: string;

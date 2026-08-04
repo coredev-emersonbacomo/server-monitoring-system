@@ -318,7 +318,7 @@ class NodeTaskScheduler
                 ]);
 
                 $config = NodeConfigCache::findById($task['config_id']);
-                if (!$config || !$config->enabled) {
+                if (!$config) {
                     continue;
                 }
 

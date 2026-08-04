@@ -14,6 +14,7 @@
     "gpush": "scripts\\git\\git-push.bat",
     "pull": "git stash && git pull && git stash apply",
     "resetdb": "php artisan optimize:clear && php artisan migrate:fresh --seed && php artisan system:monitor && npm run loadtestfactory",
+    "resetalerts": "php artisan tinker --execute=\"App\\NodeConfig\\Models\\NodeConfigState::query()->delete();\"",
     "compileagent:go": "powershell -ExecutionPolicy Bypass -File scripts/build-agent.ps1",
     "compileagent": "npm run compileagent:go",
     "loadtestfactory": "php artisan tinker --execute=\"require 'database/seeders/load-test-factory.php';\""

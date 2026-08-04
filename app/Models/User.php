@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 use Spatie\Activitylog\Support\LogOptions;
 use App\Models\CustomActivityLog;
 
-#[Fillable(['first_name', 'last_name', 'email', 'password', 'username', 'phone_number', 'status', 'profile_picture_url', 'profile_picture_public_id', 'profile_picture_storage_key'])]
+#[Fillable(['first_name', 'last_name', 'email', 'password', 'username', 'phone_number', 'timezone', 'status', 'profile_picture_url', 'profile_picture_public_id', 'profile_picture_storage_key'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {

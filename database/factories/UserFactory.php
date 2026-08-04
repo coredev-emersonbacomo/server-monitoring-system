@@ -27,6 +27,7 @@ class UserFactory extends Factory
             'last_name' => fake()->lastName(),
             'email' => fake()->unique()->safeEmail(),
             'phone_number' => fake()->numerify('09#########'),
+            'timezone' => 'Asia/Manila',
             'username' => fake()->unique()->userName(),
             'password' => static::$password ??= Hash::make('password'),
             'profile_picture_url' => fake()->randomElement($profilePictures),

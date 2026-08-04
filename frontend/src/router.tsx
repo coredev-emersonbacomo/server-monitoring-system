@@ -3,6 +3,7 @@ import Dashboard from "./pages/dashboard/index";
 import Login from "./pages/login";
 import ForgotPassword from "./pages/forgot-password";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
+import { DocsLayout } from "./layouts/DocsLayout";
 import { GuestLayout } from "./layouts/GuestLayout";
 import Clients from "./pages/clients/index/index";
 import UsersIndex from "./pages/users/index/index";
@@ -23,6 +24,8 @@ import { NodeConfigEditor } from "./components/node-config/NodeConfigEditor";
 import AlertVisualizer from "./pages/settings/alerts/index";
 import Docs from "./pages/docs/index";
 import DocsAlerts from "./pages/docs/alerts";
+import DocsGmailSmtp from "./pages/docs/gmail-smtp";
+import DocsStorageProviders from "./pages/docs/storage-providers";
 import ReportIndexPage from "./pages/reports/report-index.tsx";
 import { ReportsLayout } from "./layouts/ReportsLayout";
 import MultiReportsPreview from "./pages/reports/MultiReportsPreview.tsx";
@@ -154,7 +157,11 @@ const router = createBrowserRouter([
                             },
                         ],
                     },
-
+                ],
+            },
+            {
+                element: <DocsLayout />,
+                children: [
                     {
                         path: "/docs",
                         element: <Docs />,
@@ -162,6 +169,14 @@ const router = createBrowserRouter([
                     {
                         path: "/docs/alerts",
                         element: <DocsAlerts />,
+                    },
+                    {
+                        path: "/docs/gmail-smtp",
+                        element: <DocsGmailSmtp />,
+                    },
+                    {
+                        path: "/docs/storage-providers",
+                        element: <DocsStorageProviders />,
                     },
                 ],
             },

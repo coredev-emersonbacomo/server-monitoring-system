@@ -6,9 +6,11 @@ use Spatie\LaravelData\Attributes\Validation\Confirmed;
 use Spatie\LaravelData\Attributes\Validation\Email;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Min;
+use Spatie\LaravelData\Attributes\Validation\Nullable;
 use Spatie\LaravelData\Attributes\Validation\Required;
 use Spatie\LaravelData\Attributes\Validation\Unique;
 use Spatie\LaravelData\Data;
+use Spatie\LaravelData\Support\Validation\ValidationContext;
 
 class CreateUserData extends Data
 {
@@ -36,5 +38,15 @@ class CreateUserData extends Data
         public ?string $upload_intent_id = null,
 
         public ?string $profile_picture_storage_key = null,
+
+        #[Nullable, Max(255)]
+        public ?string $timezone = null,
     ) {}
+
+    public static function rules(ValidationContext|null $context = null): array
+    {
+        return [
+            'timezone' => ['nullable', 'string', 'max:255', 'timezone'],
+        ];
+    }
 }

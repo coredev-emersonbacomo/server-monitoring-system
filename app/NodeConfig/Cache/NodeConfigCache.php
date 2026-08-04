@@ -24,7 +24,7 @@ class NodeConfigCache
     public static function warm(): void
     {
         try {
-            $configs = NodeConfig::where('enabled', true)->get();
+            $configs = NodeConfig::get();
 
             foreach ($configs as $config) {
                 self::storeConfig($config);
@@ -130,7 +130,7 @@ class NodeConfigCache
                 }
             }
 
-            $config = NodeConfig::where('slug', $slug)->where('enabled', true)->first();
+            $config = NodeConfig::where('slug', $slug)->first();
             if ($config) {
                 self::storeConfig($config);
                 return $config;
@@ -139,7 +139,7 @@ class NodeConfigCache
             return null;
         } catch (\Throwable $e) {
             Log::warning("[node-config-cache] Failed to find by slug {$slug}, falling back to DB: " . $e->getMessage());
-            return NodeConfig::where('slug', $slug)->where('enabled', true)->first();
+            return NodeConfig::where('slug', $slug)->first();
         }
     }
 
@@ -218,8 +218,7 @@ class NodeConfigCache
     {
         try {
             $store = self::store();
-            $configs = NodeConfig::where('enabled', true)
-                ->select('id', 'scope_type', 'scope_id', 'slug')
+            $configs = NodeConfig::select('id', 'scope_type', 'scope_id', 'slug')
                 ->get();
 
             $index = [];
