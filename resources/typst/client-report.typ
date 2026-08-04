@@ -39,6 +39,8 @@
   (label: "Active Alerts", value: str(d.at("total_alerts", default: 0))),
   (label: "Avg CPU",       value: if d.at("avg_cpu_usage", default: none) != none { pct(d.at("avg_cpu_usage", default: 0)) } else { "—" }),
   (label: "Avg Memory",    value: if d.at("avg_memory_usage", default: none) != none { pct(d.at("avg_memory_usage", default: 0)) } else { "—" }),
+  (label: "Budget",        value: str(d.at("budget", default: 0))),
+  (label: "Total Subscription Fee",        value: str(d.at("total_subscription_fee", default: 0))),
 ))
 
 // ── Servers Table ────────────────────────────────────────────────────────────

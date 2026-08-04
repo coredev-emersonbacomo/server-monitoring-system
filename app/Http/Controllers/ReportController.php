@@ -296,6 +296,7 @@ class ReportController extends Controller
         $memSum       = 0.0;
         $cpuCount     = 0;
         $servers      = [];
+        $totalSubscriptionFee = 0;
 
         foreach ($client->servers as $server) {
             $lastSeenAt = $server->agent?->last_seen_at;
@@ -332,6 +333,9 @@ class ReportController extends Controller
                 ->orderBy('created_at')
                 ->get();
 
+            // Total the subscription fee
+            $totalSubscriptionFee += $server->subscription_fee;
+
             $servers[] = new ClientServerSummaryData(
                 uuid: $server->uuid,
                 name: $server->name,
@@ -344,6 +348,7 @@ class ReportController extends Controller
                 cpu_usage: $cpu,
                 memory_usage: $mem,
                 disk_usage: $disk,
+                subscription_fee: $server->subscription_fee,
                 last_seen: $lastSeenAt?->toIso8601String(),
                 uptime_percentage: $this->calcUptime($server, $updates, 24)->uptime_percentage,
             );
@@ -366,6 +371,8 @@ class ReportController extends Controller
             avg_cpu_usage: $cpuCount > 0 ? round($cpuSum / $cpuCount, 1) : null,
             avg_memory_usage: $cpuCount > 0 ? round($memSum / $cpuCount, 1) : null,
             total_alerts: $totalAlerts,
+            budget: $client->budget,
+            total_subscription_fee: $totalSubscriptionFee,
             servers: $servers,
         );
     }
