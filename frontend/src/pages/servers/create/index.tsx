@@ -15,33 +15,31 @@ import IndexHeader from "@/components/IndexHeader";
 import api from "@/api/api";
 import { Form, createFormStore, useForm } from "@/components/ui/form";
 import { useClient } from "@/hooks/useClients";
-const blockedMonthlyCostKeys = new Set(["e", "E", "-"]);
 
-function blockInvalidMonthlyCostKey(e: KeyboardEvent<HTMLInputElement>) {
-    if (blockedMonthlyCostKeys.has(e.key)) e.preventDefault();
+const blockedSubscriptionFeeKeys = new Set(["e", "E", "-"]);
+
+function blockInvalidSubscriptionFeeKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (blockedSubscriptionFeeKeys.has(e.key)) e.preventDefault();
 }
 
-function blockInvalidMonthlyCostPaste(e: ClipboardEvent<HTMLInputElement>) {
+function blockInvalidSubscriptionFeePaste(e: ClipboardEvent<HTMLInputElement>) {
     if (/[eE-]/.test(e.clipboardData.getData("text"))) e.preventDefault();
 }
 
-function setMonthlyCostValue(setValue: (value: string) => void, value: string) {
+function setSubscriptionFeeValue(setValue: (value: string) => void, value: string) {
     if (/[eE-]/.test(value)) return;
     const numericValue = Number(value);
     setValue(numericValue < 0 ? "0" : value);
 }
+
 const schema = z.object({
     name: z.string().min(1, "Server name is required"),
-    description: z.string().trim().min(1, "Description is required").max(255, "Maximum 255 characters"),
-    monthly_cost: z.union([z.string(), z.number()])
-        .transform((val) => {
-            if (val === "" || val === undefined || val === null) return 0;
-            const num = Number(val);
-            return isNaN(num) ? 0 : Math.max(0, num);
-        })
-        .refine((val) => val > 0, {
-            message: "Monthly cost is required",
-        }),
+    description: z.string().max(255, "Maximum 255 characters").optional().default(""),
+    subscription_fee: z.union([z.string(), z.number()]).transform((val) => {
+        if (val === "" || val === undefined || val === null) return 0;
+        const num = Number(val);
+        return isNaN(num) ? 0 : Math.max(0, num);
+    }),
 });
 
 export default function CreateServer() {
@@ -54,7 +52,7 @@ export default function CreateServer() {
     const store = useMemo(
         () => createFormStore({
             schema,
-            originalData: { name: "", description: "", monthly_cost: 0 },
+            originalData: { name: "", description: "", subscription_fee: 0 },
             initialMode: "create",
         }),
         [],
@@ -110,7 +108,7 @@ export default function CreateServer() {
                                         body: {
                                             name: String(data.name).trim(),
                                             description: (String(data.description ?? "").trim()) || "",
-                                            monthly_cost: Math.max(0, Number(data.monthly_cost) || 0),
+                                            subscription_fee: Math.max(0, Number(data.subscription_fee) || 0),
                                         },
                                     },
                                 );
@@ -199,16 +197,16 @@ function CreateServerFields({
 
             <div>
                 <FloatingInput
-                    label="Monthly Cost (₱ / mo)"
+                    label="Subscription Fee (₱ / mo)"
                     inputBg="bg-card"
                     type="number"
                     step="0.01"
                     min="0"
-                    value={String(form.monthly_cost ?? "")}
-                    onKeyDown={blockInvalidMonthlyCostKey}
-                    onPaste={blockInvalidMonthlyCostPaste}
+                    value={String(form.subscription_fee ?? "")}
+                    onKeyDown={blockInvalidSubscriptionFeeKey}
+                    onPaste={blockInvalidSubscriptionFeePaste}
                     onValueChange={(value) =>
-                        setMonthlyCostValue(store.set("monthly_cost"), value)
+                        setSubscriptionFeeValue(store.set("subscription_fee"), value)
                     }
                     error={errors.monthly_cost}
                 />

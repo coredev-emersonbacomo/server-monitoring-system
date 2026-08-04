@@ -517,7 +517,7 @@ export default function Clients() {
                             This will permanently delete{" "}
                             <strong className="text-foreground">
                                 {deleting?.name}
-                            </span>
+                            </strong>
                             ? This action cannot be undone.
                         </p>
                         <div className="flex flex-col gap-1.5 mt-2 mb-4">
@@ -546,7 +546,7 @@ export default function Clients() {
                                     label="Cancel"
                                     onClick={() => {
                                         setDeleting(null);
-                                        setDeleteConfirmText("");
+                                        setConfirmText("");
                                     }}
                                 />
                             </DialogClose>
@@ -562,7 +562,7 @@ export default function Clients() {
                                     confirmText !== deleting?.name
                                 }
                                 onClick={async () => {
-                                    if (!deleting || deleteConfirmText !== deleting.name) return;
+                                    if (!deleting || confirmText !== deleting.name) return;
                                     try {
                                         await deleteClient.mutateAsync(
                                             deleting.uuid,
@@ -572,11 +572,11 @@ export default function Clients() {
                                         );
                                         setDeleting(null);
                                         setConfirmText("");
-                                    } catch {
+                                    } catch (err) {
                                         toast.error(
                                             err?.response?.data?.message ||
-                                                err?.message ||
-                                                "Failed to delete client. Please try again.",
+                                            err?.message ||
+                                            "Failed to delete client. Please try again.",
                                         );
                                     }
                                 }}
