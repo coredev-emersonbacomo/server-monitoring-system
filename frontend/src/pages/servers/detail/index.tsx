@@ -151,14 +151,14 @@ export default function ServerDetail() {
                 schema: serverInfoSchema,
                 originalData: initial
                     ? {
-                          name: initial.name,
-                          description: initial.description ?? "",
-                          monthly_cost: initial.monthly_rate ?? 0,
-                      }
+                        name: initial.name,
+                        description: initial.description ?? "",
+                        monthly_cost: initial.monthly_rate ?? 0,
+                    }
                     : null,
                 initialMode: "view",
             }),
-        [initial],
+        [],
     );
 
     const form = useForm(store, (s) => s.form);
@@ -166,9 +166,16 @@ export default function ServerDetail() {
 
     useEffect(() => {
         if (initial && mode === "view") {
-            store.set("name")(initial.name);
-            store.set("description")(initial.description ?? "");
-            store.set("monthly_cost")(initial.monthly_rate ?? 0);
+            const data = {
+                name: initial.name,
+                description: initial.description ?? "",
+                monthly_cost: initial.monthly_rate ?? 0,
+            };
+            store.setState({
+                form: data,
+                originalData: data,
+                externalDirty: false,
+            });
         }
     }, [initial, mode, store]);
 
@@ -300,7 +307,7 @@ export default function ServerDetail() {
     });
 
     const handleCostAdjustment = async (
-        type: "deduction" | "top_up" | "add_funds" | "reset_usage",
+        type: "deduction" | "add_funds" | "add_credit" | "reset_usage",
         amount?: number,
     ) => {
         if (!initial?.client_uuid) return;
@@ -418,8 +425,8 @@ export default function ServerDetail() {
     const statusKey = server.agent_deleted
         ? "pending_deletion"
         : (server.status as keyof typeof STATUS_CONFIG) in STATUS_CONFIG
-          ? (server.status as keyof typeof STATUS_CONFIG)
-          : "pending_installation";
+            ? (server.status as keyof typeof STATUS_CONFIG)
+            : "pending_installation";
 
     const {
         label: statusLabel,

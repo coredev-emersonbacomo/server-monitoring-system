@@ -18,9 +18,11 @@ use App\Enums\ServerStatus;
 use App\Models\Setting;
 use App\Models\Activity;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
+
 class Server extends Model
 {
-    use HasFactory, Notifiable, HasUuids;
+    use HasFactory, Notifiable, HasUuids, SoftDeletes;
 
     public function newUniqueId(): string
     {
