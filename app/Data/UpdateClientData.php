@@ -32,5 +32,7 @@ class UpdateClientData extends Data
         public string|Optional|null $banner_image_storage_key,
 
         public string|Optional|null $alert_scope,
+
+        public float|Optional|null $budget,
     ) {}
 }

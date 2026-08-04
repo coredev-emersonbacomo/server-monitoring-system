@@ -19,7 +19,7 @@ class CreateServerData extends Data
         #[StringType, Max(512)]
         public ?string $description = null,
 
-        #[Numeric, Min(0), Max(999999999)]
-        public ?float $monthly_cost = 0.0,
+        #[Numeric, Min(0)]
+        public ?float $subscription_fee = 0.00,
     ) {}
 }

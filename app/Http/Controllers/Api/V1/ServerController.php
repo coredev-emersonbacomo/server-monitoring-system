@@ -257,27 +257,6 @@ class ServerController extends Controller
         return ServerData::fromModel($serverModel->fresh());
     }
 
-    public function costLogs(string $clientUuid, string $serverUuid)
-    {
-        $serverModel = Server::where('uuid', $serverUuid)
-            ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
-            ->firstOrFail();
-
-        $logs = CustomActivityLog::where('logable_type', Server::class)
-            ->where('logable_id', (string) $serverModel->uuid)
-            ->whereIn('action', [
-                'Deduction', 
-                'Payment Deduction', 
-                'Reset Cost Baseline', 
-                'Update Monthly Rate', 
-                'Agent Uninstalled'
-            ])
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return CustomActivityLogData::collect($logs->map(fn(CustomActivityLog $log) => CustomActivityLogData::fromModel($log)));
-    }
-
     public function destroy(string $clientUuid, string $serverUuid)
     {
         $serverModel = Server::where('uuid', $serverUuid)
@@ -287,12 +266,6 @@ class ServerController extends Controller
         if ($serverModel->agent()->whereNotNull('registered_at')->exists() && !$serverModel->agent_deleted) {
             return response()->json([
                 'message' => 'Cannot delete server while the agent is still running. Please run the uninstall script first.'
-            ], 422);
-        }
-
-        if ((float) ($serverModel->accumulated_cost ?? 0) > 0) {
-            return response()->json([
-                'message' => 'Cannot delete server with an outstanding cost balance. Please settle all deductions first before deleting.'
             ], 422);
         }
 

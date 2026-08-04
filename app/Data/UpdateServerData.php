@@ -19,7 +19,7 @@ class UpdateServerData extends Data
         #[StringType, Max(512)]
         public ?string $description = null,
         public string|Optional|null $alert_scope = null,
-        #[Numeric, Min(0), Max(999999999)]
-        public float|Optional|null $monthly_cost = null,
+        #[Numeric, Min(0)]
+        public float|Optional|null $subscription_fee = null,
     ) {}
 }

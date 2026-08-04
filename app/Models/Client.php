@@ -28,6 +28,11 @@ public function newUniqueId(): string
         'status',
         'uuid',
         'alert_scope',
+        'budget',
+    ];
+
+    protected $casts = [
+        'budget' => 'decimal:2',
     ];
 public function uniqueIds(): array
     {

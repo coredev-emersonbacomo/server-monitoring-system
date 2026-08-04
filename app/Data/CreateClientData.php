@@ -32,5 +32,7 @@ class CreateClientData extends Data
         public ?string $upload_intent_id = null,
 
         public ?string $banner_image_storage_key = null,
+
+        public ?float $budget = 0.00,
     ) {}
 }
