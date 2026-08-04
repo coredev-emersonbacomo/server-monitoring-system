@@ -53,31 +53,7 @@ export function DeleteModalDangerZone() {
                             undone.
                         </p>
 
-                        {initial && (initial.accumulated_cost ?? 0) > 0 && (
-                            <div className="flex items-start gap-2 p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-xs text-amber-600 dark:text-amber-400">
-                                <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-                                <div>
-                                    <p className="font-semibold text-foreground">
-                                        Outstanding Cost Balance
-                                    </p>
-                                    <p className="text-muted-foreground mt-0.5">
-                                        This server has an outstanding balance
-                                        of{" "}
-                                        <strong className="text-amber-600 dark:text-amber-400">
-                                            ₱
-                                            {(
-                                                initial.accumulated_cost ?? 0
-                                            ).toLocaleString(undefined, {
-                                                minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2,
-                                            })}
-                                        </strong>
-                                        . You must settle all deductions before
-                                        this server can be deleted.
-                                    </p>
-                                </div>
-                            </div>
-                        )}
+
 
                         {initial && initial.agent && !initial.agent_deleted && (
                             <div className="flex flex-col gap-3 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">

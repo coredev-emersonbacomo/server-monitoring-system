@@ -22,10 +22,14 @@ class ClientData extends Data
         public string $updated_at,
         public string $alert_scope = 'global',
         public string $record_status = 'active',
+        public float $budget = 0.00,
+        public float $total_subscription_fee = 0.00,
     ) {}
 
     public static function fromModel(Client $client): self
     {
+        $totalSubscriptionFee = (float) $client->servers()->sum('subscription_fee');
+
         return new self(
             uuid: $client->uuid,
             name: $client->name,
@@ -41,6 +45,8 @@ class ClientData extends Data
             updated_at: $client->updated_at->toIso8601String(),
             alert_scope: $client->alert_scope ?? 'global',
             record_status: $client->record_status instanceof \UnitEnum ? $client->record_status->value : ($client->record_status ?? 'active'),
+            budget: (float) ($client->budget ?? 0.00),
+            total_subscription_fee: $totalSubscriptionFee,
         );
     }
 }

@@ -9,8 +9,6 @@ import {
     Terminal,
     ArrowLeft,
     Loader2,
-    Banknote,
-    CreditCard,
     Cpu,
     Server,
 } from "lucide-react";
@@ -41,10 +39,8 @@ import {
 import { AgentInstallationGuide } from "./components/AgentInstallationGuide";
 import { ServerInfoTab } from "./tabs/ServerInfoTab";
 import { MetricsTab } from "./tabs/MetricsTab";
-import { BillingTab } from "./tabs/BillingTab";
 import { AlertsTab } from "./tabs/AlertsTab";
 import { AgentTab } from "./tabs/AgentTab";
-import { CostModal } from "./dialogs/CostModal";
 
 export default function ServerDetail() {
     const { uuid } = useParams<{ uuid: string }>();
@@ -153,7 +149,6 @@ export default function ServerDetail() {
                     ? {
                         name: initial.name,
                         description: initial.description ?? "",
-                        monthly_cost: initial.monthly_rate ?? 0,
                     }
                     : null,
                 initialMode: "view",
@@ -169,7 +164,6 @@ export default function ServerDetail() {
             const data = {
                 name: initial.name,
                 description: initial.description ?? "",
-                monthly_cost: initial.monthly_rate ?? 0,
             };
             store.setState({
                 form: data,
@@ -520,12 +514,6 @@ export default function ServerDetail() {
                             )}
 
                             {mode === "view" && (
-                                <Tab.Item icon={CreditCard} title="Billing">
-                                    <BillingTab />
-                                </Tab.Item>
-                            )}
-
-                            {mode === "view" && (
                                 <Tab.Item icon={Bell} title="Alerts">
                                     <AlertsTab />
                                 </Tab.Item>
@@ -538,8 +526,6 @@ export default function ServerDetail() {
                             )}
                         </Tab>
                     </div>
-
-                    <CostModal />
                 </PageLayout>
             </ChartZoomProvider>
         </ServerDetailContext.Provider>

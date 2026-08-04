@@ -61,6 +61,8 @@ export interface ClientData {
             updated_at: string;
             alert_scope?: string;
             record_status?: string;
+            budget?: number;
+            total_subscription_fee?: number;
         }
 
 /** CustomActivityLog */
@@ -258,17 +260,8 @@ export interface ServerData {
             }[] | null;
             agent?: AgentData | null;
             alert_scope?: string;
-            monthly_rate?: number;
-            remitted?: number;
-            cost_reset_at?: string | null;
-            historical_cost?: number;
-            rate_updated_at?: string | null;
             uptime_seconds?: number;
-            running_balance?: number;
-            net_cost?: number;
-            accumulated_cost?: number;
-            billing_date?: string | null;
-            pending_monthly_rate?: number | null;
+            subscription_fee?: number;
         }
 
 /** ServerReportData */
@@ -288,10 +281,6 @@ export interface ServerReportData {
             last_seen?: string | null;
             metrics: Record<string, never>;
             uptime: ServerUptimeData;
-            running_balance: number;
-            net_cost: number;
-            accumulated_cost: number;
-            billing_date?: string | null;
             activities: {
                 type: string;
                 description: string;
