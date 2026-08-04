@@ -17,11 +17,13 @@ class GeneralReportData extends Data
         public int $total_alerts,
         public int $critical_alerts,
         public int $warning_alerts,
-        public int $unassigned_servers,
         public float $avg_uptime_percentage,
         public float $avg_cpu_usage,
         public float $avg_memory_usage,
         public float $avg_disk_usage,
+        public ?int $sum_client_budget,
+        public ?int $sum_server_subscription_fee,
+
 
         /** @var GeneralServerSummaryData[] */
         public array $need_attention_servers,
