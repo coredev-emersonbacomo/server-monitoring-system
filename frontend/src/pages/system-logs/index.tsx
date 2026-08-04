@@ -11,14 +11,12 @@ import {
     FileText,
     Server,
     User,
-    Banknote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     useActivityLogs,
     useServerHealthLogs,
     useAgentLogs,
-    useBillingLogs,
     type ActivityLogData,
 } from "./hooks/useActivityLogs";
 import { Tab } from "@/components/ui/tab";
@@ -567,8 +565,6 @@ export default function LogsPage() {
     const { data: healthLogs = [], isLoading: isLoadingHealth } =
         useServerHealthLogs();
     const { data: agentLogs = [], isLoading: isLoadingAgent } = useAgentLogs();
-    const { data: billingLogs = [], isLoading: isLoadingBilling } =
-        useBillingLogs();
 
     const [sortField, setSortField] = useState<SortableKey>("created_at");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -619,10 +615,6 @@ export default function LogsPage() {
         () => sortFn(agentLogs),
         [agentLogs, sortField, sortDir],
     );
-    const sortedBilling = useMemo(
-        () => sortFn(billingLogs),
-        [billingLogs, sortField, sortDir],
-    );
 
     return (
         <PageLayout>
@@ -635,18 +627,6 @@ export default function LogsPage() {
                             logs={sortedActivity}
                             isLoading={isLoadingActivity}
                             emptyMessage="No general activity logs recorded yet."
-                            sortField={sortField}
-                            sortDir={sortDir}
-                            onSort={handleSort}
-                            onSelectLog={setSelectedLog}
-                        />
-                    </Tab.Item>
-
-                    <Tab.Item icon={Banknote} title="Billing">
-                        <LogTable
-                            logs={sortedBilling}
-                            isLoading={isLoadingBilling}
-                            emptyMessage="No billing, payment, or deduction logs recorded yet."
                             sortField={sortField}
                             sortDir={sortDir}
                             onSort={handleSort}
