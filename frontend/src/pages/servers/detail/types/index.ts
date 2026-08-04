@@ -3,11 +3,6 @@ import { z } from "zod";
 export const serverInfoSchema = z.object({
     name: z.string().min(1, "Server name is required."),
     description: z.string(),
-    monthly_cost: z.union([z.string(), z.number()]).transform((val) => {
-        if (val === "" || val === undefined || val === null) return 0;
-        const num = Number(val);
-        return isNaN(num) ? 0 : Math.min(999999999, Math.max(0, num));
-    }),
 });
 
 export type TimeSpan =

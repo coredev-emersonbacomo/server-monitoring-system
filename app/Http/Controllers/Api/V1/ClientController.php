@@ -265,13 +265,6 @@ class ClientController extends Controller
             ], 422);
         }
 
-        $totalCost = (float) $client->servers()->sum('accumulated_cost');
-        if ($totalCost > 0) {
-            return response()->json([
-                'message' => 'Cannot delete client with an outstanding cost balance. Please settle all server deductions first before deleting.'
-            ], 422);
-        }
-
         if ($client->banner_image_storage_key) {
             $folder = config('uploads.purposes.client_banner.folder');
             DeleteStorageAsset::dispatch($client->banner_image_storage_key, $folder);

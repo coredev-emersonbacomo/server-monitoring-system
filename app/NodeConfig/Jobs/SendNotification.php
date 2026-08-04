@@ -32,7 +32,7 @@ class SendNotification implements ShouldQueue
 
         // Make {server.url} resolvable from templates
         if ($server) {
-            $server->url = url('/servers/' . $server->uuid);
+            $server->url = rtrim((string) config('app.frontend_url'), '/') . '/servers/' . $server->uuid;
         }
 
         $settings = $this->action['settings'];
@@ -104,11 +104,28 @@ class SendNotification implements ShouldQueue
             $message = str_replace(['<b>', '</b>'], '**', $message);
         }
 
+        // Emails don't understand Discord <t:> timestamps — emit UTC (Z) datetimes and let JS resolve them locally.
+        if ($channel === 'email') {
+            $message = preg_replace_callback('/<t:(\d+)(?::[a-zA-Z])?>/', function ($m) {
+                return Carbon::createFromTimestamp((int) $m[1])->utc()->format('Y-m-d\TH:i:s\Z');
+            }, $message);
+        }
+
         if ($message === '' && $channel !== 'discord') {
             return;
         }
 
         $serverUrl = $server ? url('/servers/' . $server->uuid) : null;
+
+        if (filter_var(env('MUTE_NOTIFICATION', false), FILTER_VALIDATE_BOOL)) {
+            Log::info('[server-events] Notifications muted (MUTE_NOTIFICATION) — would send', [
+                'server_id' => $this->serverId,
+                'channel' => $channel,
+                'subject' => $subject,
+                'message' => $message,
+            ]);
+            return;
+        }
 
         try {
             $sent = match ($channel) {
@@ -192,15 +209,6 @@ class SendNotification implements ShouldQueue
         $botToken = $settings['bot_token'] ?? null;
         $channelId = $settings['channel_id'] ?? null;
         $roleId = $settings['role_id'] ?? null;
-
-        if (filter_var(env('MUTE_DISCORD', false), FILTER_VALIDATE_BOOL)) {
-            Log::info('[server-events] Discord muted (MUTE_DISCORD) — would post', [
-                'bot_token_configured' => !empty($botToken),
-                'channel_id' => $channelId,
-                'message' => $message,
-            ]);
-            return true;
-        }
 
         if (!$botToken || !$channelId) {
             Log::warning('[server-events] Discord notification skipped: missing bot_token or channel_id', [
