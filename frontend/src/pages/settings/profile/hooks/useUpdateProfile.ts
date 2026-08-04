@@ -9,6 +9,7 @@ interface UpdateProfileInput {
     lastName: string;
     email: string;
     username: string;
+    phoneNumber: string;
     status: string;
     password?: string;
     passwordConfirmation?: string;
@@ -42,6 +43,7 @@ export function useUpdateProfile() {
                 last_name: input.lastName,
                 email: input.email,
                 username: input.username,
+                phone_number: input.phoneNumber,
                 status: input.status,
             };
 

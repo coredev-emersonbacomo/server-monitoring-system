@@ -98,7 +98,7 @@ const alertGraph: NodeConfigGraph = {
         {
             id: "discord_30",
             type: "notification",
-            position: { x: 860, y: 410 },
+            position: { x: 860, y: 460 },
             settings: {
                 label: "Discord 30s",
                 channel: "discord",
@@ -116,13 +116,13 @@ const alertGraph: NodeConfigGraph = {
         {
             id: "metric_status",
             type: "metric",
-            position: { x: 100, y: 580 },
+            position: { x: -300, y: 580 },
             settings: { label: "Server Status", metric_type: "server_status" },
         },
         {
             id: "email_offline",
             type: "notification",
-            position: { x: 340, y: 640 },
+            position: { x: -60, y: 430 },
             settings: {
                 label: "Email Offline",
                 channel: "email",
@@ -134,13 +134,13 @@ const alertGraph: NodeConfigGraph = {
         {
             id: "check_after_10m",
             type: "check_after",
-            position: { x: 340, y: 750 },
+            position: { x: -60, y: 750 },
             settings: { label: "Check After 10s", duration: "00:00:00:00:10" },
         },
         {
             id: "discord_offline",
             type: "notification",
-            position: { x: 600, y: 840 },
+            position: { x: 200, y: 670 },
             settings: {
                 label: "Discord Offline",
                 channel: "discord",
