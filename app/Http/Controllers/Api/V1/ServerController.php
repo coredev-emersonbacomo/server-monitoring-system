@@ -24,7 +24,7 @@ class ServerController extends Controller
     public function index(string $clientUuid)
     {
         $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
-        $servers = Server::where('client_id', $clientModel->id)->get();
+        $servers = Server::withTrashed()->where('client_id', $clientModel->id)->get();
         foreach ($servers as $s) {
             $s->checkTokenExpiration();
         }
@@ -284,7 +284,7 @@ class ServerController extends Controller
             ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
             ->firstOrFail();
 
-        if ($serverModel->agent()->exists() && !$serverModel->agent_deleted) {
+        if ($serverModel->agent()->whereNotNull('registered_at')->exists() && !$serverModel->agent_deleted) {
             return response()->json([
                 'message' => 'Cannot delete server while the agent is still running. Please run the uninstall script first.'
             ], 422);
@@ -303,9 +303,9 @@ class ServerController extends Controller
             'logable_id' => (string) $serverModel->uuid,
             'user_id' => $actor?->id,
             'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
-            'action' => 'Delete Server',
+            'action' => 'Archive Server',
             'details' => [
-                'message' => "Deleted server: {$serverModel->name}",
+                'message' => "Archived server: {$serverModel->name}",
                 'name' => $serverModel->name,
                 'host_name' => $serverModel->host_name,
             ],
@@ -315,6 +315,10 @@ class ServerController extends Controller
         // removed from the Action Board immediately after deletion.
         ActionItem::where('server_id', $serverModel->id)->delete();
 
+        $serverModel->update([
+            'record_status' => 'archived',
+            'status' => 'archived',
+        ]);
         $serverModel->delete();
 
         return response()->json(['status' => 'success']);
@@ -322,7 +326,7 @@ class ServerController extends Controller
 
     public function listAll(Request $request)
     {
-        $query = Server::with('client', 'latestUpdate', 'agent');
+        $query = Server::withTrashed()->with('client', 'latestUpdate', 'agent');
 
         if ($clientUuid = $request->query('client_uuid')) {
             $client = Client::where('uuid', $clientUuid)->first();
