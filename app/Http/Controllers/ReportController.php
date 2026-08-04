@@ -318,6 +318,14 @@ class ReportController extends Controller
                 $cpuCount++;
             }
 
+            $diskSizeGb = null;
+            if ($server->disk !== null) {
+                $parsedDisk = preg_replace('/[^0-9.]/', '', $server->disk);
+                if ($parsedDisk !== '' && is_numeric($parsedDisk)) {
+                    $diskSizeGb = (float) $parsedDisk;
+                }
+            }
+
             // Per-server uptime: quick gap analysis over last 24h
             $updates    = $server->updates()
                 ->where('created_at', '>=', now()->subHours(24))
@@ -328,6 +336,11 @@ class ReportController extends Controller
                 uuid: $server->uuid,
                 name: $server->name,
                 status: $isOnline ? 'online' : 'offline',
+                cpu_model: $server->cpu_model,
+                cpu_cores: $server->cpu_cores,
+                ram: $server->ram,
+                disk: $server->disk,
+                disk_used_gb: $diskSizeGb !== null && $disk !== null ? round($diskSizeGb * $disk / 100, 1) : null,
                 cpu_usage: $cpu,
                 memory_usage: $mem,
                 disk_usage: $disk,
