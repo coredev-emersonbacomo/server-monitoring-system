@@ -30,8 +30,8 @@ const STATUS_META: Record<
     offline: { icon: WifiOff, color: "text-red-400", bg: "bg-red-500/10" },
     pending_installation: {
         icon: AlertTriangle,
-        color: "text-zinc-400",
-        bg: "bg-zinc-500/10",
+        color: "text-amber-400",
+        bg: "bg-amber-500/10",
     },
     waiting_for_installation: {
         icon: AlertTriangle,
@@ -272,7 +272,12 @@ return (
             ) : (
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
                     {filtered.map((server) => {
-                        const effectiveStatus = server.agent_deleted ? "pending_deletion" : (server.status ?? "offline");
+                        const isArchived = server.record_status === "archived" || server.status === "archived";
+                        const effectiveStatus = isArchived
+                            ? "archived"
+                            : server.agent_deleted
+                            ? "pending_deletion"
+                            : (server.status ?? "offline");
                         const meta = STATUS_META[effectiveStatus] ?? STATUS_META.offline;
                         const Icon = meta.icon;
                         return (

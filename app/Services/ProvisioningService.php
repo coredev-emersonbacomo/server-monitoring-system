@@ -45,7 +45,7 @@ class ProvisioningService
 
         // Generate new token
         $rawToken = Str::random(64);
-        $expiresAt = Carbon::now('UTC')->addMinutes(10);
+        $expiresAt = now()->addHour();
 
         $token = DB::transaction(function () use ($server, $rawToken, $expiresAt, $user) {
             // Revoke any previous active tokens
@@ -53,7 +53,7 @@ class ProvisioningService
                 ->where('status', 'active')
                 ->update([
                     'status' => 'revoked',
-                    'revoked_at' => Carbon::now('UTC'),
+                    'revoked_at' => now(),
                 ]);
 
             return ProvisionToken::create([
@@ -110,7 +110,7 @@ class ProvisioningService
             ->where('status', 'active')
             ->update([
                 'status' => 'revoked',
-                'revoked_at' => Carbon::now('UTC'),
+                'revoked_at' => now(),
             ]);
 
         Activity::create([
@@ -140,7 +140,7 @@ class ProvisioningService
             'operating_system' => $metadata['platform'] ?? null,
             'architecture' => $metadata['architecture'] ?? null,
             'hostname' => $metadata['hostname'] ?? null,
-            'started_at' => Carbon::now('UTC'),
+            'started_at' => now(),
             'status' => 'started',
         ]);
 
@@ -190,7 +190,7 @@ class ProvisioningService
             // Invalidate provision token
             $token->update([
                 'status' => 'used',
-                'used_at' => Carbon::now('UTC'),
+                'used_at' => now(),
             ]);
 
             // Set Server Status
@@ -213,7 +213,7 @@ class ProvisioningService
                 'version' => $metadata['agent_version'] ?? '1.0',
                 'protocol_version' => '1.0',
                 'status' => 'registering',
-                'registered_at' => Carbon::now('UTC'),
+                'registered_at' => now(),
             ]);
 
             // Create Agent Identity
@@ -224,7 +224,7 @@ class ProvisioningService
                 'agent_id' => $agent->id,
                 'identity_hash' => $identityHash,
                 'status' => 'active',
-                'issued_at' => Carbon::now('UTC'),
+                'issued_at' => now(),
             ]);
 
             $heartbeatInterval = (int) (\App\Models\Setting::get('heartbeat_interval') ?: 5);
@@ -258,7 +258,7 @@ class ProvisioningService
                 ->first()
                 ?->update([
                     'status' => 'completed',
-                    'completed_at' => Carbon::now('UTC'),
+                    'completed_at' => now(),
                 ]);
 
             // Log activity

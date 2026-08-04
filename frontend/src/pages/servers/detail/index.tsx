@@ -352,11 +352,14 @@ export default function ServerDetail() {
             },
             { label: server.name },
         ];
-    const statusKey = server.agent_deleted
-        ? "pending_deletion"
-        : (server.status as keyof typeof STATUS_CONFIG) in STATUS_CONFIG
-            ? (server.status as keyof typeof STATUS_CONFIG)
-            : "pending_installation";
+    const isArchived = server.record_status === "archived" || server.status === "archived";
+    const statusKey = isArchived
+        ? "archived"
+        : server.agent_deleted
+            ? "pending_deletion"
+            : (server.status as keyof typeof STATUS_CONFIG) in STATUS_CONFIG
+                ? (server.status as keyof typeof STATUS_CONFIG)
+                : "pending_installation";
 
     const {
         label: statusLabel,
