@@ -296,6 +296,7 @@ class ReportController extends Controller
         $memSum       = 0.0;
         $cpuCount     = 0;
         $servers      = [];
+        $totalSubscriptionFee = 0;
 
         foreach ($client->servers as $server) {
             $lastSeenAt = $server->agent?->last_seen_at;
@@ -332,6 +333,9 @@ class ReportController extends Controller
                 ->orderBy('created_at')
                 ->get();
 
+            // Total the subscription fee
+            $totalSubscriptionFee += $server->subscription_fee;
+
             $servers[] = new ClientServerSummaryData(
                 uuid: $server->uuid,
                 name: $server->name,
@@ -344,6 +348,7 @@ class ReportController extends Controller
                 cpu_usage: $cpu,
                 memory_usage: $mem,
                 disk_usage: $disk,
+                subscription_fee: $server->subscription_fee,
                 last_seen: $lastSeenAt?->toIso8601String(),
                 uptime_percentage: $this->calcUptime($server, $updates, 24)->uptime_percentage,
             );
@@ -366,6 +371,8 @@ class ReportController extends Controller
             avg_cpu_usage: $cpuCount > 0 ? round($cpuSum / $cpuCount, 1) : null,
             avg_memory_usage: $cpuCount > 0 ? round($memSum / $cpuCount, 1) : null,
             total_alerts: $totalAlerts,
+            budget: $client->budget,
+            total_subscription_fee: $totalSubscriptionFee,
             servers: $servers,
         );
     }
@@ -380,25 +387,31 @@ class ReportController extends Controller
             $offlineThresholdSec = intdiv($offlineThresholdSec, 1000);
         }
 
+        // Direct database aggregations
         $totalClients = Client::count();
         $totalUsers   = User::count();
+        $sumClientBudget = (float) Client::sum('budget');
 
-        $servers = Server::with('client', 'agent', 'latestUpdate')->get();
+        // Load servers with eager-loaded latest relation and pre-filtered updates for the last 24h (prevents N+1)
+        $since24h = now()->subHours(24);
+        $servers  = Server::with([
+            'client:id,name',
+            'agent:id,server_id,last_seen_at',
+            'latestUpdate',
+            'updates' => fn($q) => $q->where('created_at', '>=', $since24h)->orderBy('created_at'),
+        ])->get();
 
-        $totalServers     = $servers->count();
-        $onlineCount      = 0;
-        $offlineCount     = 0;
-        $unassigned       = 0;
-        $cpuVals          = [];
-        $memVals          = [];
-        $diskVals         = [];
-        $serverSummaries  = []; // for top/worst/sla
+        $totalServers             = $servers->count();
+        $sumServerSubscriptionFee = (float) $servers->sum('subscription_fee');
+
+        $onlineCount     = 0;
+        $offlineCount    = 0;
+        $cpuVals         = [];
+        $memVals         = [];
+        $diskVals        = [];
+        $serverSummaries = [];
 
         foreach ($servers as $server) {
-            if (!$server->client_id) {
-                $unassigned++;
-            }
-
             $lastSeenAt = $server->agent?->last_seen_at;
             $health     = Server::computeHealth($lastSeenAt, $offlineThresholdSec);
             $isOnline   = $health === ServerHealth::Online;
@@ -419,12 +432,8 @@ class ReportController extends Controller
                 $diskVals[] = $disk ?? 0;
             }
 
-            // Quick uptime for this server (last 24h)
-            $updates   = $server->updates()
-                ->where('created_at', '>=', now()->subHours(24))
-                ->orderBy('created_at')
-                ->get();
-            $uptimePct = $this->calcUptime($server, $updates, 24)->uptime_percentage;
+            // Uses preloaded relation directly without firing new database queries
+            $uptimePct = $this->calcUptime($server, $server->updates, 24)->uptime_percentage;
 
             $serverSummaries[] = new GeneralServerSummaryData(
                 uuid: $server->uuid,
@@ -437,26 +446,28 @@ class ReportController extends Controller
             );
         }
 
-        // Servers needing attention: highest CPU usage (desc)
-        $worstSorted  = array_reverse($serverSummaries);
-        $needAttention = array_values(array_slice($worstSorted, 0, 5));
+        // Sort servers needing attention by highest CPU usage (descending)
+        $needAttention = $serverSummaries;
+        usort($needAttention, fn($a, $b) => $b->cpu_usage <=> $a->cpu_usage);
+        $needAttention = array_values(array_slice($needAttention, 0, 5));
 
         // SLA servers: sorted by uptime_percentage desc, top 10
         $slaSorted = $serverSummaries;
         usort($slaSorted, fn($a, $b) => $b->uptime_percentage <=> $a->uptime_percentage);
         $slaServers = array_values(array_slice($slaSorted, 0, 10));
 
-        // Servers per client
-        $clients = Client::withCount(['servers'])->get();
+        // Active alert counts per client
         $clientAlertCounts = LocalAlert::selectRaw('server_id')
-            ->with('server')
+            ->with('server:id,client_id')
             ->get()
-            ->groupBy(fn($a) => optional($a->server)->client_id);
+            ->groupBy(fn($a) => $a->server?->client_id);
 
+        $clients = Client::withCount('servers')->get();
         $serversPerClient = $clients->map(function ($client) use ($clientAlertCounts) {
             $alerts = isset($clientAlertCounts[$client->id])
                 ? $clientAlertCounts[$client->id]->count()
                 : 0;
+
             return [
                 'client_name'   => $client->name,
                 'server_count'  => $client->servers_count,
@@ -465,6 +476,7 @@ class ReportController extends Controller
         })->values()->all();
 
         $thirtyDaysAgo = now()->subDays(30);
+
         $recentClients = Client::where('created_at', '>=', $thirtyDaysAgo)
             ->latest()
             ->get()
@@ -477,7 +489,7 @@ class ReportController extends Controller
             ->values()
             ->all();
 
-        $recentServers = Server::with('client')
+        $recentServers = Server::with('client:id,name')
             ->where('created_at', '>=', $thirtyDaysAgo)
             ->latest()
             ->get()
@@ -490,16 +502,23 @@ class ReportController extends Controller
             ->values()
             ->all();
 
-        // Alert counts from ActionItems
-        $totalAlerts    = ActionItem::where('status', '!=', 'completed')->count();
-        $criticalAlerts = ActionItem::where('status', '!=', 'completed')->where('severity', 'critical')->count();
-        $warningAlerts  = ActionItem::where('status', '!=', 'completed')->where('severity', 'warning')->count();
+        // Consolidated single query for ActionItems alert counts
+        $alertMetrics = ActionItem::where('status', '!=', 'completed')
+            ->selectRaw("
+            COUNT(*) as total,
+            SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END) as critical,
+            SUM(CASE WHEN severity = 'warning' THEN 1 ELSE 0 END) as warning
+        ")
+            ->first();
 
-        $avgCpu    = count($cpuVals)  > 0 ? round(array_sum($cpuVals)  / count($cpuVals),  1) : 0;
-        $avgMem    = count($memVals)  > 0 ? round(array_sum($memVals)  / count($memVals),  1) : 0;
-        $avgDisk   = count($diskVals) > 0 ? round(array_sum($diskVals) / count($diskVals), 1) : 0;
+        $totalAlerts    = (int) ($alertMetrics->total ?? 0);
+        $criticalAlerts = (int) ($alertMetrics->critical ?? 0);
+        $warningAlerts  = (int) ($alertMetrics->warning ?? 0);
 
-        // Avg uptime: average of all server uptime_percentages
+        $avgCpu  = count($cpuVals)  > 0 ? round(array_sum($cpuVals)  / count($cpuVals),  1) : 0;
+        $avgMem  = count($memVals)  > 0 ? round(array_sum($memVals)  / count($memVals),  1) : 0;
+        $avgDisk = count($diskVals) > 0 ? round(array_sum($diskVals) / count($diskVals), 1) : 0;
+
         $uptimeVals = array_map(fn($s) => $s->uptime_percentage, $serverSummaries);
         $avgUptime  = count($uptimeVals) > 0 ? round(array_sum($uptimeVals) / count($uptimeVals), 1) : 0;
 
@@ -514,11 +533,12 @@ class ReportController extends Controller
             total_alerts: $totalAlerts,
             critical_alerts: $criticalAlerts,
             warning_alerts: $warningAlerts,
-            unassigned_servers: $unassigned,
             avg_uptime_percentage: $avgUptime,
             avg_cpu_usage: $avgCpu,
             avg_memory_usage: $avgMem,
             avg_disk_usage: $avgDisk,
+            sum_client_budget: $sumClientBudget,
+            sum_server_subscription_fee: $sumServerSubscriptionFee,
             need_attention_servers: $needAttention,
             sla_servers: $slaServers,
             servers_per_client: $serversPerClient,

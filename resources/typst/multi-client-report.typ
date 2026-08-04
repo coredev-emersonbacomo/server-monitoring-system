@@ -42,13 +42,33 @@
     (label: "Active Alerts", value: str(item.at("total_alerts", default: 0))),
     (label: "Avg CPU",       value: if item.at("avg_cpu_usage", default: none) != none { pct(item.avg_cpu_usage) } else { "—" }),
     (label: "Avg Memory",    value: if item.at("avg_memory_usage", default: none) != none { pct(item.avg_memory_usage) } else { "—" }),
+    (label: "Budget",        value: "₱" + str(item.at("budget", default: 0))),
+    (
+      label: "Total Subscription Fee",
+      value: {
+        let budget = float(item.at("budget", default: 0))
+        let fee = float(item.at("total_subscription_fee", default: 0))
+
+        let ratio = if budget > 0 { fee / budget } else { 0.0 }
+
+        let fee-color = if ratio >= 0.9 {
+          rgb("#c5221f")
+        } else if ratio >= 0.7 {
+          rgb("#b06000")
+        } else {
+          rgb("#137333")
+        }
+
+        text(weight: "bold", fill: fee-color)[₱#str(item.at("total_subscription_fee", default: 0))]
+      }
+    ),
   ))
 
   if servers.len() > 0 {
     v(0.5em)
     section-title("Servers")
     data-table(
-      headers: ("Server", "Status", "CPU", "Memory", "Disk Size", "Used Disk"),
+      headers: ("Server", "Status", "CPU", "Memory", "Disk Size", "Used Disk", "Monthly Fee"),
       rows: servers.map(s => (
         s.name,
         status-pill(s.at("status", default: "unknown")),
@@ -71,8 +91,9 @@
             } else { used }
           } else { "—" }
         ),
+        text(weight: "bold", fill: green)[₱#str(item.at("subscription_fee", default: 0))]
       )),
-      widths: (1.2fr, 0.8fr, 1.5fr, 1fr, 1fr, 1fr),
+      widths: (1.2fr, 0.5fr, 1.5fr, 0.5fr, 0.7fr, 0.5fr, 1fr),
     )
 
     v(0.5em)

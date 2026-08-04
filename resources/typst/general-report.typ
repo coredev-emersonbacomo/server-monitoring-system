@@ -26,12 +26,32 @@
 // ── KPI Summary Grid ─────────────────────────────────────────────────────────
 #section-title("KPI Summary")
 #kpi-table((
-  (label: "Total Servers",   value: str(d.at("total_servers", default: 0))),
-  (label: "Total Clients",   value: str(d.at("total_clients", default: 0))),
-  (label: "Total Users",     value: str(d.at("total_users", default: 0))),
-  (label: "Active Alerts",   value: str(d.at("total_alerts", default: 0))),
-  (label: "Online Servers",  value: text(fill: green, weight: "bold")[#str(d.at("online_servers", default: 0))]),
+  (label: "Total Servers", value: str(d.at("total_servers", default: 0))),
+  (label: "Total Clients", value: str(d.at("total_clients", default: 0))),
+  (label: "Total Users", value: str(d.at("total_users", default: 0))),
+  (label: "Active Alerts", value: str(d.at("total_alerts", default: 0))),
+  (label: "Online Servers", value: text(fill: green, weight: "bold")[#str(d.at("online_servers", default: 0))]),
   (label: "Offline Servers", value: text(fill: red, weight: "bold")[#str(d.at("offline_servers", default: 0))]),
+  (label: "Budget", value: "₱" + str(d.at("sum_client_budget", default: 0))),
+  (
+    label: "Total Subscription Fee",
+    value: {
+      let budget = float(d.at("sum_client_budget", default: 0))
+      let fee = float(d.at("sum_server_subscription_fee", default: 0))
+
+      let ratio = if budget > 0 { fee / budget } else { 0.0 }
+
+      let fee-color = if ratio >= 0.9 {
+        rgb("#c5221f")
+      } else if ratio >= 0.7 {
+        rgb("#b06000")
+      } else {
+        rgb("#137333")
+      }
+
+      text(weight: "bold", fill: fee-color)[₱#str(d.at("sum_server_subscription_fee", default: 0))]
+    },
+  ),
 ))
 
 // ── Server Performance ───────────────────────────────────────────────────────
@@ -45,7 +65,7 @@
 
 #if attention.len() > 0 {
   section-title("Server Performance")
-  grid(columns: (1fr), gutter: 10pt)[
+  grid(columns: 1fr, gutter: 10pt)[
     #block[
       #text(size: 8.5pt, weight: "bold", fill: red)[Need Attention]
       #v(0.3em)
@@ -104,9 +124,9 @@
     rows: sla_servers.map(s => (
       s.name,
       progress-bar(s.uptime_percentage),
-      if s.uptime_percentage >= 98 { status-pill("healthy") }
-      else if s.uptime_percentage >= 90 { status-pill("warning") }
-      else { status-pill("critical") },
+      if s.uptime_percentage >= 98 { status-pill("healthy") } else if s.uptime_percentage >= 90 {
+        status-pill("warning")
+      } else { status-pill("critical") },
     )),
     widths: (1.5fr, 3fr, 1fr),
   )
@@ -116,7 +136,7 @@
 #v(0.5em)
 #section-title("Ownership & Recent Activity")
 
-#grid(columns: (1fr), gutter: 10pt)[
+#grid(columns: 1fr, gutter: 10pt)[
   #block(width: auto)[
     #text(size: 8.5pt, weight: "bold", fill: brand)[Servers per Client]
     #v(0.3em)
@@ -130,8 +150,7 @@
         } else { "0%" },
         {
           let a = c.at("active_alerts", default: 0)
-          if a > 0 { text(fill: red, weight: "bold")[#str(a)] }
-          else { text(fill: text-muted)[-] }
+          if a > 0 { text(fill: red, weight: "bold")[#str(a)] } else { text(fill: text-muted)[-] }
         },
       )),
     )
@@ -139,7 +158,7 @@
   #block(width: auto)[
     #text(size: 8.5pt, weight: "bold")[Recently Added (Last 30 Days)]
     #v(0.3em)
-    #grid(columns: (1fr), gutter: 6pt)[
+    #grid(columns: 1fr, gutter: 6pt)[
       #block[
         #text(size: 7.5pt, weight: "medium")[Clients]
         #v(-1em)
