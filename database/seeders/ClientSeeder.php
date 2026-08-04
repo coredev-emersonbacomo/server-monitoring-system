@@ -39,6 +39,10 @@ class ClientSeeder extends Seeder
             [
                 'uuid' => (string) Str::uuid7(),
                 'host_name' => 'Thinkpad',
+                'cpu_model' => 'Intel Core i9-11900K',
+                'cpu_cores' => 8,
+                'ram' => '16GB',
+                'disk' => '512GB',
             ]
         );
 
