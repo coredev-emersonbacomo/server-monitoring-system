@@ -12,18 +12,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Ensure type, title, and severity columns exist on activity_logs table
-        if (Schema::hasTable('activity_logs')) {
+        Schema::create('server_health_logs', function (Blueprint $table) {
+            $table->id();
+            $table->string('logable_type')->nullable();
+            $table->string('logable_id')->nullable();
+            $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
+            $table->string('user')->nullable();
+            $table->string('title');
+            $table->json('details')->nullable();
+            $table->string('severity')->nullable()->default('warning');
+            $table->timestamps();
+        });
+        // Ensure type column exists on activity_logs table
+        if (Schema::hasTable('activity_logs') && !Schema::hasColumn('activity_logs', 'type')) {
             Schema::table('activity_logs', function (Blueprint $table) {
-                if (!Schema::hasColumn('activity_logs', 'type')) {
-                    $table->string('type')->default('activity')->index()->after('id');
-                }
-                if (!Schema::hasColumn('activity_logs', 'title')) {
-                    $table->string('title')->nullable()->after('action');
-                }
-                if (!Schema::hasColumn('activity_logs', 'severity')) {
-                    $table->string('severity')->nullable()->default('warning')->after('details');
-                }
+                $table->string('type')->default('activity')->index()->after('id');
             });
         }
 
@@ -37,10 +40,8 @@ return new class extends Migration
                     'logable_id'   => $log->logable_id,
                     'user_id'      => $log->user_id,
                     'user'         => $log->user,
-                    'action'       => $log->action ?? $log->title ?? 'Server Health',
-                    'title'        => $log->title ?? $log->action ?? 'Server Health',
+                    'action'       => $log->action,
                     'details'      => $log->details,
-                    'severity'     => $log->severity ?? 'warning',
                     'created_at'   => $log->created_at,
                     'updated_at'   => $log->updated_at,
                 ]);
@@ -58,9 +59,7 @@ return new class extends Migration
                     'user_id'      => $log->user_id,
                     'user'         => $log->user,
                     'action'       => $log->action,
-                    'title'        => $log->action,
                     'details'      => $log->details,
-                    'severity'     => 'info',
                     'created_at'   => $log->created_at,
                     'updated_at'   => $log->updated_at,
                 ]);
@@ -95,17 +94,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (Schema::hasTable('activity_logs')) {
+        if (Schema::hasTable('activity_logs') && Schema::hasColumn('activity_logs', 'type')) {
             Schema::table('activity_logs', function (Blueprint $table) {
-                if (Schema::hasColumn('activity_logs', 'type')) {
-                    $table->dropColumn('type');
-                }
-                if (Schema::hasColumn('activity_logs', 'title')) {
-                    $table->dropColumn('title');
-                }
-                if (Schema::hasColumn('activity_logs', 'severity')) {
-                    $table->dropColumn('severity');
-                }
+                $table->dropColumn('type');
             });
         }
     }

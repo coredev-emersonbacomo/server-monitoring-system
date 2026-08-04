@@ -4,6 +4,7 @@ namespace App\NodeConfig\Jobs;
 
 use App\Models\Server;
 use App\Models\ServerHealthLog;
+use App\Models\CustomActivityLog;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
@@ -31,13 +32,14 @@ class SendNotification implements ShouldQueue
 
         // Make {server.url} resolvable from templates
         if ($server) {
-            $server->url = url('/servers/' . $server->uuid);
+            $server->url = rtrim((string) config('app.frontend_url'), '/') . '/servers/' . $server->uuid;
         }
 
         $settings = $this->action['settings'];
         $context = $this->action['upstream_context'] ?? [];
 
         $severity = $settings['severity'] ?? 'warning';
+        $channel = $settings['channel'] ?? 'email';
 
         $firstTriggerTs = isset($context['first_trigger_timestamp'])
             ? Carbon::parse($context['first_trigger_timestamp'])->format('Y-m-d H:i:s')
@@ -73,6 +75,9 @@ class SendNotification implements ShouldQueue
                     'countOfMessage' => $repeatCount,
                     'max' => (int) ($context['repeat_max'] ?? -1) === -1 ? 'inf' : (int) ($context['repeat_max'] ?? -1),
                 ],
+                'discordRoleCallout' => $channel === 'discord'
+                    ? (!empty($settings['role_id']) ? "<@&{$settings['role_id']}>" : '')
+                    : '',
             ],
         ];
 
@@ -93,13 +98,29 @@ class SendNotification implements ShouldQueue
         }
 
         $message = trim($message);
-        $channel = $settings['channel'] ?? 'email';
+
+        // Discord renders Markdown, not HTML — convert <b> bold tags to **.
+        if ($channel === 'discord') {
+            $message = str_replace(['<b>', '</b>'], '**', $message);
+        }
+
+        // Email <t:> timestamps stay unresolved here — resolved per recipient timezone in sendEmail().
 
         if ($message === '' && $channel !== 'discord') {
             return;
         }
 
         $serverUrl = $server ? url('/servers/' . $server->uuid) : null;
+
+        if (filter_var(env('MUTE_NOTIFICATION', false), FILTER_VALIDATE_BOOL)) {
+            Log::info('[server-events] Notifications muted (MUTE_NOTIFICATION) — would send', [
+                'server_id' => $this->serverId,
+                'channel' => $channel,
+                'subject' => $subject,
+                'message' => $message,
+            ]);
+            return;
+        }
 
         try {
             $sent = match ($channel) {
@@ -166,16 +187,35 @@ class SendNotification implements ShouldQueue
 
     private function sendEmail(?Server $server, string $subject, string $message, ?string $url, NotificationService $notifications): bool
     {
-        $emails = $server?->client?->secopclients?->pluck('email')->filter()->values()->all();
-        if (empty($emails)) {
+        $recipients = $server?->client?->secopclients ?? collect();
+        $groups = $recipients->groupBy(fn ($user) => $user->timezone ?: 'UTC');
+
+        $sentAny = false;
+
+        foreach ($groups as $timezone => $users) {
+            $emails = $users->pluck('email')->filter()->values()->all();
+            if (empty($emails)) {
+                continue;
+            }
+
+            $notifications->sendEmailAlert($emails, $this->resolveTimestamps($message, $timezone), $subject, $url);
+            $sentAny = true;
+        }
+
+        if (!$sentAny) {
             Log::warning('[server-events] Email notification skipped: no recipients found', [
                 'server_id' => $server?->id,
             ]);
-            return false;
         }
 
-        $notifications->sendEmailAlert($emails, $message, $subject, $url);
-        return true;
+        return $sentAny;
+    }
+
+    private function resolveTimestamps(string $message, string $timezone): string
+    {
+        return preg_replace_callback('/<t:(\d+)(?::[a-zA-Z])?>/', function ($m) use ($timezone) {
+            return Carbon::createFromTimestamp((int) $m[1])->setTimezone($timezone)->format('Y-m-d H:i:s');
+        }, $message);
     }
 
     private function sendDiscord(array $settings, string $message, ?string $url, NotificationService $notifications): bool
@@ -192,8 +232,7 @@ class SendNotification implements ShouldQueue
             return false;
         }
 
-        $notifications->sendDiscordAlert($botToken, $roleId ?? '', $message, $channelId, '', $url);
-        return true;
+        return $notifications->sendDiscordAlert($botToken, $roleId ?? '', $message, $channelId);
     }
 
     private function resolveTemplates(string $text, array $data): string

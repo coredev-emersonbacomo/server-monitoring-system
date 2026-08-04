@@ -17,6 +17,7 @@ use App\Models\Server;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class ReportController extends Controller
@@ -107,8 +108,9 @@ class ReportController extends Controller
         File::makeDirectory($workDir, 0755, true);
 
         try {
-            // Write input data JSON
-            File::put("{$workDir}/input.json", json_encode($data, JSON_PRETTY_PRINT));
+            // Write input data JSON (filter nulls so typst `at(key, default)` works)
+            $cleanData = $this->filterNulls($data);
+            File::put("{$workDir}/input.json", json_encode($cleanData, JSON_PRETTY_PRINT));
 
             // Copy template file
             $templateFile = resource_path("typst/{$template}-report.typ");
@@ -214,7 +216,7 @@ class ReportController extends Controller
             ->orderBy('created_at')
             ->get();
 
-        $metrics = $updates->map(fn ($u) => ServerMetricPointData::from([
+        $metrics = $updates->map(fn($u) => ServerMetricPointData::from([
             'timestamp'      => $u->created_at->toIso8601String(),
             'cpu_usage'      => (float) $u->cpu_usage,
             'memory_usage'   => (float) $u->memory_usage,
@@ -222,6 +224,38 @@ class ReportController extends Controller
             'network_rbytes' => (int) ($u->network_rbytes ?? 0),
             'network_tbytes' => (int) ($u->network_tbytes ?? 0),
         ]));
+
+        // Fetch 7-day aggregated stats for CPU, Memory, Disk
+        try {
+            $aggData = DB::table('server_updates_agg_hour')
+                ->selectRaw('cpu, memory, disk')
+                ->where('server_id', $server->id)
+                ->where('timestamp', '>=', now()->subDays(7))
+                ->orderBy('timestamp')
+                ->get();
+        } catch (\Throwable $e) {
+            if (str_contains($e->getMessage(), 'has not been populated')) {
+                DB::statement("REFRESH MATERIALIZED VIEW server_updates_agg_hour");
+                $aggData = DB::table('server_updates_agg_hour')
+                    ->selectRaw('cpu, memory, disk')
+                    ->where('server_id', $server->id)
+                    ->where('timestamp', '>=', now()->subDays(7))
+                    ->orderBy('timestamp')
+                    ->get();
+            } else {
+                throw $e;
+            }
+        }
+
+        $cpu7d = [];
+        $memory7d = [];
+        $disk7d = [];
+
+        foreach ($aggData as $row) {
+            $cpu7d[] = round((float) $row->cpu, 1);
+            $memory7d[] = round((float) $row->memory, 1);
+            $disk7d[] = round((float) $row->disk, 1);
+        }
 
         return ServerReportData::from([
             'uuid'             => $server->uuid,
@@ -238,6 +272,9 @@ class ReportController extends Controller
             'last_seen'        => $lastSeenAt?->toIso8601String(),
             'metrics'          => $metrics,
             'uptime'           => $this->calcUptime($server, $updates, $hours),
+            'cpu_7d'           => $cpu7d,
+            'memory_7d'        => $memory7d,
+            'disk_7d'          => $disk7d,
         ]);
     }
 
@@ -281,6 +318,14 @@ class ReportController extends Controller
                 $cpuCount++;
             }
 
+            $diskSizeGb = null;
+            if ($server->disk !== null) {
+                $parsedDisk = preg_replace('/[^0-9.]/', '', $server->disk);
+                if ($parsedDisk !== '' && is_numeric($parsedDisk)) {
+                    $diskSizeGb = (float) $parsedDisk;
+                }
+            }
+
             // Per-server uptime: quick gap analysis over last 24h
             $updates    = $server->updates()
                 ->where('created_at', '>=', now()->subHours(24))
@@ -291,6 +336,11 @@ class ReportController extends Controller
                 uuid: $server->uuid,
                 name: $server->name,
                 status: $isOnline ? 'online' : 'offline',
+                cpu_model: $server->cpu_model,
+                cpu_cores: $server->cpu_cores,
+                ram: $server->ram,
+                disk: $server->disk,
+                disk_used_gb: $diskSizeGb !== null && $disk !== null ? round($diskSizeGb * $disk / 100, 1) : null,
                 cpu_usage: $cpu,
                 memory_usage: $mem,
                 disk_usage: $disk,
@@ -393,7 +443,7 @@ class ReportController extends Controller
 
         // SLA servers: sorted by uptime_percentage desc, top 10
         $slaSorted = $serverSummaries;
-        usort($slaSorted, fn ($a, $b) => $b->uptime_percentage <=> $a->uptime_percentage);
+        usort($slaSorted, fn($a, $b) => $b->uptime_percentage <=> $a->uptime_percentage);
         $slaServers = array_values(array_slice($slaSorted, 0, 10));
 
         // Servers per client
@@ -401,7 +451,7 @@ class ReportController extends Controller
         $clientAlertCounts = LocalAlert::selectRaw('server_id')
             ->with('server')
             ->get()
-            ->groupBy(fn ($a) => optional($a->server)->client_id);
+            ->groupBy(fn($a) => optional($a->server)->client_id);
 
         $serversPerClient = $clients->map(function ($client) use ($clientAlertCounts) {
             $alerts = isset($clientAlertCounts[$client->id])
@@ -414,20 +464,31 @@ class ReportController extends Controller
             ];
         })->values()->all();
 
-        // Recent clients/servers (last 30 days)
-        $recentClients = Client::latest()->limit(5)->get()->map(fn ($c) => [
-            'name'       => $c->name,
-            'email'      => $c->email,
-            'phone'      => $c->contact_number ?? '—',
-            'created_at' => $c->created_at->toIso8601String(),
-        ])->values()->all();
+        $thirtyDaysAgo = now()->subDays(30);
+        $recentClients = Client::where('created_at', '>=', $thirtyDaysAgo)
+            ->latest()
+            ->get()
+            ->map(fn($c) => [
+                'name'       => $c->name,
+                'email'      => $c->email,
+                'phone'      => $c->contact_number ?? '—',
+                'created_at' => $c->created_at->toIso8601String(),
+            ])
+            ->values()
+            ->all();
 
-        $recentServers = Server::with('client')->latest()->limit(5)->get()->map(fn ($s) => [
-            'name'            => $s->name,
-            'assigned_client' => $s->client?->name ?? '—',
-            'hostname'        => $s->host_name,
-            'created_at'      => $s->created_at->toIso8601String(),
-        ])->values()->all();
+        $recentServers = Server::with('client')
+            ->where('created_at', '>=', $thirtyDaysAgo)
+            ->latest()
+            ->get()
+            ->map(fn($s) => [
+                'name'            => $s->name,
+                'assigned_client' => $s->client?->name ?? '—',
+                'hostname'        => $s->host_name,
+                'created_at'      => $s->created_at->toIso8601String(),
+            ])
+            ->values()
+            ->all();
 
         // Alert counts from ActionItems
         $totalAlerts    = ActionItem::where('status', '!=', 'completed')->count();
@@ -439,30 +500,30 @@ class ReportController extends Controller
         $avgDisk   = count($diskVals) > 0 ? round(array_sum($diskVals) / count($diskVals), 1) : 0;
 
         // Avg uptime: average of all server uptime_percentages
-        $uptimeVals = array_map(fn ($s) => $s->uptime_percentage, $serverSummaries);
+        $uptimeVals = array_map(fn($s) => $s->uptime_percentage, $serverSummaries);
         $avgUptime  = count($uptimeVals) > 0 ? round(array_sum($uptimeVals) / count($uptimeVals), 1) : 0;
 
         return new GeneralReportData(
-            report_title:        'Global Report',
-            report_subtitle:     'System-wide overview of all clients and servers',
-            total_servers:       $totalServers,
-            total_clients:       $totalClients,
-            total_users:         $totalUsers,
-            online_servers:      $onlineCount,
-            offline_servers:     $offlineCount,
-            total_alerts:        $totalAlerts,
-            critical_alerts:     $criticalAlerts,
-            warning_alerts:      $warningAlerts,
-            unassigned_servers:  $unassigned,
+            report_title: 'Global Report',
+            report_subtitle: 'System-wide overview of all clients and servers',
+            total_servers: $totalServers,
+            total_clients: $totalClients,
+            total_users: $totalUsers,
+            online_servers: $onlineCount,
+            offline_servers: $offlineCount,
+            total_alerts: $totalAlerts,
+            critical_alerts: $criticalAlerts,
+            warning_alerts: $warningAlerts,
+            unassigned_servers: $unassigned,
             avg_uptime_percentage: $avgUptime,
-            avg_cpu_usage:       $avgCpu,
-            avg_memory_usage:    $avgMem,
-            avg_disk_usage:      $avgDisk,
+            avg_cpu_usage: $avgCpu,
+            avg_memory_usage: $avgMem,
+            avg_disk_usage: $avgDisk,
             need_attention_servers: $needAttention,
-            sla_servers:         $slaServers,
-            servers_per_client:  $serversPerClient,
-            recent_clients:      $recentClients,
-            recent_servers:      $recentServers,
+            sla_servers: $slaServers,
+            servers_per_client: $serversPerClient,
+            recent_clients: $recentClients,
+            recent_servers: $recentServers,
         );
     }
 
@@ -470,76 +531,98 @@ class ReportController extends Controller
      * Calculate uptime stats from a collection of ServerUpdate records.
      */
     private function calcUptime(Server $server, $updates, int $rangeHours): ServerUptimeData
-{
-    $heartbeatIntervalMinutes = 5;
-    $gapMultiplier            = 3;
-    $gapThreshold             = $heartbeatIntervalMinutes * $gapMultiplier;
+    {
+        $heartbeatIntervalMinutes = 5;
+        $gapMultiplier            = 3;
+        $gapThreshold             = $heartbeatIntervalMinutes * $gapMultiplier;
 
-    $now        = now();
-    $rangeStart = $now->copy()->subHours($rangeHours);
+        $now        = now();
+        $rangeStart = $now->copy()->subHours($rangeHours);
 
-    // Handle total absence of updates in the range
-    if ($updates->isEmpty()) {
+        // Handle total absence of updates in the range
+        if ($updates->isEmpty()) {
+            return ServerUptimeData::from([
+                'uptime_seconds'    => $server->uptime_seconds ?? 0,
+                'uptime_percentage' => 0.0,
+                'outage_count'      => 1,
+                'last_downtime'     => $rangeStart->toIso8601String(),
+            ]);
+        }
+
+        $outageMinutes = 0;
+        $outageCount   = 0;
+        $lastDowntime  = null;
+
+        // Sort updates chronologically just in case
+        $sortedUpdates = $updates->sortBy('created_at');
+
+        //Check initial gap (Range Start -> First Update)
+        $firstUpdateAt = $sortedUpdates->first()->created_at;
+        $initialGap = abs($rangeStart->diffInMinutes($firstUpdateAt, false));
+        if ($initialGap > $gapThreshold) {
+            $outageMinutes += $initialGap;
+            $outageCount++;
+            $lastDowntime = $firstUpdateAt->toIso8601String();
+        }
+
+        //Check gaps between consecutive updates
+        $prev = $firstUpdateAt;
+        foreach ($sortedUpdates->skip(1) as $update) {
+            $gap = abs($prev->diffInMinutes($update->created_at));
+            if ($gap > $gapThreshold) {
+                $outageMinutes += $gap;
+                $outageCount++;
+                $lastDowntime = $update->created_at->toIso8601String();
+            }
+            $prev = $update->created_at;
+        }
+
+        // Check trailing gap (Last Update -> Now)
+        $lastUpdateAt = $sortedUpdates->last()->created_at;
+        $finalGap = abs($lastUpdateAt->diffInMinutes($now));
+        if ($finalGap > $gapThreshold) {
+            $outageMinutes += $finalGap;
+            $outageCount++;
+            $lastDowntime = $now->toIso8601String();
+        }
+
+        // Calculate percentage with safety caps
+        $totalMinutes = $rangeHours * 60;
+
+        // Cap outage minutes so it doesn't exceed total requested range
+        $effectiveOutageMinutes = min($outageMinutes, $totalMinutes);
+
+        $uptimePercentage = $totalMinutes > 0
+            ? round((($totalMinutes - $effectiveOutageMinutes) / $totalMinutes) * 100, 2)
+            : 0;
+
         return ServerUptimeData::from([
             'uptime_seconds'    => $server->uptime_seconds ?? 0,
-            'uptime_percentage' => 0.0,
-            'outage_count'      => 1,
-            'last_downtime'     => $rangeStart->toIso8601String(),
+            'uptime_percentage' => max(0, min(100, $uptimePercentage)),
+            'outage_count'      => $outageCount,
+            'last_downtime'     => $lastDowntime,
         ]);
     }
 
-    $outageMinutes = 0;
-    $outageCount   = 0;
-    $lastDowntime  = null;
-
-    // Sort updates chronologically just in case
-    $sortedUpdates = $updates->sortBy('created_at');
-
-    //Check initial gap (Range Start -> First Update)
-    $firstUpdateAt = $sortedUpdates->first()->created_at;
-    $initialGap = $rangeStart->diffInMinutes($firstUpdateAt, false);
-    if ($initialGap > $gapThreshold) {
-        $outageMinutes += $initialGap;
-        $outageCount++;
-        $lastDowntime = $firstUpdateAt->toIso8601String();
-    }
-
-    //Check gaps between consecutive updates
-    $prev = $firstUpdateAt;
-    foreach ($sortedUpdates->skip(1) as $update) {
-        $gap = $prev->diffInMinutes($update->created_at);
-        if ($gap > $gapThreshold) {
-            $outageMinutes += $gap;
-            $outageCount++;
-            $lastDowntime = $update->created_at->toIso8601String();
+    /**
+     * Recursively remove null values from arrays.
+     * Allows typst `at(key, default)` to trigger on missing keys.
+     */
+    private function filterNulls(array $data): array
+    {
+        $result = [];
+        foreach ($data as $key => $value) {
+            if ($value === null) {
+                continue;
+            } elseif (is_array($value)) {
+                $filtered = $this->filterNulls($value);
+                if (!empty($filtered)) {
+                    $result[$key] = $filtered;
+                }
+            } else {
+                $result[$key] = $value;
+            }
         }
-        $prev = $update->created_at;
+        return $result;
     }
-
-    // Check trailing gap (Last Update -> Now)
-    $lastUpdateAt = $sortedUpdates->last()->created_at;
-    $finalGap = $lastUpdateAt->diffInMinutes($now);
-    if ($finalGap > $gapThreshold) {
-        $outageMinutes += $finalGap;
-        $outageCount++;
-        $lastDowntime = $now->toIso8601String();
-    }
-
-    // Calculate percentage with safety caps
-    $totalMinutes = $rangeHours * 60;
-
-    // Cap outage minutes so it doesn't exceed total requested range
-    $effectiveOutageMinutes = min($outageMinutes, $totalMinutes);
-
-    $uptimePercentage = $totalMinutes > 0
-        ? round((($totalMinutes - $effectiveOutageMinutes) / $totalMinutes) * 100, 2)
-        : 0;
-
-    return ServerUptimeData::from([
-        'uptime_seconds'    => $server->uptime_seconds ?? 0,
-        'uptime_percentage' => max(0, min(100, $uptimePercentage)),
-        'outage_count'      => $outageCount,
-        'last_downtime'     => $lastDowntime,
-    ]);
-}
 }

@@ -1,4 +1,5 @@
 #import "base.typ": *
+#import "@preview/lilaq:0.6.0" as lq
 
 #let d = json("input.json")
 
@@ -21,6 +22,9 @@
 #let uptime = d.at("uptime", default: none)
 #let charts = d.at("charts", default: none)
 #let insights = d.at("insights", default: ())
+#let cpu_7d = d.at("cpu_7d", default: ())
+#let memory_7d = d.at("memory_7d", default: ())
+#let disk_7d = d.at("disk_7d", default: ())
 
 // ── Report heading ───────────────────────────────────────────────────────────
 #report-heading(
@@ -30,13 +34,13 @@
 
 // ── Server Information ───────────────────────────────────────────────────────
 #section-title("Server Information")
-#kpi-grid((
+#kpi-table((
   (label: "Status",        value: status-pill(d.at("status", default: "unknown"))),
-  (label: "Client",        value: if d.at("client_name", default: "") != "" { d.client_name } else { "—" }),
-  (label: "OS",            value: if d.at("operating_system", default: "") != "" { d.operating_system } else { "—" }),
-  (label: "CPU Model",     value: if d.at("cpu_model", default: "") != "" { d.cpu_model } else { "—" }, note: str(d.at("cpu_cores", default: "—")) + " cores"),
-  (label: "Memory",        value: if d.at("ram", default: "") != "" { d.ram } else { "—" }),
-  (label: "Disk",          value: if d.at("disk", default: "") != "" { d.disk } else { "—" }),
+  (label: "Client",        value: if d.at("client_name", default: none) != none { d.client_name } else { "—" }),
+  (label: "OS",            value: if d.at("operating_system", default: none) != none { d.operating_system } else { "—" }),
+  (label: "CPU Model",     value: if d.at("cpu_model", default: none) != none { d.cpu_model } else { "—" }, note: str(d.at("cpu_cores", default: "—")) + " cores"),
+  (label: "Memory",        value: if d.at("ram", default: none) != none { d.ram } else { "—" }),
+  (label: "Disk",          value: if d.at("disk", default: none) != none { d.disk } else { "—" }),
 ))
 
 // ── Metrics Summary ──────────────────────────────────────────────────────────
@@ -69,13 +73,32 @@
 #if uptime != none {
   v(0.5em)
   section-title("SLA Uptime")
-  grid(columns: (1fr, 1fr), gutter: 10pt)[
-    #kpi-card("Uptime Percentage", pct(uptime.uptime_percentage))
-    #kpi-card("Outages", str(uptime.at("outage_count", default: 0)),
-      note: if uptime.at("last_downtime", default: "") != "" { "Last: " + uptime.last_downtime } else { none })
-  ]
-  v(0.3em)
-  progress-bar(uptime.uptime_percentage)
+  table(
+    columns: (1.2fr, 2.8fr),
+    stroke: 0.3pt + border-clr,
+    inset: (x: 10pt, y: 8pt),
+    align: (left + horizon, left + horizon),
+    table.cell(fill: bg-light)[
+      #set text(size: 8.5pt, weight: "bold", fill: text-dark)
+      Uptime Percentage
+    ],
+    table.cell()[
+      #progress-bar(uptime.uptime_percentage)
+    ],
+    table.cell(fill: bg-light)[
+      #set text(size: 8.5pt, weight: "bold", fill: text-dark)
+      Outages
+    ],
+    table.cell()[
+      #set text(size: 9pt, fill: text-dark)
+      #str(uptime.at("outage_count", default: 0))
+      #let last = uptime.at("last_downtime", default: none)
+      #if last != none [
+        #h(0.4em)
+        #text(size: 8pt, fill: text-muted)[(Last: #last)]
+      ]
+    ]
+  )
 }
 
 // ── Charts ───────────────────────────────────────────────────────────────────
@@ -83,6 +106,38 @@
   v(0.5em)
   section-title("CPU Usage Chart")
   image(bytes(charts.cpu), width: 100%, height: 160pt)
+}
+
+// ── Metrics Trends (Last 7 Days) ─────────────────────────────────────────────
+#if cpu_7d.len() > 0 {
+  v(0.5em)
+  section-title("Metrics Trends (Last 7 Days)")
+  lq.diagram(
+    width: 100%,
+    height: 160pt,
+    xlabel: [#text(size: 8pt)[Time (hours)]],
+    ylabel: [#text(size: 8pt)[Usage (%)]],
+    legend: (position: bottom),
+    grid: stroke(0.2pt + border-clr),
+    lq.plot(
+      range(cpu_7d.len()), cpu_7d,
+      stroke: brand,
+      smooth: true,
+      label: [CPU],
+    ),
+    lq.plot(
+      range(memory_7d.len()), memory_7d,
+      stroke: rgb("#1565c0"),
+      smooth: true,
+      label: [Memory],
+    ),
+    lq.plot(
+      range(disk_7d.len()), disk_7d,
+      stroke: green,
+      smooth: true,
+      label: [Disk],
+    ),
+  )
 }
 
 // ── Insights ─────────────────────────────────────────────────────────────────

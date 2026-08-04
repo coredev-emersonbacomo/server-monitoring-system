@@ -32,7 +32,7 @@
 
 // ── KPI Summary ──────────────────────────────────────────────────────────────
 #section-title("KPI Summary")
-#kpi-grid((
+#kpi-table((
   (label: "Total Servers", value: str(d.at("total_servers", default: 0))),
   (label: "Online",        value: text(fill: green, weight: "bold")[#str(d.at("online_servers", default: 0))]),
   (label: "Offline",       value: text(fill: red, weight: "bold")[#str(d.at("offline_servers", default: 0))]),
@@ -45,16 +45,31 @@
 #if servers.len() > 0 {
   section-title("Servers")
   data-table(
-    headers: ("Server", "Status", "CPU", "Memory", "Disk", "Uptime", "Last Seen"),
+    headers: ("Server", "Status", "CPU", "Memory", "Disk Size", "Used Disk"),
     rows: servers.map(s => (
       s.name,
       status-pill(s.at("status", default: "unknown")),
-      if s.at("cpu_usage", default: none) != none { pct(s.cpu_usage) } else { "—" },
-      if s.at("memory_usage", default: none) != none { pct(s.memory_usage) } else { "—" },
-      if s.at("disk_usage", default: none) != none { pct(s.disk_usage) } else { "—" },
-      if s.at("uptime_percentage", default: none) != none { pct(s.uptime_percentage) } else { "—" },
-      if s.at("last_seen", default: none) != none { fmt-date(s.last_seen) } else { "—" },
+      (
+        if s.at("cpu_model", default: none) != none {
+          s.cpu_model + if s.at("cpu_cores", default: none) != none {
+            " (" + str(s.cpu_cores) + " cores)"
+          } else { "" }
+        } else if s.at("cpu_cores", default: none) != none {
+          str(s.cpu_cores) + " cores"
+        } else { "—" }
+      ),
+      if s.at("ram", default: none) != none { s.ram } else { "—" },
+      if s.at("disk", default: none) != none { s.disk } else { "—" },
+      (
+        if s.at("disk_used_gb", default: none) != none {
+          let used = str(s.disk_used_gb) + " GB"
+          if s.at("disk_usage", default: none) != none {
+            used + " (" + pct(s.disk_usage) + ")"
+          } else { used }
+        } else { "—" }
+      ),
     )),
+    widths: (1.2fr, 0.8fr, 1.5fr, 1fr, 1fr, 1fr),
   )
 }
 

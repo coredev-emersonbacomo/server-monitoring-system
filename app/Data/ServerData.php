@@ -63,27 +63,9 @@ class ServerData extends Data
 
         public string $alert_scope = 'global',
 
-        public float $monthly_rate = 0.0,
-
-        public float $remitted = 0.0,
-
-        public ?string $cost_reset_at = null,
-
-        public float $historical_cost = 0.0,
-
-        public ?string $rate_updated_at = null,
-
         public int $uptime_seconds = 0,
 
-        public float $running_balance = 0.0,
-
-        public float $net_cost = 0.0,
-
-        public float $accumulated_cost = 0.0,
-
-        public ?string $billing_date = null,
-
-        public ?float $pending_monthly_rate = null,
+        public float $subscription_fee = 0.00,
     ) {}
 
     public static function fromModel(Server $server): self
@@ -97,7 +79,7 @@ class ServerData extends Data
                     token: $token,
                     expires_at: $activeToken->expires_at->copy()->utc()->toIso8601String(),
                     linux_command: 'sudo curl -fsSL ' . url('/install/linux') . ' | sudo bash -s -- ' . $token,
-                    windows_command: 'powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm \'' . url('/install/windows.ps1') . '\'))) -ProvisionToken \'' . $token . '\' -AppUrl \'' . url('/') . '\'"',
+                    windows_command: \App\Services\WindowsCommand::make('/install/windows.ps1', $token, rtrim(url('/'), '/')),
                 );
             }
         }
@@ -105,7 +87,7 @@ class ServerData extends Data
         $tokenModel = $server->provisionTokens()->latest()->first();
         $token = $tokenModel ? $tokenModel->token : '';
         $uninstallLinux = 'sudo curl -fsSL ' . url('/uninstall/linux') . ' | sudo bash -s -- ' . $token;
-        $uninstallWindows = 'powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm \'' . url('/uninstall/windows.ps1') . '\'))) -ProvisionToken \'' . $token . '\' -AppUrl \'' . url('/') . '\'"';
+        $uninstallWindows = \App\Services\WindowsCommand::make('/uninstall/windows.ps1', $token, rtrim(url('/'), '/'));
 
         $agent = $server->agent;
 
@@ -223,106 +205,6 @@ class ServerData extends Data
 
         $uptimeSeconds = $dbOnlineSeconds + $pendingSeconds;
 
-        // Monthly billing only starts once the agent is installed (registered_at set).
-        // If no agent has registered yet, cost is 0 and billing date is null.
-        $registrationDate = $agent?->registered_at ?? null;
-        $monthlyRate = $monthlyCost;
-        $nextBillingDate = null;
-
-        if ($registrationDate) {
-            // Full or partial months elapsed since registration
-            $monthsElapsed = max(1, (int) ceil(now()->diffInDays($registrationDate) / 30.0));
-            // Or exact calendar month diff
-            $calendarMonths = (now()->year - $registrationDate->year) * 12 + (now()->month - $registrationDate->month);
-            if (now()->day >= $registrationDate->day) {
-                $calendarMonths += 1;
-            }
-            $billedMonths = max(1, max($monthsElapsed, $calendarMonths));
-
-            // Next billing date is registration date + $billedMonths months
-            $nextBillingDate = $registrationDate->copy()->addMonths($billedMonths);
-
-            // Fetch historical rate update logs to accurately determine the active rate for each billing cycle
-            $rateLogs = \App\Models\CustomActivityLog::where('logable_type', get_class($server))
-                ->whereIn('logable_id', [(string) $server->uuid, (string) $server->id])
-                ->where('action', 'Update Monthly Rate')
-                ->orderBy('created_at', 'asc')
-                ->get();
-
-            if ($rateLogs->isEmpty()) {
-                $runningBalance = round($billedMonths * $monthlyCost, 4);
-            } else {
-                // Determine initial rate (before the first logged edit)
-                $firstLog = $rateLogs->first();
-                $firstDetails = is_array($firstLog->details) ? $firstLog->details : (json_decode($firstLog->details, true) ?? []);
-                
-                $beforeVal = $firstDetails['before']['monthly_rate'] ?? $firstDetails['before']['monthly_cost'] ?? null;
-                $initialRate = $beforeVal !== null ? (float) str_replace(',', '', (string) $beforeVal) : (float) $monthlyCost;
-
-                $runningBalance = 0.0;
-
-                for ($i = 0; $i < $billedMonths; $i++) {
-                    // Cycle start date: registrationDate + $i months
-                    $cycleStartDate = $registrationDate->copy()->addMonths($i);
-
-                    // Find rate that was active when this cycle started
-                    $cycleRate = $initialRate;
-                    foreach ($rateLogs as $log) {
-                        if ($log->created_at->lessThanOrEqualTo($cycleStartDate)) {
-                            $logDetails = is_array($log->details) ? $log->details : (json_decode($log->details, true) ?? []);
-                            $afterVal = $logDetails['after']['monthly_rate'] ?? $logDetails['after']['monthly_cost'] ?? null;
-                            if ($afterVal !== null) {
-                                $cycleRate = (float) str_replace(',', '', (string) $afterVal);
-                            }
-                        }
-                    }
-
-                    $runningBalance += $cycleRate;
-                }
-
-                $runningBalance = round($runningBalance, 4);
-            }
-
-            // Record a log when a new monthly billing cycle rollover charge is evaluated
-            $lastBilledCycleKey = "server_last_logged_cycle_{$server->uuid}";
-            $lastLoggedCycle = \Illuminate\Support\Facades\Cache::get($lastBilledCycleKey, 0);
-            if ($billedMonths > $lastLoggedCycle) {
-                \Illuminate\Support\Facades\Cache::put($lastBilledCycleKey, $billedMonths, now()->addYear());
-
-                // Create a Monthly Charge log for the newly added billing cycle
-                $currentCycleRate = (float) $monthlyCost;
-                $formattedRate = number_format($currentCycleRate, 2);
-                $formattedTotal = number_format($runningBalance, 2);
-
-                \App\Models\CustomActivityLog::create([
-                    'type'         => 'billing',
-                    'logable_type' => get_class($server),
-                    'logable_id'   => (string) $server->uuid,
-                    'user_id'      => null,
-                    'user'         => 'System',
-                    'action'       => 'Monthly Charge',
-                    'details'      => [
-                        'message'        => "Monthly charge of ₱{$formattedRate} applied for cycle #{$billedMonths} on server: {$server->name}",
-                        'cycle_number'   => $billedMonths,
-                        'rate_applied'   => $currentCycleRate,
-                        'running_balance'=> $runningBalance,
-                        'server_name'    => $server->name,
-                    ],
-                ]);
-            }
-        } else {
-            $runningBalance = 0.0;
-        }
-
-        // Net cost after deductions
-        $netCost = max(0.0, round($runningBalance - $costOffset, 4));
-        $accumulatedCost = $netCost;
-
-        // Sync database column so accumulated_cost is saved directly in the servers table
-        if (abs((float) ($server->accumulated_cost ?? 0.0) - $accumulatedCost) > 0.0001) {
-            $server->updateQuietly(['accumulated_cost' => $accumulatedCost]);
-        }
-
         return new self(
             uuid: $server->uuid,
             description: $server->description,
@@ -335,8 +217,12 @@ class ServerData extends Data
             ram: $server->ram,
             disk: $server->disk,
             operating_system: $server->operating_system,
-            record_status: $server->record_status?->value ?? 'active',
+            record_status: is_string($server->record_status) ? $server->record_status : ($server->record_status?->value ?? ($server->trashed() ? 'archived' : 'active')),
             status: (function () use ($server, $agent, $offlineThreshold): string {
+                if ($server->trashed() || $server->status === 'archived' || $server->record_status === 'archived' || $server->record_status === \App\Enums\RecordStatus::Archived) {
+                    return 'archived';
+                }
+
                 if (!$agent || !$agent->registered_at) {
                     return $server->status ?? 'pending_installation';
                 }
@@ -420,17 +306,8 @@ class ServerData extends Data
             activities: $activities,
             agent: $agentData,
             alert_scope: $server->alert_scope ?? 'global',
-            monthly_rate: $monthlyCost,
-            remitted: $costOffset,
-            cost_reset_at: $costResetAtStr,
-            historical_cost: $historicalCost,
-            rate_updated_at: $rateUpdatedAtStr,
             uptime_seconds: $uptimeSeconds,
-            running_balance: $runningBalance,
-            net_cost: $netCost,
-            accumulated_cost: $accumulatedCost,
-            billing_date: $nextBillingDate ? $nextBillingDate->toIso8601String() : null,
-            pending_monthly_rate: $server->pending_monthly_rate,
+            subscription_fee: (float) ($server->subscription_fee ?? 0.00),
         );
     }
 }

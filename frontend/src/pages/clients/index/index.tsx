@@ -9,6 +9,7 @@ import {
     Server,
     Users,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { useNavigate, Link } from "react-router-dom";
 import { useClients, useDeleteClient } from "@/hooks/useClients";
 import PageLayout from "@/components/PageLayout";
@@ -32,7 +33,7 @@ import IndexToolbar from "@/components/IndexToolbar";
 import type { FilterOption, SortOption } from "@/components/IndexToolbar";
 import type { ClientData } from "@/types/models";
 
-type FilterTab = "all" | "with-servers" | "no-servers";
+type FilterTab = "all" | "with-servers" | "no-servers" | "archived";
 
 // How many cards to reveal per "page". Tune freely.
 const PAGE_SIZE = 12;
@@ -109,9 +110,11 @@ function ClientCard({
                         <DropdownMenuContent align="end" sideOffset={4}>
                             <DropdownMenuItem
                                 onClick={(e) => {
-                                    e.preventDefault();
                                     e.stopPropagation();
-                                    onDelete(client);
+                                    // Defer so Radix closes the DropdownMenu (and
+                                    // restores body pointer-events) before the
+                                    // Dialog increments its overlay counter.
+                                    setTimeout(() => onDelete(client), 0);
                                 }}
                                 className="text-destructive focus:text-destructive cursor-pointer"
                             >
@@ -294,6 +297,7 @@ export default function Clients() {
     const [sortField, setSortField] = useState<string>("created_at");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
     const [deleting, setDeleting] = useState<ClientData | null>(null);
+    const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
     // ── Filtering & Sorting ────────────────────────────────────────────────────
     const filtered = useMemo(() => {
@@ -308,7 +312,8 @@ export default function Clients() {
             const matchFilter =
                 filter === "all" ||
                 (filter === "with-servers" && c.servers_count > 0) ||
-                (filter === "no-servers" && c.servers_count === 0);
+                (filter === "no-servers" && c.servers_count === 0) ||
+                (filter === "archived" && c.record_status === "archived");
             return matchSearch && matchFilter;
         });
         return [...result].sort((a, b) => {
@@ -351,6 +356,8 @@ export default function Clients() {
         clients?.filter((c) => c.servers_count > 0).length ?? 0;
     const clientsWithoutServers =
         clients?.filter((c) => c.servers_count === 0).length ?? 0;
+    const archivedClients =
+        clients?.filter((c) => c.record_status === "archived").length ?? 0;
 
     const filterOptions = [
         {
@@ -367,6 +374,11 @@ export default function Clients() {
             label: "No Servers",
             value: "no-servers" as FilterTab,
             count: clientsWithoutServers,
+        },
+        {
+            label: "Archived",
+            value: "archived" as FilterTab,
+            count: archivedClients,
         },
     ];
 
@@ -489,26 +501,53 @@ export default function Clients() {
                 <Dialog
                     open={!!deleting}
                     onOpenChange={(open) => {
-                        if (!open) setDeleting(null);
+                        if (!open) {
+                            setDeleting(null);
+                            setDeleteConfirmText("");
+                        }
                     }}
                 >
-                    <DialogContent className="sm:max-w-sm">
+                    <DialogContent className="sm:max-w-md">
                         <DialogHeader>
-                            <DialogTitle>Delete Client</DialogTitle>
+                            <DialogTitle className="flex items-center gap-2 text-destructive">
+                                <Trash2 size={16} />
+                                Delete Client
+                            </DialogTitle>
                         </DialogHeader>
                         <p className="text-sm text-muted-foreground">
-                            Are you sure you want to delete{" "}
-                            <span className="font-medium text-foreground">
+                            This will permanently delete{" "}
+                            <strong className="text-foreground">
                                 {deleting?.name}
-                            </span>
-                            ? This action cannot be undone.
+                            </strong>{" "}
+                            and all associated data. This cannot be undone.
                         </p>
-                        <div className="flex justify-end gap-2 pt-2">
+
+                        <div className="flex flex-col gap-2 pt-1">
+                            <label className="text-xs text-muted-foreground">
+                                Type{" "}
+                                <strong className="text-foreground font-mono">
+                                    {deleting?.name}
+                                </strong>{" "}
+                                to confirm
+                            </label>
+                            <Input
+                                value={deleteConfirmText}
+                                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                placeholder={deleting?.name}
+                                autoFocus
+                                className="font-mono text-sm"
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-2">
                             <DialogClose asChild>
                                 <Button
                                     variant="outline"
                                     label="Cancel"
-                                    onClick={() => setDeleting(null)}
+                                    onClick={() => {
+                                        setDeleting(null);
+                                        setDeleteConfirmText("");
+                                    }}
                                 />
                             </DialogClose>
                             <Button
@@ -518,9 +557,12 @@ export default function Clients() {
                                         ? "Deleting…"
                                         : "Delete"
                                 }
-                                disabled={deleteClient.isPending}
+                                disabled={
+                                    deleteConfirmText !== deleting?.name ||
+                                    deleteClient.isPending
+                                }
                                 onClick={async () => {
-                                    if (!deleting) return;
+                                    if (!deleting || deleteConfirmText !== deleting.name) return;
                                     try {
                                         await deleteClient.mutateAsync(
                                             deleting.uuid,
@@ -529,9 +571,12 @@ export default function Clients() {
                                             `${deleting.name} has been deleted.`,
                                         );
                                         setDeleting(null);
-                                    } catch {
+                                        setDeleteConfirmText("");
+                                    } catch (err: any) {
                                         toast.error(
-                                            "Failed to delete client. Please try again.",
+                                            err?.response?.data?.message ||
+                                                err?.message ||
+                                                "Failed to delete client. Please try again.",
                                         );
                                     }
                                 }}

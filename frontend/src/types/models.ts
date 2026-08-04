@@ -3,358 +3,356 @@
 
 /** ActionItemData */
 export interface ActionItemData {
-            id: number;
-            action_type: string;
-            message: string;
-            severity: string;
-            server_uuid?: string | null;
-            client_uuid?: string | null;
-            client_name?: string | null;
-            server_name?: string | null;
-            assigned_to_uuid?: string | null;
-            assigned_to_name?: string | null;
-            status: string;
-            created_at?: string | null;
-        }
+    id: number;
+    action_type: string;
+    message: string;
+    severity: string;
+    server_uuid?: string | null;
+    client_uuid?: string | null;
+    client_name?: string | null;
+    server_name?: string | null;
+    assigned_to_uuid?: string | null;
+    assigned_to_name?: string | null;
+    status: string;
+    created_at?: string | null;
+}
 
 /** AgentData */
 export interface AgentData {
-            version: string;
-            status: string;
-            registered_at: string;
-            last_seen_at?: string | null;
-            heartbeat_interval: number;
-            metrics_interval: number;
-            port_scan_interval: number;
-            service_scan_interval: number;
-            process_scan_interval: number;
-            update_channel: string;
-            auto_update: boolean;
-        }
+    version: string;
+    status: string;
+    registered_at: string;
+    last_seen_at?: string | null;
+    heartbeat_interval: number;
+    metrics_interval: number;
+    port_scan_interval: number;
+    service_scan_interval: number;
+    process_scan_interval: number;
+    update_channel: string;
+    auto_update: boolean;
+}
 
 /** AuthUserData */
 export interface AuthUserData {
-            uuid: string;
-            first_name: string;
-            last_name: string;
-            email: string;
-            username: string;
-            phone_number: string;
-            last_login?: string | null;
-            profile_picture_url: string;
-            record_status?: string;
-        }
+    uuid: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    username: string;
+    phone_number: string;
+    last_login?: string | null;
+    timezone?: string | null;
+    profile_picture_url: string;
+    record_status?: string;
+}
 
 /** ClientData */
 export interface ClientData {
-            uuid: string;
-            name: string;
-            description: string;
-            location: string;
-            email: string;
-            contact_number: string;
-            banner_image_url: string;
-            servers_count: number;
-            servers_online_count: number;
-            secops_count: number;
-            created_at: string;
-            updated_at: string;
-            alert_scope?: string;
-        }
+    uuid: string;
+    name: string;
+    description: string;
+    location: string;
+    email: string;
+    contact_number: string;
+    banner_image_url: string;
+    servers_count: number;
+    servers_online_count: number;
+    secops_count: number;
+    created_at: string;
+    updated_at: string;
+    alert_scope?: string;
+    record_status?: string;
+    budget?: number;
+    total_subscription_fee?: number;
+}
 
 /** CustomActivityLog */
 export interface CustomActivityLog {
-            id: number;
-            logable_type: string | null;
-            logable_id: string | null;
-            user_id: number | null;
-            user: string | null;
-            action: string;
-            details: unknown[] | null;
-            /** Format: date-time */
-            created_at: string | null;
-            /** Format: date-time */
-            updated_at: string | null;
-            type: string;
-            title: string | null;
-            severity: string | null;
-        }
+    id: number;
+    logable_type: string | null;
+    logable_id: string | null;
+    user_id: number | null;
+    user: string | null;
+    action: string;
+    details: unknown[] | null;
+    /** Format: date-time */
+    created_at: string | null;
+    /** Format: date-time */
+    updated_at: string | null;
+    type: string;
+    title: string | null;
+    severity: string | null;
+}
 
 /** CustomActivityLogData */
 export interface CustomActivityLogData {
-            id: number;
-            type?: string | null;
-            logable_type?: string | null;
-            logable_id?: string | null;
-            user_id?: number | null;
-            user?: string | null;
-            action: string;
-            details?: string | null;
-            created_at?: string | null;
-            updated_at?: string | null;
-        }
+    id: number;
+    type?: string | null;
+    logable_type?: string | null;
+    logable_id?: string | null;
+    user_id?: number | null;
+    user?: string | null;
+    action: string;
+    details?: string | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+}
 
 /** DashboardStatsData */
 export interface DashboardStatsData {
-            total_users: number;
-            total_clients: number;
-            total_servers: number;
-            online_count: number;
-            offline_count: number;
-            top_usage_cpu: {
-                server_uuid: string;
-                name: string;
-                client_name: string;
-                value: number;
-            }[];
-            top_usage_memory: {
-                server_uuid: string;
-                name: string;
-                client_name: string;
-                value: number;
-            }[];
-            top_usage_disk: {
-                server_uuid: string;
-                name: string;
-                client_name: string;
-                value: number;
-            }[];
-        }
+    total_users: number;
+    total_clients: number;
+    total_servers: number;
+    online_count: number;
+    offline_count: number;
+    top_usage_cpu: {
+        server_uuid: string;
+        name: string;
+        client_name: string;
+        value: number;
+    }[];
+    top_usage_memory: {
+        server_uuid: string;
+        name: string;
+        client_name: string;
+        value: number;
+    }[];
+    top_usage_disk: {
+        server_uuid: string;
+        name: string;
+        client_name: string;
+        value: number;
+    }[];
+}
 
 /** GlobalAlert */
 export interface GlobalAlert {
-            id: number;
-            metric: string;
-            name: string;
-            threshold: number;
-            severity: string;
-            channels: unknown[];
-            enabled: boolean;
-            /** Format: date-time */
-            created_at: string | null;
-            /** Format: date-time */
-            updated_at: string | null;
-        }
+    id: number;
+    metric: string;
+    name: string;
+    threshold: number;
+    severity: string;
+    channels: unknown[];
+    enabled: boolean;
+    /** Format: date-time */
+    created_at: string | null;
+    /** Format: date-time */
+    updated_at: string | null;
+}
 
 /** NodeConfig */
 export interface NodeConfig {
-            id: number;
-            name: string;
-            description: string | null;
-            config: unknown[];
-            enabled: boolean;
-            created_by: number | null;
-            /** Format: date-time */
-            created_at: string | null;
-            /** Format: date-time */
-            updated_at: string | null;
-            slug: string | null;
-            compiled_config: unknown[] | null;
-            scope_type: string;
-            scope_id: string | null;
-        }
+    id: number;
+    name: string;
+    description: string | null;
+    config: unknown[];
+    created_by: number | null;
+    /** Format: date-time */
+    created_at: string | null;
+    /** Format: date-time */
+    updated_at: string | null;
+    slug: string | null;
+    compiled_config: unknown[] | null;
+    scope_type: string;
+    scope_id: string | null;
+}
 
 /** NodeConfigData */
 export interface NodeConfigData {
-            nodes: string[];
-            edges: string[];
-        }
+    nodes: string[];
+    edges: string[];
+}
 
 /** NodeConfigState */
 export interface NodeConfigState {
-            id: number;
-            node_config_id: number;
-            node_id: string;
-            output_value: unknown[] | null;
-            context: unknown[] | null;
-            /** Format: date-time */
-            created_at: string | null;
-            /** Format: date-time */
-            updated_at: string | null;
-            server_id: number | null;
-        }
+    id: number;
+    node_config_id: number;
+    node_id: string;
+    output_value: unknown[] | null;
+    context: unknown[] | null;
+    /** Format: date-time */
+    created_at: string | null;
+    /** Format: date-time */
+    updated_at: string | null;
+    server_id: number | null;
+}
 
 /** PortsData */
 export interface PortsData {
-            id: number;
-            port: number;
-            protocol: string;
-            state: string;
-            process?: string | null;
-            ping_status?: string | null;
-            ping_time?: number | null;
-        }
+    id: number;
+    port: number;
+    protocol: string;
+    state: string;
+    process?: string | null;
+    ping_status?: string | null;
+    ping_time?: number | null;
+}
 
 /** ProcessesData */
 export interface ProcessesData {
-            pid: number;
-            name: string;
-            cpu?: number | null;
-            memory?: number | null;
-        }
+    pid: number;
+    name: string;
+    cpu?: number | null;
+    memory?: number | null;
+}
 
 /** ProvisionDetailData */
 export interface ProvisionDetailData {
-            expires_at: string;
-            conflict?: boolean;
-            token?: string | null;
-            linux_command?: string | null;
-            windows_command?: string | null;
-            generated_at?: string | null;
-            remaining_seconds?: number | null;
-            token_expires_in?: string | null;
-        }
+    expires_at: string;
+    conflict?: boolean;
+    token?: string | null;
+    linux_command?: string | null;
+    windows_command?: string | null;
+    generated_at?: string | null;
+    remaining_seconds?: number | null;
+    token_expires_in?: string | null;
+}
 
 /** SecopsUserData */
 export interface SecopsUserData {
-            uuid: string;
-            first_name: string;
-            last_name: string;
-            email: string;
-            username: string;
-            phone_number: string;
-            profile_picture_url: string;
-        }
+    uuid: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    username: string;
+    phone_number: string;
+    profile_picture_url: string;
+}
 
 /** SecurityActivityData */
 export interface SecurityActivityData {
-            id: number;
-            event_type: string;
-            ip_address?: string | null;
-            created_at: string;
-            created_at_timestamp: string;
-            metadata?: string | null;
-        }
+    id: number;
+    event_type: string;
+    ip_address?: string | null;
+    created_at: string;
+    created_at_timestamp: string;
+    metadata?: string | null;
+}
 
 /** ServerData */
 export interface ServerData {
-            name: string;
-            description?: string | null;
-            uuid: string;
-            host_name: string;
-            client_uuid: string;
-            client_name: string;
-            created_at: string;
-            updated_at: string;
-            record_status: string;
-            cpu_model?: string | null;
-            cpu_cores?: number | null;
-            ram?: string | null;
-            disk?: string | null;
-            operating_system?: string | null;
-            status?: string | null;
-            stats?: StatPointData[];
-            activeProvisionDetails?: ProvisionDetailData | null;
-            ports?: PortsData[] | null;
-            processes?: ProcessesData[] | null;
-            uninstall_linux_command?: string | null;
-            uninstall_windows_command?: string | null;
-            agent_deleted?: boolean;
-            activities?: {
-                type: string;
-                description: string;
-                created_at: string;
-            }[] | null;
-            agent?: AgentData | null;
-            alert_scope?: string;
-            monthly_rate?: number;
-            remitted?: number;
-            cost_reset_at?: string | null;
-            historical_cost?: number;
-            rate_updated_at?: string | null;
-            uptime_seconds?: number;
-            running_balance?: number;
-            net_cost?: number;
-            accumulated_cost?: number;
-            billing_date?: string | null;
-            pending_monthly_rate?: number | null;
-        }
+    name: string;
+    description?: string | null;
+    uuid: string;
+    host_name: string;
+    client_uuid: string;
+    client_name: string;
+    created_at: string;
+    updated_at: string;
+    record_status: string;
+    cpu_model?: string | null;
+    cpu_cores?: number | null;
+    ram?: string | null;
+    disk?: string | null;
+    operating_system?: string | null;
+    status?: string | null;
+    stats?: StatPointData[];
+    activeProvisionDetails?: ProvisionDetailData | null;
+    ports?: PortsData[] | null;
+    processes?: ProcessesData[] | null;
+    uninstall_linux_command?: string | null;
+    uninstall_windows_command?: string | null;
+    agent_deleted?: boolean;
+    activities?:
+        | {
+              type: string;
+              description: string;
+              created_at: string;
+          }[]
+        | null;
+    agent?: AgentData | null;
+    alert_scope?: string;
+    uptime_seconds?: number;
+    subscription_fee?: number;
+}
 
 /** ServerReportData */
 export interface ServerReportData {
-            uuid: string;
-            name: string;
-            description?: string | null;
-            client_name?: string | null;
-            host_name?: string | null;
-            cpu_model?: string | null;
-            cpu_cores?: number | null;
-            ram?: string | null;
-            disk?: string | null;
-            operating_system?: string | null;
-            status: string;
-            record_status: string;
-            last_seen?: string | null;
-            metrics: Record<string, never>;
-            uptime: ServerUptimeData;
-            running_balance: number;
-            net_cost: number;
-            accumulated_cost: number;
-            billing_date?: string | null;
-            activities: {
-                type: string;
-                description: string;
-                created_at: string;
-            }[];
-        }
+    uuid: string;
+    name: string;
+    description?: string | null;
+    client_name?: string | null;
+    host_name?: string | null;
+    cpu_model?: string | null;
+    cpu_cores?: number | null;
+    ram?: string | null;
+    disk?: string | null;
+    operating_system?: string | null;
+    status: string;
+    metrics: Record<string, never>;
+    uptime: ServerUptimeData;
+    activities: {
+        type: string;
+        description: string;
+        created_at: string;
+    }[];
+    cpu_7d?: number[];
+    memory_7d?: number[];
+    disk_7d?: number[];
+}
 
 /** ServerUptimeData */
 export interface ServerUptimeData {
-            uptime_seconds: number;
-            uptime_percentage: number;
-            outage_count: number;
-            last_downtime?: string | null;
-        }
+    uptime_seconds: number;
+    uptime_percentage: number;
+    outage_count: number;
+    last_downtime?: string | null;
+}
 
 /** StatPointData */
 export interface StatPointData {
-            timestamp: number;
-            cpu: number;
-            memory: number;
-            netIn: number;
-            netOut: number;
-            disk: number;
-        }
+    timestamp: number;
+    cpu: number;
+    memory: number;
+    netIn: number;
+    netOut: number;
+    disk: number;
+}
 
 /** StoreUploadIntentRequest */
 export interface StoreUploadIntentRequest {
-            purpose: UploadPurpose;
-        }
+    purpose: UploadPurpose;
+}
 
 /**
-         * TimeUnits
-         * @enum {integer}
-         */
+ * TimeUnits
+ * @enum {integer}
+ */
 export type TimeUnits = 1 | 2 | 3 | 4 | 5;
 
 /** UpdateUserData */
 export interface UpdateUserData {
-            phone_number: string;
-            /** Format: email */
-            email?: string;
-            username?: string;
-        }
+    phone_number: string;
+    /** Format: email */
+    email?: string;
+    username?: string;
+    timezone?: string | null;
+}
 
 /**
-         * UploadPurpose
-         * @enum {string}
-         */
-export type UploadPurpose = "profile_picture" | "client_banner" | "attachment" | "document";
+ * UploadPurpose
+ * @enum {string}
+ */
+export type UploadPurpose =
+    | "profile_picture"
+    | "client_banner"
+    | "attachment"
+    | "document";
 
 /** UserData */
 export interface UserData {
-            uuid: string;
-            first_name: string;
-            last_name: string;
-            email: string;
-            username: string;
-            phone_number: string;
-            last_login?: string | null;
-            profile_picture_url: string;
-            record_status: string;
-            /** Format: date-time */
-            created_at: string;
-            /** Format: date-time */
-            updated_at: string;
-        }
-
+    uuid: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    username: string;
+    phone_number: string;
+    last_login?: string | null;
+    timezone?: string | null;
+    profile_picture_url: string;
+    record_status: string;
+    /** Format: date-time */
+    created_at: string;
+    /** Format: date-time */
+    updated_at: string;
+}

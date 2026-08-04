@@ -132,10 +132,11 @@ export function createFormStore<T extends Record<string, unknown>>(config: {
     const setMode = (mode: FormMode) => {
         const next: Partial<FormState<T>> = { mode };
         if (mode === "view") {
-            if (originalData) {
+            const currentOrig = state.originalData ?? originalData;
+            if (currentOrig) {
                 pushHistory(state.form);
-                next.form = { ...originalData } as T;
-                next.originalData = originalData as T;
+                next.form = { ...currentOrig } as T;
+                next.originalData = currentOrig as T;
             }
             next.errors = {};
             next.externalDirty = false;
@@ -145,10 +146,11 @@ export function createFormStore<T extends Record<string, unknown>>(config: {
 
     const resetForm = () => {
         const next: Partial<FormState<T>> = { errors: {}, externalDirty: false };
-        if (originalData) {
+        const currentOrig = state.originalData ?? originalData;
+        if (currentOrig) {
             pushHistory(state.form);
-            next.form = { ...originalData } as T;
-            next.originalData = originalData as T;
+            next.form = { ...currentOrig } as T;
+            next.originalData = currentOrig as T;
         }
         setState(next);
     };

@@ -32,25 +32,9 @@ export type ServerDetailContextValue = {
     isConfirmed: boolean;
     allClient: boolean;
     navigate: ReturnType<typeof useNavigate>;
-    setShowCostModal: (open: boolean) => void;
     copyToClipboard: (text: string, type: CopyKey) => void;
     serverAlertTab: ReturnType<typeof useServerAlertTab>;
     handleDeletePort: (id: number) => void;
-    showCostModal: boolean;
-    costLogs: any[];
-    isLoadingCostLogs: boolean;
-    deductAmount: string;
-    setDeductAmount: (value: string) => void;
-    submittingPayment: boolean;
-    handleCostAdjustment: (
-        type:
-            | "full_payment"
-            | "deduction"
-            | "top_up"
-            | "add_funds"
-            | "reset_usage",
-        amount?: number,
-    ) => void;
 };
 
 export const ServerDetailContext = createContext<ServerDetailContextValue | null>(null);

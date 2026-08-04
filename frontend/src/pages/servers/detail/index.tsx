@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
 import {
     Info,
@@ -9,8 +9,6 @@ import {
     Terminal,
     ArrowLeft,
     Loader2,
-    Banknote,
-    CreditCard,
     Cpu,
     Server,
 } from "lucide-react";
@@ -20,7 +18,7 @@ import { ChartZoomProvider } from "@/contexts/ChartZoomContext";
 import { Button } from "@/components/ui/button";
 import { Tab } from "@/components/ui/tab";
 import type { ProvisionDetailData } from "@/types/models";
-import IndexHeader from "@/components/IndexHeader";
+import IndexHeader, { type Crumb } from "@/components/IndexHeader";
 import { useServerSocket } from "@/hooks/useServerSocket";
 import { toast } from "sonner";
 import { createFormStore, useForm } from "@/components/ui/form";
@@ -41,10 +39,8 @@ import {
 import { AgentInstallationGuide } from "./components/AgentInstallationGuide";
 import { ServerInfoTab } from "./tabs/ServerInfoTab";
 import { MetricsTab } from "./tabs/MetricsTab";
-import { BillingTab } from "./tabs/BillingTab";
 import { AlertsTab } from "./tabs/AlertsTab";
 import { AgentTab } from "./tabs/AgentTab";
-import { CostModal } from "./dialogs/CostModal";
 
 export default function ServerDetail() {
     const { uuid } = useParams<{ uuid: string }>();
@@ -151,10 +147,9 @@ export default function ServerDetail() {
                 schema: serverInfoSchema,
                 originalData: initial
                     ? {
-                          name: initial.name,
-                          description: initial.description ?? "",
-                          monthly_cost: initial.monthly_rate ?? 0,
-                      }
+                        name: initial.name,
+                        description: initial.description ?? "",
+                    }
                     : null,
                 initialMode: "view",
             }),
@@ -166,9 +161,15 @@ export default function ServerDetail() {
 
     useEffect(() => {
         if (initial && mode === "view") {
-            store.set("name")(initial.name);
-            store.set("description")(initial.description ?? "");
-            store.set("monthly_cost")(initial.monthly_rate ?? 0);
+            const data = {
+                name: initial.name,
+                description: initial.description ?? "",
+            };
+            store.setState({
+                form: data,
+                originalData: data,
+                externalDirty: false,
+            });
         }
     }, [initial, mode, store]);
 
@@ -230,8 +231,34 @@ export default function ServerDetail() {
     };
 
     const regenerateProvisionToken = async () => {
-        setProvisionDetails(null);
-        await generateProvisionToken();
+        if (!initial?.client_uuid) {
+            toast.error("Missing client reference.");
+            return;
+        }
+        setGenerating(true);
+        try {
+            const { data, error } = await api.POST(
+                "/v1/servers/{uuid}/provision/regenerate",
+                {
+                    params: {
+                        path: {
+                            uuid: initial.uuid,
+                        },
+                    },
+                },
+            );
+            if (error) {
+                toast.error("Failed to regenerate token.");
+            } else {
+                setProvisionDetails(data as unknown as ProvisionDetailData);
+                toast.success("Provision token regenerated!");
+                queryClient.invalidateQueries({ queryKey: ["server", uuid] });
+            }
+        } catch {
+            toast.error("An error occurred.");
+        } finally {
+            setGenerating(false);
+        }
     };
 
     const copyToClipboard = (text: string, type: CopyKey) => {
@@ -247,78 +274,14 @@ export default function ServerDetail() {
     const deleteServer = useDeleteServer();
     const isConfirmed = confirmText.trim() === initial?.name;
 
-    const [showCostModal, setShowCostModal] = useState(false);
-    const [deductAmount, setDeductAmount] = useState("");
-    const [submittingPayment, setSubmittingPayment] = useState(false);
 
-    // Fetch cost logs for the modal
-    const { data: costLogs, isLoading: isLoadingCostLogs } = useQuery({
-        queryKey: ["server", uuid, "cost-logs"],
-        queryFn: async () => {
-            if (!initial?.client_uuid) return [];
-            const { data, error } = await api.GET(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-logs",
-                {
-                    params: {
-                        path: {
-                            clientUuid: initial.client_uuid,
-                            serverUuid: uuid!,
-                        },
-                    },
-                },
-            );
-            if (error) throw error;
-            return data;
-        },
-        enabled: showCostModal && !!initial?.client_uuid,
-    });
-
-    const handleCostAdjustment = async (
-        type: "deduction" | "top_up" | "add_funds" | "reset_usage",
-        amount?: number,
-    ) => {
-        if (!initial?.client_uuid) return;
-        setSubmittingPayment(true);
-        try {
-            const { error } = await api.POST(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}/adjust-cost",
-                {
-                    params: {
-                        path: {
-                            clientUuid: initial.client_uuid,
-                            serverUuid: uuid!,
-                        },
-                    },
-                    body: {
-                        action: type,
-                        amount: amount,
-                    },
-                },
-            );
-
-            if (error) {
-                toast.error("Failed to process financial adjustment.");
-            } else {
-                toast.success("Payment / adjustment recorded successfully.");
-                setDeductAmount("");
-                queryClient.invalidateQueries({ queryKey: ["server", uuid] });
-                queryClient.invalidateQueries({
-                    queryKey: ["server", uuid, "cost-logs"],
-                });
-            }
-        } catch {
-            toast.error("An error occurred processing financial adjustment.");
-        } finally {
-            setSubmittingPayment(false);
-        }
-    };
 
     const handleDeletePort = useCallback(
         async (portId: number) => {
             if (!initial?.client_uuid) return;
             try {
                 const { error } = await api.DELETE(
-                    "/v1/clients/{clientUuid}/servers/{serverUuid}/ports/{portId}" as any,
+                    "/v1/clients/{clientUuid}/servers/{serverUuid}/ports/{portId}",
                     {
                         params: {
                             path: {
@@ -341,7 +304,7 @@ export default function ServerDetail() {
                 toast.error("An error occurred.");
             }
         },
-        [initial?.client_uuid, uuid, queryClient],
+        [initial, uuid, queryClient],
     );
 
     if (isLoading) {
@@ -377,11 +340,26 @@ export default function ServerDetail() {
     }
 
     const server: ServerDetailServer = initial;
-    const statusKey = server.agent_deleted
-        ? "pending_deletion"
-        : (server.status as keyof typeof STATUS_CONFIG) in STATUS_CONFIG
-          ? (server.status as keyof typeof STATUS_CONFIG)
-          : "pending_installation";
+    const trail: Crumb[] = allClient
+        ? [{ label: "Servers", href: "/servers" }, { label: server.name }]
+        : [
+            { label: "Clients", href: "/clients" },
+            {
+                label: server.client_name ?? "Client",
+                href: server.client_uuid
+                    ? `/clients/${server.client_uuid}`
+                    : undefined,
+            },
+            { label: server.name },
+        ];
+    const isArchived = server.record_status === "archived" || server.status === "archived";
+    const statusKey = isArchived
+        ? "archived"
+        : server.agent_deleted
+            ? "pending_deletion"
+            : (server.status as keyof typeof STATUS_CONFIG) in STATUS_CONFIG
+                ? (server.status as keyof typeof STATUS_CONFIG)
+                : "pending_installation";
 
     const {
         label: statusLabel,
@@ -408,17 +386,9 @@ export default function ServerDetail() {
         isConfirmed,
         allClient,
         navigate,
-        setShowCostModal,
         copyToClipboard,
         serverAlertTab,
         handleDeletePort,
-        showCostModal,
-        costLogs: costLogs ?? [],
-        isLoadingCostLogs,
-        deductAmount,
-        setDeductAmount,
-        submittingPayment,
-        handleCostAdjustment,
     };
 
     return (
@@ -426,9 +396,10 @@ export default function ServerDetail() {
             <ChartZoomProvider>
                 <PageLayout title={`${server.name} Details`}>
                     <IndexHeader
+                        icon={Server}
                         title={server.name}
                         description={`Monitoring details and real-time metrics for ${server.name}`}
-                        icon={StatusIcon ?? Server}
+                        trail={trail}
                     />
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -474,12 +445,6 @@ export default function ServerDetail() {
                             )}
 
                             {mode === "view" && (
-                                <Tab.Item icon={CreditCard} title="Billing">
-                                    <BillingTab />
-                                </Tab.Item>
-                            )}
-
-                            {mode === "view" && (
                                 <Tab.Item icon={Bell} title="Alerts">
                                     <AlertsTab />
                                 </Tab.Item>
@@ -492,8 +457,6 @@ export default function ServerDetail() {
                             )}
                         </Tab>
                     </div>
-
-                    <CostModal />
                 </PageLayout>
             </ChartZoomProvider>
         </ServerDetailContext.Provider>

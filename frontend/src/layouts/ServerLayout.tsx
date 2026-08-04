@@ -78,7 +78,10 @@ export default function ServerLayout() {
                     ) : (
                         filtered?.map((server) => {
                             const isActive = server.uuid === uuid;
-                            const statusKey = server.agent_deleted
+                            const isArchived = server.record_status === "archived" || server.status === "archived";
+                            const statusKey = isArchived
+                                ? "archived"
+                                : server.agent_deleted
                                 ? "pending_deletion"
                                 : ((server.status ?? "") in STATUS_META ? server.status : "unknown");
                             const meta = STATUS_META[statusKey as keyof typeof STATUS_META] ?? STATUS_META.unknown;

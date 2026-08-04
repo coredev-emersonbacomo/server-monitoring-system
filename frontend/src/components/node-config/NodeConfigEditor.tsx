@@ -558,8 +558,6 @@ export function NodeConfigEditor({
         if (capHighlightRef.current) {
             const el = document.querySelector(`.react-flow__node[data-id="${capHighlightRef.current}"]`);
             if (el) {
-                const inner = el.querySelector('.react-flow__node-content') || el.firstElementChild;
-                if (inner) (inner as HTMLElement).style.boxShadow = '';
                 el.removeAttribute('data-cap-target');
             }
             capHighlightRef.current = null;
@@ -601,17 +599,7 @@ export function NodeConfigEditor({
                 clearCapHighlight();
                 if (newId) {
                     const el = document.querySelector(`.react-flow__node[data-id="${newId}"]`);
-                    if (el) {
-                        el.setAttribute('data-cap-target', 'true');
-                        const inner = el.querySelector('.react-flow__node-content') || el.firstElementChild;
-                        if (inner) {
-                            const computed = getComputedStyle(inner as HTMLElement);
-                            const existing = computed.boxShadow;
-                            const borderMatch = existing.match(/0 0 0 1px\s+(#[0-9a-fA-F]+)/);
-                            const color = borderMatch?.[1] || '#10b981';
-                            (inner as HTMLElement).style.boxShadow = `0 0 0 3px ${color}, 0 0 12px 4px ${color}40`;
-                        }
-                    }
+                    el?.setAttribute('data-cap-target', 'true');
                     capHighlightRef.current = newId;
                 }
             }

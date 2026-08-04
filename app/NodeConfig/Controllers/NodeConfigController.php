@@ -43,7 +43,6 @@ class NodeConfigController extends Controller
             'name' => $data->name,
             'description' => $data->description ?? null,
             'config' => $data->config->toArray(),
-            'enabled' => $data->enabled ?? true,
             'created_by' => Auth::id(),
         ]);
 
@@ -72,7 +71,6 @@ class NodeConfigController extends Controller
             'name' => $data->name,
             'description' => $data->description ?? $config->description,
             'config' => $data->config->toArray(),
-            'enabled' => $data->enabled ?? $config->enabled,
         ]);
 
         return response()->json($config);
@@ -85,14 +83,6 @@ class NodeConfigController extends Controller
         $config->delete();
 
         return response()->json(['message' => 'Node config deleted.']);
-    }
-
-    public function toggle(int $id): JsonResponse
-    {
-        $config = NodeConfig::findOrFail($id);
-        $config->update(['enabled' => !$config->enabled]);
-
-        return response()->json($config);
     }
 
     public function test(int $id, Request $request): JsonResponse
@@ -165,7 +155,6 @@ class NodeConfigController extends Controller
                     'scope_id' => $parsed['scope_id'] ? (int) $parsed['scope_id'] : null,
                     'name' => '',
                     'config' => ['nodes' => [], 'edges' => []],
-                    'enabled' => true,
                     'created_by' => Auth::id(),
                 ],
             );
@@ -181,7 +170,6 @@ class NodeConfigController extends Controller
             'config' => ['required', 'array'],
             'config.nodes' => ['nullable', 'array'],
             'config.edges' => ['nullable', 'array'],
-            'enabled' => ['nullable', 'boolean'],
         ]);
 
         $validator = new NodeConfigValidator();
@@ -205,7 +193,6 @@ class NodeConfigController extends Controller
             $config->update([
                 'name' => $data['name'],
                 'config' => $data['config'],
-                'enabled' => $data['enabled'] ?? $config->enabled,
             ]);
         } else {
             $config = NodeConfig::create([
@@ -214,7 +201,6 @@ class NodeConfigController extends Controller
                 'config' => $data['config'],
                 'scope_type' => $parsed['scope_type'],
                 'scope_id' => $parsed['scope_id'],
-                'enabled' => $data['enabled'] ?? true,
                 'created_by' => Auth::id(),
             ]);
         }

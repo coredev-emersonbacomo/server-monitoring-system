@@ -32,6 +32,9 @@ class UpdateUserData extends Data
         #[Sometimes, Max(255)]
         public string|Optional $username,
 
+        #[Sometimes, Nullable, Max(255)]
+        public string|Optional|null $timezone,
+
         #[Sometimes, Nullable, Min(8), Confirmed]
         public string|Optional|null $password,
 
@@ -65,6 +68,13 @@ class UpdateUserData extends Data
                 'string',
                 'max:255',
                 Rule::unique('users', 'username')->ignore($userId),
+            ],
+            'timezone' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'max:255',
+                'timezone',
             ],
         ];
     }

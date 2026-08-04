@@ -16,6 +16,26 @@ import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { Toaster } from "sonner";
 import { useOutletLayout } from "@/hooks/useOutletLayout";
 
+export const sidebarLinks: SidebarNavLink[] = [
+    { name: "Dashboard", href: "/", icon: Activity },
+    {
+        name: "Clients",
+        href: "/clients",
+        icon: (props: LucideProps) => (
+            <Landmark {...props} strokeWidth="1.75" />
+        ),
+    },
+    {
+        name: "Servers",
+        href: "/servers",
+        icon: Server,
+    },
+    { name: "Users", href: "/users", icon: Users },
+    { name: "Logs", href: "/logs", icon: ScrollText },
+    { name: "Reports", href: "/report", icon: FileBarChart },
+    { name: "Settings", href: "/settings", icon: Settings },
+];
+
 export function ProtectedRoute() {
     const { user, isLoading, logoutReason } = useJwtAuth();
     const { isFullScreen, portalRef, isSidebarCollapsed } = useOutletLayout();
@@ -24,26 +44,6 @@ export function ProtectedRoute() {
     const sidebarMargin = isSidebarCollapsed
         ? "var(--sidebar-width-collapsed)"
         : "var(--sidebar-width)";
-
-    const sidebarLinks: SidebarNavLink[] = [
-        { name: "Dashboard", href: "/", icon: Activity },
-        {
-            name: "Clients",
-            href: "/clients",
-            icon: (props: LucideProps) => (
-                <Landmark {...props} strokeWidth="1.75" />
-            ),
-        },
-        {
-            name: "Servers",
-            href: "/servers",
-            icon: Server,
-        },
-        { name: "Users", href: "/users", icon: Users },
-        { name: "Logs", href: "/logs", icon: ScrollText },
-        { name: "Reports", href: "/report", icon: FileBarChart },
-        { name: "Settings", href: "/settings", icon: Settings },
-    ];
 
     if (isLoading) {
         return (
