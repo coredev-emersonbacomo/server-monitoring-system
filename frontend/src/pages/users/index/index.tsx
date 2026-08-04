@@ -51,6 +51,8 @@ const Users = () => {
         uuid: string;
         name: string;
     } | null>(null);
+    const [confirmText, setConfirmText] = useState("");
+
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<FilterTab>("all");
     const [sortField, setSortField] = useState<string>("created_at");
@@ -104,6 +106,7 @@ const Users = () => {
             await deleteUser.mutateAsync(deleteTarget.uuid);
             toast.success(`${deleteTarget.name} has been removed.`);
             setDeleteTarget(null);
+            setConfirmText("");
         } catch {
             toast.error("Failed to delete user. Please try again.");
         }
@@ -227,7 +230,10 @@ const Users = () => {
                 <Dialog
                     open={!!deleteTarget}
                     onOpenChange={(open) => {
-                        if (!open) setDeleteTarget(null);
+                        if (!open) {
+                            setDeleteTarget(null);
+                            setConfirmText("");
+                        }
                     }}
                 >
                     <DialogContent className="sm:max-w-sm">
@@ -241,6 +247,25 @@ const Users = () => {
                             </span>
                             ? This action cannot be undone.
                         </p>
+                        <div className="flex flex-col gap-1.5 mt-2 mb-4">
+                            <label className="text-xs text-muted-foreground">
+                                Type{" "}
+                                <span className="font-medium text-foreground">
+                                    {deleteTarget?.name}
+                                </span>{" "}
+                                to confirm.
+                            </label>
+                            <input
+                                type="text"
+                                value={confirmText}
+                                onChange={(e) =>
+                                    setConfirmText(e.target.value)
+                                }
+                                autoComplete="off"
+                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                                placeholder={deleteTarget?.name}
+                            />
+                        </div>
                         <div className="flex justify-end gap-2 pt-2">
                             <DialogClose asChild>
                                 <Button
@@ -258,7 +283,10 @@ const Users = () => {
                                         ? "Removing…"
                                         : "Remove"
                                 }
-                                disabled={deleteUser.isPending}
+                                disabled={
+                                    deleteUser.isPending ||
+                                    confirmText !== deleteTarget?.name
+                                }
                                 onClick={confirmDelete}
                             />
                         </div>

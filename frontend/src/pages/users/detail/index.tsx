@@ -42,7 +42,7 @@ import { uploadFile } from "@/lib/uploadToast";
 import { formatPhoneNumber } from "@/utils/helpers";
 import { Form, createFormStore, useForm } from "@/components/ui/form";
 import { TimezoneCombobox, tzOffsetLabel } from "@/components/TimezoneCombobox";
-
+import { FormStoreProvider } from "@/components/ui/form/FormStoreProvider";
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
 const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -182,18 +182,18 @@ function PasswordStrength({ password }: { password: string }) {
         passedCount <= 1
             ? "Weak"
             : passedCount === 2
-              ? "Fair"
-              : passedCount === 3
-                ? "Good"
-                : "Strong";
+                ? "Fair"
+                : passedCount === 3
+                    ? "Good"
+                    : "Strong";
     const strengthColor =
         passedCount <= 1
             ? "bg-destructive"
             : passedCount === 2
-              ? "bg-amber-500"
-              : passedCount === 3
-                ? "bg-blue-500"
-                : "bg-emerald-500";
+                ? "bg-amber-500"
+                : passedCount === 3
+                    ? "bg-blue-500"
+                    : "bg-emerald-500";
 
     return (
         <div className="flex flex-col gap-1.5">
@@ -254,7 +254,7 @@ export default function UserDetail() {
     const { data: userClients = [], isLoading: clientsLoading } =
         useUserClients(uuid);
     const { data: allClients = [] } = useClients({
-        exclude_user_uuid: uuid,
+        ...(uuid ? { exclude_user_uuid: uuid } : {}),
         available_only: true,
     });
 
@@ -290,25 +290,25 @@ export default function UserDetail() {
             schema: userSchema,
             originalData: user
                 ? {
-                      first_name: user.first_name,
-                      last_name: user.last_name,
-                      email: user.email,
-                      username: user.username,
-                      phone_number: user.phone_number,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    email: user.email,
+                    username: user.username,
+                    phone_number: user.phone_number,
                       timezone: user.timezone || "",
-                      password: "",
-                      password_confirmation: "",
-                  }
+                    password: "",
+                    password_confirmation: "",
+                }
                 : {
-                      first_name: "",
-                      last_name: "",
-                      email: "",
-                      username: "",
-                      phone_number: "",
+                    first_name: "",
+                    last_name: "",
+                    email: "",
+                    username: "",
+                    phone_number: "",
                       timezone: "",
-                      password: "",
-                      password_confirmation: "",
-                  },
+                    password: "",
+                    password_confirmation: "",
+                },
             initialMode: "view",
         });
     }, [isCreate, user]);
@@ -322,10 +322,12 @@ export default function UserDetail() {
     >(null);
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [localErrors, setErrors] = useState<Record<string, string>>({});
 
     const form = useForm(store, (s) => s.form);
     const mode = useForm(store, (s) => s.mode);
+    const storeErrors = useForm(store, (s) => s.errors);
+    const errors = { ...storeErrors, ...localErrors };
     const showEdit = mode !== "view";
 
     // Populate form when user data arrives
@@ -400,10 +402,10 @@ export default function UserDetail() {
     const handleSubmit = async () => {
         // Extra validation for create mode: password required
         if (isCreate && !form.password) {
-            store.setState({ errors: { password: "Password is required" } });
+            setErrors({ password: "Password is required" });
             return;
         }
-        store.setState({ errors: {} });
+        setErrors({});
 
         try {
             let uploadFields: Record<string, string> = {};
@@ -445,9 +447,9 @@ export default function UserDetail() {
                     timezone: form.timezone,
                     ...(form.password
                         ? {
-                              password: form.password,
-                              password_confirmation: form.password_confirmation,
-                          }
+                            password: form.password,
+                            password_confirmation: form.password_confirmation,
+                        }
                         : {}),
                     ...uploadFields,
                 };
@@ -472,15 +474,15 @@ export default function UserDetail() {
                 for (const [k, v] of Object.entries(errorData.errors)) {
                     mapped[k] = Array.isArray(v) ? v[0] : String(v);
                 }
-                store.setState({ errors: mapped });
+                setErrors(mapped);
             } else {
                 const serverMessage =
                     err?.response?.data?.message || err?.message;
                 toast.error(
                     serverMessage ||
-                        (isCreate
-                            ? "Failed to create user."
-                            : "Failed to update user."),
+                    (isCreate
+                        ? "Failed to create user."
+                        : "Failed to update user."),
                 );
             }
         }
@@ -601,62 +603,62 @@ export default function UserDetail() {
                         <div className="flex items-center justify-end mb-6">
                             <div className="flex items-center gap-2">
                                 {mode === "edit" && (
-                                    <Form.DeleteModal
-                                        buttonProps={{
-                                            size: "sm",
-                                            className:
-                                                "bg-red-600/70 cursor-pointer",
-                                        }}
-                                        onOpenChange={(open) => {
-                                            if (open) setShowDelete(true);
-                                        }}
-                                        modal={(show) => (
-                                            <DialogContent className="sm:max-w-sm">
-                                                <DialogHeader>
-                                                    <DialogTitle>
-                                                        Delete User
-                                                    </DialogTitle>
-                                                </DialogHeader>
-                                                <p className="text-sm text-muted-foreground">
-                                                    This will permanently delete{" "}
-                                                    <strong className="text-foreground">
-                                                        {user?.first_name}{" "}
-                                                        {user?.last_name}
-                                                    </strong>{" "}
-                                                    and all associated data.
-                                                    This cannot be undone.
-                                                </p>
-                                                <div className="flex justify-end gap-3 pt-2">
-                                                    <DialogClose asChild>
+                                    <FormStoreProvider store={store}>
+                                        <Form.DeleteModal
+                                            buttonProps={{
+                                                size: "sm",
+                                                className: "bg-red-600/70 cursor-pointer",
+                                            }}
+                                            onOpenChange={(open) => {
+                                                if (open) setShowDelete(true);
+                                            }}
+                                            modal={(show) => (
+                                                <DialogContent className="sm:max-w-sm">
+                                                    <DialogHeader>
+                                                        <DialogTitle>
+                                                            Delete User
+                                                        </DialogTitle>
+                                                    </DialogHeader>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        This will permanently delete{" "}
+                                                        <strong className="text-foreground">
+                                                            {user?.first_name}{" "}
+                                                            {user?.last_name}
+                                                        </strong>{" "}
+                                                        and all associated data. This
+                                                        cannot be undone.
+                                                    </p>
+                                                    <div className="flex justify-end gap-3 pt-2">
+                                                        <DialogClose asChild>
+                                                            <Button
+                                                                variant="outline"
+                                                                label="Cancel"
+                                                                onClick={() =>
+                                                                    show(false)
+                                                                }
+                                                            />
+                                                        </DialogClose>
                                                         <Button
-                                                            variant="outline"
-                                                            label="Cancel"
-                                                            onClick={() =>
-                                                                show(false)
+                                                            variant="danger"
+                                                            label={
+                                                                deleteUser.isPending
+                                                                    ? "Deleting…"
+                                                                    : "Delete"
                                                             }
+                                                            disabled={
+                                                                deleteUser.isPending
+                                                            }
+                                                            onClick={() => {
+                                                                show(false);
+                                                                handleDelete();
+                                                            }}
                                                         />
-                                                    </DialogClose>
-                                                    <Button
-                                                        variant="danger"
-                                                        label={
-                                                            deleteUser.isPending
-                                                                ? "Deleting…"
-                                                                : "Delete"
-                                                        }
-                                                        disabled={
-                                                            deleteUser.isPending
-                                                        }
-                                                        onClick={() => {
-                                                            show(false);
-                                                            handleDelete();
-                                                        }}
-                                                    />
-                                                </div>
-                                            </DialogContent>
-                                        )}
-                                    />
+                                                    </div>
+                                                </DialogContent>
+                                            )}
+                                        />
+                                    </FormStoreProvider>
                                 )}
-
                                 {mode !== "create" && !showEdit && (
                                     <Button
                                         className="cursor-pointer"
@@ -680,6 +682,7 @@ export default function UserDetail() {
                                         <Button
                                             className="cursor-pointer"
                                             type="submit"
+                                            form="user-detail-form"
                                             size="sm"
                                             disabled={isSaving || !hasChanges}
                                             label={
@@ -701,6 +704,7 @@ export default function UserDetail() {
                                         <Button
                                             className="cursor-pointer"
                                             type="submit"
+                                            form="user-detail-form"
                                             size="sm"
                                             disabled={isSaving}
                                             label={
@@ -713,7 +717,6 @@ export default function UserDetail() {
                                 )}
                             </div>
                         </div>
-
                         {/* ── Avatar + Name ── */}
                         <div className="flex items-end gap-5">
                             {/* Avatar */}
@@ -840,6 +843,7 @@ export default function UserDetail() {
                             <Tab.Item icon={Info} title="Details">
                                 <Form.Root
                                     store={store}
+                                    id="user-detail-form"
                                     className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-8"
                                 >
                                     <Form.SubmitHandler
@@ -854,25 +858,15 @@ export default function UserDetail() {
                                         />
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {showEdit ? (
-                                                <div>
-                                                    <FloatingInput
-                                                        type="email"
-                                                        label="Email Address"
-                                                        value={form.email}
-                                                        onValueChange={store.set(
-                                                            "email",
-                                                        )}
-                                                        className={cn(
-                                                            errors.email &&
-                                                                "border-destructive",
-                                                        )}
-                                                    />
-                                                    {errors.email && (
-                                                        <p className="text-xs text-destructive mt-1">
-                                                            {errors.email}
-                                                        </p>
+                                                <FloatingInput
+                                                    type="email"
+                                                    label="Email Address"
+                                                    value={form.email}
+                                                    onValueChange={store.set(
+                                                        "email",
                                                     )}
-                                                </div>
+                                                    error={errors.email}
+                                                />
                                             ) : (
                                                 <Field
                                                     label="Email Address"
@@ -893,18 +887,12 @@ export default function UserDetail() {
                                                         onValueChange={store.set(
                                                             "username",
                                                         )}
-                                                        className={cn(
-                                                            errors.username &&
-                                                                "border-destructive",
-                                                        )}
+                                                        error={errors.username}
                                                     />
-                                                    <p className="text-[11px] text-muted-foreground mt-1">
-                                                        Letters, numbers, and
-                                                        dots only
-                                                    </p>
-                                                    {errors.username && (
-                                                        <p className="text-xs text-destructive mt-1">
-                                                            {errors.username}
+                                                    {!errors.username && (
+                                                        <p className="text-[11px] text-muted-foreground mt-1">
+                                                            Letters, numbers,
+                                                            and dots only
                                                         </p>
                                                     )}
                                                 </div>
@@ -921,7 +909,7 @@ export default function UserDetail() {
                                             )}
 
                                             {showEdit ? (
-                                                <div className="flex flex-col gap-1">
+                                                <div>
                                                     <FloatingInput
                                                         label="Phone Number"
                                                         value={
@@ -980,9 +968,9 @@ export default function UserDetail() {
                                                                 setErrors(
                                                                     (prev) => {
                                                                         const n =
-                                                                            {
-                                                                                ...prev,
-                                                                            };
+                                                                        {
+                                                                            ...prev,
+                                                                        };
                                                                         delete n.phone_number;
                                                                         return n;
                                                                     },
@@ -990,18 +978,8 @@ export default function UserDetail() {
                                                             }
                                                         }}
                                                         maxLength={11}
-                                                        className={cn(
-                                                            errors.phone_number &&
-                                                                "border-destructive",
-                                                        )}
+                                                        error={errors.phone_number}
                                                     />
-                                                    {errors.phone_number && (
-                                                        <p className="text-xs text-destructive mt-1">
-                                                            {
-                                                                errors.phone_number
-                                                            }
-                                                        </p>
-                                                    )}
                                                 </div>
                                             ) : (
                                                 <Field
@@ -1012,8 +990,8 @@ export default function UserDetail() {
                                                     <p className="text-base font-semibold text-foreground py-1">
                                                         {user?.phone_number
                                                             ? formatPhoneNumber(
-                                                                  user.phone_number,
-                                                              )
+                                                                user.phone_number,
+                                                            )
                                                             : "—"}
                                                     </p>
                                                 </Field>
@@ -1091,9 +1069,9 @@ export default function UserDetail() {
                                                                 setErrors(
                                                                     (prev) => {
                                                                         const next =
-                                                                            {
-                                                                                ...prev,
-                                                                            };
+                                                                        {
+                                                                            ...prev,
+                                                                        };
 
                                                                         if (
                                                                             !value
@@ -1107,30 +1085,30 @@ export default function UserDetail() {
                                                                                 delete next.password;
                                                                         } else {
                                                                             const checks =
-                                                                                {
-                                                                                    length:
-                                                                                        value.length >=
-                                                                                        8,
-                                                                                    upper: /[A-Z]/.test(
-                                                                                        value,
-                                                                                    ),
-                                                                                    number: /[0-9]/.test(
-                                                                                        value,
-                                                                                    ),
-                                                                                    symbol: /[^A-Za-z0-9]/.test(
-                                                                                        value,
-                                                                                    ),
-                                                                                };
+                                                                            {
+                                                                                length:
+                                                                                    value.length >=
+                                                                                    8,
+                                                                                upper: /[A-Z]/.test(
+                                                                                    value,
+                                                                                ),
+                                                                                number: /[0-9]/.test(
+                                                                                    value,
+                                                                                ),
+                                                                                symbol: /[^A-Za-z0-9]/.test(
+                                                                                    value,
+                                                                                ),
+                                                                            };
                                                                             const failed =
                                                                                 !checks.length
                                                                                     ? "Must be at least 8 characters"
                                                                                     : !checks.upper
-                                                                                      ? "Must include an uppercase letter"
-                                                                                      : !checks.number
-                                                                                        ? "Must include a number"
-                                                                                        : !checks.symbol
-                                                                                          ? "Must include a symbol (!@#$...)"
-                                                                                          : null;
+                                                                                        ? "Must include an uppercase letter"
+                                                                                        : !checks.number
+                                                                                            ? "Must include a number"
+                                                                                            : !checks.symbol
+                                                                                                ? "Must include a symbol (!@#$...)"
+                                                                                                : null;
 
                                                                             if (
                                                                                 failed
@@ -1160,10 +1138,9 @@ export default function UserDetail() {
                                                                     },
                                                                 );
                                                             }}
-                                                            className={cn(
-                                                                errors.password &&
-                                                                    "border-destructive",
-                                                            )}
+                                                            error={
+                                                                errors.password
+                                                            }
                                                         />
 
                                                         {/* Strength meter */}
@@ -1173,13 +1150,6 @@ export default function UserDetail() {
                                                                     form.password
                                                                 }
                                                             />
-                                                        )}
-                                                        {errors.password && (
-                                                            <p className="text-xs text-destructive">
-                                                                {
-                                                                    errors.password
-                                                                }
-                                                            </p>
                                                         )}
                                                     </div>
 
@@ -1200,9 +1170,9 @@ export default function UserDetail() {
                                                                 setErrors(
                                                                     (prev) => {
                                                                         const next =
-                                                                            {
-                                                                                ...prev,
-                                                                            };
+                                                                        {
+                                                                            ...prev,
+                                                                        };
                                                                         if (
                                                                             !value
                                                                         ) {
@@ -1226,23 +1196,10 @@ export default function UserDetail() {
                                                                     },
                                                                 );
                                                             }}
-                                                            className={cn(
-                                                                errors.password_confirmation &&
-                                                                    "border-destructive",
-                                                                !errors.password_confirmation &&
-                                                                    form.password_confirmation &&
-                                                                    form.password_confirmation ===
-                                                                        form.password &&
-                                                                    "border-emerald-500",
-                                                            )}
+                                                          error={
+                                                                errors.password_confirmation
+                                                            }
                                                         />
-                                                        {errors.password_confirmation && (
-                                                            <p className="text-xs text-destructive mt-1">
-                                                                {
-                                                                    errors.password_confirmation
-                                                                }
-                                                            </p>
-                                                        )}
                                                     </div>
                                                 </div>
                                             </section>
@@ -1337,7 +1294,7 @@ export default function UserDetail() {
                                                                     }{" "}
                                                                     server
                                                                     {client.servers_count !==
-                                                                    1
+                                                                        1
                                                                         ? "s"
                                                                         : ""}
                                                                 </p>

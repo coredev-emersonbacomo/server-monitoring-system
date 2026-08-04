@@ -32,12 +32,16 @@ function setMonthlyCostValue(setValue: (value: string) => void, value: string) {
 }
 const schema = z.object({
     name: z.string().min(1, "Server name is required"),
-    description: z.string().max(255, "Maximum 255 characters").optional().default(""),
-    monthly_cost: z.union([z.string(), z.number()]).transform((val) => {
-        if (val === "" || val === undefined || val === null) return 0;
-        const num = Number(val);
-        return isNaN(num) ? 0 : Math.max(0, num);
-    }),
+    description: z.string().trim().min(1, "Description is required").max(255, "Maximum 255 characters"),
+    monthly_cost: z.union([z.string(), z.number()])
+        .transform((val) => {
+            if (val === "" || val === undefined || val === null) return 0;
+            const num = Number(val);
+            return isNaN(num) ? 0 : Math.max(0, num);
+        })
+        .refine((val) => val > 0, {
+            message: "Monthly cost is required",
+        }),
 });
 
 export default function CreateServer() {
@@ -189,13 +193,8 @@ function CreateServerFields({
                     label="Server name"
                     value={form.name}
                     onValueChange={store.set("name")}
-                    className={cn(errors.name && "border-destructive")}
+                    error={errors.name}
                 />
-                {errors.name && (
-                    <p className="text-[11px] text-destructive mt-1.5">
-                        {errors.name}
-                    </p>
-                )}
             </div>
 
             <div>
@@ -211,6 +210,7 @@ function CreateServerFields({
                     onValueChange={(value) =>
                         setMonthlyCostValue(store.set("monthly_cost"), value)
                     }
+                    error={errors.monthly_cost}
                 />
             </div>
 
@@ -224,11 +224,20 @@ function CreateServerFields({
                     onChange={(e) => store.set("description")(e.target.value)}
                     rows={3}
                     maxLength={255}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                    className={cn(
+                        "w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none",
+                        errors.description && "border-destructive",
+                    )}
                 />
-                <p className="text-[11px] text-muted-foreground">
-                    Optional notes about this server's role or purpose.
-                </p>
+                {errors.description ? (
+                    <p className="text-[11px] text-destructive">
+                        {errors.description}
+                    </p>
+                ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                        Notes about this server's role or purpose.
+                    </p>
+                )}
             </div>
         </>
     );
