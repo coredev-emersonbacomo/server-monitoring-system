@@ -274,6 +274,7 @@ export default function DocsAlerts() {
                 icon={Bell}
                 title="Alerts"
                 description="Node-based alerting system — configuration, evaluation, and scheduling."
+                trail={[{ label: "Docs", href: "/docs" }, { label: "Alerts" }]}
             />
 
             <main className="py-6 w-full flex-1">

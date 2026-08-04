@@ -41,8 +41,11 @@ import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { uploadFile } from "@/lib/uploadToast";
 import { formatPhoneNumber } from "@/utils/helpers";
 import { Form, createFormStore, useForm } from "@/components/ui/form";
+import { TimezoneCombobox, tzOffsetLabel } from "@/components/TimezoneCombobox";
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
+
+const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 const userSchema = z
     .object({
@@ -50,6 +53,7 @@ const userSchema = z
         last_name: z.string().trim().min(1, "Required"),
         email: z.email("Invalid email").trim().min(1, "Required"),
         username: z.string().trim().min(1, "Required"),
+        timezone: z.string().min(1, "Required"),
         phone_number: z
             .string()
             .trim()
@@ -275,6 +279,7 @@ export default function UserDetail() {
                     email: "",
                     username: "",
                     phone_number: "",
+                    timezone: BROWSER_TIMEZONE,
                     password: "",
                     password_confirmation: "",
                 },
@@ -290,6 +295,7 @@ export default function UserDetail() {
                       email: user.email,
                       username: user.username,
                       phone_number: user.phone_number,
+                      timezone: user.timezone || "",
                       password: "",
                       password_confirmation: "",
                   }
@@ -299,12 +305,13 @@ export default function UserDetail() {
                       email: "",
                       username: "",
                       phone_number: "",
+                      timezone: "",
                       password: "",
                       password_confirmation: "",
                   },
             initialMode: "view",
         });
-    }, [isCreate, user?.uuid]);
+    }, [isCreate, user]);
 
     // ── Local state ────────────────────────────────────────────────────────────
     const [showDelete, setShowDelete] = useState(false);
@@ -331,6 +338,7 @@ export default function UserDetail() {
                     email: user.email,
                     username: user.username,
                     phone_number: user.phone_number,
+                    timezone: user.timezone || "",
                     password: "",
                     password_confirmation: "",
                 },
@@ -340,13 +348,14 @@ export default function UserDetail() {
                     email: user.email,
                     username: user.username,
                     phone_number: user.phone_number,
+                    timezone: user.timezone || "",
                     password: "",
                     password_confirmation: "",
                 },
             });
             setAvatarPreview(user.profile_picture_url ?? null);
         }
-    }, [user?.uuid]);
+    }, [isCreate, store, user, user?.uuid]);
 
     const hasChanges = useMemo(() => {
         if (isCreate) {
@@ -356,6 +365,7 @@ export default function UserDetail() {
                 form.email !== "" ||
                 form.username !== "" ||
                 form.phone_number !== "" ||
+                form.timezone !== BROWSER_TIMEZONE ||
                 form.password !== "" ||
                 form.password_confirmation !== "" ||
                 avatarFile !== null
@@ -368,6 +378,7 @@ export default function UserDetail() {
             form.email !== user.email ||
             form.username !== user.username ||
             form.phone_number !== user.phone_number ||
+            form.timezone !== (user.timezone || "") ||
             form.password !== "" ||
             form.password_confirmation !== "";
         return formChanged || avatarFile !== null;
@@ -416,6 +427,7 @@ export default function UserDetail() {
                     email: form.email,
                     username: form.username,
                     phone_number: form.phone_number,
+                    timezone: form.timezone,
                     password: form.password,
                     password_confirmation: form.password_confirmation,
                     ...uploadFields,
@@ -430,6 +442,7 @@ export default function UserDetail() {
                     email: form.email,
                     username: form.username,
                     phone_number: form.phone_number,
+                    timezone: form.timezone,
                     ...(form.password
                         ? {
                               password: form.password,
@@ -506,6 +519,7 @@ export default function UserDetail() {
                     email: user.email,
                     username: user.username,
                     phone_number: user.phone_number,
+                    timezone: user.timezone || "",
                     password: "",
                     password_confirmation: "",
                 },
@@ -590,7 +604,8 @@ export default function UserDetail() {
                                     <Form.DeleteModal
                                         buttonProps={{
                                             size: "sm",
-                                            className: "bg-red-600/70 cursor-pointer",
+                                            className:
+                                                "bg-red-600/70 cursor-pointer",
                                         }}
                                         onOpenChange={(open) => {
                                             if (open) setShowDelete(true);
@@ -608,8 +623,8 @@ export default function UserDetail() {
                                                         {user?.first_name}{" "}
                                                         {user?.last_name}
                                                     </strong>{" "}
-                                                    and all associated data. This
-                                                    cannot be undone.
+                                                    and all associated data.
+                                                    This cannot be undone.
                                                 </p>
                                                 <div className="flex justify-end gap-3 pt-2">
                                                     <DialogClose asChild>
@@ -827,7 +842,9 @@ export default function UserDetail() {
                                     store={store}
                                     className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-8"
                                 >
-                                    <Form.SubmitHandler handler={handleSubmit} />
+                                    <Form.SubmitHandler
+                                        handler={handleSubmit}
+                                    />
 
                                     {/* Basic Information */}
                                     <section className="space-y-4">
@@ -1002,6 +1019,36 @@ export default function UserDetail() {
                                                 </Field>
                                             )}
                                         </div>
+                                    </section>
+
+                                    {/* Timezone */}
+                                    <div className="h-px bg-border" />
+                                    <section className="space-y-4">
+                                        <SectionHeader
+                                            title="Timezone"
+                                            description="Used to localize alert notification timestamps for this user."
+                                        />
+                                        {showEdit ? (
+                                            <div className="max-w-sm">
+                                                <TimezoneCombobox
+                                                    value={form.timezone}
+                                                    onValueChange={store.set(
+                                                        "timezone",
+                                                    )}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <Field
+                                                label="Timezone"
+                                                isEdit={showEdit}
+                                            >
+                                                <p className="text-base font-semibold text-foreground py-1">
+                                                    {user?.timezone
+                                                        ? `${user.timezone} (${tzOffsetLabel(user.timezone)})`
+                                                        : "—"}
+                                                </p>
+                                            </Field>
+                                        )}
                                     </section>
 
                                     {/* Password */}

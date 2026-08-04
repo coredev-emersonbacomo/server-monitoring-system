@@ -1471,11 +1471,54 @@ export interface paths {
          *
          *     Body JSON:
          *       template: "client" | "server" | "general" | "multi-client" | "multi-server"
-         *       data: object (report data, or { items: [...] } for multi templates)
+         *       data: object (explicit report data, optional if uuid/uuids given)
+         *       uuid: string (single entity uuid — auto-fetches data from DB)
+         *       uuids: string[] (multiple entity uuids — auto-fetches, wraps as { items: [...] })
          *       paper: "a4" | "letter" (default: "a4")
          *       orientation: "landscape" | "portrait" (default: "portrait")
+         *       hours: int (for server metrics window, default: 24)
          */
         post: operations["report.compile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/client/{uuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/v1/reports/client/{uuid}
+         *     Returns raw JSON data for a client report (used by HTML preview)
+         */
+        get: operations["report.clientReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reports/general": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /api/v1/reports/general
+         *     Returns raw JSON data for the general/global report (used by HTML preview)
+         */
+        get: operations["report.generalReport"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3738,6 +3781,19 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Cannot delete client with an outstanding cost balance. Please settle all server deductions first before deleting.";
+                    } | {
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "v1.client.updateAlertScope_0": {
@@ -4083,6 +4139,19 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Cannot delete client with an outstanding cost balance. Please settle all server deductions first before deleting.";
+                    } | {
+                        message: string;
+                    };
+                };
+            };
         };
     };
     "v1.client.updateAlertScope_0": {
@@ -4920,7 +4989,6 @@ export interface operations {
                     name: string;
                     description?: string | null;
                     config: NodeConfigData;
-                    enabled?: boolean;
                 };
             };
         };
@@ -4983,7 +5051,6 @@ export interface operations {
             content: {
                 "application/json": {
                     name: string;
-                    enabled?: boolean | null;
                     config: {
                         nodes?: string[] | null;
                         edges?: string[] | null;
@@ -5105,7 +5172,6 @@ export interface operations {
                     name: string;
                     description?: string | null;
                     config: NodeConfigData;
-                    enabled?: boolean;
                 };
             };
         };
@@ -5306,7 +5372,6 @@ export interface operations {
                     name: string;
                     description?: string | null;
                     config: NodeConfigData;
-                    enabled?: boolean;
                 };
             };
         };
@@ -5369,7 +5434,6 @@ export interface operations {
             content: {
                 "application/json": {
                     name: string;
-                    enabled?: boolean | null;
                     config: {
                         nodes?: string[] | null;
                         edges?: string[] | null;
@@ -5491,7 +5555,6 @@ export interface operations {
                     name: string;
                     description?: string | null;
                     config: NodeConfigData;
-                    enabled?: boolean;
                 };
             };
         };
@@ -5828,11 +5891,14 @@ export interface operations {
                 "application/json": {
                     /** @enum {string} */
                     template: "client" | "server" | "general" | "multi-client" | "multi-server";
-                    data: string[];
+                    data?: string[] | null;
+                    uuid?: string | null;
                     /** @enum {string|null} */
                     paper?: "a4" | "letter" | "legal" | null;
                     /** @enum {string|null} */
                     orientation?: "landscape" | "portrait" | null;
+                    hours?: number | null;
+                    uuids?: string[] | null;
                 };
             };
         };
@@ -5877,6 +5943,52 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    "report.clientReport": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "report.generalReport": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
         };
     };
     "v1.server.listAll_0": {
@@ -7172,6 +7284,7 @@ export interface operations {
                     email?: string;
                     phone_number: string;
                     username?: string;
+                    timezone?: string | null;
                     /** @description Must be confirmed by a matching `_confirmation` field. */
                     password?: string | null;
                     password_confirmation?: string | null;
@@ -7439,6 +7552,7 @@ export interface operations {
                     email?: string;
                     phone_number: string;
                     username?: string;
+                    timezone?: string | null;
                     /** @description Must be confirmed by a matching `_confirmation` field. */
                     password?: string | null;
                     password_confirmation?: string | null;

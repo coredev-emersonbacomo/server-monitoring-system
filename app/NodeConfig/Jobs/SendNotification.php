@@ -104,12 +104,7 @@ class SendNotification implements ShouldQueue
             $message = str_replace(['<b>', '</b>'], '**', $message);
         }
 
-        // Emails don't understand Discord <t:> timestamps — emit UTC (Z) datetimes and let JS resolve them locally.
-        if ($channel === 'email') {
-            $message = preg_replace_callback('/<t:(\d+)(?::[a-zA-Z])?>/', function ($m) {
-                return Carbon::createFromTimestamp((int) $m[1])->utc()->format('Y-m-d\TH:i:s\Z');
-            }, $message);
-        }
+        // Email <t:> timestamps stay unresolved here — resolved per recipient timezone in sendEmail().
 
         if ($message === '' && $channel !== 'discord') {
             return;
@@ -192,16 +187,35 @@ class SendNotification implements ShouldQueue
 
     private function sendEmail(?Server $server, string $subject, string $message, ?string $url, NotificationService $notifications): bool
     {
-        $emails = $server?->client?->secopclients?->pluck('email')->filter()->values()->all();
-        if (empty($emails)) {
+        $recipients = $server?->client?->secopclients ?? collect();
+        $groups = $recipients->groupBy(fn ($user) => $user->timezone ?: 'UTC');
+
+        $sentAny = false;
+
+        foreach ($groups as $timezone => $users) {
+            $emails = $users->pluck('email')->filter()->values()->all();
+            if (empty($emails)) {
+                continue;
+            }
+
+            $notifications->sendEmailAlert($emails, $this->resolveTimestamps($message, $timezone), $subject, $url);
+            $sentAny = true;
+        }
+
+        if (!$sentAny) {
             Log::warning('[server-events] Email notification skipped: no recipients found', [
                 'server_id' => $server?->id,
             ]);
-            return false;
         }
 
-        $notifications->sendEmailAlert($emails, $message, $subject, $url);
-        return true;
+        return $sentAny;
+    }
+
+    private function resolveTimestamps(string $message, string $timezone): string
+    {
+        return preg_replace_callback('/<t:(\d+)(?::[a-zA-Z])?>/', function ($m) use ($timezone) {
+            return Carbon::createFromTimestamp((int) $m[1])->setTimezone($timezone)->format('Y-m-d H:i:s');
+        }, $message);
     }
 
     private function sendDiscord(array $settings, string $message, ?string $url, NotificationService $notifications): bool

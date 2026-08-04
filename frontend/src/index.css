@@ -117,6 +117,12 @@
     );
     --height-icon: var(--size-icon);
     --width-icon: var(--size-icon);
+
+    --notify-email-1: #4285f4;
+    --notify-email-2: #ea4335;
+    --notify-email-3: #fbbc05;
+    --notify-email-4: #34a853;
+    --notify-discord: #5865f2;
 }
 
 .dark {
@@ -154,6 +160,12 @@
 
     --sidebar-active: oklch(0.3 0 0);
     --sidebar-hover: oklch(0.25 0 0);
+
+    --notify-email-1: #6b9bff;
+    --notify-email-2: #f26e64;
+    --notify-email-3: #ffd241;
+    --notify-email-4: #53c37b;
+    --notify-discord: #8b93ff;
 }
 
 @layer base {
@@ -165,6 +177,7 @@
     }
     html {
         @apply font-sans;
+        scrollbar-gutter: stable;
     }
     .recharts-wrapper .recharts-surface {
         overflow: visible;

@@ -27,7 +27,6 @@ export interface NodeConfig {
     description: string | null;
     config: NodeConfigGraph;
     compiled_config: { rules: unknown[] } | null;
-    enabled: boolean;
     scope_type: AlertScope;
     scope_id: number | null;
     created_by: number | null;

@@ -44,17 +44,18 @@ export function SeverityNodeSocket({
                 onClick={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
             >
-                <AlertTriangle
-                    size={12}
-                    style={{ color: COLORS[value] || COLORS.warning }}
-                    className="mr-1"
-                />
                 <SelectValue />
             </SelectTrigger>
             <SelectContent>
                 {OPTIONS.map((sv) => (
                     <SelectItem key={sv.value} value={sv.value}>
-                        {sv.label}
+                        <span className="flex items-center gap-1.5">
+                            <AlertTriangle
+                                size={12}
+                                style={{ color: COLORS[sv.value] || sv.color }}
+                            />
+                            {sv.label}
+                        </span>
                     </SelectItem>
                 ))}
             </SelectContent>

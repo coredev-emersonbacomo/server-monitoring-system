@@ -3,20 +3,13 @@ import type { ServerData, ClientData, StatPointData } from "@/types/models";
 type ServerVarKey = `server.${keyof ServerData & string}`;
 type ClientVarKey = `server.client.${keyof ClientData & string}`;
 type MetricVarKey = `metric.${keyof StatPointData & string}`;
-type TagKey =
-    | "<b>"
-    | "<discord-embed>"
-    | "<discord-embed-title>"
-    | "<discord-button>"
-    | "<discord-footer>"
-    | "<email-button>";
 
-type TemplateVariableKey = ServerVarKey | ClientVarKey | MetricVarKey | TagKey;
+type TemplateVariableKey = ServerVarKey | ClientVarKey | MetricVarKey;
 
 export interface TemplateVariable {
     key: TemplateVariableKey;
     label: string;
-    group: "server" | "client" | "metric" | "tag";
+    group: "server" | "client" | "metric";
     description: string;
 }
 
@@ -271,55 +264,12 @@ const LABELS: Record<
     },
 };
 
-const TAGS: TemplateVariable[] = [
-    {
-        key: "<b>",
-        label: "Bold",
-        group: "tag",
-        description: "Bold text (renders as ** in Discord)",
-    },
-    {
-        key: "<discord-embed>",
-        label: "Discord Embed",
-        group: "tag",
-        description:
-            "Wraps content into a Discord embed card (title, description, footer)",
-    },
-    {
-        key: "<discord-embed-title>",
-        label: "Discord Embed Title",
-        group: "tag",
-        description: "Sets the Discord embed title",
-    },
-    {
-        key: "<discord-button>",
-        label: "Discord Button",
-        group: "tag",
-        description: "Adds a link button to the Discord embed",
-    },
-    {
-        key: "<discord-footer>",
-        label: "Discord Footer",
-        group: "tag",
-        description: "Adds a footer to the Discord embed",
-    },
-    {
-        key: "<email-button>",
-        label: "Email Button",
-        group: "tag",
-        description: "Adds a button to the email",
-    },
-];
-
-export const TEMPLATE_VARIABLES: TemplateVariable[] = [
-    ...(
-        Object.entries(LABELS) as [
-            ServerVarKey | ClientVarKey | MetricVarKey,
-            (typeof LABELS)[ServerVarKey | ClientVarKey | MetricVarKey],
-        ][]
-    ).map(([key, meta]) => ({ key, ...meta })),
-    ...TAGS,
-];
+export const TEMPLATE_VARIABLES: TemplateVariable[] = (
+    Object.entries(LABELS) as [
+        TemplateVariableKey,
+        (typeof LABELS)[TemplateVariableKey],
+    ][]
+).map(([key, meta]) => ({ key, ...meta }));
 
 export function filterVariables(query: string): TemplateVariable[] {
     const q = query.toLowerCase();

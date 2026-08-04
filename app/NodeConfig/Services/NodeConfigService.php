@@ -26,7 +26,6 @@ class NodeConfigService
                 'scope_id' => $scopeId,
                 'name' => '',
                 'config' => ['nodes' => [], 'edges' => []],
-                'enabled' => true,
                 'created_by' => Auth::id(),
             ],
         );

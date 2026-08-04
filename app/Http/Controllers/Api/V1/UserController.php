@@ -41,6 +41,10 @@ class UserController extends Controller
             'password'   => Hash::make($data->password),
         ];
 
+        if ($data->timezone !== null) {
+            $payload['timezone'] = $data->timezone;
+        }
+
         if ($data->upload_intent_id !== null && $data->profile_picture_storage_key !== null) {
             $intent = $this->uploadIntentService->attach(
                 $data->upload_intent_id,
@@ -101,6 +105,9 @@ class UserController extends Controller
         }
         if (!($data->username instanceof \Spatie\LaravelData\Optional)) {
             $payload['username'] = $data->username;
+        }
+        if (!($data->timezone instanceof \Spatie\LaravelData\Optional)) {
+            $payload['timezone'] = $data->timezone;
         }
         if (!($data->password instanceof \Spatie\LaravelData\Optional) && $data->password !== null) {
             $payload['password'] = Hash::make($data->password);

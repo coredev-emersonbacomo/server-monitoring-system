@@ -11,6 +11,7 @@ interface UpdateProfileInput {
     username: string;
     phoneNumber: string;
     status: string;
+    timezone: string;
     password?: string;
     passwordConfirmation?: string;
     avatarFile?: File | null;
@@ -45,6 +46,7 @@ export function useUpdateProfile() {
                 username: input.username,
                 phone_number: input.phoneNumber,
                 status: input.status,
+                timezone: input.timezone,
             };
 
             if (input.password) {

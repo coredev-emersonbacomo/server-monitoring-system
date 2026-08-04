@@ -13,7 +13,6 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->json('config');
-            $table->boolean('enabled')->default(true);
             $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
 
