@@ -44,7 +44,7 @@ if (-not $token -and (Test-Path $bootstrapFile)) {
 
 if ($token) {
     Log "Notifying backend of uninstallation..."
-    $uninstallUrl = "$AppUrl/api/v1/agent/uninstall"
+    $uninstallUrl = "$($AppUrl.TrimEnd('/'))/api/v1/agent/uninstall"
     $body = @{
         token = $token
         platform = "windows"

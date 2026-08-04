@@ -20,48 +20,56 @@ class NodeConfigSeeder extends Seeder
 
             ['id' => 'compare_85',       'type' => 'condition',   'position' => ['x' => 340,  'y' => 140], 'settings' => ['label' => '>= 85%', 'operator' => 'greater_than_equal', 'threshold' => 85, 'min' => 0, 'max' => 0]],
 
-            ['id' => 'sustained_10',     'type' => 'sustained',   'position' => ['x' => 600,  'y' => 60],  'settings' => ['label' => 'Sustained 10s', 'duration' => '10000']],
-            ['id' => 'sustained_20',     'type' => 'sustained',   'position' => ['x' => 600,  'y' => 230], 'settings' => ['label' => 'Sustained 20s', 'duration' => '20000']],
-            ['id' => 'sustained_30',     'type' => 'sustained',   'position' => ['x' => 600,  'y' => 400], 'settings' => ['label' => 'Sustained 30s + Repeat', 'duration' => '30000', 'repeat_interval' => '10000', 'repeat_max_repeats' => -1]],
-            ['id' => 'email_10',         'type' => 'notification','position' => ['x' => 860,  'y' => -20], 'settings' => ['label' => 'Email 10s',  'channel' => 'email',   'subject' => '[{runtime.severity}] [{server.client.name}] {server.name} - {runtime.metricName} Alert (10s)', 'severity' => 'notice', 'message' => 'Server Alert ({runtime.severity})
+            ['id' => 'sustained_10',     'type' => 'sustained',   'position' => ['x' => 600,  'y' => -180], 'settings' => ['label' => 'Sustained 10s', 'duration' => '10000']],
+            ['id' => 'sustained_20',     'type' => 'sustained',   'position' => ['x' => 600,  'y' => 140], 'settings' => ['label' => 'Sustained 20s', 'duration' => '20000']],
+            ['id' => 'sustained_30',     'type' => 'sustained',   'position' => ['x' => 600,  'y' => 460], 'settings' => ['label' => 'Sustained 30s + Repeat', 'duration' => '30000', 'repeat_interval' => '10000', 'repeat_max_repeats' => -1]],
+            ['id' => 'email_10',         'type' => 'notification','position' => ['x' => 860,  'y' => -180], 'settings' => ['label' => 'Email 10s',  'channel' => 'email',   'subject' => '[{runtime.severity}] [{server.client.name}] {server.name} - {runtime.metricName} Alert (10s)', 'severity' => 'notice', 'message' => 'Server Alert ({runtime.severity})
 [{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!
-Event: <t:{runtime.eventTimestampUnix}:f>
+Alert Trigger: <t:{runtime.eventTimestampUnix}:f>
 First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 <email-button url="{server.url}">View Server Details</email-button>']],
-            ['id' => 'email_20',         'type' => 'notification','position' => ['x' => 860,  'y' => 220], 'settings' => ['label' => 'Email 20s',  'channel' => 'email',   'subject' => '[{runtime.severity}] [{server.client.name}] {server.name} - {runtime.metricName} Alert (20s)', 'severity' => 'warning', 'message' => 'Server Alert ({runtime.severity})
+            ['id' => 'email_20',         'type' => 'notification','position' => ['x' => 860,  'y' => 140], 'settings' => ['label' => 'Email 20s',  'channel' => 'email',   'subject' => '[{runtime.severity}] [{server.client.name}] {server.name} - {runtime.metricName} Alert (20s)', 'severity' => 'warning', 'message' => 'Server Alert ({runtime.severity})
 [{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!
-Event: <t:{runtime.eventTimestampUnix}:f>
+Alert Trigger: <t:{runtime.eventTimestampUnix}:f>
 First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 <email-button url="{server.url}">View Server Details</email-button>']],
-            ['id' => 'discord_30',       'type' => 'notification','position' => ['x' => 860,  'y' => 460], 'settings' => ['label' => 'Discord 30s','channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '<discord-title>Server Alert ({runtime.severity})</discord-title>
-:rotating_light: [{server.client.name}] {server.name}\'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!
+            ['id' => 'discord_30',       'type' => 'notification','position' => ['x' => 860,  'y' => 460], 'settings' => ['label' => 'Discord 30s','channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '{runtime.discordRoleCallout} [{server.client.name}] {server.name}\'s {runtime.metricName} ({runtime.severity})
+<discord-embed>
+<discord-embed-title>:rotating_light: Server Alert ({runtime.severity})</discord-embed-title>
 
-Event: <t:{runtime.eventTimestampUnix}:f>
+<b>[{server.client.name}] {server.name}\'s {runtime.metricName}</b> has been above 85% for {runtime.sustainValue}!
+
+Alert Trigger: <t:{runtime.eventTimestampUnix}:f>
 First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 <if-repeat>
 <discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>
 </if-repeat>
+</discord-embed>
 <discord-button url="{server.url}">View Server Details</discord-button>']],
 
             // ── Bottom section: Server Status Offline ────────────────────
 
-            ['id' => 'metric_status',    'type' => 'metric',      'position' => ['x' => -300, 'y' => 510], 'settings' => ['label' => 'Server Status', 'metric_type' => 'server_status']],
+            ['id' => 'metric_status',    'type' => 'metric',      'position' => ['x' => -300, 'y' => 580], 'settings' => ['label' => 'Server Status', 'metric_type' => 'server_status']],
 
             ['id' => 'email_offline',    'type' => 'notification','position' => ['x' => -60,  'y' => 430], 'settings' => ['label' => 'Email Offline',  'channel' => 'email',   'subject' => '[{runtime.severity}] [{server.client.name}] {server.name} - Offline Alert', 'severity' => 'warning', 'message' => 'Server Alert ({runtime.severity})
 [{server.client.name}] {server.name} has been offline for {runtime.offlineDuration}
-Event: <t:{runtime.eventTimestampUnix}:f>
+Alert Trigger: <t:{runtime.eventTimestampUnix}:f>
 First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 <email-button url="{server.url}">View Server Details</email-button>']],
 
-            ['id' => 'check_after_10m',  'type' => 'check_after', 'position' => ['x' => -60,  'y' => 670], 'settings' => ['label' => 'Check After 10s', 'duration' => '10000', 'repeat_interval' => '10000', 'repeat_max_repeats' => -1]],
-            ['id' => 'discord_offline',  'type' => 'notification','position' => ['x' => 200,  'y' => 670], 'settings' => ['label' => 'Discord Offline', 'channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '<discord-title>Server Alert ({runtime.severity})</discord-title>
-:rotating_light: [{server.client.name}] {server.name} has been offline for {runtime.offlineDuration}
+            ['id' => 'check_after_10m',  'type' => 'check_after', 'position' => ['x' => -60,  'y' => 750], 'settings' => ['label' => 'Check After 10s', 'duration' => '10000', 'repeat_interval' => '10000', 'repeat_max_repeats' => -1]],
+            ['id' => 'discord_offline',  'type' => 'notification','position' => ['x' => 200,  'y' => 670], 'settings' => ['label' => 'Discord Offline', 'channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '{runtime.discordRoleCallout} [{server.client.name}] {server.name} — ({runtime.severity})
+<discord-embed>
+<discord-embed-title>:rotating_light: Server Alert ({runtime.severity})</discord-embed-title>
 
-Event: <t:{runtime.eventTimestampUnix}:f>
+<b>[{server.client.name}] {server.name}</b> has been offline for {runtime.offlineDuration}
+
+Alert Trigger: <t:{runtime.eventTimestampUnix}:f>
 First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 <if-repeat>
 <discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>
 </if-repeat>
+</discord-embed>
 <discord-button url="{server.url}">View Server Details</discord-button>']],
         ];
 
@@ -98,7 +106,6 @@ First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
             [
                 'name'    => 'Default Alerts',
                 'config'  => $config,
-                'enabled' => true,
             ],
         );
 

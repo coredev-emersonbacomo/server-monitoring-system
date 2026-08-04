@@ -18,6 +18,7 @@ class AdminSeeder extends Seeder
                 'last_name'=> 'Surname',
                 'email' => 'admin@example.com',
                 'phone_number' => '09517380165',
+                'timezone' => 'Asia/Manila',
                 'password' => bcrypt('admin123'),
                 'last_login' => now()
             ]

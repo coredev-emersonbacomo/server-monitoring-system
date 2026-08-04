@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('description')->nullable();
             $table->string('email')->unique();
             $table->string('contact_number')->nullable();
+            $table->decimal('budget', 12, 2)->default(0.00);
             $table->string('location')->nullable(false);
             $table->text('banner_image_url')->default(config('app.default_client_banner_img_unsplash'));
             $table->string('record_status')->default('active');

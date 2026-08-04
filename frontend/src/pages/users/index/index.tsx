@@ -18,7 +18,7 @@ import IndexToolbar from "@/components/IndexToolbar";
 import type { FilterOption, SortOption } from "@/components/IndexToolbar";
 import IndexHeader from "@/components/IndexHeader";
 
-type FilterTab = "all" | "active" | "deleted" | "Admin" | "SecOps";
+type FilterTab = "all" | "active" | "archived" | "deleted" | "Admin" | "SecOps";
 
 // ─── Skeleton grid ────────────────────────────────────────────────────────────
 
@@ -64,7 +64,10 @@ const Users = () => {
                 `${u.first_name} ${u.last_name}`.toLowerCase().includes(q) ||
                 u.email.toLowerCase().includes(q) ||
                 u.username.toLowerCase().includes(q);
-            const matchFilter = filter === "all" || u.record_status === filter;
+            const matchFilter =
+                filter === "all" ||
+                u.record_status === filter ||
+                (filter === "archived" && (u.record_status === "archived" || u.record_status === "deleted"));
             return matchSearch && matchFilter;
         });
         return [...filtered].sort((a, b) => {
@@ -110,15 +113,15 @@ const Users = () => {
         (u) => u.record_status === "active",
     ).length;
     const inactiveCount = users.filter(
-        (u) => u.record_status === "deleted",
+        (u) => u.record_status === "archived" || u.record_status === "deleted",
     ).length;
 
     const filterOptions = [
         { label: "All", value: "all" as FilterTab, count: users.length },
         { label: "Active", value: "active" as FilterTab, count: activeCount },
         {
-            label: "Deleted",
-            value: "deleted" as FilterTab,
+            label: "Archived",
+            value: "archived" as FilterTab,
             count: inactiveCount,
         },
     ];

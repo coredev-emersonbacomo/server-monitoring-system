@@ -24,7 +24,7 @@ class ServerController extends Controller
     public function index(string $clientUuid)
     {
         $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
-        $servers = Server::where('client_id', $clientModel->id)->get();
+        $servers = Server::withTrashed()->where('client_id', $clientModel->id)->get();
         foreach ($servers as $s) {
             $s->checkTokenExpiration();
         }
@@ -71,7 +71,8 @@ class ServerController extends Controller
 
     public function show(string $clientUuid, string $serverUuid): ServerData
     {
-        $serverModel = Server::where('uuid', $serverUuid)
+        $serverModel = Server::withTrashed()
+            ->where('uuid', $serverUuid)
             ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
             ->firstOrFail();
 
@@ -84,7 +85,8 @@ class ServerController extends Controller
             'alert_scope' => ['required', 'string', 'in:global,client,server'],
         ]);
 
-        $serverModel = Server::where('uuid', $serverUuid)
+        $serverModel = Server::withTrashed()
+            ->where('uuid', $serverUuid)
             ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
             ->firstOrFail();
 
@@ -102,7 +104,8 @@ class ServerController extends Controller
 
     public function update(UpdateServerData $data, string $clientUuid, string $serverUuid): ServerData
     {
-        $serverModel = Server::where('uuid', $serverUuid)
+        $serverModel = Server::withTrashed()
+            ->where('uuid', $serverUuid)
             ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
             ->firstOrFail();
 
@@ -257,42 +260,15 @@ class ServerController extends Controller
         return ServerData::fromModel($serverModel->fresh());
     }
 
-    public function costLogs(string $clientUuid, string $serverUuid)
-    {
-        $serverModel = Server::where('uuid', $serverUuid)
-            ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
-            ->firstOrFail();
-
-        $logs = CustomActivityLog::where('logable_type', Server::class)
-            ->where('logable_id', (string) $serverModel->uuid)
-            ->whereIn('action', [
-                'Deduction', 
-                'Payment Deduction', 
-                'Reset Cost Baseline', 
-                'Update Monthly Rate', 
-                'Agent Uninstalled'
-            ])
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return CustomActivityLogData::collect($logs->map(fn(CustomActivityLog $log) => CustomActivityLogData::fromModel($log)));
-    }
-
     public function destroy(string $clientUuid, string $serverUuid)
     {
         $serverModel = Server::where('uuid', $serverUuid)
             ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
             ->firstOrFail();
 
-        if ($serverModel->agent()->exists() && !$serverModel->agent_deleted) {
+        if ($serverModel->agent()->whereNotNull('registered_at')->exists() && !$serverModel->agent_deleted) {
             return response()->json([
                 'message' => 'Cannot delete server while the agent is still running. Please run the uninstall script first.'
-            ], 422);
-        }
-
-        if ((float) ($serverModel->accumulated_cost ?? 0) > 0) {
-            return response()->json([
-                'message' => 'Cannot delete server with an outstanding cost balance. Please settle all deductions first before deleting.'
             ], 422);
         }
 
@@ -303,9 +279,9 @@ class ServerController extends Controller
             'logable_id' => (string) $serverModel->uuid,
             'user_id' => $actor?->id,
             'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
-            'action' => 'Delete Server',
+            'action' => 'Archive Server',
             'details' => [
-                'message' => "Deleted server: {$serverModel->name}",
+                'message' => "Archived server: {$serverModel->name}",
                 'name' => $serverModel->name,
                 'host_name' => $serverModel->host_name,
             ],
@@ -315,6 +291,10 @@ class ServerController extends Controller
         // removed from the Action Board immediately after deletion.
         ActionItem::where('server_id', $serverModel->id)->delete();
 
+        $serverModel->update([
+            'record_status' => 'archived',
+            'status' => 'archived',
+        ]);
         $serverModel->delete();
 
         return response()->json(['status' => 'success']);
@@ -322,7 +302,7 @@ class ServerController extends Controller
 
     public function listAll(Request $request)
     {
-        $query = Server::with('client', 'latestUpdate', 'agent');
+        $query = Server::withTrashed()->with('client', 'latestUpdate', 'agent');
 
         if ($clientUuid = $request->query('client_uuid')) {
             $client = Client::where('uuid', $clientUuid)->first();
@@ -342,7 +322,7 @@ class ServerController extends Controller
 
     public function showWithStats(string $serverUuid, \App\Data\ServerDataRequest $requestData): ServerData
     {
-        $server = Server::where('uuid', $serverUuid)->first();
+        $server = Server::withTrashed()->where('uuid', $serverUuid)->first();
         if (!$server) {
             abort(404, 'Server not found.');
         }
@@ -441,7 +421,7 @@ class ServerController extends Controller
     private function queryAggTable(int $serverId, string $tableUnit, Carbon $subTime, ?Carbon $endTime = null): Collection
     {
         $query = DB::table($tableUnit)
-            ->selectRaw('timestamp, cpu, memory, disk, "netIn", "netOut"')
+            ->selectRaw('timestamp, cpu, memory, disk, netin as "netIn", netout as "netOut"')
             ->where('server_id', $serverId)
             ->where('timestamp', '>=', $subTime);
 

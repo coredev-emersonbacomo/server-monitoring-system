@@ -1,5 +1,13 @@
-import { useState, useRef, useCallback, useEffect, type KeyboardEvent } from 'react';
-import { filterVariables, type TemplateVariable } from './templateVariables';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Maximize2 } from 'lucide-react';
+import { useTemplateAutocomplete } from '../useTemplateAutocomplete';
+import { TemplateDropdown } from '../template-dropdown';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
 interface TemplateInputProps {
     value: string;
@@ -7,213 +15,168 @@ interface TemplateInputProps {
     onKeyDown?: (e: React.KeyboardEvent) => void;
     onClick?: (e: React.MouseEvent) => void;
     onPointerDown?: (e: React.PointerEvent) => void;
-    type?: string;
     className?: string;
     channel?: string;
+    rows?: number;
+    label?: string;
 }
 
-function highlightMatch(text: string, query: string): React.ReactNode {
-    if (!query) return text;
-    const idx = text.toLowerCase().indexOf(query.toLowerCase());
-    if (idx === -1) return text;
+function autoResize(textarea: HTMLTextAreaElement) {
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
+}
+
+export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDown, className, rows, label }: TemplateInputProps) {
+    const [local, setLocal] = useState(value);
+    useEffect(() => {
+        if (value !== local) setLocal(value);
+    }, [value, local]);
+
+    const [modalOpen, setModalOpen] = useState(false);
+
+    const fieldRef = useRef<HTMLTextAreaElement | null>(null);
+    const modalRef = useRef<HTMLTextAreaElement | null>(null);
+    const ac = useTemplateAutocomplete(
+        local,
+        (v) => {
+            onChange(v);
+            setLocal(v);
+        },
+        fieldRef,
+        onKeyDown,
+    );
+
+    const acModal = useTemplateAutocomplete(
+        local,
+        (v) => {
+            onChange(v);
+            setLocal(v);
+        },
+        modalRef,
+        onKeyDown,
+    );
+
+    const handleChange = useCallback(
+        (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+            onChange(e.target.value);
+            setLocal(e.target.value);
+            ac.handleChange(e);
+            if (!rows) autoResize(e.target);
+        },
+        [ac, onChange, rows],
+    );
+
+    const handleChangeModal = useCallback(
+        (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+            onChange(e.target.value);
+            setLocal(e.target.value);
+            acModal.handleChange(e);
+        },
+        [acModal, onChange],
+    );
+
+    const handleFocus = useCallback(
+        (e: React.FocusEvent<HTMLTextAreaElement>) => {
+            ac.handleFocus(e.currentTarget);
+        },
+        [ac],
+    );
+
+    const handleClick = useCallback(
+        (e: React.MouseEvent<HTMLTextAreaElement>) => {
+            ac.handleClick(e.currentTarget);
+            onClick?.(e as unknown as React.MouseEvent);
+        },
+        [ac, onClick],
+    );
+
+    const handleMaximize = () => {
+        setModalOpen(true);
+        requestAnimationFrame(() => modalRef.current?.focus());
+    };
+
     return (
         <>
-            {text.slice(0, idx)}
-            <span className="bg-primary/25 text-primary font-bold rounded-sm px-0.5">{text.slice(idx, idx + query.length)}</span>
-            {text.slice(idx + query.length)}
-        </>
-    );
-}
-
-export function TemplateInput({ value, onChange, onKeyDown, onClick, onPointerDown, type = 'text', className }: TemplateInputProps) {
-    const [open, setOpen] = useState(false);
-    const [query, setQuery] = useState('');
-    const [selectedIndex, setSelectedIndex] = useState(0);
-    const [insertPos, setInsertPos] = useState(0);
-    const inputRef = useRef<HTMLInputElement>(null);
-    const listRef = useRef<HTMLDivElement>(null);
-
-    const filtered = filterVariables(query);
-    const showDropdown = open && filtered.length > 0;
-
-    const checkForTrigger = useCallback((input: HTMLInputElement) => {
-        const pos = input.selectionStart ?? 0;
-        const textBefore = input.value.substring(0, pos);
-        let lastOpen = textBefore.lastIndexOf('{');
-        let isTag = false;
-
-        if (lastOpen === -1) {
-            lastOpen = textBefore.lastIndexOf('<');
-            if (lastOpen === -1) {
-                setOpen(false);
-                return;
-            }
-            isTag = true;
-        }
-
-        const closeChar = isTag ? '>' : '}';
-        const lastClose = textBefore.lastIndexOf(closeChar);
-        if (lastClose > lastOpen) {
-            setOpen(false);
-            return;
-        }
-        const segment = textBefore.substring(lastOpen + 1);
-        if (segment.includes(closeChar)) {
-            setOpen(false);
-            return;
-        }
-        setQuery((isTag ? '<' : '{') + segment);
-        setInsertPos(lastOpen);
-        setSelectedIndex(0);
-        setOpen(true);
-    }, []);
-
-    const insertVariable = useCallback((variable: TemplateVariable) => {
-        const input = inputRef.current;
-        if (!input) return;
-        const before = value.substring(0, insertPos);
-        const after = input.value.substring(input.selectionStart ?? value.length);
-        let newVal: string;
-        let cursorOffset: number;
-        if ((variable.group as string) === 'tag') {
-            const tagKey: string = variable.key;
-            const closing = tagKey.startsWith('</') ? '' : `</${tagKey.slice(1)}`;
-            const tagContent = tagKey === '<discord-button>'
-                ? '<discord-button detailsUrl=""></discord-button>'
-                : tagKey === '<discord-footer>'
-                ? '<discord-footer></discord-footer>'
-                : tagKey === '<discord-title>'
-                ? '<discord-title></discord-title>'
-                : tagKey === '<email-button>'
-                ? '<email-button url=""></email-button>'
-                : tagKey + closing;
-            newVal = before + tagContent + after;
-            cursorOffset = tagKey === '<discord-button>'
-                ? insertPos + '<discord-button detailsUrl="'.length
-                : tagKey === '<discord-footer>'
-                ? insertPos + '<discord-footer>'.length
-                : tagKey === '<discord-title>'
-                ? insertPos + '<discord-title>'.length
-                : tagKey === '<email-button>'
-                ? insertPos + '<email-button url="'.length
-                : insertPos + tagKey.length;
-        } else {
-            newVal = before + '{' + variable.key + '}' + after;
-            cursorOffset = insertPos + variable.key.length + 2;
-        }
-        onChange(newVal);
-        setOpen(false);
-        requestAnimationFrame(() => {
-            input.focus();
-            input.setSelectionRange(cursorOffset, cursorOffset);
-        });
-    }, [value, insertPos, onChange]);
-
-    const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        onChange(e.target.value);
-        checkForTrigger(e.target);
-    }, [onChange, checkForTrigger]);
-
-    const handleKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
-        if (showDropdown) {
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                setSelectedIndex((i) => (i + 1) % filtered.length);
-                return;
-            }
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setSelectedIndex((i) => (i - 1 + filtered.length) % filtered.length);
-                return;
-            }
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                insertVariable(filtered[selectedIndex]);
-                return;
-            }
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                setOpen(false);
-                return;
-            }
-        }
-        onKeyDown?.(e);
-    }, [showDropdown, filtered, selectedIndex, insertVariable, onKeyDown]);
-
-    useEffect(() => {
-        if (showDropdown && listRef.current) {
-            const item = listRef.current.children[selectedIndex] as HTMLElement;
-            item?.scrollIntoView({ block: 'nearest' });
-        }
-    }, [selectedIndex, showDropdown]);
-
-    // Native capture-phase wheel listener to block React Flow's zoom
-    useEffect(() => {
-        if (!showDropdown) return;
-        const el = listRef.current;
-        if (!el) return;
-
-        const handler = (e: WheelEvent) => {
-            e.stopPropagation();
-        };
-        el.addEventListener('wheel', handler, { capture: true });
-        return () => el.removeEventListener('wheel', handler, { capture: true });
-    }, [showDropdown]);
-
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (inputRef.current && !inputRef.current.contains(e.target as Node) &&
-                listRef.current && !listRef.current.contains(e.target as Node)) {
-                setOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    return (
-        <div className="relative flex-1">
-            <input
-                ref={inputRef}
-                type={type}
-                value={value}
-                onChange={handleInput}
-                onKeyDown={handleKeyDown}
-                onFocus={() => inputRef.current && checkForTrigger(inputRef.current)}
-                onBlur={() => setTimeout(() => setOpen(false), 50)}
-                onClick={onClick}
-                onPointerDown={onPointerDown}
-                className={`w-full ${className || ''}`}
-            />
-            {showDropdown && (
-                <div
-                    ref={listRef}
-                    className="absolute z-50 bottom-full left-0 mb-1 w-64 max-h-48 overflow-y-auto bg-popover border border-border rounded-lg shadow-lg"
-                >
-                    {filtered.map((variable, i) => (
+            <div className={`relative flex flex-col gap-1 ${className || ''}`}>
+                {label && (
+                    <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-medium uppercase text-muted-foreground">
+                            {label}
+                        </span>
                         <button
-                            key={variable.key}
                             type="button"
-                            className={`w-full text-left px-3 py-1.5 text-xs flex flex-col gap-0.5 cursor-pointer ${
-                                i === selectedIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'
-                            }`}
-                            onPointerDown={(e) => {
+                            onClick={(e) => {
                                 e.stopPropagation();
-                                e.preventDefault();
-                                insertVariable(variable);
+                                handleMaximize();
                             }}
-                            onMouseEnter={() => setSelectedIndex(i)}
+                            className="p-0.5 hover:bg-accent rounded transition-colors"
+                            title={`Expand ${label?.toLowerCase()} editor`}
                         >
-                            <span className="font-mono text-foreground">
-                                {(variable.group as string) === 'tag'
-                                    ? highlightMatch(variable.key, query)
-                                    : <>{'{'}{highlightMatch(variable.key, query)}{'}'}</>}
-                            </span>
-                            <span className="text-muted-foreground text-[10px]">{variable.description}</span>
+                            <Maximize2 size={10} className="text-muted-foreground" />
                         </button>
-                    ))}
-                </div>
-            )}
-        </div>
+                    </div>
+                )}
+                <textarea
+                    ref={fieldRef}
+                    value={local}
+                    onChange={handleChange}
+                    onKeyDown={ac.handleKeyDown}
+                    onFocus={handleFocus}
+                    onBlur={() => setTimeout(() => ac.close(), 50)}
+                    onClick={handleClick}
+                    onPointerDown={onPointerDown}
+                    rows={rows ?? 2}
+                    className={
+                        `w-full resize-none overflow-hidden text-xs text-foreground bg-background border border-input rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring ${rows ? 'h-[44px]' : ''}`
+                    }
+                    placeholder={label ? `${label} template` : "Message template"}
+                    spellCheck={false}
+                />
+                {ac.showDropdown && (
+                    <TemplateDropdown
+                        filtered={ac.filtered}
+                        selectedIndex={ac.selectedIndex}
+                        query={ac.query}
+                        caret={ac.caret}
+                        onSelect={ac.insertVariable}
+                        onHover={ac.setSelectedIndex}
+                        onClose={ac.close}
+                    />
+                )}
+            </div>
+            <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>{label ? `${label} Template` : "Message Template"}</DialogTitle>
+                    </DialogHeader>
+                    <div className="relative">
+                        <textarea
+                            ref={modalRef}
+                            value={local}
+                            onChange={handleChangeModal}
+                            onKeyDown={acModal.handleKeyDown}
+                            onFocus={(e) => acModal.handleFocus(e.currentTarget)}
+                            onBlur={() => setTimeout(() => acModal.close(), 50)}
+                            onClick={(e) => acModal.handleClick(e.currentTarget)}
+                            rows={16}
+                            className="w-full h-[50vh] p-3 text-xs font-mono text-foreground bg-background border border-border/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                            placeholder={label ? `${label} template` : "Message template"}
+                            spellCheck={false}
+                        />
+                        {acModal.showDropdown && (
+                            <TemplateDropdown
+                                filtered={acModal.filtered}
+                                selectedIndex={acModal.selectedIndex}
+                                query={acModal.query}
+                                caret={acModal.caret}
+                                onSelect={acModal.insertVariable}
+                                onHover={acModal.setSelectedIndex}
+                                onClose={acModal.close}
+                            />
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }

@@ -110,7 +110,6 @@ class HeartbeatFlowTest extends TestCase
             'name' => 'Default Alerts',
             'slug' => 'alerts',
             'config' => ['nodes' => $nodes, 'edges' => $edges],
-            'enabled' => true,
             'scope_type' => 'global',
         ]);
 
@@ -157,7 +156,6 @@ class HeartbeatFlowTest extends TestCase
         $this->assertNotNull($config, 'Config should be retrievable from cache');
         $this->assertEquals($this->alertsConfig->id, $config->id);
         $this->assertEquals('Default Alerts', $config->name);
-        $this->assertTrue($config->enabled);
 
         $nodes = $config->getParsedConfig()['nodes'] ?? [];
         $this->assertCount(13, $nodes, 'Config should have 13 nodes');

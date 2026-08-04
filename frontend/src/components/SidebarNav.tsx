@@ -206,6 +206,7 @@ const ProfileBar = ({
     user: {
         first_name?: string;
         last_name?: string;
+        username?: string;
         email?: string;
         profile_picture_url?: string;
     } | null;
@@ -214,7 +215,7 @@ const ProfileBar = ({
 
     const firstName = user.first_name;
     const lastName = user.last_name;
-    const username = user.email?.split("@")[0] ?? "";
+    const username = user.username || (user.email?.split("@")[0] || "");
     const avatarSrc =
         user.profile_picture_url ||
         import.meta.env.VITE_DEFAULT_PROFILE_PICTURE ||
@@ -238,11 +239,11 @@ const ProfileBar = ({
                         className="w-full h-full object-cover"
                     />
                 </div>
-                <div className="leading-6 flex-1 w-full flex flex-col text-left">
-                    <div className="font-semibold text-foreground/80 group-hover:text-foreground text-[1.1rem]">
+                <div className="leading-6 flex-1 w-full flex flex-col text-left min-w-0">
+                    <div className="font-semibold text-foreground/80 group-hover:text-foreground text-base truncate">
                         {firstName} {lastName}
                     </div>
-                    <span className="text-foreground/40 text-base">
+                    <span className="text-foreground/40 text-sm truncate">
                         @{username}
                     </span>
                 </div>

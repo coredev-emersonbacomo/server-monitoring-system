@@ -11,6 +11,7 @@ import {
     Upload,
     Eye,
     EyeOff,
+    Clock,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { FloatingInput } from "@/components/ui/floatingInput";
@@ -20,6 +21,7 @@ import { useUpdateProfile } from "./hooks/useUpdateProfile";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import PageLayout from "@/components/PageLayout";
 import { Form, createFormStore, useForm } from "@/components/ui/form";
+import { TimezoneCombobox, tzOffsetLabel } from "@/components/TimezoneCombobox";
 
 const profileSchema = z.object({
     first_name: z.string().min(1, "Required"),
@@ -27,6 +29,7 @@ const profileSchema = z.object({
     email: z.string().min(1, "Required"),
     username: z.string().min(1, "Required"),
     phone_number: z.string(),
+    timezone: z.string(),
     password: z.string(),
     password_confirmation: z.string(),
 });
@@ -143,6 +146,7 @@ export const Profile: React.FC = () => {
                           email: user.email,
                           username: user.username,
                           phone_number: user.phone_number || "",
+                          timezone: user.timezone || "",
                           password: "",
                           password_confirmation: "",
                       }
@@ -374,6 +378,7 @@ export const Profile: React.FC = () => {
                                         email: data.email,
                                         username: data.username,
                                         status: user.record_status,
+                                        timezone: data.timezone,
                                     };
 
                                     if (data.password) {
@@ -478,6 +483,42 @@ export const Profile: React.FC = () => {
                                             icon={<User size={15} />}
                                             label="Phone Number"
                                             value={phone_number}
+                                        />
+                                    </div>
+                                )}
+                            </section>
+
+                            {/* Timezone */}
+                            <div className="h-px bg-border" />
+                            <section className="space-y-4">
+                                <div>
+                                    <h3 className="text-sm font-semibold text-foreground">
+                                        Timezone
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Used to localize alert notification
+                                        timestamps.
+                                    </p>
+                                </div>
+                                {mode !== "view" ? (
+                                    <div className="max-w-sm">
+                                        <TimezoneCombobox
+                                            value={form.timezone}
+                                            onValueChange={store.set(
+                                                "timezone",
+                                            )}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="max-w-sm">
+                                        <InfoBlock
+                                            icon={<Clock size={15} />}
+                                            label="Timezone"
+                                            value={
+                                                user.timezone
+                                                    ? `${user.timezone} (${tzOffsetLabel(user.timezone)})`
+                                                    : "—"
+                                            }
                                         />
                                     </div>
                                 )}

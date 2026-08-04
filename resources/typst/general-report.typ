@@ -25,7 +25,7 @@
 
 // ── KPI Summary Grid ─────────────────────────────────────────────────────────
 #section-title("KPI Summary")
-#kpi-grid((
+#kpi-table((
   (label: "Total Servers",   value: str(d.at("total_servers", default: 0))),
   (label: "Total Clients",   value: str(d.at("total_clients", default: 0))),
   (label: "Total Users",     value: str(d.at("total_users", default: 0))),

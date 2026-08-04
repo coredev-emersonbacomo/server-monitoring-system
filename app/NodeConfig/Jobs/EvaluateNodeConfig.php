@@ -31,7 +31,7 @@ class EvaluateNodeConfig implements ShouldQueue
     public function handle(NodeRegistry $registry, NodeConfigNotificationService $notifications): void
     {
         $config = NodeConfigCache::findById($this->configId);
-        if (!$config || !$config->enabled) {
+        if (!$config) {
             return;
         }
 

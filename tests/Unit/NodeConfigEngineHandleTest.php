@@ -43,7 +43,6 @@ class NodeConfigEngineHandleTest extends TestCase
         return NodeConfig::create([
             'name' => 'Test Config',
             'config' => $configData,
-            'enabled' => true,
             'scope_type' => 'global',
         ]);
     }

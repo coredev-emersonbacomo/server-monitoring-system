@@ -24,7 +24,6 @@ async function createConfig(data: {
     name: string;
     description?: string;
     config: NodeConfigGraph;
-    enabled?: boolean;
 }): Promise<NodeConfig> {
     const res = await api.POST("/v1/node-configs", {
         body: data as never,
@@ -39,7 +38,6 @@ async function updateConfig(
         name: string;
         description?: string;
         config: NodeConfigGraph;
-        enabled?: boolean;
     },
 ): Promise<NodeConfig> {
     const res = await api.PUT("/v1/node-configs/{id}", {
@@ -55,14 +53,6 @@ async function deleteConfig(id: number): Promise<void> {
         params: { path: { id } },
     });
     if (res.error) throw new Error("Failed to delete node config");
-}
-
-async function toggleConfig(id: number): Promise<NodeConfig> {
-    const res = await api.POST("/v1/node-configs/{id}/toggle", {
-        params: { path: { id } },
-    } as never);
-    if (res.error) throw new Error("Failed to toggle node config");
-    return res.data as unknown as NodeConfig;
 }
 
 async function testConfig(
@@ -109,7 +99,6 @@ async function upsertConfigBySlug(
     data: {
         name: string;
         config: NodeConfigGraph;
-        enabled?: boolean;
     },
 ): Promise<NodeConfig> {
     const res = await api.PUT("/v1/node-configs/by-slug/{slug}", {
@@ -174,7 +163,6 @@ export function useUpdateConfig() {
                 name: string;
                 description?: string;
                 config: NodeConfigGraph;
-                enabled?: boolean;
             };
         }) => updateConfig(id, data),
         onSuccess: (result) => {
@@ -190,15 +178,6 @@ export function useDeleteConfig() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: deleteConfig,
-        onSuccess: () =>
-            queryClient.invalidateQueries({ queryKey: ["node-configs"] }),
-    });
-}
-
-export function useToggleConfig() {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: toggleConfig,
         onSuccess: () =>
             queryClient.invalidateQueries({ queryKey: ["node-configs"] }),
     });
@@ -248,7 +227,6 @@ export function useUpsertConfigByKey() {
             data: {
                 name: string;
                 config: NodeConfigGraph;
-                enabled?: boolean;
             };
         }) => upsertConfigBySlug(slug, data),
         onSuccess: (_result, variables) => {
