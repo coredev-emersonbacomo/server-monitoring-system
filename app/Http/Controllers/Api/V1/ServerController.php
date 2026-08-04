@@ -71,7 +71,8 @@ class ServerController extends Controller
 
     public function show(string $clientUuid, string $serverUuid): ServerData
     {
-        $serverModel = Server::where('uuid', $serverUuid)
+        $serverModel = Server::withTrashed()
+            ->where('uuid', $serverUuid)
             ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
             ->firstOrFail();
 
@@ -84,7 +85,8 @@ class ServerController extends Controller
             'alert_scope' => ['required', 'string', 'in:global,client,server'],
         ]);
 
-        $serverModel = Server::where('uuid', $serverUuid)
+        $serverModel = Server::withTrashed()
+            ->where('uuid', $serverUuid)
             ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
             ->firstOrFail();
 
@@ -102,7 +104,8 @@ class ServerController extends Controller
 
     public function update(UpdateServerData $data, string $clientUuid, string $serverUuid): ServerData
     {
-        $serverModel = Server::where('uuid', $serverUuid)
+        $serverModel = Server::withTrashed()
+            ->where('uuid', $serverUuid)
             ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
             ->firstOrFail();
 
@@ -319,7 +322,7 @@ class ServerController extends Controller
 
     public function showWithStats(string $serverUuid, \App\Data\ServerDataRequest $requestData): ServerData
     {
-        $server = Server::where('uuid', $serverUuid)->first();
+        $server = Server::withTrashed()->where('uuid', $serverUuid)->first();
         if (!$server) {
             abort(404, 'Server not found.');
         }

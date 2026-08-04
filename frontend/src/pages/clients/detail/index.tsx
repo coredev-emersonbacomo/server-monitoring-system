@@ -73,7 +73,7 @@ import type { ServerData } from "@/types/models";
 
 const clientSchema = z.object({
     name: z.string().trim().min(2, "Minimum 2 characters"),
-    description: z.string().max(255, "Maximum 255 characters").optional(),
+    description: z.string().trim().min(2, "Minimum 2 characters").max(255, "Maximum 255 characters"),
     location: z.string().trim().min(2, "Minimum 2 characters"),
     email: z.email("Invalid email address").trim().min(1, "Required"),
     contact_number: z.string().trim().min(5, "Minimum 5 characters"),
@@ -167,8 +167,6 @@ export default function ClientDetail() {
     const [bannerPreview, setBannerPreview] = useState<string | null>(
         clientUuid ? null : defaultBanner,
     );
-    const [errors, setErrors] = useState<Record<string, string>>({});
-
     // Add state inside the component
     const [serverSearch, setServerSearch] = useState("");
     const [serverFilter, setServerFilter] = useState<
@@ -215,6 +213,7 @@ export default function ClientDetail() {
 
     const form = useForm(store, (s) => s.form);
     const mode = useForm(store, (s) => s.mode);
+    const errors = useForm(store, (s) => s.errors);
     const showEdit = mode !== "view";
 
     // Populate form when client data arrives
@@ -369,7 +368,6 @@ export default function ClientDetail() {
 
     const cancelEdit = () => {
         store.setMode("view");
-        setErrors({});
         if (client) {
             store.setState({
                 form: {
@@ -574,7 +572,8 @@ export default function ClientDetail() {
                                         />
                                         <Button
                                             className="cursor-pointer"
-                                            type="button"
+                                            type="submit"
+                                            form="client-detail-form"
                                             size="sm"
                                             onClick={handleSubmit}
                                             disabled={isSaving || !hasChanges}
@@ -596,7 +595,8 @@ export default function ClientDetail() {
                                         />
                                         <Button
                                             className="cursor-pointer"
-                                            type="button"
+                                            type="submit"
+                                            form="client-detail-form"
                                             size="sm"
                                             onClick={handleSubmit}
                                             disabled={isSaving}
@@ -618,7 +618,7 @@ export default function ClientDetail() {
                                     <Label className="text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-1">
                                         Description
                                     </Label>
-                                    <textarea
+                                   <textarea
                                         value={form.description}
                                         onChange={(e) =>
                                             store.set("description")(
@@ -632,8 +632,14 @@ export default function ClientDetail() {
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none break-all",
                                             errors.description &&
                                             "border-destructive",
+                                            "border-destructive",
                                         )}
                                     />
+                                    {errors.description && (
+                                        <p className="text-xs text-destructive mt-1">
+                                            {errors.description}
+                                        </p>
+                                    )}
                                 </div>
                             ) : (
                                 client?.description && (
@@ -655,6 +661,7 @@ export default function ClientDetail() {
                             <Tab.Item icon={Info} title="Details">
                                 <Form.Root
                                     store={store}
+                                    id="client-detail-form"
                                     className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-8"
                                 >
                                     <Form.SubmitHandler
@@ -668,24 +675,14 @@ export default function ClientDetail() {
                                         />
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {showEdit ? (
-                                                <div>
-                                                    <FloatingInput
-                                                        label="Location"
-                                                        value={form.location}
-                                                        onValueChange={store.set(
-                                                            "location",
-                                                        )}
-                                                        className={cn(
-                                                            errors.location &&
-                                                            "border-destructive",
-                                                        )}
-                                                    />
-                                                    {errors.location && (
-                                                        <p className="text-xs text-destructive mt-1">
-                                                            {errors.location}
-                                                        </p>
+                                                <FloatingInput
+                                                    label="Location"
+                                                    value={form.location}
+                                                    onValueChange={store.set(
+                                                        "location",
                                                     )}
-                                                </div>
+                                                    error={errors.location}
+                                                />
                                             ) : (
                                                 <Field
                                                     label="Location"
@@ -711,25 +708,15 @@ export default function ClientDetail() {
                                         />
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {showEdit ? (
-                                                <div>
-                                                    <FloatingInput
-                                                        type="email"
-                                                        label="Email Address"
-                                                        value={form.email}
-                                                        onValueChange={store.set(
-                                                            "email",
-                                                        )}
-                                                        className={cn(
-                                                            errors.email &&
-                                                            "border-destructive",
-                                                        )}
-                                                    />
-                                                    {errors.email && (
-                                                        <p className="text-xs text-destructive mt-1">
-                                                            {errors.email}
-                                                        </p>
+                                                <FloatingInput
+                                                    type="email"
+                                                    label="Email Address"
+                                                    value={form.email}
+                                                    onValueChange={store.set(
+                                                        "email",
                                                     )}
-                                                </div>
+                                                    error={errors.email}
+                                                />
                                             ) : (
                                                 <Field
                                                     label="Email Address"
@@ -744,36 +731,24 @@ export default function ClientDetail() {
                                             )}
 
                                             {showEdit ? (
-                                                <div>
-                                                    <FloatingInput
-                                                        label="Contact Number"
-                                                        value={
-                                                            form.contact_number
-                                                        }
-                                                        onValueChange={(
-                                                            value,
-                                                        ) => {
-                                                            store.set(
-                                                                "contact_number",
-                                                            )(
-                                                                formatPhoneNumber(
-                                                                    value,
-                                                                ),
-                                                            );
-                                                        }}
-                                                        className={cn(
-                                                            errors.contact_number &&
-                                                            "border-destructive",
-                                                        )}
-                                                    />
-                                                    {errors.contact_number && (
-                                                        <p className="text-xs text-destructive mt-1">
-                                                            {
-                                                                errors.contact_number
-                                                            }
-                                                        </p>
-                                                    )}
-                                                </div>
+                                                <FloatingInput
+                                                    label="Contact Number"
+                                                    value={
+                                                        form.contact_number
+                                                    }
+                                                    onValueChange={(
+                                                        value,
+                                                    ) => {
+                                                        store.set(
+                                                            "contact_number",
+                                                        )(
+                                                            formatPhoneNumber(
+                                                                value,
+                                                            ),
+                                                        );
+                                                    }}
+                                                    error={errors.contact_number}
+                                                />
                                             ) : (
                                                 <Field
                                                     label="Contact Number"

@@ -33,8 +33,8 @@ const STATUS_CONFIG = {
     pending_installation: {
         label: "Pending Installation",
         icon: AlertTriangle,
-        color: "text-zinc-400",
-        bg: "bg-zinc-500/10 border-zinc-500/20",
+        color: "text-amber-400",
+        bg: "bg-amber-500/10 border-amber-500/20",
     },
     waiting_for_installation: {
         label: "Waiting for Installation",
@@ -65,7 +65,10 @@ const STATUS_CONFIG = {
 type StatusKey = keyof typeof STATUS_CONFIG;
 
 export default function ServerCard({ server }: { server: ServerData }) {
-    const statusKey: StatusKey = server.agent_deleted
+    const isArchived = server.record_status === "archived" || server.status === "archived";
+    const statusKey: StatusKey = isArchived
+        ? "archived"
+        : server.agent_deleted
         ? "pending_deletion"
         : (server.status as StatusKey) in STATUS_CONFIG
           ? (server.status as StatusKey)
