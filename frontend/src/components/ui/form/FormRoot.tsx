@@ -24,6 +24,7 @@ function extractApiErrors(err: unknown): Record<string, string> | null {
 
 // ─── Internal form submit handler ────────────────────────────────────────────
 
+
 function FormSubmitHandler() {
     const store = useFormStoreForComponents();
 
@@ -65,16 +66,18 @@ export interface FormRootProps<T extends Record<string, unknown>> {
     store: FormStore<T>;
     children: ReactNode;
     className?: string;
+    id?: string;
 }
 
 export function FormRoot<T extends Record<string, unknown>>({
     store,
     children,
     className,
+    id,
 }: FormRootProps<T>) {
     return (
         <FormStoreProvider store={store}>
-            <FormShell store={store} className={className}>
+            <FormShell store={store} className={className} id={id}>
                 {children}
             </FormShell>
         </FormStoreProvider>
@@ -86,15 +89,17 @@ export function FormRoot<T extends Record<string, unknown>>({
 function FormShell<T extends Record<string, unknown>>({
     children,
     className,
+    id,
 }: {
     store: FormStore<T>;
     children: ReactNode;
     className?: string;
+    id?: string;
 }) {
     const handleSubmit = FormSubmitHandler();
 
     return (
-        <form onSubmit={handleSubmit} className={className}>
+        <form id={id} onSubmit={handleSubmit} className={className}>
             {children}
         </form>
     );

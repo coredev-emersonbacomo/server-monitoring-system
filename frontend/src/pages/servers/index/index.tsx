@@ -80,32 +80,35 @@ export default function ServersIndex() {
 
     const filtered = useMemo(() => {
         if (!servers) return [];
-        let result = servers;
-        if (statusFilter) {
-            if (statusFilter === "pending_deletion") {
-                result = servers.filter((s) => s.agent_deleted && s.record_status !== "archived" && s.status !== "archived");
-            } else if (statusFilter === "archived") {
-                result = servers.filter((s) => s.record_status === "archived" || s.status === "archived");
-            } else {
-                result = servers.filter((s) => s.status === statusFilter && !s.agent_deleted && s.record_status !== "archived" && s.status !== "archived");
-            }
-        } else {
-            result = servers.filter((s) => s.record_status !== "archived" && s.status !== "archived");
-        }
-        return [...result].sort((a, b) => {
-        const cmp = (() => {
-            switch (sortField) {
-                case "name":
-                    return a.name.localeCompare(b.name);
-                case "record_status":
-                    return a.record_status.localeCompare(b.record_status);
-                default:
-                    return a.created_at.localeCompare(b.created_at);
-            }
-        })();
-        return sortDir === "desc" ? -cmp : cmp;
-    });
-}, [servers, statusFilter, sortField, sortDir]);
+        const statusResult = statusFilter
+            ? statusFilter === "pending_deletion"
+                ? servers.filter((s) => s.agent_deleted)
+                : servers.filter((s) => s.status === statusFilter && !s.agent_deleted)
+            : [...servers];
+
+        const q = search.toLowerCase().trim();
+        const result = q
+            ? statusResult.filter(
+                (s) =>
+                    s.name.toLowerCase().includes(q) ||
+                    s.client_name?.toLowerCase().includes(q),
+            )
+            : statusResult;
+
+        return result.sort((a, b) => {
+            const cmp = (() => {
+                switch (sortField) {
+                    case "name":
+                        return a.name.localeCompare(b.name);
+                    case "record_status":
+                        return a.record_status.localeCompare(b.record_status);
+                    default:
+                        return a.created_at.localeCompare(b.created_at);
+                }
+            })();
+            return sortDir === "desc" ? -cmp : cmp;
+        });
+    }, [servers, statusFilter, search, sortField, sortDir]);
 
 const counts = useMemo(() => {
     if (!servers) return { all: 0, online: 0, warning: 0, offline: 0, pending_installation: 0, waiting_for_installation: 0, archived: 0 };

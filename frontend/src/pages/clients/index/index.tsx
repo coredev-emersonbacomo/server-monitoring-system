@@ -297,8 +297,7 @@ export default function Clients() {
     const [sortField, setSortField] = useState<string>("created_at");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
     const [deleting, setDeleting] = useState<ClientData | null>(null);
-    const [deleteConfirmText, setDeleteConfirmText] = useState("");
-
+    const [confirmText, setConfirmText] = useState("");
     // ── Filtering & Sorting ────────────────────────────────────────────────────
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
@@ -503,7 +502,7 @@ export default function Clients() {
                     onOpenChange={(open) => {
                         if (!open) {
                             setDeleting(null);
-                            setDeleteConfirmText("");
+                            setConfirmText("");
                         }
                     }}
                 >
@@ -518,28 +517,29 @@ export default function Clients() {
                             This will permanently delete{" "}
                             <strong className="text-foreground">
                                 {deleting?.name}
-                            </strong>{" "}
-                            and all associated data. This cannot be undone.
+                            </span>
+                            ? This action cannot be undone.
                         </p>
-
-                        <div className="flex flex-col gap-2 pt-1">
+                        <div className="flex flex-col gap-1.5 mt-2 mb-4">
                             <label className="text-xs text-muted-foreground">
                                 Type{" "}
-                                <strong className="text-foreground font-mono">
+                                <span className="font-medium text-foreground">
                                     {deleting?.name}
-                                </strong>{" "}
-                                to confirm
+                                </span>{" "}
+                                to confirm.
                             </label>
-                            <Input
-                                value={deleteConfirmText}
-                                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                            <input
+                                type="text"
+                                value={confirmText}
+                                onChange={(e) =>
+                                    setConfirmText(e.target.value)
+                                }
+                                autoComplete="off"
+                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                                 placeholder={deleting?.name}
-                                autoFocus
-                                className="font-mono text-sm"
                             />
                         </div>
-
-                        <div className="flex justify-end gap-3 pt-2">
+                        <div className="flex justify-end gap-2 pt-2">
                             <DialogClose asChild>
                                 <Button
                                     variant="outline"
@@ -558,8 +558,8 @@ export default function Clients() {
                                         : "Delete"
                                 }
                                 disabled={
-                                    deleteConfirmText !== deleting?.name ||
-                                    deleteClient.isPending
+                                    deleteClient.isPending ||
+                                    confirmText !== deleting?.name
                                 }
                                 onClick={async () => {
                                     if (!deleting || deleteConfirmText !== deleting.name) return;
@@ -571,8 +571,8 @@ export default function Clients() {
                                             `${deleting.name} has been deleted.`,
                                         );
                                         setDeleting(null);
-                                        setDeleteConfirmText("");
-                                    } catch (err: any) {
+                                        setConfirmText("");
+                                    } catch {
                                         toast.error(
                                             err?.response?.data?.message ||
                                                 err?.message ||
