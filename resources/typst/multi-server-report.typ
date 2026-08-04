@@ -1,4 +1,5 @@
 #import "base.typ": *
+#import "@preview/lilaq:0.6.0" as lq
 #let d = json("input.json")
 
 #set page(
@@ -26,6 +27,9 @@
   let uptime = item.at("uptime", default: none)
   let charts = item.at("charts", default: none)
   let insights = item.at("insights", default: ())
+  let cpu_7d = item.at("cpu_7d", default: ())
+  let memory_7d = item.at("memory_7d", default: ())
+  let disk_7d = item.at("disk_7d", default: ())
 
   report-heading(
     item.name,
@@ -123,6 +127,37 @@
     v(0.5em)
     section-title("CPU Usage Chart")
     image(bytes(charts.cpu), width: 100%, height: 160pt)
+  }
+
+  if cpu_7d.len() > 0 {
+    v(0.5em)
+    section-title("Metrics Trends (Last 7 Days)")
+    lq.diagram(
+      width: 100%,
+      height: 160pt,
+      xlabel: [#text(size: 8pt)[Time (hours)]],
+      ylabel: [#text(size: 8pt)[Usage (%)]],
+      legend: (position: bottom),
+      grid: stroke(0.2pt + border-clr),
+      lq.plot(
+        range(cpu_7d.len()), cpu_7d,
+        stroke: brand,
+        smooth: true,
+        label: [CPU],
+      ),
+      lq.plot(
+        range(memory_7d.len()), memory_7d,
+        stroke: rgb("#1565c0"),
+        smooth: true,
+        label: [Memory],
+      ),
+      lq.plot(
+        range(disk_7d.len()), disk_7d,
+        stroke: green,
+        smooth: true,
+        label: [Disk],
+      ),
+    )
   }
 
   if insights.len() > 0 {

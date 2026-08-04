@@ -21,6 +21,7 @@ class ClientData extends Data
         public string $created_at,
         public string $updated_at,
         public string $alert_scope = 'global',
+        public string $record_status = 'active',
     ) {}
 
     public static function fromModel(Client $client): self
@@ -39,6 +40,7 @@ class ClientData extends Data
             created_at: $client->created_at->toIso8601String(),
             updated_at: $client->updated_at->toIso8601String(),
             alert_scope: $client->alert_scope ?? 'global',
+            record_status: $client->record_status instanceof \UnitEnum ? $client->record_status->value : ($client->record_status ?? 'active'),
         );
     }
 }

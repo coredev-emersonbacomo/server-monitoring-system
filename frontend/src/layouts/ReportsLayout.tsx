@@ -118,14 +118,6 @@ export function ReportsLayout() {
                     <option value="landscape">Landscape</option>
                     <option value="portrait">Portrait</option>
                 </select>
-
-                <button
-                    onClick={handleGenerateReport}
-                    className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm bg-primary text-primary-foreground hover:opacity-90"
-                >
-                    <FileDown className="w-4 h-4" />
-                    Generate Report
-                </button>
             </div>
 
             <Outlet context={{ view, filters, orientation }} />

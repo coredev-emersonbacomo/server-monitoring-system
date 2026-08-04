@@ -335,8 +335,12 @@ class ServerData extends Data
             ram: $server->ram,
             disk: $server->disk,
             operating_system: $server->operating_system,
-            record_status: $server->record_status?->value ?? 'active',
+            record_status: is_string($server->record_status) ? $server->record_status : ($server->record_status?->value ?? ($server->trashed() ? 'archived' : 'active')),
             status: (function () use ($server, $agent, $offlineThreshold): string {
+                if ($server->trashed() || $server->status === 'archived' || $server->record_status === 'archived' || $server->record_status === \App\Enums\RecordStatus::Archived) {
+                    return 'archived';
+                }
+
                 if (!$agent || !$agent->registered_at) {
                     return $server->status ?? 'pending_installation';
                 }

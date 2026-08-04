@@ -8,6 +8,8 @@ use Spatie\LaravelData\Attributes\Validation\Required;
 use Spatie\LaravelData\Attributes\Validation\StringType;
 use Spatie\LaravelData\Data;
 
+use Spatie\LaravelData\Attributes\Validation\Min;
+
 class CreateServerData extends Data
 {
     public function __construct(
@@ -17,7 +19,7 @@ class CreateServerData extends Data
         #[StringType, Max(512)]
         public ?string $description = null,
 
-        #[Numeric]
+        #[Numeric, Min(0), Max(999999999)]
         public ?float $monthly_cost = 0.0,
     ) {}
 }
