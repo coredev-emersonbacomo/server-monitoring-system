@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
 import {
     Info,
@@ -153,7 +153,7 @@ export default function ServerDetail() {
                     : null,
                 initialMode: "view",
             }),
-        [],
+        [initial],
     );
 
     const form = useForm(store, (s) => s.form);
@@ -274,78 +274,14 @@ export default function ServerDetail() {
     const deleteServer = useDeleteServer();
     const isConfirmed = confirmText.trim() === initial?.name;
 
-    const [showCostModal, setShowCostModal] = useState(false);
-    const [deductAmount, setDeductAmount] = useState("");
-    const [submittingPayment, setSubmittingPayment] = useState(false);
 
-    // Fetch cost logs for the modal
-    const { data: costLogs, isLoading: isLoadingCostLogs } = useQuery({
-        queryKey: ["server", uuid, "cost-logs"],
-        queryFn: async () => {
-            if (!initial?.client_uuid) return [];
-            const { data, error } = await api.GET(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-logs",
-                {
-                    params: {
-                        path: {
-                            clientUuid: initial.client_uuid,
-                            serverUuid: uuid!,
-                        },
-                    },
-                },
-            );
-            if (error) throw error;
-            return data;
-        },
-        enabled: showCostModal && !!initial?.client_uuid,
-    });
-
-    const handleCostAdjustment = async (
-        type: "deduction" | "add_funds" | "add_credit" | "reset_usage",
-        amount?: number,
-    ) => {
-        if (!initial?.client_uuid) return;
-        setSubmittingPayment(true);
-        try {
-            const { error } = await api.POST(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}/adjust-cost",
-                {
-                    params: {
-                        path: {
-                            clientUuid: initial.client_uuid,
-                            serverUuid: uuid!,
-                        },
-                    },
-                    body: {
-                        action: type,
-                        amount: amount,
-                    },
-                },
-            );
-
-            if (error) {
-                toast.error("Failed to process financial adjustment.");
-            } else {
-                toast.success("Payment / adjustment recorded successfully.");
-                setDeductAmount("");
-                queryClient.invalidateQueries({ queryKey: ["server", uuid] });
-                queryClient.invalidateQueries({
-                    queryKey: ["server", uuid, "cost-logs"],
-                });
-            }
-        } catch {
-            toast.error("An error occurred processing financial adjustment.");
-        } finally {
-            setSubmittingPayment(false);
-        }
-    };
 
     const handleDeletePort = useCallback(
         async (portId: number) => {
             if (!initial?.client_uuid) return;
             try {
                 const { error } = await api.DELETE(
-                    "/v1/clients/{clientUuid}/servers/{serverUuid}/ports/{portId}" as any,
+                    "/v1/clients/{clientUuid}/servers/{serverUuid}/ports/{portId}",
                     {
                         params: {
                             path: {
@@ -368,7 +304,7 @@ export default function ServerDetail() {
                 toast.error("An error occurred.");
             }
         },
-        [initial?.client_uuid, uuid, queryClient],
+        [initial, uuid, queryClient],
     );
 
     if (isLoading) {
@@ -407,15 +343,15 @@ export default function ServerDetail() {
     const trail: Crumb[] = allClient
         ? [{ label: "Servers", href: "/servers" }, { label: server.name }]
         : [
-              { label: "Clients", href: "/clients" },
-              {
-                  label: server.client_name ?? "Client",
-                  href: server.client_uuid
-                      ? `/clients/${server.client_uuid}`
-                      : undefined,
-              },
-              { label: server.name },
-          ];
+            { label: "Clients", href: "/clients" },
+            {
+                label: server.client_name ?? "Client",
+                href: server.client_uuid
+                    ? `/clients/${server.client_uuid}`
+                    : undefined,
+            },
+            { label: server.name },
+        ];
     const statusKey = server.agent_deleted
         ? "pending_deletion"
         : (server.status as keyof typeof STATUS_CONFIG) in STATUS_CONFIG
@@ -447,17 +383,9 @@ export default function ServerDetail() {
         isConfirmed,
         allClient,
         navigate,
-        setShowCostModal,
         copyToClipboard,
         serverAlertTab,
         handleDeletePort,
-        showCostModal,
-        costLogs: costLogs ?? [],
-        isLoadingCostLogs,
-        deductAmount,
-        setDeductAmount,
-        submittingPayment,
-        handleCostAdjustment,
     };
 
     return (

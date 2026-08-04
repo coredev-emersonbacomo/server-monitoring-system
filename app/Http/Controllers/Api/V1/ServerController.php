@@ -418,7 +418,7 @@ class ServerController extends Controller
     private function queryAggTable(int $serverId, string $tableUnit, Carbon $subTime, ?Carbon $endTime = null): Collection
     {
         $query = DB::table($tableUnit)
-            ->selectRaw('timestamp, cpu, memory, disk, "netIn", "netOut"')
+            ->selectRaw('timestamp, cpu, memory, disk, netin as "netIn", netout as "netOut"')
             ->where('server_id', $serverId)
             ->where('timestamp', '>=', $subTime);
 

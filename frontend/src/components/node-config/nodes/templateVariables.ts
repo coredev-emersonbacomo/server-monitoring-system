@@ -154,6 +154,11 @@ const LABELS: Record<
         group: "server",
         description: "Uptime Seconds (ServerData)",
     },
+    "server.subscription_fee": {
+        label: "Subscription Fee",
+        group: "server",
+        description: "Subscription Fee (ServerData)",
+    },
     "server.client.uuid": {
         label: "Uuid",
         group: "client",
@@ -218,6 +223,21 @@ const LABELS: Record<
         label: "Alert Scope",
         group: "client",
         description: "Alert Scope (ClientData)",
+    },
+    "server.client.record_status": {
+        label: "Record Status",
+        group: "client",
+        description: "Record Status (ClientData)",
+    },
+    "server.client.budget": {
+        label: "Budget",
+        group: "client",
+        description: "Budget (ClientData)",
+    },
+    "server.client.total_subscription_fee": {
+        label: "Total Subscription Fee",
+        group: "client",
+        description: "Total Subscription Fee (ClientData)",
     },
     "metric.timestamp": {
         label: "Timestamp",
