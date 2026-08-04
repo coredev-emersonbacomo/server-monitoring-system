@@ -17,6 +17,8 @@ class ClientReportData extends Data
         public int $offline_servers,
         public ?float $avg_cpu_usage,
         public ?float $avg_memory_usage,
+        public ?int $budget,
+        public ?int $total_subscription_fee,
         public int $total_alerts,
 
         /** @var ClientServerSummaryData[] */

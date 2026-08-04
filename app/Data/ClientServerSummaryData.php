@@ -19,6 +19,7 @@ class ClientServerSummaryData extends Data
         public ?float $memory_usage,
         public ?float $disk_usage,
         public ?string $last_seen,
+        public ?int $subscription_fee,
         public float $uptime_percentage,
     ) {}
 }
