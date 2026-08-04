@@ -40,26 +40,26 @@ class ServerController extends Controller
             $server = Server::create([
                 'client_id'    => $clientId,
                 'name'         => $data->name,
-                'description' => $data->description,
+                'description'  => $data->description,
                 'host_name'    => $data->host_name ?? $data->name,
-                'monthly_rate' => $data->monthly_cost ?? 0.0,
+                'monthly_rate' => $data->subscription_fee ?? 0.0,
             ]);
 
             $actor = auth()->user();
 
             CustomActivityLog::create([
                 'logable_type' => Server::class,
-                'logable_id' => (string) $server->uuid,
-                'user_id' => $actor?->id,
-                'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
-                'action' => 'Create Server',
-                'details' => [
-                    'message' => "Create server: {$server->name}",
-                    'name' => $server->name,
-                    'host_name' => $server->host_name,
-                    'client_uuid' => $clientModel->uuid,
-                    'client_name' => $clientModel->name,
-                    'monthly_rate' => $server->monthly_rate,
+                'logable_id'   => (string) $server->uuid,
+                'user_id'      => $actor?->id,
+                'user'         => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+                'action'       => 'Create Server',
+                'details'      => [
+                    'message'          => "Create server: {$server->name}",
+                    'name'             => $server->name,
+                    'host_name'        => $server->host_name,
+                    'client_uuid'      => $clientModel->uuid,
+                    'client_name'      => $clientModel->name,
+                    'subscription_fee' => $server->monthly_rate,
                 ],
             ]);
 
@@ -119,8 +119,8 @@ class ServerController extends Controller
             $updatePayload['description'] = $data->description;
         }
 
-        if (!($data->monthly_cost instanceof \Spatie\LaravelData\Optional) && $data->monthly_cost !== null) {
-            $newRate = (float) $data->monthly_cost;
+        if (!($data->subscription_fee instanceof \Spatie\LaravelData\Optional) && $data->subscription_fee !== null) {
+            $newRate = (float) $data->subscription_fee;
             $oldRate = (float) ($serverModel->monthly_rate ?? 0.0);
             if (abs($newRate - $oldRate) > 0.0001) {
                 $updatePayload['monthly_rate'] = $newRate;
@@ -146,12 +146,12 @@ class ServerController extends Controller
                 'logable_id'   => (string) $serverModel->uuid,
                 'user_id'      => $actor?->id,
                 'user'         => $actorName,
-                'action'       => 'Update Monthly Rate',
+                'action'       => 'Update Subscription Fee',
                 'details'      => [
-                    'message'     => "Monthly rate updated from ₱{$oldRateFmt}/mo to ₱{$newRateFmt}/mo for server: {$serverModel->name}",
+                    'message'     => "Subscription fee updated from ₱{$oldRateFmt}/mo to ₱{$newRateFmt}/mo for server: {$serverModel->name}",
                     'server_name' => $serverModel->name,
-                    'before'      => ['monthly_rate' => (float) ($originalAttributes['monthly_rate'] ?? 0.0)],
-                    'after'       => ['monthly_rate' => (float) $updatePayload['monthly_rate']],
+                    'before'      => ['subscription_fee' => (float) ($originalAttributes['monthly_rate'] ?? 0.0)],
+                    'after'       => ['subscription_fee' => (float) $updatePayload['monthly_rate']],
                 ],
             ]);
         } elseif ($serverModel->wasChanged()) {
@@ -206,9 +206,9 @@ class ServerController extends Controller
 
         if ($actionType === 'reset_usage') {
             $serverModel->update([
-                'cost_reset_at'   => now(),
-                'rate_updated_at' => now(),
-                'historical_cost' => 0.0,
+                'cost_reset_at'    => now(),
+                'rate_updated_at'  => now(),
+                'historical_cost'  => 0.0,
                 'accumulated_cost' => 0.0,
                 'remitted'         => 0.0,
                 'online_seconds'   => 0,
@@ -227,7 +227,6 @@ class ServerController extends Controller
                 ],
             ]);
         } else {
-            // Payment deduction
             $newOffset = (float) $serverModel->remitted + $amount;
             $serverModel->update([
                 'remitted' => $newOffset,
@@ -243,10 +242,10 @@ class ServerController extends Controller
                 'user'         => $actorName,
                 'action'       => 'Deduction',
                 'details'      => [
-                    'message'         => "Payment deduction of ₱{$formatted} applied to server: {$serverModel->name}",
-                    'payment_amount'  => $amount,
-                    'total_payments'  => $newOffset,
-                    'server_name'     => $serverModel->name,
+                    'message'        => "Payment deduction of ₱{$formatted} applied to server: {$serverModel->name}",
+                    'payment_amount' => $amount,
+                    'total_payments' => $newOffset,
+                    'server_name'    => $serverModel->name,
                 ],
             ]);
         }
@@ -276,24 +275,22 @@ class ServerController extends Controller
 
         CustomActivityLog::create([
             'logable_type' => Server::class,
-            'logable_id' => (string) $serverModel->uuid,
-            'user_id' => $actor?->id,
-            'user' => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
-            'action' => 'Archive Server',
-            'details' => [
-                'message' => "Archived server: {$serverModel->name}",
-                'name' => $serverModel->name,
+            'logable_id'   => (string) $serverModel->uuid,
+            'user_id'      => $actor?->id,
+            'user'         => $actor ? "{$actor->first_name} {$actor->last_name}" : 'System',
+            'action'       => 'Archive Server',
+            'details'      => [
+                'message'   => "Archived server: {$serverModel->name}",
+                'name'      => $serverModel->name,
                 'host_name' => $serverModel->host_name,
             ],
         ]);
 
-        // Clean up all action items tied to this server so they are
-        // removed from the Action Board immediately after deletion.
         ActionItem::where('server_id', $serverModel->id)->delete();
 
         $serverModel->update([
             'record_status' => 'archived',
-            'status' => 'archived',
+            'status'        => 'archived',
         ]);
         $serverModel->delete();
 
@@ -345,7 +342,6 @@ class ServerController extends Controller
         return $data;
     }
 
-    /** @internal Used by showWithStats and BroadcastServerStats */
     public static function computeStatPointPublic(ServerUpdate $row, ?ServerUpdate $prev): array
     {
         $ts = $row->created_at->getPreciseTimestamp(3);
@@ -363,11 +359,11 @@ class ServerController extends Controller
 
         return [
             'timestamp' => $ts,
-            'cpu' => round((float) $row->cpu_usage, 1),
-            'memory' => round((float) $row->memory_usage, 1),
-            'netIn' => round($netIn, 2),
-            'netOut' => round($netOut, 2),
-            'disk' => round((float) $row->storage, 1),
+            'cpu'       => round((float) $row->cpu_usage, 1),
+            'memory'    => round((float) $row->memory_usage, 1),
+            'netIn'     => round($netIn, 2),
+            'netOut'    => round($netOut, 2),
+            'disk'      => round((float) $row->storage, 1),
         ];
     }
 
@@ -389,9 +385,6 @@ class ServerController extends Controller
             default                            => 60,
         };
 
-        // The database might append a local timezone offset (e.g., +08) to the timestamp string,
-        // but the time itself is actually in UTC. We extract just the Y-m-d H:i:s part
-        // and parse it explicitly as UTC to get the correct epoch.
         $timeString = substr($row->timestamp, 0, 19);
         $epochMs = \Illuminate\Support\Carbon::parse($timeString, 'UTC')->getPreciseTimestamp(3);
 
