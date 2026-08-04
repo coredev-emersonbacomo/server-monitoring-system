@@ -43,12 +43,7 @@ export type ServerDetailContextValue = {
     setDeductAmount: (value: string) => void;
     submittingPayment: boolean;
     handleCostAdjustment: (
-        type:
-            | "full_payment"
-            | "deduction"
-            | "top_up"
-            | "add_funds"
-            | "reset_usage",
+        type: "deduction" | "add_funds" | "add_credit" | "reset_usage",
         amount?: number,
     ) => void;
 };
