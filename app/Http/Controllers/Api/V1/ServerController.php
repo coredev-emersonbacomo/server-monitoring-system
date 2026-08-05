@@ -385,8 +385,7 @@ class ServerController extends Controller
             default                            => 60,
         };
 
-        $timeString = substr($row->timestamp, 0, 19);
-        $epochMs = \Illuminate\Support\Carbon::parse($timeString, 'UTC')->getPreciseTimestamp(3);
+        $epochMs = \Illuminate\Support\Carbon::parse($row->timestamp)->getPreciseTimestamp(3);
 
         return [
             'timestamp' => $epochMs,
