@@ -10,9 +10,11 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { useDashboardUsage } from "../hooks/useDashboardUsage";
-import type { MetricKey, TimeUnit } from "@/types/dashboard";
+import { useServers } from "@/hooks/useServers";
+import type { MetricKey, TimeUnit, UsageScope } from "@/types/dashboard";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useQueryClient } from "@tanstack/react-query";
 
 type TimeSpan = "1H" | "1D" | "1W";
@@ -87,6 +89,9 @@ interface DashboardMetricChartInnerProps {
     unit?: string;
     yDomain?: [number | "auto", number | "auto"];
     timeSpan: TimeSpan;
+    scope?: UsageScope;
+    serverUuid?: string;
+    nameFilter?: string;
 }
 
 function DashboardMetricChartInner({
@@ -94,31 +99,49 @@ function DashboardMetricChartInner({
     unit = "",
     yDomain = ["auto", "auto"],
     timeSpan,
+    scope = "all",
+    serverUuid,
+    nameFilter,
 }: DashboardMetricChartInnerProps) {
     const apiUnit = TIME_SPAN_TO_UNIT[timeSpan];
 
-    const { data, isLoading } = useDashboardUsage(metric, apiUnit);
+    const { data, isLoading } = useDashboardUsage(
+        metric,
+        apiUnit,
+        scope,
+        serverUuid,
+    );
 
-    const series = useMemo(() => {
+    const allSeries = useMemo(() => {
         if (!data?.pages?.length) return [];
-        const latestPage = data.pages[0];
-        return latestPage.series;
+        return data.pages[0].series;
     }, [data]);
 
-    // Merge all series into [{timestamp, uuid1: val, uuid2: val, ...}]
+    const series = useMemo(() => {
+        if (!allSeries.length) return [];
+        const q = nameFilter?.trim().toLowerCase();
+        if (!q) return allSeries;
+        return allSeries.filter((s) =>
+            s.server_name.toLowerCase().includes(q),
+        );
+    }, [allSeries, nameFilter]);
+
+    // Merge all series into [{timestamp, uuid1: val, uuid2: val, ...}] via a
+    // Map-keyed timestamp lookup instead of O(points²) nested finds
     const mergedData = useMemo((): MergedPoint[] => {
         if (!series.length) return [];
-        const tsSet = new Set<number>();
-        series.forEach((s) => s.points.forEach((p) => tsSet.add(p.timestamp)));
-        const sorted = [...tsSet].sort((a, b) => a - b);
-        return sorted.map((ts) => {
-            const point: MergedPoint = { timestamp: ts };
-            series.forEach((s) => {
-                const match = s.points.find((p) => p.timestamp === ts);
-                point[s.server_uuid] = match?.value ?? null;
-            });
-            return point;
-        });
+        const tsMap = new Map<number, MergedPoint>();
+        for (const s of series) {
+            for (const p of s.points) {
+                let pt = tsMap.get(p.timestamp);
+                if (!pt) {
+                    pt = { timestamp: p.timestamp };
+                    tsMap.set(p.timestamp, pt);
+                }
+                pt[s.server_uuid] = p.value ?? null;
+            }
+        }
+        return [...tsMap.values()].sort((a, b) => a.timestamp - b.timestamp);
     }, [series]);
 
     const tsValues = mergedData.map((d) => d.timestamp);
@@ -229,13 +252,13 @@ function DashboardMetricChartInner({
                             labelFormatter={(v) =>
                                 fmtDatetime(Number(v), timeSpan)
                             }
-                            formatter={(v: unknown, name: string) => {
+                            formatter={(v: unknown, name: unknown) => {
                                 const s = series.find(
                                     (s) => s.server_uuid === name,
                                 );
                                 return [
                                     `${Number(v).toFixed(1)}${unit}`,
-                                    s?.server_name ?? name,
+                                    s?.server_name ?? String(name),
                                 ];
                             }}
                             cursor={{
@@ -260,7 +283,7 @@ function DashboardMetricChartInner({
             </div>
 
             {/* Server legend */}
-            {series.length > 1 && (
+            {(series.length > 1 || scope !== "all") && (
                 <div className="flex flex-wrap gap-x-4 gap-y-1 px-1">
                     {series.map((s, i) => (
                         <span
@@ -289,6 +312,9 @@ interface DashboardMetricChartProps {
     unit?: string;
     yDomain?: [number | "auto", number | "auto"];
     timeSpan: TimeSpan;
+    scope?: UsageScope;
+    serverUuid?: string;
+    nameFilter?: string;
 }
 
 export function DashboardMetricChart({
@@ -297,6 +323,9 @@ export function DashboardMetricChart({
     unit,
     yDomain,
     timeSpan,
+    scope,
+    serverUuid,
+    nameFilter,
 }: DashboardMetricChartProps) {
     return (
         <div className="rounded-lg border border-border/60 bg-card/40 p-3 py-4 flex flex-col gap-3">
@@ -308,12 +337,15 @@ export function DashboardMetricChart({
                 unit={unit}
                 yDomain={yDomain}
                 timeSpan={timeSpan}
+                scope={scope}
+                serverUuid={serverUuid}
+                nameFilter={nameFilter}
             />
         </div>
     );
 }
 
-// ─── Container with time-span selector ───────────────────────────────────────
+// ─── Container with view/time-span selectors ─────────────────────────────────
 
 const CHARTS: {
     title: string;
@@ -343,55 +375,175 @@ const CHARTS: {
 
 const TIME_SPANS: TimeSpan[] = ["1H", "1D", "1W"];
 
+type ChartView = "overview" | "perServer";
+
+function Segmented<T extends string>({
+    options,
+    value,
+    onChange,
+}: {
+    options: { value: T; label: string }[];
+    value: T;
+    onChange: (v: T) => void;
+}) {
+    return (
+        <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
+            {options.map((o) => (
+                <button
+                    key={o.value}
+                    onClick={() => onChange(o.value)}
+                    className={cn(
+                        "px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer",
+                        value === o.value
+                            ? "bg-background text-foreground shadow-sm border border-border"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                    )}
+                >
+                    {o.label}
+                </button>
+            ))}
+        </div>
+    );
+}
+
 export function DashboardChartsSection() {
     const [timeSpan, setTimeSpan] = useState<TimeSpan>("1H");
+    const [view, setView] = useState<ChartView>("overview");
+    const [metric, setMetric] = useState<MetricKey>("cpu");
+    const [selected, setSelected] = useState<string[]>([]);
+    const [search, setSearch] = useState("");
     const queryClient = useQueryClient();
+    const { data: serversData } = useServers();
+    const servers = serversData ?? [];
+
+    const q = search.trim().toLowerCase();
+    const filteredServers = q
+        ? servers.filter((s) => s.name.toLowerCase().includes(q))
+        : servers;
+
+    // Empty selection = show every server; checked servers = compare view
+    const isAll = selected.length === 0;
+    const compareUuids = isAll ? undefined : selected.join(",");
+
+    const toggleServer = (uuid: string) => {
+        setSelected((prev) =>
+            prev.includes(uuid)
+                ? prev.filter((u) => u !== uuid)
+                : [...prev, uuid],
+        );
+    };
 
     return (
         <div>
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-1">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        icon={<RefreshCw size={13} />}
-                        label="Refresh"
-                        onClick={() =>
-                            queryClient.invalidateQueries({
-                                queryKey: ["dashboard", "usage"],
-                            })
-                        }
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <Segmented<ChartView>
+                        options={[
+                            { value: "overview", label: "Overview (Avg)" },
+                            { value: "perServer", label: "Per Server" },
+                        ]}
+                        value={view}
+                        onChange={setView}
                     />
-                    <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-md border border-border/50">
-                        {TIME_SPANS.map((span) => (
-                            <button
-                                key={span}
-                                onClick={() => setTimeSpan(span)}
-                                className={cn(
-                                    "px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer",
-                                    timeSpan === span
-                                        ? "bg-background text-foreground shadow-sm border border-border"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
-                                )}
+                    <Segmented<TimeSpan>
+                        options={TIME_SPANS.map((s) => ({
+                            value: s,
+                            label: s,
+                        }))}
+                        value={timeSpan}
+                        onChange={setTimeSpan}
+                    />
+                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<RefreshCw size={13} />}
+                    label="Refresh"
+                    onClick={() =>
+                        queryClient.invalidateQueries({
+                            queryKey: ["dashboard", "usage"],
+                        })
+                    }
+                />
+            </div>
+
+            {view === "perServer" && (
+                <div className="flex flex-wrap items-start gap-2 mb-4">
+                    <div className="flex flex-col gap-2">
+                        <Segmented<MetricKey>
+                            options={CHARTS.map((c) => ({
+                                value: c.metric,
+                                label: c.title,
+                            }))}
+                            value={metric}
+                            onChange={setMetric}
+                        />
+                        <Input
+                            placeholder="Search servers…"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="h-8 w-56 text-xs"
+                        />
+                    </div>
+                    <div className="flex flex-col border border-border/60 rounded-lg bg-card/40 p-2 max-h-52 overflow-y-auto min-w-56 flex-1 max-w-xs gap-0.5">
+                        <label className="flex items-center gap-2 text-xs cursor-pointer py-0.5">
+                            <input
+                                type="checkbox"
+                                checked={isAll}
+                                onClick={() => setSelected([])}
+                                onChange={() => {}}
+                                className="accent-violet-500 cursor-pointer"
+                            />
+                            All servers
+                        </label>
+                        <div className="h-px bg-border/60 my-1" />
+                        {filteredServers.map((s) => (
+                            <label
+                                key={s.uuid}
+                                className="flex items-center gap-2 text-xs cursor-pointer py-0.5"
                             >
-                                {span}
-                            </button>
+                                <input
+                                    type="checkbox"
+                                    checked={selected.includes(s.uuid)}
+                                    onChange={() => toggleServer(s.uuid)}
+                                    className="accent-violet-500 cursor-pointer"
+                                />
+                                <span className="truncate">{s.name}</span>
+                            </label>
                         ))}
                     </div>
                 </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-1 gap-6">
-                {CHARTS.map((cfg) => (
-                    <DashboardMetricChart
-                        key={cfg.metric}
-                        title={cfg.title}
-                        metric={cfg.metric}
-                        unit={cfg.unit}
-                        yDomain={cfg.yDomain}
-                        timeSpan={timeSpan}
-                    />
-                ))}
+                {view === "overview" ? (
+                    CHARTS.map((cfg) => (
+                        <DashboardMetricChart
+                            key={cfg.metric}
+                            title={cfg.title}
+                            metric={cfg.metric}
+                            unit={cfg.unit}
+                            yDomain={cfg.yDomain}
+                            timeSpan={timeSpan}
+                            scope="avg"
+                        />
+                    ))
+                ) : (() => {
+                    const cfg = CHARTS.find((c) => c.metric === metric)!;
+                    return (
+                        <DashboardMetricChart
+                            key={cfg.metric}
+                            title={cfg.title}
+                            metric={cfg.metric}
+                            unit={cfg.unit}
+                            yDomain={cfg.yDomain}
+                            timeSpan={timeSpan}
+                            scope={isAll ? "all" : "server"}
+                            serverUuid={compareUuids}
+                            nameFilter={isAll ? q || undefined : undefined}
+                        />
+                    );
+                })()}
             </div>
         </div>
     );

@@ -17,9 +17,12 @@ export interface UsageTopItem {
     value: number;
 }
 
+export type UsageScope = "all" | "avg" | "server";
+
 export interface UsageData {
     unit: TimeUnit;
     metric: MetricKey;
+    scope: UsageScope;
     series: UsageSeries[];
     top: UsageTopItem[];
     nextCursor: number | null;

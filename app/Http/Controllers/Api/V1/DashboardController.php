@@ -195,13 +195,16 @@ class DashboardController extends Controller
     public function usage(Request $request): array
     {
         $validated = $request->validate([
-            'unit'   => 'required|in:minute,hour,day,week,month',
-            'metric' => 'required|in:cpu,memory,disk',
-            'before' => 'nullable|numeric',
+            'unit'        => 'required|in:minute,hour,day,week,month',
+            'metric'      => 'required|in:cpu,memory,disk',
+            'before'      => 'nullable|numeric',
+            'scope'       => 'nullable|in:all,avg,server',
+            'server_uuid' => 'nullable|string',
         ]);
 
         $unit   = $validated['unit'];
         $metric = $validated['metric'];
+        $scope  = $validated['scope'] ?? 'all';
 
         // Map API unit names to TimescaleDB agg tables and window sizes
         $config = [
@@ -220,62 +223,159 @@ class DashboardController extends Controller
 
         $endTime = isset($validated['before'])
             ? \Illuminate\Support\Carbon::createFromTimestampMs((int) $validated['before'])
+                ->setTimezone(config('app.timezone'))
             : now();
 
         // Anchor to latest agg record so chart always has data
         if (!isset($validated['before'])) {
-            $latestRecord = DB::table($table)
-                ->whereIn('server_id', $serverIds)
-                ->max('timestamp');
-            if ($latestRecord) {
-                $timeString = substr($latestRecord, 0, 19);
-                $endTime = \Illuminate\Support\Carbon::parse($timeString, 'UTC')->addSecond();
+            try {
+                $latestRecord = DB::table($table)
+                    ->whereIn('server_id', $serverIds)
+                    ->max('timestamp');
+                if ($latestRecord) {
+                    $endTime = \Illuminate\Support\Carbon::createFromTimestampMs(
+                        $this->parseAggTimestamp($latestRecord)
+                    )->addSecond()->setTimezone(config('app.timezone'));
+                }
+            } catch (\Throwable) {
+                // Agg view missing/unusable — fall back to now()
             }
         }
 
         $startTime = $endTime->copy()->subSeconds($cfg['seconds']);
 
+        $empty = [
+            'unit'       => $unit,
+            'metric'     => $metric,
+            'scope'      => $scope,
+            'series'     => [],
+            'top'        => [],
+            'nextCursor' => null,
+        ];
+
         if ($serverIds->isEmpty()) {
+            return $empty;
+        }
+
+        // ── Single/multi-server comparison drilldown ────────────────────────
+        if ($scope === 'server') {
+            $uuids = $validated['server_uuid'] ?? '';
+            $targets = $uuids !== ''
+                ? Server::whereIn('uuid', explode(',', $uuids))->get()
+                : collect();
+
+            if ($targets->isEmpty()) {
+                return $empty;
+            }
+
+            $targetIds = $targets->pluck('id');
+
+            $rows = $this->aggQueryWithRefresh(
+                fn () => DB::table($table)
+                    ->select('server_id', 'timestamp', $metric)
+                    ->whereIn('server_id', $targetIds)
+                    ->where('timestamp', '>=', $startTime)
+                    ->where('timestamp', '<', $endTime)
+                    ->orderBy('server_id')
+                    ->orderBy('timestamp')
+                    ->get(),
+                $table
+            );
+
+            $seriesMap = [];
+            foreach ($rows as $row) {
+                $epochMs = $this->parseAggTimestamp($row->timestamp);
+                $seriesMap[$row->server_id][] = [
+                    'timestamp' => $epochMs,
+                    'value'     => round((float) $row->{$metric}, 1),
+                ];
+            }
+
+            $series = [];
+            foreach ($targets as $target) {
+                $series[] = [
+                    'server_uuid' => $target->uuid,
+                    'server_name' => $target->name,
+                    'client_name' => $target->client?->name ?? '',
+                    'points'      => $seriesMap[$target->id] ?? [],
+                ];
+            }
+
+            $hasOlderData = DB::table($table)
+                ->whereIn('server_id', $targetIds)
+                ->where('timestamp', '<', $startTime)
+                ->exists();
+
             return [
                 'unit'       => $unit,
                 'metric'     => $metric,
-                'series'     => [],
+                'scope'      => $scope,
+                'series'     => $series,
                 'top'        => [],
-                'nextCursor' => null,
+                'nextCursor' => $hasOlderData ? $startTime->getPreciseTimestamp(3) : null,
             ];
         }
 
-        // Query the aggregate table, auto-refresh if unpopulated
-        try {
-            $rows = DB::table($table)
+        // ── Aggregated overview: one averaged series across all servers ──────
+        if ($scope === 'avg') {
+            $rows = $this->aggQueryWithRefresh(
+                fn () => DB::table($table)
+                    ->select('timestamp', DB::raw('AVG("' . $metric . '") AS value'))
+                    ->whereIn('server_id', $serverIds)
+                    ->where('timestamp', '>=', $startTime)
+                    ->where('timestamp', '<', $endTime)
+                    ->groupBy('timestamp')
+                    ->orderBy('timestamp')
+                    ->get(),
+                $table
+            );
+
+            $points = [];
+            foreach ($rows as $row) {
+                $epochMs = $this->parseAggTimestamp($row->timestamp);
+                $points[] = [
+                    'timestamp' => $epochMs,
+                    'value'     => round((float) $row->value, 1),
+                ];
+            }
+
+            $hasOlderData = DB::table($table)
+                ->whereIn('server_id', $serverIds)
+                ->where('timestamp', '<', $startTime)
+                ->exists();
+
+            return [
+                'unit'       => $unit,
+                'metric'     => $metric,
+                'scope'      => $scope,
+                'series'     => [[
+                    'server_uuid' => 'avg',
+                    'server_name' => 'All Servers',
+                    'client_name' => '',
+                    'points'      => $points,
+                ]],
+                'top'        => [],
+                'nextCursor' => $hasOlderData ? $startTime->getPreciseTimestamp(3) : null,
+            ];
+        }
+
+        // ── scope=all: every server as its own line ──────────────────────────
+        $rows = $this->aggQueryWithRefresh(
+            fn () => DB::table($table)
                 ->select('server_id', 'timestamp', $metric)
                 ->whereIn('server_id', $serverIds)
                 ->where('timestamp', '>=', $startTime)
                 ->where('timestamp', '<', $endTime)
                 ->orderBy('server_id')
                 ->orderBy('timestamp')
-                ->get();
-        } catch (\Throwable $e) {
-            if (str_contains($e->getMessage(), 'has not been populated')) {
-                DB::statement("REFRESH MATERIALIZED VIEW {$table}");
-                $rows = DB::table($table)
-                    ->select('server_id', 'timestamp', $metric)
-                    ->whereIn('server_id', $serverIds)
-                    ->where('timestamp', '>=', $startTime)
-                    ->where('timestamp', '<', $endTime)
-                    ->orderBy('server_id')
-                    ->orderBy('timestamp')
-                    ->get();
-            } else {
-                throw $e;
-            }
-        }
+                ->get(),
+            $table
+        );
 
         // Group rows by server, parse timestamps with UTC fix (same as ServerController)
         $seriesMap = [];
         foreach ($rows as $row) {
-            $timeString = substr($row->timestamp, 0, 19);
-            $epochMs    = \Illuminate\Support\Carbon::parse($timeString, 'UTC')->getPreciseTimestamp(3);
+            $epochMs = $this->parseAggTimestamp($row->timestamp);
             $seriesMap[$row->server_id][] = [
                 'timestamp' => $epochMs,
                 'value'     => round((float) $row->{$metric}, 1),
@@ -319,10 +419,39 @@ class DashboardController extends Controller
         return [
             'unit'       => $unit,
             'metric'     => $metric,
+            'scope'      => $scope,
             'series'     => $series,
             'top'        => $top,
             'nextCursor' => $hasOlderData ? $startTime->getPreciseTimestamp(3) : null,
         ];
+    }
+
+    /**
+     * Convert an agg-table timestamptz string (e.g. "2026-08-05 19:34:00+08")
+     * to epoch milliseconds, honoring the embedded offset. The previous
+     * substr(…, 0, 19) + parse('UTC') dropped the offset, shifting the
+     * instant by the DB session timezone (8h ahead here).
+     */
+    private function parseAggTimestamp(string $raw): int
+    {
+        return \Illuminate\Support\Carbon::parse($raw)->getPreciseTimestamp(3);
+    }
+
+    /**
+     * Run an agg-table query, refreshing the materialized view once if it has
+     * not been populated yet.
+     */
+    private function aggQueryWithRefresh(\Closure $run, string $table)
+    {
+        try {
+            return $run();
+        } catch (\Throwable $e) {
+            if (str_contains($e->getMessage(), 'has not been populated')) {
+                DB::statement("REFRESH MATERIALIZED VIEW {$table}");
+                return $run();
+            }
+            throw $e;
+        }
     }
 
     /** @return ActionItemData[] */
