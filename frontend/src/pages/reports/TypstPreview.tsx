@@ -24,7 +24,13 @@ interface CachedPdf {
     generatedAt: string | null;
 }
 
+interface PdfResult {
+    blob: Blob;
+    generatedAt: string | null;
+}
+
 const pdfCache = new Map<string, CachedPdf>();
+const inflight = new Map<string, Promise<PdfResult>>();
 
 function buildCacheKey({
     template,
@@ -80,37 +86,49 @@ export function TypstPreview({
             }
         }
 
-        async function compile() {
-            setLoading(true);
-            setError(null);
+        let pending = inflight.get(cacheKey);
+        if (!pending) {
+            // Build the payload — backend fetches data when uuid/uuids given
+            const payload: Record<string, unknown> = { template, paper, orientation };
 
-            try {
-                // Build the payload — backend fetches data when uuid/uuids given
-                const payload: Record<string, unknown> = { template, paper, orientation };
+            if (uuids && uuids.length > 0) {
+                payload.uuids = uuids;
+                payload.hours = hours;
+            } else if (uuid) {
+                payload.uuid = uuid;
+                payload.hours = hours;
+            } else if (data) {
+                payload.data = data;
+            } else {
+                // general report — no uuid needed, backend fetches all
+                payload.data = {};
+            }
 
-                if (uuids && uuids.length > 0) {
-                    payload.uuids = uuids;
-                    payload.hours = hours;
-                } else if (uuid) {
-                    payload.uuid = uuid;
-                    payload.hours = hours;
-                } else if (data) {
-                    payload.data = data;
-                } else {
-                    // general report — no uuid needed, backend fetches all
-                    payload.data = {};
-                }
+            if (forced) {
+                payload.refresh = true;
+            }
 
-                if (forced) {
-                    payload.refresh = true;
-                }
+            pending = jwtClient
+                .post("/v1/reports/compile", payload, { responseType: "blob" })
+                .then((response) => ({
+                    blob: new Blob([response.data], { type: "application/pdf" }),
+                    generatedAt:
+                        (response.headers["x-generated-at"] as string | undefined) ?? null,
+                }));
 
-                const response = await jwtClient.post(
-                    "/v1/reports/compile",
-                    payload,
-                    { responseType: "blob" },
-                );
+            inflight.set(cacheKey, pending);
+            pending
+                .finally(() => {
+                    inflight.delete(cacheKey);
+                })
+                .catch(() => {});
+        }
 
+        setLoading(true);
+        setError(null);
+
+        pending
+            .then(({ blob, generatedAt }) => {
                 if (cancelled) return;
 
                 // Revoke the previously displayed blob URL
@@ -118,20 +136,15 @@ export function TypstPreview({
                     URL.revokeObjectURL(prevUrlRef.current);
                 }
 
-                const blob = new Blob([response.data], {
-                    type: "application/pdf",
-                });
                 const url = URL.createObjectURL(blob);
                 prevUrlRef.current = url;
 
-                const generated =
-                    (response.headers["x-generated-at"] as string | undefined) ?? null;
-
-                pdfCache.set(cacheKey, { url, generatedAt: generated });
+                pdfCache.set(cacheKey, { url, generatedAt });
                 setPdfUrl(url);
-                setGeneratedAt(generated);
+                setGeneratedAt(generatedAt);
                 setLoading(false);
-            } catch (err: unknown) {
+            })
+            .catch((err: unknown) => {
                 if (cancelled) return;
 
                 let message = "Failed to compile report";
@@ -148,10 +161,7 @@ export function TypstPreview({
                 }
                 setError(message);
                 setLoading(false);
-            }
-        }
-
-        compile();
+            });
 
         return () => {
             cancelled = true;
