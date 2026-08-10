@@ -131,10 +131,13 @@ export default function ServerReportPage({ uuidOverride }: { uuidOverride?: stri
                         <tr>
                             <td className="p-3 bg-gray-50 font-medium text-gray-600 w-1/3" style={{ border: "1px solid #d1d5db" }}>Uptime %</td>
                             <td className="p-3 w-1/3" style={{ border: "1px solid #d1d5db" }}>{report.uptime.uptime_percentage}%</td>
-                            <td className="p-3 bg-gray-50 font-medium text-gray-600 w-1/3" style={{ border: "1px solid #d1d5db" }}>Outages</td>
+                            <td className="p-3 bg-gray-50 font-medium text-gray-600 w-1/3" style={{ border: "1px solid #d1d5db" }}>Uptime (hrs)</td>
+                            <td className="p-3 w-1/3" style={{ border: "1px solid #d1d5db" }}>
+                                {report.uptime.uptime_hours}hrs/{report.uptime.range_hours}hrs
+                            </td>
                         </tr>
                         <tr>
-                            <td className="p-3 bg-gray-50 font-medium text-gray-600" style={{ border: "1px solid #d1d5db" }}>Last Downtime</td>
+                            <td className="p-3 bg-gray-50 font-medium text-gray-600 w-1/3" style={{ border: "1px solid #d1d5db" }}>Outages</td>
                             <td className="p-3" colSpan={3} style={{ border: "1px solid #d1d5db" }}>
                                 {report.uptime.last_downtime
                                     ? new Date(report.uptime.last_downtime).toLocaleString()

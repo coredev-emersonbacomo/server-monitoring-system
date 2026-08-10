@@ -99,6 +99,8 @@ class ServerReportController extends Controller
             'uptime_percentage' => max(0, min(100, $uptimePercentage)),
             'outage_count' => $outageCount,
             'last_downtime' => $lastDowntime,
+            'uptime_hours' => round(($totalMinutes - $outageMinutes) / 60, 2),
+            'range_hours' => $rangeHours,
         ]);
     }
 }

@@ -2,6 +2,9 @@
 #import "@preview/lilaq:0.6.0" as lq
 #let d = json("input.json")
 
+#set text(font: theme-font, size: 10pt, fill: text-dark)
+#set par(justify: false)
+
 #set page(
   paper: d.at("paper", default: "a4"),
   flipped: d.at("orientation", default: "portrait") == "landscape",
@@ -100,17 +103,25 @@
       stroke: 0.3pt + border-clr,
       inset: (x: 10pt, y: 8pt),
       align: (left + horizon, left + horizon),
-      table.cell(fill: bg-light)[
-        #set text(size: 8.5pt, weight: "bold", fill: text-dark)
-        Uptime Percentage
-      ],
-      table.cell()[
-        #progress-bar(uptime.uptime_percentage)
-      ],
-      table.cell(fill: bg-light)[
-        #set text(size: 8.5pt, weight: "bold", fill: text-dark)
-        Outages
-      ],
+    table.cell(fill: bg-light)[
+      #set text(size: 8.5pt, weight: "bold", fill: text-dark)
+      Uptime
+    ],
+    table.cell()[
+      #progress-bar(uptime.uptime_percentage)
+    ],
+    table.cell(fill: bg-light)[
+      #set text(size: 8.5pt, weight: "bold", fill: text-dark)
+      Uptime (hrs)
+    ],
+    table.cell()[
+      #set text(size: 9pt, fill: text-dark)
+      #uptime-text(uptime.uptime_hours, uptime.range_hours)
+    ],
+    table.cell(fill: bg-light)[
+      #set text(size: 8.5pt, weight: "bold", fill: text-dark)
+      Outages
+    ],
       table.cell()[
         #set text(size: 9pt, fill: text-dark)
         #str(uptime.at("outage_count", default: 0))

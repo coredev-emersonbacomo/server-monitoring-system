@@ -21,5 +21,7 @@ class ClientServerSummaryData extends Data
         public ?string $last_seen,
         public ?int $subscription_fee,
         public float $uptime_percentage,
+        public float $uptime_hours,
+        public int $range_hours,
     ) {}
 }

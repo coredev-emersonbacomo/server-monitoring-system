@@ -14,5 +14,7 @@ class GeneralServerSummaryData extends Data
         public float $cpu_usage,
         public float $memory_usage,
         public float $uptime_percentage,
+        public float $uptime_hours,
+        public int $range_hours,
     ) {}
 }

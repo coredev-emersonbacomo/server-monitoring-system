@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useMatch, Outlet } from "react-router-dom";
-import { FileDown, FileBarChart } from "lucide-react";
+import { FileBarChart, RefreshCw } from "lucide-react";
 import IndexHeader from "@/components/IndexHeader";
 import { EntityPickerModal } from "../pages/reports/EntityPickerModal";
 import { FilterDropdown } from "../pages/reports/FilterDropdown";
@@ -12,6 +12,9 @@ export interface ReportOutletContext {
     view: ReportView;
     filters: string[];
     orientation: ReportOrientation;
+    /** Increment to force a fresh compile of the currently visible report. */
+    refreshToken: number;
+    requestRefresh: () => void;
 }
 
 const VIEWS: { key: ReportView; label: string }[] = [
@@ -33,6 +36,7 @@ export function ReportsLayout() {
     const [pickerOpen, setPickerOpen] = useState(false);
     const [filters, setFilters] = useState<string[]>([]);
     const [orientation, setOrientation] = useState<ReportOrientation>("portrait");
+    const [refreshToken, setRefreshToken] = useState(0);
     const navigate = useNavigate();
 
     const detailMatch = useMatch("/report/:type/:uuid");
@@ -55,11 +59,6 @@ export function ReportsLayout() {
         } else {
             navigate(`/report/clients?ids=${idsParam}`);
         }
-    };
-
-    const handleGenerateReport = async () => {
-        // TODO: Implement global report generation via Typst API
-        // For now, this is a placeholder
     };
 
     return (
@@ -110,6 +109,15 @@ export function ReportsLayout() {
                     onChange={setFilters}
                 />
 
+                <button
+                    onClick={() => setRefreshToken((t) => t + 1)}
+                    title="Regenerate this report"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border border-border bg-background text-foreground hover:bg-sidebar-hover"
+                >
+                    <RefreshCw className="w-4 h-4" />
+                    <span className="hidden sm:inline">Refresh</span>
+                </button>
+
                 <select
                     value={orientation}
                     onChange={(e) => setOrientation(e.target.value as ReportOrientation)}
@@ -120,7 +128,7 @@ export function ReportsLayout() {
                 </select>
             </div>
 
-            <Outlet context={{ view, filters, orientation }} />
+            <Outlet context={{ view, filters, orientation, refreshToken, requestRefresh: () => setRefreshToken((t) => t + 1) }} />
 
             {pickerOpen && (
                 <EntityPickerModal

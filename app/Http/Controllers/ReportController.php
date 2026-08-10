@@ -47,12 +47,14 @@ class ReportController extends Controller
             'paper'       => 'nullable|in:a4,letter,legal',
             'orientation' => 'nullable|in:landscape,portrait',
             'hours'       => 'nullable|integer|min:1|max:168',
+            'refresh'     => 'nullable|boolean',
         ]);
 
         $template    = $request->input('template');
         $paper       = $request->input('paper', 'a4');
         $orientation = $request->input('orientation', 'portrait');
         $hours       = $request->integer('hours', 24);
+        $refresh     = $request->boolean('refresh');
 
         // Auto-fetch data from DB when uuid / uuids are provided
         if ($request->filled('uuids') && is_array($request->input('uuids'))) {
@@ -85,21 +87,36 @@ class ReportController extends Controller
         $data['orientation']  = $orientation;
         $data['paper']        = $paper;
 
-        // Check cache
+        // Stable entity reference — determines which DB records feed the report
+        $entityRef = match (true) {
+            $template === 'general'   => 'general',
+            $request->filled('uuids') => ['uuids' => $this->sortUuids($request->input('uuids'))],
+            $request->filled('uuid')  => ['uuid' => $request->input('uuid')],
+            default                   => ['data' => sha1(json_encode($this->filterNulls($request->input('data', []))))],
+        };
+
+        // Daily cache — the same report requested any time today reuses today's file
         $cacheKey = sha1(json_encode([
             'template'    => $template,
-            'data'        => $data,
+            'entity'      => $entityRef,
             'paper'       => $paper,
             'orientation' => $orientation,
+            'hours'       => $hours,
+            'date'        => now()->toDateString(),
+            'tpl_hash'    => md5_file(resource_path("typst/{$template}-report.typ")),
+            'base_hash'   => md5_file(resource_path('typst/base.typ')),
         ]));
 
         $cacheDir   = storage_path("app/typst/cache/{$cacheKey}");
         $cachedPdf  = "{$cacheDir}/output.pdf";
 
-        if (File::exists($cachedPdf)) {
+        $this->pruneCache();
+
+        if (!$refresh && File::exists($cachedPdf)) {
             return response(file_get_contents($cachedPdf), 200, [
                 'Content-Type'        => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="report.pdf"',
+                'X-Generated-At'      => gmdate('c', filemtime($cachedPdf)),
             ]);
         }
 
@@ -161,6 +178,7 @@ class ReportController extends Controller
             return response($pdfBytes, 200, [
                 'Content-Type'        => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="report.pdf"',
+                'X-Generated-At'      => now()->toIso8601String(),
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -336,6 +354,8 @@ class ReportController extends Controller
             // Total the subscription fee
             $totalSubscriptionFee += $server->subscription_fee;
 
+            $uptime = $this->calcUptime($server, $updates, 24);
+
             $servers[] = new ClientServerSummaryData(
                 uuid: $server->uuid,
                 name: $server->name,
@@ -350,7 +370,9 @@ class ReportController extends Controller
                 disk_usage: $disk,
                 subscription_fee: $server->subscription_fee,
                 last_seen: $lastSeenAt?->toIso8601String(),
-                uptime_percentage: $this->calcUptime($server, $updates, 24)->uptime_percentage,
+                uptime_percentage: $uptime->uptime_percentage,
+                uptime_hours: $uptime->uptime_hours,
+                range_hours: $uptime->range_hours,
             );
         }
 
@@ -433,7 +455,7 @@ class ReportController extends Controller
             }
 
             // Uses preloaded relation directly without firing new database queries
-            $uptimePct = $this->calcUptime($server, $server->updates, 24)->uptime_percentage;
+            $uptime = $this->calcUptime($server, $server->updates, 24);
 
             $serverSummaries[] = new GeneralServerSummaryData(
                 uuid: $server->uuid,
@@ -442,7 +464,9 @@ class ReportController extends Controller
                 status: $isOnline ? 'online' : 'offline',
                 cpu_usage: $cpu ?? 0,
                 memory_usage: $mem ?? 0,
-                uptime_percentage: $uptimePct,
+                uptime_percentage: $uptime->uptime_percentage,
+                uptime_hours: $uptime->uptime_hours,
+                range_hours: $uptime->range_hours,
             );
         }
 
@@ -566,6 +590,8 @@ class ReportController extends Controller
                 'uptime_percentage' => 0.0,
                 'outage_count'      => 1,
                 'last_downtime'     => $rangeStart->toIso8601String(),
+                'uptime_hours'      => 0.0,
+                'range_hours'       => $rangeHours,
             ]);
         }
 
@@ -621,6 +647,8 @@ class ReportController extends Controller
             'uptime_percentage' => max(0, min(100, $uptimePercentage)),
             'outage_count'      => $outageCount,
             'last_downtime'     => $lastDowntime,
+            'uptime_hours'      => round(($totalMinutes - $effectiveOutageMinutes) / 60, 2),
+            'range_hours'       => $rangeHours,
         ]);
     }
 
@@ -644,5 +672,33 @@ class ReportController extends Controller
             }
         }
         return $result;
+    }
+
+    /**
+     * Sort UUIDs so the same set in any order yields the same cache key.
+     */
+    private function sortUuids(array $uuids): array
+    {
+        $uuids = array_values(array_filter(array_map('trim', $uuids)));
+        sort($uuids);
+        return $uuids;
+    }
+
+    /**
+     * Delete cached report directories older than one day.
+     */
+    private function pruneCache(int $maxAgeHours = 24): void
+    {
+        $root = storage_path('app/typst/cache');
+        if (!File::isDirectory($root)) {
+            return;
+        }
+
+        $cutoff = now()->subHours($maxAgeHours)->timestamp;
+        foreach (File::directories($root) as $dir) {
+            if (File::lastModified($dir) < $cutoff) {
+                File::deleteDirectory($dir);
+            }
+        }
     }
 }

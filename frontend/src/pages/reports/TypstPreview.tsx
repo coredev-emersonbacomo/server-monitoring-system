@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import jwtClient from "@/api/jwtClient";
-import type { ReportOrientation } from "@/layouts/ReportsLayout";
+import { useOutletContext } from "react-router-dom";
+import type { ReportOrientation, ReportOutletContext } from "@/layouts/ReportsLayout";
 
 type TemplateType = "client" | "server" | "general" | "multi-client" | "multi-server";
 
@@ -18,6 +19,32 @@ interface TypstPreviewProps {
     hours?: number;
 }
 
+interface CachedPdf {
+    url: string;
+    generatedAt: string | null;
+}
+
+const pdfCache = new Map<string, CachedPdf>();
+
+function buildCacheKey({
+    template,
+    data,
+    uuid,
+    uuids,
+    paper,
+    orientation,
+    hours,
+}: TypstPreviewProps): string {
+    const ref = uuids?.length
+        ? `uuids:${[...uuids].sort().join(",")}`
+        : uuid
+          ? `uuid:${uuid}`
+          : data
+            ? `data:${JSON.stringify(data)}`
+            : "general";
+    return `${template}|${ref}|${paper}|${orientation}|${hours}`;
+}
+
 export function TypstPreview({
     template,
     data,
@@ -27,13 +54,31 @@ export function TypstPreview({
     orientation = "portrait",
     hours = 24,
 }: TypstPreviewProps) {
+    const { refreshToken } = useOutletContext<ReportOutletContext>();
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+    const [generatedAt, setGeneratedAt] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const prevUrlRef = useRef<string | null>(null);
+    const lastTokenRef = useRef(refreshToken);
+
+    const cacheKey = buildCacheKey({ template, data, uuid, uuids, paper, orientation, hours });
 
     useEffect(() => {
         let cancelled = false;
+        const forced = refreshToken !== lastTokenRef.current;
+        lastTokenRef.current = refreshToken;
+
+        if (!forced) {
+            const hit = pdfCache.get(cacheKey);
+            if (hit) {
+                setPdfUrl(hit.url);
+                setGeneratedAt(hit.generatedAt);
+                setLoading(false);
+                setError(null);
+                return;
+            }
+        }
 
         async function compile() {
             setLoading(true);
@@ -56,6 +101,10 @@ export function TypstPreview({
                     payload.data = {};
                 }
 
+                if (forced) {
+                    payload.refresh = true;
+                }
+
                 const response = await jwtClient.post(
                     "/v1/reports/compile",
                     payload,
@@ -64,7 +113,7 @@ export function TypstPreview({
 
                 if (cancelled) return;
 
-                // Revoke previous blob URL
+                // Revoke the previously displayed blob URL
                 if (prevUrlRef.current) {
                     URL.revokeObjectURL(prevUrlRef.current);
                 }
@@ -74,7 +123,13 @@ export function TypstPreview({
                 });
                 const url = URL.createObjectURL(blob);
                 prevUrlRef.current = url;
+
+                const generated =
+                    (response.headers["x-generated-at"] as string | undefined) ?? null;
+
+                pdfCache.set(cacheKey, { url, generatedAt: generated });
                 setPdfUrl(url);
+                setGeneratedAt(generated);
                 setLoading(false);
             } catch (err: unknown) {
                 if (cancelled) return;
@@ -101,16 +156,7 @@ export function TypstPreview({
         return () => {
             cancelled = true;
         };
-    }, [template, data, uuid, uuids, paper, orientation, hours]);
-
-    // Revoke on unmount
-    useEffect(() => {
-        return () => {
-            if (prevUrlRef.current) {
-                URL.revokeObjectURL(prevUrlRef.current);
-            }
-        };
-    }, []);
+    }, [cacheKey, template, data, uuid, uuids, paper, orientation, hours, refreshToken]);
 
     if (loading) {
         return (
@@ -143,24 +189,35 @@ export function TypstPreview({
     }
 
     return (
-        <div className="w-full bg-muted/30 rounded-xl overflow-hidden">
-            <object
-                data={pdfUrl}
-                type="application/pdf"
-                className="w-full"
-                style={{ height: "80vh", minHeight: "600px" }}
-            >
-                <p className="text-sm text-muted-foreground p-8 text-center">
-                    Your browser doesn't support PDF viewing.
-                    <a
-                        href={pdfUrl}
-                        download
-                        className="text-primary underline ml-1"
-                    >
-                        Download the PDF
-                    </a>
+        <div className="w-full flex flex-col gap-2">
+            {generatedAt && (
+                <p className="text-xs text-muted-foreground text-right">
+                    Generated{" "}
+                    {new Date(generatedAt).toLocaleString([], {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                    })}
                 </p>
-            </object>
+            )}
+            <div className="w-full bg-muted/30 rounded-xl overflow-hidden">
+                <object
+                    data={pdfUrl}
+                    type="application/pdf"
+                    className="w-full"
+                    style={{ height: "80vh", minHeight: "600px" }}
+                >
+                    <p className="text-sm text-muted-foreground p-8 text-center">
+                        Your browser doesn't support PDF viewing.
+                        <a
+                            href={pdfUrl}
+                            download
+                            className="text-primary underline ml-1"
+                        >
+                            Download the PDF
+                        </a>
+                    </p>
+                </object>
+            </div>
         </div>
     );
 }

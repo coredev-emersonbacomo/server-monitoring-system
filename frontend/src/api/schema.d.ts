@@ -5899,6 +5899,7 @@ export interface operations {
                     orientation?: "landscape" | "portrait" | null;
                     hours?: number | null;
                     uuids?: string[] | null;
+                    refresh?: boolean | null;
                 };
             };
         };

@@ -1,5 +1,5 @@
-#set text(font: "Open Sans", size: 10pt, fill: rgb("#222222"))
-#set par(justify: false)
+// ── Theme ─────────────────────────────────────────────────────────────────────
+#let theme-font = "Times New Roman"
 
 // ── Colours ──────────────────────────────────────────────────────────────────
 #let brand       = rgb("#ff6c00")
@@ -74,31 +74,32 @@
   ]
 }
 
+#let uptime-text(hours, total) = {
+  let h = calc.round(hours, digits: 1)
+  let hs = if h == calc.round(h) { str(calc.round(h)) } else { str(h) }
+  let s = hs + "/" + str(calc.round(total))
+  text(size: 8pt, weight: "bold", fill: text-dark)[#s]
+}
+
 #let progress-bar(val, label: none) = {
   let bar-color = if val >= 98 { green }
     else if val >= 90 { amber }
     else { red }
   let w = val / 100
-  grid(
-    columns: (1fr, auto),
-    gutter: 6pt,
-    align: horizon,
-    block(
-      width: 100%,
-      height: 10pt,
-      fill: rgb("#e0e0e0"),
+  block(
+    width: 100%,
+    height: 10pt,
+    fill: rgb("#e0e0e0"),
+    radius: 2pt,
+  )[
+    #box(
+      width: w * 100%,
+      height: 100%,
+      fill: bar-color,
       radius: 2pt,
-    )[
-      #box(
-        width: w * 100%,
-        height: 100%,
-        fill: bar-color,
-        radius: 2pt,
-        inset: 0pt,
-      )
-    ],
-    text(size: 7.5pt, weight: "bold", fill: bar-color)[#str(calc.round(val, digits: 1))%],
-  )
+      inset: 0pt,
+    )
+  ]
   if label != none {
     v(0.15em)
     text(size: 7pt, fill: text-muted)[#label]
