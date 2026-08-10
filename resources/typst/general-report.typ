@@ -2,6 +2,9 @@
 
 #let d = json("input.json")
 
+#set text(font: theme-font, size: 10pt, fill: text-dark)
+#set par(justify: false)
+
 #set page(
   paper: d.at("paper", default: "a4"),
   flipped: d.at("orientation", default: "portrait") == "landscape",
@@ -76,7 +79,7 @@
           pct(s.cpu_usage),
           pct(s.memory_usage),
           status-pill(s.status),
-          pct(s.uptime_percentage),
+          uptime-text(s.uptime_hours, s.range_hours),
         )),
       )
     ]
@@ -120,15 +123,16 @@
   v(0.5em)
   section-title("SLA Uptime Dashboard")
   data-table(
-    headers: ("Server", "Uptime", "Status"),
+    headers: ("Server", "Uptime", "Uptime (hrs)", "Status"),
     rows: sla_servers.map(s => (
       s.name,
       progress-bar(s.uptime_percentage),
+      uptime-text(s.uptime_hours, s.range_hours),
       if s.uptime_percentage >= 98 { status-pill("healthy") } else if s.uptime_percentage >= 90 {
         status-pill("warning")
       } else { status-pill("critical") },
     )),
-    widths: (1.5fr, 3fr, 1fr),
+    widths: (1.5fr, 2.2fr, 0.5fr, 0.9fr),
   )
 }
 

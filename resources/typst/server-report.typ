@@ -3,6 +3,9 @@
 
 #let d = json("input.json")
 
+#set text(font: theme-font, size: 10pt, fill: text-dark)
+#set par(justify: false)
+
 #set page(
   paper: d.at("paper", default: "a4"),
   flipped: d.at("orientation", default: "portrait") == "landscape",
@@ -80,10 +83,18 @@
     align: (left + horizon, left + horizon),
     table.cell(fill: bg-light)[
       #set text(size: 8.5pt, weight: "bold", fill: text-dark)
-      Uptime Percentage
+      Uptime
     ],
     table.cell()[
       #progress-bar(uptime.uptime_percentage)
+    ],
+    table.cell(fill: bg-light)[
+      #set text(size: 8.5pt, weight: "bold", fill: text-dark)
+      Uptime (hrs)
+    ],
+    table.cell()[
+      #set text(size: 9pt, fill: text-dark)
+      #uptime-text(uptime.uptime_hours, uptime.range_hours)
     ],
     table.cell(fill: bg-light)[
       #set text(size: 8.5pt, weight: "bold", fill: text-dark)

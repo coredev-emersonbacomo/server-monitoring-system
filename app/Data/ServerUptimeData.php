@@ -11,6 +11,8 @@ class ServerUptimeData extends Data
         public float $uptime_percentage,
         public int $outage_count,
         public ?string $last_downtime,
+        public float $uptime_hours,
+        public int $range_hours,
     ) {
     }
 }

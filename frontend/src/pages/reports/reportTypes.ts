@@ -7,6 +7,8 @@ export interface ClientServerSummary {
     disk_usage: number | null;
     last_seen: string | null;
     uptime_percentage: number;
+    uptime_hours: number;
+    range_hours: number;
 }
 
 export interface ClientReport {
@@ -38,6 +40,8 @@ export interface ServerUptime {
     outage_count: number;
     last_downtime: string | null;
     uptime_seconds: number;
+    uptime_hours: number;
+    range_hours: number;
 }
 
 export interface ServerReport {
@@ -88,4 +92,6 @@ export interface GeneralServerSummary {
     cpu_usage: number;
     memory_usage: number;
     uptime_percentage: number;
+    uptime_hours: number;
+    range_hours: number;
 }

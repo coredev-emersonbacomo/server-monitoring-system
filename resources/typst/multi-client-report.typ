@@ -1,6 +1,9 @@
 #import "base.typ": *
 #let d = json("input.json")
 
+#set text(font: theme-font, size: 10pt, fill: text-dark)
+#set par(justify: false)
+
 #set page(
   paper: d.at("paper", default: "a4"),
   flipped: d.at("orientation", default: "portrait") == "landscape",
@@ -99,12 +102,13 @@
     v(0.5em)
     section-title("SLA Uptime")
     data-table(
-      headers: ("Server", "Uptime %"),
+      headers: ("Server", "Uptime", "Uptime (hrs)"),
       rows: servers.map(s => (
         s.name,
         progress-bar(s.at("uptime_percentage", default: 0)),
+        uptime-text(s.at("uptime_hours", default: 0), s.at("range_hours", default: 24)),
       )),
-      widths: (1.5fr, 4fr),
+      widths: (1.2fr, 3fr, 0.5fr),
     )
   }
 
