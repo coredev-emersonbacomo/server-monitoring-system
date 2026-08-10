@@ -170,7 +170,7 @@ class ReportController extends Controller
             }
 
             // Cache the result
-            File::makeDirectory($cacheDir, 0755, true);
+            File::makeDirectory($cacheDir, 0755, true, true);
             File::copy($outputPdf, $cachedPdf);
 
             $pdfBytes = file_get_contents($outputPdf);
