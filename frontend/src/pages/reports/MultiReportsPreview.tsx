@@ -5,7 +5,7 @@ import { TypstPreview } from "./TypstPreview";
 export default function MultiReportsPreview() {
     const [searchParams] = useSearchParams();
     const location = useLocation();
-    const { orientation } = useOutletContext<ReportOutletContext>();
+    const { orientation, hours } = useOutletContext<ReportOutletContext>();
     const isServer = location.pathname.includes("/report/servers");
 
     const ids = (searchParams.get("ids") ?? "")
@@ -29,6 +29,7 @@ export default function MultiReportsPreview() {
                 template={isServer ? "multi-server" : "multi-client"}
                 uuids={ids}
                 orientation={orientation}
+                hours={hours}
             />
         </div>
     );

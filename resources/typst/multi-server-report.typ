@@ -65,7 +65,7 @@
 
   if metrics.len() > 0 {
     v(0.5em)
-    section-title("Metrics Summary (Last 24 Hours)")
+    section-title("Metrics Summary (" + range-label(d.at("hours", default: 24)) + ")")
     let cpu_vals = metrics.map(m => m.cpu_usage)
     let mem_vals = metrics.map(m => m.memory_usage)
     let disk_vals = metrics.map(m => m.disk_usage)
@@ -141,31 +141,37 @@
   }
 
   if cpu_7d.len() > 0 {
+    let trend_x_raw = trend-x-components(item.at("trend_x", default: ()))
+    let trend_x = if trend_x_raw.len() == cpu_7d.len() {
+      trend_x_raw
+    } else {
+      range(cpu_7d.len())
+    }
+
     v(0.5em)
-    section-title("Metrics Trends (Last 7 Days)")
+    section-title("Metrics Trends (" + range-label(d.at("hours", default: 24)) + ")")
+
     lq.diagram(
       width: 100%,
       height: 160pt,
-      xlabel: [#text(size: 8pt)[Time (hours)]],
+      xaxis: (tick-args: (density: 40%), format-ticks: lq.format-ticks-datetime.with(format: trend-tick-format)),
+      xlabel: [#text(size: 8pt)[Time]],
       ylabel: [#text(size: 8pt)[Usage (%)]],
-      legend: (position: bottom),
+      legend: (position: (100% + .5em, 0%)),
       grid: stroke(0.2pt + border-clr),
       lq.plot(
-        range(cpu_7d.len()), cpu_7d,
+        trend_x, cpu_7d,
         stroke: brand,
-        smooth: true,
         label: [CPU],
       ),
       lq.plot(
-        range(memory_7d.len()), memory_7d,
+        trend_x, memory_7d,
         stroke: rgb("#1565c0"),
-        smooth: true,
         label: [Memory],
       ),
       lq.plot(
-        range(disk_7d.len()), disk_7d,
+        trend_x, disk_7d,
         stroke: green,
-        smooth: true,
         label: [Disk],
       ),
     )

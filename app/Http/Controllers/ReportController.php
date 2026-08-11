@@ -46,7 +46,7 @@ class ReportController extends Controller
             'uuids.*'     => 'string',
             'paper'       => 'nullable|in:a4,letter,legal',
             'orientation' => 'nullable|in:landscape,portrait',
-            'hours'       => 'nullable|integer|min:1|max:168',
+            'hours'       => 'nullable|integer|min:1|max:672',
             'refresh'     => 'nullable|boolean',
         ]);
 
@@ -86,6 +86,7 @@ class ReportController extends Controller
         $data['generated_at'] = now()->format('F j, Y H:i');
         $data['orientation']  = $orientation;
         $data['paper']        = $paper;
+        $data['hours']        = $hours;
 
         // Stable entity reference — determines which DB records feed the report
         $entityRef = match (true) {
@@ -243,21 +244,21 @@ class ReportController extends Controller
             'network_tbytes' => (int) ($u->network_tbytes ?? 0),
         ]));
 
-        // Fetch 7-day aggregated stats for CPU, Memory, Disk
+        // Fetch aggregated stats for the requested window
         try {
             $aggData = DB::table('server_updates_agg_hour')
-                ->selectRaw('cpu, memory, disk')
+                ->selectRaw('cpu, memory, disk, timestamp')
                 ->where('server_id', $server->id)
-                ->where('timestamp', '>=', now()->subDays(7))
+                ->where('timestamp', '>=', now()->subHours($hours))
                 ->orderBy('timestamp')
                 ->get();
         } catch (\Throwable $e) {
             if (str_contains($e->getMessage(), 'has not been populated')) {
                 DB::statement("REFRESH MATERIALIZED VIEW server_updates_agg_hour");
                 $aggData = DB::table('server_updates_agg_hour')
-                    ->selectRaw('cpu, memory, disk')
+                    ->selectRaw('cpu, memory, disk, timestamp')
                     ->where('server_id', $server->id)
-                    ->where('timestamp', '>=', now()->subDays(7))
+                    ->where('timestamp', '>=', now()->subHours($hours))
                     ->orderBy('timestamp')
                     ->get();
             } else {
@@ -268,11 +269,14 @@ class ReportController extends Controller
         $cpu7d = [];
         $memory7d = [];
         $disk7d = [];
+        $trendX = [];
 
         foreach ($aggData as $row) {
             $cpu7d[] = round((float) $row->cpu, 1);
             $memory7d[] = round((float) $row->memory, 1);
             $disk7d[] = round((float) $row->disk, 1);
+            $dt = \Carbon\Carbon::parse((string) $row->timestamp);
+            $trendX[] = [$dt->year, $dt->month, $dt->day, $dt->hour, $dt->minute, (int) $dt->second];
         }
 
         return ServerReportData::from([
@@ -293,6 +297,7 @@ class ReportController extends Controller
             'cpu_7d'           => $cpu7d,
             'memory_7d'        => $memory7d,
             'disk_7d'          => $disk7d,
+            'trend_x'          => $trendX,
         ]);
     }
 

@@ -41,6 +41,9 @@ class ServerReportData extends Data
         public array $memory_7d = [],
         /** @var float[] */
         public array $disk_7d = [],
+
+        /** @var float[] elapsed hours per trend row (oldest first) */
+        public array $trend_x = [],
     ) {
     }
 }
