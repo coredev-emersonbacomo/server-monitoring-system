@@ -18,6 +18,7 @@ class MetricNode extends BaseNode
                 'network_usage' => 'Network Usage',
                 'server_status' => 'Server Status',
                 'heartbeat_age' => 'Heartbeat Age',
+                'ports_ping' => 'Ports Ping',
             ]],
         ];
     }
@@ -36,6 +37,14 @@ class MetricNode extends BaseNode
             return NodeResult::multiOutput([
                 'online' => $isOnline ? true : null,
                 'offline' => !$isOnline ? true : null,
+            ], $state);
+        }
+
+        if ($metricType === 'ports_ping') {
+            $isOffline = $value === 'offline' || $value === false || $value === 0 || $value === '0' || $value === null;
+            return NodeResult::multiOutput([
+                'timing' => $isOffline ? null : (float) $value,
+                'offline' => $isOffline ? true : null,
             ], $state);
         }
 

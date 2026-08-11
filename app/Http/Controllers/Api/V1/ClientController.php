@@ -133,10 +133,20 @@ class ClientController extends Controller
 
         if ($newScope !== 'global') {
             app(\App\NodeConfig\Services\NodeConfigService::class)
-                ->copyGlobalConfigIfNeeded('client', $client->id);
+                ->copyGlobalConfigIfNeeded('client', "client_{$client->uuid}");
         }
 
         $client->update(['alert_scope' => $newScope]);
+
+        $store = \Illuminate\Support\Facades\Cache::store(config('cache.default', 'file'));
+        $store->forget('node_config:scope:client:' . $client->uuid);
+
+        $affectedServers = Server::where('client_id', $client->id)->get(['id', 'uuid']);
+        foreach ($affectedServers as $server) {
+            $store->forget('node_config:scope:server:' . $server->uuid);
+            \App\NodeConfig\Engine\NodeTaskScheduler::cancelByServer($server->id);
+            \App\NodeConfig\Models\NodeConfigState::where('server_id', $server->id)->delete();
+        }
     }
 
     public function update(UpdateClientData $data, string $clientUuid): ClientData

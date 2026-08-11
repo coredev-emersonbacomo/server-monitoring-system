@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
 
 class PasswordResetController extends Controller
 {
@@ -47,7 +48,7 @@ class PasswordResetController extends Controller
         $code = (string) random_int(100000, 999999);
         $codeHash = hash('sha256', $code);
 
-        \DB::table('password_reset_tokens')->updateOrInsert(
+        DB::table('password_reset_tokens')->updateOrInsert(
             ['email' => $user->email],
             [
                 'code' => $codeHash,
@@ -103,7 +104,7 @@ class PasswordResetController extends Controller
             ]);
         }
 
-        $record = \DB::table('password_reset_tokens')
+        $record = DB::table('password_reset_tokens')
             ->where('email', $user->email)
             ->where('code', $codeHash)
             ->where('code_expires_at', '>', now())
@@ -126,7 +127,7 @@ class PasswordResetController extends Controller
         $resetToken = Str::random(64);
         $resetTokenHash = hash('sha256', $resetToken);
 
-        \DB::table('password_reset_tokens')
+        DB::table('password_reset_tokens')
             ->where('email', $user->email)
             ->update([
                 'reset_token' => $resetTokenHash,
@@ -156,7 +157,7 @@ class PasswordResetController extends Controller
         $resetToken = $request->input('reset_token');
         $resetTokenHash = hash('sha256', $resetToken);
 
-        $record = \DB::table('password_reset_tokens')
+        $record = DB::table('password_reset_tokens')
             ->where('reset_token', $resetTokenHash)
             ->where('reset_token_expires_at', '>', now())
             ->first();
@@ -187,7 +188,7 @@ class PasswordResetController extends Controller
             'password' => Hash::make($request->input('password')),
         ]);
 
-        \DB::table('password_reset_tokens')
+        DB::table('password_reset_tokens')
             ->where('email', $record->email)
             ->delete();
 

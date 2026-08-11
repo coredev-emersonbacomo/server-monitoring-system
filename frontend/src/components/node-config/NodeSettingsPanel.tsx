@@ -503,20 +503,45 @@ function SettingField({ def, value, onChange }: SettingFieldProps) {
                     )}
                 </label>
                  <Select value={String(value)} onValueChange={(v) => onChange(v)}>
-                     <SelectTrigger
-                         id={id}
-                         className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-border/60 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                     >
-                         <SelectValue />
-                     </SelectTrigger>
-                     <SelectContent>
-                         {Object.entries(def.options).map(([optValue, optLabel]) => (
-                             <SelectItem key={optValue} value={optValue}>
-                                 {optLabel}
-                             </SelectItem>
-                         ))}
-                     </SelectContent>
-                 </Select>
+                      <SelectTrigger
+                          id={id}
+                          className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-border/60 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      >
+                          <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                          {Object.entries(def.options).map(([optValue, optLabel]) => (
+                              <SelectItem key={optValue} value={optValue}>
+                                  {optLabel}
+                              </SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+             </div>
+        );
+    }
+
+    const placeholder = def.placeholder ?? def.description ?? "";
+
+    // Single-line text fields (e.g. template key/value)
+    if (def.type === "text") {
+        return (
+            <div className="flex flex-col gap-1.5">
+                <label
+                    htmlFor={id}
+                    className="text-xs font-medium text-muted-foreground"
+                >
+                    {def.label}
+                    {def.required && <span className="text-red-400 ml-0.5">*</span>}
+                </label>
+                <input
+                    id={id}
+                    type="text"
+                    value={String(value)}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    className="w-full text-xs font-mono text-foreground bg-background border border-input rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                />
             </div>
         );
     }
@@ -536,7 +561,7 @@ function SettingField({ def, value, onChange }: SettingFieldProps) {
                 onChange={(v) =>
                     onChange(def.type === "number" ? parseFloat(v) || 0 : v)
                 }
-                placeholder={def.description || ""}
+                placeholder={placeholder}
             />
         </div>
     );

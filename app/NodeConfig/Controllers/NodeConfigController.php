@@ -121,7 +121,9 @@ class NodeConfigController extends Controller
 
     public function resetState(int $id): JsonResponse
     {
+        $config = NodeConfig::findOrFail($id);
         NodeConfigState::where('node_config_id', $id)->delete();
+        NodeConfig::cancelTasksForScope($config);
         return response()->json(['message' => 'Node config state reset.']);
     }
 
@@ -152,12 +154,19 @@ class NodeConfigController extends Controller
                 ['slug' => $slug],
                 [
                     'scope_type' => $parsed['scope_type'],
-                    'scope_id' => $parsed['scope_id'] ? (int) $parsed['scope_id'] : null,
+                    'scope_id' => $parsed['scope_id'] ? (string) $parsed['scope_id'] : null,
                     'name' => '',
                     'config' => ['nodes' => [], 'edges' => []],
                     'created_by' => Auth::id(),
                 ],
             );
+        }
+
+        if (in_array($config->scope_type, ['client', 'server']) && empty($config->config['nodes'] ?? [])) {
+            $globalConfig = NodeConfig::where('scope_type', 'global')->first();
+            if ($globalConfig && !empty($globalConfig->config['nodes'] ?? [])) {
+                $config->update(['config' => $globalConfig->config]);
+            }
         }
 
         return response()->json($config);
@@ -239,9 +248,36 @@ class NodeConfigController extends Controller
             'monitor_interval_seconds' => 60,             // everyMinute() in console.php
         ];
 
-        // Push the full snapshot to the WebSocket channel so connecting clients
-        // receive it immediately without needing a second round-trip.
-        \App\Events\SystemTelemetryEvent::emit('state_snapshot', $snapshot);
+        // Broadcast a trimmed snapshot — omit heavy context blobs to stay under
+        // Pusher/Reverb's 10 KB per-message limit. The HTTP response keeps full data.
+        $broadcastStates = $states->map(fn($s) => [
+            'node_id'      => $s->node_id,
+            'server_id'    => $s->server_id,
+            'output_value' => $s->output_value,
+        ])->values();
+
+        $broadcastTasks = array_values(array_map(fn($t) => [
+            'task_id'    => $t['task_id'],
+            'node_id'    => $t['node_id'],
+            'server_id'  => $t['server_id'],
+            'fire_at'    => $t['fire_at'],
+            'delay_ms'   => $t['delay_ms'],
+            'live_stats' => $t['live_stats'] ?? null,
+            'context'    => [
+                'chain_steps_meta' => $t['context']['chain_steps_meta'] ?? null,
+                'repeat_count'     => $t['context']['repeat_count'] ?? 0,
+                'repeat_fire'      => $t['context']['repeat_fire'] ?? false,
+                'metric_type'      => $t['context']['metric_type'] ?? null,
+            ],
+        ], $activeTasks));
+
+        \App\Events\SystemTelemetryEvent::emit('state_snapshot', [
+            'server_now'               => $serverNow,
+            'active_tasks'             => $broadcastTasks,
+            'states'                   => $broadcastStates,
+            'last_monitor_sweep_at'    => $lastSweepAt,
+            'monitor_interval_seconds' => 60,
+        ]);
 
         return response()->json($snapshot);
     }

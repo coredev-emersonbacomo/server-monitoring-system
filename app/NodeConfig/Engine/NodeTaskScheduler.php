@@ -71,7 +71,21 @@ class NodeTaskScheduler
         ]);
 
         $enrichedTask = self::enrichTaskWithMetrics($task);
-        \App\Events\SystemTelemetryEvent::emit('task_scheduled', $enrichedTask);
+        $ctx = $enrichedTask['context'] ?? [];
+        \App\Events\SystemTelemetryEvent::emit('task_scheduled', [
+            'task_id'    => $enrichedTask['task_id'],
+            'node_id'    => $enrichedTask['node_id'],
+            'server_id'  => $enrichedTask['server_id'],
+            'fire_at'    => $enrichedTask['fire_at'],
+            'delay_ms'   => $enrichedTask['delay_ms'],
+            'live_stats' => $enrichedTask['live_stats'] ?? null,
+            'context'    => [
+                'chain_steps_meta' => $ctx['chain_steps_meta'] ?? null,
+                'repeat_count'     => $ctx['repeat_count'] ?? 0,
+                'repeat_fire'      => $ctx['repeat_fire'] ?? false,
+                'metric_type'      => $ctx['metric_type'] ?? null,
+            ],
+        ]);
 
         return $taskId;
     }
@@ -142,6 +156,7 @@ class NodeTaskScheduler
                 $store->forget(self::PREFIX . $taskId);
                 unset($index[$taskId]);
                 $cancelled++;
+                \App\Events\SystemTelemetryEvent::emit('task_cancelled', ['task_id' => $taskId]);
             }
         }
 
@@ -151,6 +166,29 @@ class NodeTaskScheduler
             Log::debug("[node-task-scheduler] Cancelled all tasks for server", [
                 'server_id' => $serverId,
                 'count'     => $cancelled,
+            ]);
+        }
+
+        return $cancelled;
+    }
+
+    public static function cancelAll(): int
+    {
+        $store = self::store();
+        $index = $store->get(self::INDEX_KEY) ?? [];
+        $cancelled = 0;
+
+        foreach (array_keys($index) as $taskId) {
+            $store->forget(self::PREFIX . $taskId);
+            $cancelled++;
+            \App\Events\SystemTelemetryEvent::emit('task_cancelled', ['task_id' => $taskId]);
+        }
+
+        $store->forget(self::INDEX_KEY);
+
+        if ($cancelled > 0) {
+            Log::debug("[node-task-scheduler] Cancelled all tasks", [
+                'count' => $cancelled,
             ]);
         }
 

@@ -70,6 +70,11 @@ class SendNotification implements ShouldQueue
                     : ($server?->agent?->last_seen_at
                         ? now()->diffForHumans($server->agent->last_seen_at, true) . ' ago'
                         : 'unknown'),
+                'port' => $context['port'] ?? null,
+                'portName' => $context['port_name'] ?? null,
+                'protocol' => $context['protocol'] ?? null,
+                'ping' => $context['ping'] ?? null,
+                'threshold' => $context['threshold'] ?? null,
                 'repeat' => [
                     'interval' => $context['repeat_interval'] ?? '',
                     'countOfMessage' => $repeatCount,

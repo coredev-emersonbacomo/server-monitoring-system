@@ -33,8 +33,8 @@ const STATUS_CONFIG = {
     pending_installation: {
         label: "Pending Installation",
         icon: AlertTriangle,
-        color: "text-amber-400",
-        bg: "bg-amber-500/10 border-amber-500/20",
+        color: "text-slate-400",
+        bg: "bg-slate-500/10 border-slate-500/20",
     },
     waiting_for_installation: {
         label: "Waiting for Installation",

@@ -13,6 +13,7 @@ use App\NodeConfig\NodeTypes\MetricNode;
 use App\NodeConfig\NodeTypes\NotificationNode;
 use App\NodeConfig\NodeTypes\RepeatNode;
 use App\NodeConfig\NodeTypes\SustainedNode;
+use App\NodeConfig\NodeTypes\TemplateNode;
 use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -33,7 +34,8 @@ class NodeConfigEngineHandleTest extends TestCase
         $registry->register(new CheckAfterNode);
         $registry->register(new SustainedNode);
         $registry->register(new RepeatNode);
-        $registry->register(new NotificationNode);
+         $registry->register(new NotificationNode);
+        $registry->register(new TemplateNode);
 
         $this->engine = new NodeConfigEngine($registry);
     }
@@ -171,6 +173,97 @@ class NodeConfigEngineHandleTest extends TestCase
         $this->assertTrue($resultOnline['success']);
         $this->assertCount(1, $resultOnline['actions']);
         $this->assertEquals('email_on', $resultOnline['actions'][0]['node_id']);
+    }
+
+    public function test_ports_ping_timing_and_offline_sockets(): void
+    {
+        $config = $this->createConfig([
+            'nodes' => [
+                ['id' => 'metric_ports',  'type' => 'metric',       'settings' => ['metric_type' => 'ports_ping']],
+                ['id' => 'compare_ping',  'type' => 'condition',    'settings' => ['operator' => 'greater_than', 'threshold' => 200]],
+                ['id' => 'sustained_ping','type' => 'sustained',    'settings' => ['duration' => '10000']],
+                ['id' => 'check_ping',    'type' => 'check_after',  'settings' => ['duration' => '10000']],
+                ['id' => 'notify_slow',   'type' => 'notification', 'settings' => ['channel' => 'discord', 'message' => 'Slow {runtime.port}']],
+                ['id' => 'notify_off',    'type' => 'notification', 'settings' => ['channel' => 'discord', 'message' => 'Unreachable {runtime.port}']],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'source' => 'metric_ports', 'target' => 'compare_ping', 'sourceHandle' => 'timing', 'targetHandle' => 'input-a'],
+                ['id' => 'e2', 'source' => 'compare_ping', 'target' => 'sustained_ping', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+                ['id' => 'e3', 'source' => 'sustained_ping', 'target' => 'notify_slow', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+                ['id' => 'e4', 'source' => 'metric_ports', 'target' => 'check_ping', 'sourceHandle' => 'offline', 'targetHandle' => 'input'],
+                ['id' => 'e5', 'source' => 'check_ping', 'target' => 'notify_off', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+            ],
+        ]);
+
+        $base = ['server_id' => 1, 'server_name' => 'TestServer', 'client_name' => 'TestClient', 'metric_type' => 'ports_ping', 'port' => 5432];
+
+        // High ping time → timing socket arms the sustain timer (no immediate action)
+        $slow = $this->engine->trigger($config, 'metric_ports', 500, $base);
+        $this->assertTrue($slow['success']);
+        $this->assertEmpty($slow['actions']);
+        $this->assertNotEmpty($slow['timers']);
+        $this->assertEquals('sustained_ping', $slow['timers'][0]['node_id']);
+
+        NodeConfigState::where('node_config_id', $config->id)->delete();
+
+        // Low ping time → timing condition fails, no timer
+        $fast = $this->engine->trigger($config, 'metric_ports', 50, $base);
+        $this->assertEmpty($fast['timers']);
+        $this->assertEmpty($fast['actions']);
+
+        NodeConfigState::where('node_config_id', $config->id)->delete();
+
+        // Unreachable → offline socket arms the check_after timer
+        $off = $this->engine->trigger($config, 'metric_ports', 'offline', $base);
+        $this->assertEmpty($off['actions']);
+        $this->assertNotEmpty($off['timers']);
+        $this->assertEquals('check_ping', $off['timers'][0]['node_id']);
+    }
+
+    public function test_port_ping_slow_threshold_is_resolved_via_template_override(): void
+    {
+        $config = $this->createConfig([
+            'nodes' => [
+                ['id' => 'metric_ports',  'type' => 'metric',       'settings' => ['metric_type' => 'ports_ping']],
+                ['id' => 'compare_ping',  'type' => 'condition',    'settings' => ['operator' => 'greater_than', 'threshold' => 200]],
+                ['id' => 'ping_slow_threshold', 'type' => 'template', 'settings' => ['template_id' => 'port_ping_slow_threshold_ms', 'value' => '200', 'data_type' => 'number']],
+                ['id' => 'sustained_ping', 'type' => 'sustained',  'settings' => ['duration' => '10000']],
+                ['id' => 'notify_slow',   'type' => 'notification', 'settings' => ['channel' => 'discord', 'message' => 'Slow {runtime.port}']],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'source' => 'metric_ports', 'target' => 'compare_ping', 'sourceHandle' => 'timing', 'targetHandle' => 'input-a'],
+                ['id' => 'e2', 'source' => 'ping_slow_threshold', 'target' => 'compare_ping', 'sourceHandle' => 'output', 'targetHandle' => 'input-b'],
+                ['id' => 'e3', 'source' => 'compare_ping', 'target' => 'sustained_ping', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+                ['id' => 'e4', 'source' => 'sustained_ping', 'target' => 'notify_slow', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+            ],
+        ]);
+
+        $base = ['server_id' => 1, 'server_name' => 'TestServer', 'client_name' => 'TestClient', 'metric_type' => 'ports_ping', 'port' => 5432];
+
+        // 500ms ping, alert-system override to 600ms → 500 < 600 → NOT slow (no timer).
+        $notSlow = $this->engine->trigger($config, 'metric_ports', 500, array_merge($base, ['port_ping_slow_threshold_ms' => 600]));
+        $this->assertEmpty($notSlow['timers'], '500ms below overridden 600ms threshold should not arm sustain');
+
+        NodeConfigState::where('node_config_id', $config->id)->delete();
+
+        // 500ms ping, alert-system override down to 100ms → 500 > 100 → slow.
+        $slow = $this->engine->trigger($config, 'metric_ports', 500, array_merge($base, ['port_ping_slow_threshold_ms' => 100]));
+        $this->assertTrue($slow['success']);
+        $this->assertNotEmpty($slow['timers'], '500ms above overridden 100ms threshold should arm sustain');
+        $this->assertEquals('sustained_ping', $slow['timers'][0]['node_id']);
+
+        NodeConfigState::where('node_config_id', $config->id)->delete();
+
+        // No alert-system injection → node default value (200) used; 150ms < 200 → NOT slow.
+        $stillSlow = $this->engine->trigger($config, 'metric_ports', 150, $base);
+        $this->assertEmpty($stillSlow['timers'], '150ms below node default 200ms should not arm sustain');
+
+        NodeConfigState::where('node_config_id', $config->id)->delete();
+
+        // No injection → default 200; 350ms > 200 → slow.
+        $defSlow = $this->engine->trigger($config, 'metric_ports', 350, $base);
+        $this->assertNotEmpty($defSlow['timers'], '350ms above node default 200ms should arm sustain');
+        $this->assertEquals('sustained_ping', $defSlow['timers'][0]['node_id']);
     }
 
     public function test_disk_metric_evaluates_condition_true_and_schedules_sustained(): void
@@ -311,5 +404,80 @@ class NodeConfigEngineHandleTest extends TestCase
             ->where('server_id', 1)
             ->first();
         $this->assertEquals(['value' => false], $compareStateAfter->output_value, 'CPU at 70 < 85 should be false');
+    }
+
+    public function test_template_input_node_overrides_condition_threshold(): void
+    {
+        $config = $this->createConfig([
+            'nodes' => [
+                ['id' => 'metric_cpu', 'type' => 'metric', 'settings' => ['metric_type' => 'cpu_usage']],
+                ['id' => 'threshold', 'type' => 'template', 'settings' => ['template_id' => 'cpu_warn_threshold', 'data_type' => 'number']],
+                ['id' => 'compare', 'type' => 'condition', 'settings' => ['operator' => 'greater_than', 'threshold' => 0]],
+                ['id' => 'notify', 'type' => 'notification', 'settings' => ['channel' => 'email', 'subject' => 'Alert', 'message' => 'CPU high']],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'source' => 'metric_cpu', 'target' => 'compare', 'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
+                ['id' => 'e2', 'source' => 'threshold', 'target' => 'compare', 'sourceHandle' => 'output', 'targetHandle' => 'input-b'],
+                ['id' => 'e3', 'source' => 'compare', 'target' => 'notify', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+            ],
+        ]);
+
+        // value below injected threshold (80) → compare false, no action
+        $below = $this->engine->trigger($config, 'metric_cpu', 50.0, [
+            'server_name' => 'TestServer', 'client_name' => 'TestClient',
+            'metric_type' => 'cpu_usage', 'cpu_warn_threshold' => 80,
+        ]);
+        $this->assertTrue($below['success']);
+        $this->assertEmpty($below['actions'], '50 < 80 should not fire');
+
+        NodeConfigState::where('node_config_id', $config->id)->delete();
+
+        // value above injected threshold (80) → compare true, action fires
+        $above = $this->engine->trigger($config, 'metric_cpu', 92.5, [
+            'server_name' => 'TestServer', 'client_name' => 'TestClient',
+            'metric_type' => 'cpu_usage', 'cpu_warn_threshold' => 80,
+        ]);
+        $this->assertTrue($above['success']);
+        $this->assertNotEmpty($above['actions'], '92.5 > 80 should fire notification');
+        $this->assertEquals('notify', $above['actions'][0]['node_id']);
+
+        $compareState = NodeConfigState::where('node_config_id', $config->id)
+            ->where('node_id', 'compare')
+            ->first();
+        $this->assertEquals(['value' => true], $compareState->output_value);
+    }
+
+    public function test_template_input_resolves_builtin_leaf_id(): void
+    {
+        $config = $this->createConfig([
+            'nodes' => [
+                ['id' => 'metric_ports', 'type' => 'metric', 'settings' => ['metric_type' => 'ports_ping']],
+                ['id' => 'ping_value', 'type' => 'template', 'settings' => ['template_id' => 'ping', 'data_type' => 'number']],
+                ['id' => 'compare', 'type' => 'condition', 'settings' => ['operator' => 'greater_than', 'threshold' => 0]],
+                ['id' => 'notify', 'type' => 'notification', 'settings' => ['channel' => 'email', 'subject' => 'Slow', 'message' => 'Slow']],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'source' => 'metric_ports', 'target' => 'compare', 'sourceHandle' => 'timing', 'targetHandle' => 'input-a'],
+                ['id' => 'e2', 'source' => 'ping_value', 'target' => 'compare', 'sourceHandle' => 'output', 'targetHandle' => 'input-b'],
+                ['id' => 'e3', 'source' => 'compare', 'target' => 'notify', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+            ],
+        ]);
+
+        // ping 500ms vs threshold of 150 from built-in leaf id 'ping'
+        $result = $this->engine->trigger($config, 'metric_ports', 500, [
+            'server_name' => 'TestServer',
+            'client_name' => 'TestClient',
+            'metric_type' => 'ports_ping',
+            'ping' => 150,
+        ]);
+
+        $this->assertTrue($result['success']);
+        $this->assertNotEmpty($result['actions'], '500 > 150 should fire notification');
+
+        $compareState = NodeConfigState::where('node_config_id', $config->id)
+            ->where('node_id', 'compare')
+            ->first();
+        $this->assertNotNull($compareState);
+        $this->assertEquals(['value' => true], $compareState->output_value, '500 > 150 from built-in leaf id ping');
     }
 }

@@ -22,6 +22,16 @@ class RefreshAggViews extends Command
     public function handle(): int
     {
         foreach (self::VIEWS as $view) {
+            $isContinuousAgg = !empty(DB::select(
+                "SELECT view_name FROM timescaledb_information.continuous_aggregates WHERE view_name = ?",
+                [$view],
+            ));
+
+            if ($isContinuousAgg) {
+                DB::statement("SELECT refresh_continuous_aggregate('{$view}', NULL, NULL)");
+                continue;
+            }
+
             $populated = DB::select(
                 "SELECT relispopulated FROM pg_class WHERE relname = ?",
                 [$view]
