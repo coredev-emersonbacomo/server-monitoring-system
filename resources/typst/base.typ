@@ -227,6 +227,19 @@
   hour: c.at(3), minute: c.at(4), second: c.at(5),
 ))
 
+#let trend-point-label = (dt, all) => {
+  let span = (all.last() - all.first()).hours()
+  if span >= 30 {
+    if all.first().month() != all.last().month() {
+      dt.display("[month repr:short] [day]")
+    } else {
+      dt.display("[weekday repr:short] [day]")
+    }
+  } else {
+    dt.display("[hour repr:12][period]")
+  }
+}
+
 #let page-header(title) = context {
   if counter(page).get().first() == 1 {
     set text(size: 8.5pt, fill: rgb("#555555"))
