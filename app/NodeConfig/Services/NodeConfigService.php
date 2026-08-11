@@ -7,15 +7,9 @@ use Illuminate\Support\Facades\Auth;
 
 class NodeConfigService
 {
-    public function copyGlobalConfigIfNeeded(string $scopeType, ?int $scopeId): void
+    public function copyGlobalConfigIfNeeded(string $scopeType, string $targetSlug): void
     {
-        $targetSlug = match ($scopeType) {
-            'client' => "client_{$scopeId}",
-            'server' => "server_{$scopeId}",
-            default => null,
-        };
-
-        if (!$targetSlug) {
+        if (!in_array($scopeType, ['client', 'server'])) {
             return;
         }
 
@@ -23,7 +17,11 @@ class NodeConfigService
             ['slug' => $targetSlug],
             [
                 'scope_type' => $scopeType,
-                'scope_id' => $scopeId,
+                'scope_id' => match ($scopeType) {
+                    'client' => substr($targetSlug, 7),
+                    'server' => substr($targetSlug, 7),
+                    default => null,
+                },
                 'name' => '',
                 'config' => ['nodes' => [], 'edges' => []],
                 'created_by' => Auth::id(),

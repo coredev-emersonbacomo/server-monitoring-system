@@ -132,8 +132,9 @@ export function NodeConfigEditor({
 }: NodeConfigEditorProps) {
     const { data: definitions = [], isLoading: defsLoading } = useNodeTypes();
     const shouldFetch = !externalConfig && !!configKey;
-    const { data: savedConfig, isLoading: configLoading } =
-        useConfigByKey(shouldFetch ? configKey : null);
+    const { data: savedConfig, isLoading: configLoading } = useConfigByKey(
+        shouldFetch ? configKey : null,
+    );
     const upsertMutation = useUpsertConfigByKey();
     const previewMutation = usePreviewConfig();
     const { theme } = useTheme();
@@ -166,8 +167,11 @@ export function NodeConfigEditor({
         [setSearchParams],
     );
     const isOutletMaximized =
-        !previewOnly && (alwaysMaximized || (controlledMaximized !== undefined && controlledMaximized));
-    const isMaximized = !previewOnly && (isOutletMaximized || internalMaximized);
+        !previewOnly &&
+        (alwaysMaximized ||
+            (controlledMaximized !== undefined && controlledMaximized));
+    const isMaximized =
+        !previewOnly && (isOutletMaximized || internalMaximized);
 
     useOutletFullScreen(isOutletMaximized);
 
@@ -204,7 +208,8 @@ export function NodeConfigEditor({
         [effectiveConfig, definitions],
     );
     const initialEdges = useMemo(
-        () => (effectiveConfig ? toFlowEdges(effectiveConfig.config.edges) : []),
+        () =>
+            effectiveConfig ? toFlowEdges(effectiveConfig.config.edges) : [],
         [effectiveConfig],
     );
 
@@ -222,7 +227,9 @@ export function NodeConfigEditor({
     });
 
     // ── Undo / Redo ────────────────────────────────────────────
-    const historyRef = useRef<{ nodes: Node[]; edges: Edge[]; label: string }[]>([]);
+    const historyRef = useRef<
+        { nodes: Node[]; edges: Edge[]; label: string }[]
+    >([]);
     const historyIndexRef = useRef(-1);
     const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const suppressHistoryRef = useRef(false);
@@ -239,60 +246,103 @@ export function NodeConfigEditor({
         setHistoryIdx(historyIndexRef.current);
     }, []);
 
-    const pushSnapshot = useCallback((label?: string) => {
-        if (suppressHistoryRef.current) return;
-        if (label) pendingLabelRef.current = label;
-        if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
-        pushTimerRef.current = setTimeout(() => {
-            const snapshot = {
-                nodes: JSON.parse(JSON.stringify(nodesRef.current)),
-                edges: JSON.parse(JSON.stringify(edgesRef.current)),
-                label: pendingLabelRef.current || "Edit",
-            };
-            pendingLabelRef.current = "";
-            const idx = historyIndexRef.current;
+    const pushSnapshot = useCallback(
+        (label?: string) => {
+            if (suppressHistoryRef.current) return;
+            if (label) pendingLabelRef.current = label;
+            if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+            pushTimerRef.current = setTimeout(() => {
+                const snapshot = {
+                    nodes: JSON.parse(JSON.stringify(nodesRef.current)),
+                    edges: JSON.parse(JSON.stringify(edgesRef.current)),
+                    label: pendingLabelRef.current || "Edit",
+                };
+                pendingLabelRef.current = "";
+                const idx = historyIndexRef.current;
+                const stack = historyRef.current;
+                const last = stack[idx];
+                if (
+                    last &&
+                    JSON.stringify(last.nodes) ===
+                        JSON.stringify(snapshot.nodes) &&
+                    JSON.stringify(last.edges) ===
+                        JSON.stringify(snapshot.edges)
+                )
+                    return;
+                historyRef.current = [...stack.slice(0, idx + 1), snapshot];
+                historyIndexRef.current = historyRef.current.length - 1;
+                syncHistoryButtons();
+            }, 300);
+        },
+        [syncHistoryButtons],
+    );
+
+    const jumpToHistory = useCallback(
+        (targetIdx: number) => {
             const stack = historyRef.current;
-            const last = stack[idx];
-            if (last && JSON.stringify(last.nodes) === JSON.stringify(snapshot.nodes) && JSON.stringify(last.edges) === JSON.stringify(snapshot.edges)) return;
-            historyRef.current = [...stack.slice(0, idx + 1), snapshot];
-            historyIndexRef.current = historyRef.current.length - 1;
+            if (
+                targetIdx < 0 ||
+                targetIdx >= stack.length ||
+                targetIdx === historyIndexRef.current
+            )
+                return;
+            suppressHistoryRef.current = true;
+            const target = stack[targetIdx];
+            setNodes(target.nodes);
+            setEdges(target.edges);
+            historyIndexRef.current = targetIdx;
             syncHistoryButtons();
-        }, 300);
-    }, [syncHistoryButtons]);
+            requestAnimationFrame(() => {
+                suppressHistoryRef.current = false;
+            });
+        },
+        [setNodes, setEdges, syncHistoryButtons],
+    );
 
-    const jumpToHistory = useCallback((targetIdx: number) => {
-        const stack = historyRef.current;
-        if (targetIdx < 0 || targetIdx >= stack.length || targetIdx === historyIndexRef.current) return;
-        suppressHistoryRef.current = true;
-        const target = stack[targetIdx];
-        setNodes(target.nodes);
-        setEdges(target.edges);
-        historyIndexRef.current = targetIdx;
-        syncHistoryButtons();
-        requestAnimationFrame(() => { suppressHistoryRef.current = false; });
-    }, [setNodes, setEdges, syncHistoryButtons]);
+    const undo = useCallback(
+        () => jumpToHistory(historyIndexRef.current - 1),
+        [jumpToHistory],
+    );
+    const redo = useCallback(
+        () => jumpToHistory(historyIndexRef.current + 1),
+        [jumpToHistory],
+    );
 
-    const undo = useCallback(() => jumpToHistory(historyIndexRef.current - 1), [jumpToHistory]);
-    const redo = useCallback(() => jumpToHistory(historyIndexRef.current + 1), [jumpToHistory]);
-
-    const handleNodesChange = useCallback((changes: Parameters<typeof onNodesChange>[0]) => {
-        const hasDragStart = changes.some((c) => c.type === 'position' && c.dragging);
-        const hasDragEnd = changes.some((c) => c.type === 'position' && !c.dragging && c.dragging !== undefined);
-        if (hasDragStart) draggingNodeRef.current = true;
-        onNodesChange(changes);
-        if (hasDragEnd && draggingNodeRef.current) {
-            draggingNodeRef.current = false;
-            pushSnapshot("Move node");
-        }
-    }, [onNodesChange, pushSnapshot]);
+    const handleNodesChange = useCallback(
+        (changes: Parameters<typeof onNodesChange>[0]) => {
+            const hasDragStart = changes.some(
+                (c) => c.type === "position" && c.dragging,
+            );
+            const hasDragEnd = changes.some(
+                (c) =>
+                    c.type === "position" &&
+                    !c.dragging &&
+                    c.dragging !== undefined,
+            );
+            if (hasDragStart) draggingNodeRef.current = true;
+            onNodesChange(changes);
+            if (hasDragEnd && draggingNodeRef.current) {
+                draggingNodeRef.current = false;
+                pushSnapshot("Move node");
+            }
+        },
+        [onNodesChange, pushSnapshot],
+    );
 
     const selectAll = useCallback(() => {
         setNodes((nds) => nds.map((n) => ({ ...n, selected: true })));
     }, [setNodes]);
 
     // ── Right-drag selection box ──────────────────────────────
-    const [selBox, setSelBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
-    const rightDragRef = useRef<{ startX: number; startY: number } | null>(null);
+    const [selBox, setSelBox] = useState<{
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+    } | null>(null);
+    const rightDragRef = useRef<{ startX: number; startY: number } | null>(
+        null,
+    );
     const containerRef = useRef<HTMLDivElement>(null);
 
     const onContextMenu = useCallback((e: React.MouseEvent) => {
@@ -328,14 +378,25 @@ export function NodeConfigEditor({
             const h = Math.abs(e.clientY - startY);
 
             if (w > 5 && h > 5 && reactFlowInstance.current) {
-                const topLeft = reactFlowInstance.current.screenToFlowPosition({ x: Math.min(startX, e.clientX), y: Math.min(startY, e.clientY) });
-                const bottomRight = reactFlowInstance.current.screenToFlowPosition({ x: Math.max(startX, e.clientX), y: Math.max(startY, e.clientY) });
+                const topLeft = reactFlowInstance.current.screenToFlowPosition({
+                    x: Math.min(startX, e.clientX),
+                    y: Math.min(startY, e.clientY),
+                });
+                const bottomRight =
+                    reactFlowInstance.current.screenToFlowPosition({
+                        x: Math.max(startX, e.clientX),
+                        y: Math.max(startY, e.clientY),
+                    });
 
                 setNodes((nds) =>
                     nds.map((n) => {
                         const nx = n.position.x;
                         const ny = n.position.y;
-                        const inBox = nx >= topLeft.x && nx <= bottomRight.x && ny >= topLeft.y && ny <= bottomRight.y;
+                        const inBox =
+                            nx >= topLeft.x &&
+                            nx <= bottomRight.x &&
+                            ny >= topLeft.y &&
+                            ny <= bottomRight.y;
                         return { ...n, selected: inBox };
                     }),
                 );
@@ -355,7 +416,10 @@ export function NodeConfigEditor({
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
             const tag = (e.target as HTMLElement).tagName;
-            const isInput = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement).isContentEditable;
+            const isInput =
+                tag === "INPUT" ||
+                tag === "TEXTAREA" ||
+                (e.target as HTMLElement).isContentEditable;
 
             const key = e.key.toLowerCase();
             if ((e.ctrlKey || e.metaKey) && key === "z" && !e.shiftKey) {
@@ -380,16 +444,31 @@ export function NodeConfigEditor({
             }
             if (e.key === "Delete" || e.key === "Backspace") {
                 if (isInput) return;
-                const selectedNodes = nodesRef.current.filter((n) => n.selected);
-                const selectedEdges = edgesRef.current.filter((e) => e.selected);
-                if (selectedNodes.length === 0 && selectedEdges.length === 0) return;
+                const selectedNodes = nodesRef.current.filter(
+                    (n) => n.selected,
+                );
+                const selectedEdges = edgesRef.current.filter(
+                    (e) => e.selected,
+                );
+                if (selectedNodes.length === 0 && selectedEdges.length === 0)
+                    return;
                 e.preventDefault();
                 const ids = new Set(selectedNodes.map((n) => n.id));
                 suppressHistoryRef.current = true;
                 setNodes((nds) => nds.filter((n) => !ids.has(n.id)));
-                setEdges((eds) => eds.filter((e) => !ids.has(e.source) && !ids.has(e.target) && !e.selected));
+                setEdges((eds) =>
+                    eds.filter(
+                        (e) =>
+                            !ids.has(e.source) &&
+                            !ids.has(e.target) &&
+                            !e.selected,
+                    ),
+                );
                 setSelectedNode(null);
-                requestAnimationFrame(() => { suppressHistoryRef.current = false; pushSnapshot("Delete"); });
+                requestAnimationFrame(() => {
+                    suppressHistoryRef.current = false;
+                    pushSnapshot("Delete");
+                });
             }
         };
         window.addEventListener("keydown", onKeyDown);
@@ -447,7 +526,9 @@ export function NodeConfigEditor({
                 nodes: flowNodes,
                 edges: flowEdges,
             });
-            historyRef.current = [{ nodes: flowNodes, edges: flowEdges, label: "Load config" }];
+            historyRef.current = [
+                { nodes: flowNodes, edges: flowEdges, label: "Load config" },
+            ];
             historyIndexRef.current = 0;
             syncHistoryButtons();
             setHydrated(true);
@@ -489,9 +570,12 @@ export function NodeConfigEditor({
             const targetHandle = edgeOrConnection.targetHandle;
             if (!source || !target || !sourceHandle || !targetHandle)
                 return false;
+            const sourceNode = nodesRef.current.find((n) => n.id === source);
+            const targetNode = nodesRef.current.find((n) => n.id === target);
             const sourceDef = getOutputType(
-                nodesRef.current.find((n) => n.id === source)?.type || "",
+                sourceNode?.type || "",
                 sourceHandle ?? undefined,
+                sourceNode?.data as Record<string, unknown> | undefined,
             );
             const targetDef = getInputType(
                 nodesRef.current.find((n) => n.id === target)?.type || "",
@@ -546,19 +630,21 @@ export function NodeConfigEditor({
 
     const CAPABILITY_SETTINGS: Record<string, Record<string, unknown>> = {
         repeat: {
-            repeat_interval: '10000',
+            repeat_interval: "10000",
             repeat_max_repeats: -1,
         },
     };
 
-    const TIME_NODE_TYPES = new Set(['sustained', 'check_after']);
+    const TIME_NODE_TYPES = new Set(["sustained", "check_after"]);
     const capHighlightRef = useRef<string | null>(null);
 
     const clearCapHighlight = useCallback(() => {
         if (capHighlightRef.current) {
-            const el = document.querySelector(`.react-flow__node[data-id="${capHighlightRef.current}"]`);
+            const el = document.querySelector(
+                `.react-flow__node[data-id="${capHighlightRef.current}"]`,
+            );
             if (el) {
-                el.removeAttribute('data-cap-target');
+                el.removeAttribute("data-cap-target");
             }
             capHighlightRef.current = null;
         }
@@ -568,11 +654,11 @@ export function NodeConfigEditor({
         (clientX: number, clientY: number): Node | null => {
             const elements = document.elementsFromPoint(clientX, clientY);
             for (const el of elements) {
-                const nodeEl = el.closest('.react-flow__node[data-id]');
+                const nodeEl = el.closest(".react-flow__node[data-id]");
                 if (!nodeEl) continue;
-                const nodeId = nodeEl.getAttribute('data-id');
+                const nodeId = nodeEl.getAttribute("data-id");
                 const node = nodes.find((n) => n.id === nodeId);
-                if (node && TIME_NODE_TYPES.has(node.type || '')) {
+                if (node && TIME_NODE_TYPES.has(node.type || "")) {
                     return node;
                 }
             }
@@ -584,8 +670,10 @@ export function NodeConfigEditor({
     const onDragOver = useCallback(
         (event: DragEvent<HTMLDivElement>) => {
             event.preventDefault();
-            const hasCap = event.dataTransfer.types.includes('application/capability');
-            event.dataTransfer.dropEffect = hasCap ? 'copy' : 'move';
+            const hasCap = event.dataTransfer.types.includes(
+                "application/capability",
+            );
+            event.dataTransfer.dropEffect = hasCap ? "copy" : "move";
 
             if (!hasCap) {
                 clearCapHighlight();
@@ -598,8 +686,10 @@ export function NodeConfigEditor({
             if (newId !== capHighlightRef.current) {
                 clearCapHighlight();
                 if (newId) {
-                    const el = document.querySelector(`.react-flow__node[data-id="${newId}"]`);
-                    el?.setAttribute('data-cap-target', 'true');
+                    const el = document.querySelector(
+                        `.react-flow__node[data-id="${newId}"]`,
+                    );
+                    el?.setAttribute("data-cap-target", "true");
                     capHighlightRef.current = newId;
                 }
             }
@@ -616,9 +706,13 @@ export function NodeConfigEditor({
         [clearCapHighlight],
     );
 
-    const CAPABILITY_EXISTS: Record<string, (data: Record<string, unknown>) => boolean> = {
+    const CAPABILITY_EXISTS: Record<
+        string,
+        (data: Record<string, unknown>) => boolean
+    > = {
         repeat: (data) => {
-            const ri = parseInt((data.repeat_interval as string) || '0', 10) || 0;
+            const ri =
+                parseInt((data.repeat_interval as string) || "0", 10) || 0;
             return ri > 0;
         },
     };
@@ -630,12 +724,15 @@ export function NodeConfigEditor({
                 return;
             }
             const node = nodes.find((n) => n.id === targetNodeId);
-            if (!node || !TIME_NODE_TYPES.has(node.type || '')) {
+            if (!node || !TIME_NODE_TYPES.has(node.type || "")) {
                 toast.error("Repeat can only be applied to time nodes");
                 return;
             }
             const existsCheck = CAPABILITY_EXISTS[capId];
-            if (existsCheck && existsCheck(node.data as Record<string, unknown>)) {
+            if (
+                existsCheck &&
+                existsCheck(node.data as Record<string, unknown>)
+            ) {
                 toast.error(`This node already has the ${capId} capability`);
                 return;
             }
@@ -652,7 +749,9 @@ export function NodeConfigEditor({
                     ? { ...prev, data: { ...prev.data, ...capSettings } }
                     : prev,
             );
-            toast.success(`Applied ${capId} to ${node.data.label || node.type}`);
+            toast.success(
+                `Applied ${capId} to ${node.data.label || node.type}`,
+            );
             pushSnapshot("Apply capability");
         },
         [nodes, setNodes, setSelectedNode, pushSnapshot],
@@ -688,7 +787,14 @@ export function NodeConfigEditor({
             setNodes((nds) => [...nds, newNode]);
             pushSnapshot("Add node");
         },
-        [definitions, setNodes, findNodeAtCursor, applyCapability, clearCapHighlight, pushSnapshot],
+        [
+            definitions,
+            setNodes,
+            findNodeAtCursor,
+            applyCapability,
+            clearCapHighlight,
+            pushSnapshot,
+        ],
     );
 
     const addNodeByClick = useCallback(
@@ -792,7 +898,9 @@ export function NodeConfigEditor({
                     stroke-width: 20 !important;
                 }
             `}</style>
-            <div className={`${previewOnly ? "h-full" : "flex-1"} flex flex-col min-h-0`}>
+            <div
+                className={`${previewOnly ? "h-full" : "flex-1"} flex flex-col min-h-0`}
+            >
                 <NodeConfigToolbar
                     name={displayName}
                     isSaving={upsertMutation.isPending}
@@ -902,8 +1010,14 @@ export function NodeConfigEditor({
                             <div
                                 className="absolute pointer-events-none border border-dashed border-primary/60 bg-primary/10 rounded-sm z-50"
                                 style={{
-                                    left: selBox.x - (containerRef.current?.getBoundingClientRect().left ?? 0),
-                                    top: selBox.y - (containerRef.current?.getBoundingClientRect().top ?? 0),
+                                    left:
+                                        selBox.x -
+                                        (containerRef.current?.getBoundingClientRect()
+                                            .left ?? 0),
+                                    top:
+                                        selBox.y -
+                                        (containerRef.current?.getBoundingClientRect()
+                                            .top ?? 0),
                                     width: selBox.w,
                                     height: selBox.h,
                                 }}
@@ -944,8 +1058,28 @@ export function NodeConfigEditor({
     if (!isOutletMaximized && !internalMaximized) {
         return (
             <NodeConfigGraphProvider isPreview={true}>
-                <div className={`relative w-full rounded-xl bg-background overflow-hidden ${previewOnly ? "h-full" : ""}`}>
-                    <div className={`w-full ${previewOnly ? "h-full" : "h-70"} preview-nodes-disabled`}>
+                <div
+                    className={`relative w-full rounded-xl bg-background overflow-hidden ${previewOnly ? "h-full" : ""}`}
+                >
+                    {!previewOnly && (
+                        <>
+                            <div className="absolute top-2 left-2 right-2 z-10 flex items-center justify-between gap-1">
+                                <span className="text-xs font-medium text-muted-foreground truncate max-w-45 px-2 py-1 bg-card/80 backdrop-blur rounded-md border border-border/40">
+                                    {displayName}
+                                </span>
+                                <button
+                                    onClick={() => setInternalMaximized(true)}
+                                    className="flex-shrink-0 shrink-0 p-1.5 rounded-md bg-card/80 backdrop-blur border border-border/40 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                                    title="Open full editor"
+                                >
+                                    <Maximize2 size={14} />
+                                </button>
+                            </div>
+                        </>
+                    )}
+                    <div
+                        className={`w-full ${previewOnly ? "h-full" : "h-70"} preview-nodes-disabled`}
+                    >
                         {isEmpty ? (
                             <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
                                 No alerts configured. Maximize to edit.
@@ -971,17 +1105,16 @@ export function NodeConfigEditor({
                                     size={1}
                                     className="bg-background"
                                 />
-                        </ReactFlow>
+                            </ReactFlow>
                         )}
                     </div>
-                    {!previewOnly && (
-                        <button
-                            onClick={() => setInternalMaximized(true)}
+                    {previewOnly && (
+                        <div
                             className="absolute top-2 right-2 p-1.5 rounded-md bg-card/80 backdrop-blur border border-border/40 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                             title="Open full editor"
                         >
                             <Maximize2 size={14} />
-                        </button>
+                        </div>
                     )}
                 </div>
             </NodeConfigGraphProvider>

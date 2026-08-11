@@ -94,12 +94,22 @@ class ServerController extends Controller
 
         if ($newScope !== 'global') {
             $scopeType = $newScope;
-            $scopeId = $scopeType === 'server' ? $serverModel->id : $serverModel->client_id;
+            $targetSlug = $scopeType === 'server'
+                ? "server_{$serverModel->uuid}"
+                : "client_{$serverModel->client->uuid}";
             app(\App\NodeConfig\Services\NodeConfigService::class)
-                ->copyGlobalConfigIfNeeded($scopeType, $scopeId);
+                ->copyGlobalConfigIfNeeded($scopeType, $targetSlug);
         }
 
         $serverModel->update(['alert_scope' => $newScope]);
+
+        $store = \Illuminate\Support\Facades\Cache::store(config('cache.default', 'file'));
+        $store->forget('node_config:scope:server:' . $serverModel->uuid);
+
+        // Cancel all in-flight tasks and purge stale state rows so the new config
+        // starts clean — old branch latches / action_dispatched flags must not bleed across.
+        \App\NodeConfig\Engine\NodeTaskScheduler::cancelByServer($serverModel->id);
+        \App\NodeConfig\Models\NodeConfigState::where('server_id', $serverModel->id)->delete();
     }
 
     public function update(UpdateServerData $data, string $clientUuid, string $serverUuid): ServerData

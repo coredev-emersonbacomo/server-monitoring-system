@@ -6,7 +6,7 @@ class ConditionNode extends BaseNode
 {
     public function getType(): string { return 'condition'; }
     public function getCategory(): string { return 'condition'; }
-    public function getLabel(): string { return 'Condition'; }
+    public function getLabel(): string { return 'Compare'; }
 
     public function getSettingDefinitions(): array
     {

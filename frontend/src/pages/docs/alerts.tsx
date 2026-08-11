@@ -103,7 +103,7 @@ const alertGraph: NodeConfigGraph = {
                 label: "Discord 30s",
                 channel: "discord",
                 message:
-                    ":rotating_light: [{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!\n\nEvent: <t:{runtime.eventTimestampUnix}:f>\nFirst Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>\n<if-repeat>\n<discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>\n</if-repeat>\n" +
+                    ":rotating_light: [{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!\n\nEvent: <t:{runtime.eventTimestampUnix}:f>\n<if-repeat>\nFirst Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>\n</if-repeat>\n<if-repeat>\n<discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>\n</if-repeat>\n" +
                         '<discord-button detailsUrl="{server.url}">View Server Details</discord-button>',
             },
         },
@@ -145,7 +145,7 @@ const alertGraph: NodeConfigGraph = {
                 label: "Discord Offline",
                 channel: "discord",
                 message:
-                    ":rotating_light: [{server.client.name}] {server.name} is still offline! (for {runtime.offlineDuration})\n\nEvent: <t:{runtime.eventTimestampUnix}:f>\nFirst Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>\n<if-repeat>\n<discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>\n</if-repeat>\n" +
+                    ":rotating_light: [{server.client.name}] {server.name} is still offline! (for {runtime.offlineDuration})\n\nEvent: <t:{runtime.eventTimestampUnix}:f>\n<if-repeat>\nFirst Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>\n</if-repeat>\n<if-repeat>\n<discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>\n</if-repeat>\n" +
                         '<discord-button detailsUrl="{server.url}">View Server Details</discord-button>',
             },
         },

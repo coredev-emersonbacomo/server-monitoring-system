@@ -1,6 +1,6 @@
 import { memo, useCallback } from 'react';
 import { type NodeProps, Position, useReactFlow } from '@xyflow/react';
-import { Activity, MemoryStick, HardDrive, Network, Server, Heart } from 'lucide-react';
+import { Activity, MemoryStick, HardDrive, Network, Server, Heart, Cable } from 'lucide-react';
 import { NodeSocket } from './node-socket';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { BaseNode } from './BaseNode';
@@ -12,6 +12,7 @@ const METRICS: Record<string, { icon: React.ComponentType<{ size?: number }>; la
     network_usage: { icon: Network, label: 'Network Usage' },
     server_status: { icon: Server, label: 'Server Status' },
     heartbeat_age: { icon: Heart, label: 'Heartbeat Age' },
+    ports_ping: { icon: Cable, label: 'Ports Ping' },
 };
 
 const COLOR = '#3b82f6';
@@ -21,7 +22,9 @@ export const MetricNode = memo(({ id, data, selected }: NodeProps) => {
     const metricType = (data.metric_type as string) || 'cpu_usage';
     const metric = METRICS[metricType] || METRICS.cpu_usage;
     const Icon = metric.icon;
-    const isMultiOutput = metricType === 'server_status';
+    const isMultiOutput = metricType === 'server_status' || metricType === 'ports_ping';
+    const isPercent = metricType === 'cpu_usage' || metricType === 'memory_usage' || metricType === 'disk_usage';
+    const valueLabel = isPercent ? 'Value (%)' : 'Value';
 
     const handleChange = useCallback(
         (v: string) => {
@@ -53,22 +56,39 @@ export const MetricNode = memo(({ id, data, selected }: NodeProps) => {
 
                 {isMultiOutput ? (
                     <>
-                        <div className="flex w-full">
-                            <div className="flex-1" />
-                            <NodeSocket type="source" position={Position.Right} id="online"
-                                def={{ type: 'boolean', label: 'Online' }} label="Online" labelColor="#6ee7b7" />
-                        </div>
-                        <div className="flex w-full">
-                            <div className="flex-1" />
-                            <NodeSocket type="source" position={Position.Right} id="offline"
-                                def={{ type: 'boolean', label: 'Offline' }} label="Offline" labelColor="#c48888" />
-                        </div>
+                        {metricType === 'server_status' ? (
+                            <>
+                                <div className="flex w-full">
+                                    <div className="flex-1" />
+                                    <NodeSocket type="source" position={Position.Right} id="online"
+                                        def={{ type: 'boolean', label: 'Online' }} label="Online" labelColor="#6ee7b7" />
+                                </div>
+                                <div className="flex w-full">
+                                    <div className="flex-1" />
+                                    <NodeSocket type="source" position={Position.Right} id="offline"
+                                        def={{ type: 'boolean', label: 'Offline' }} label="Offline" labelColor="#c48888" />
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex w-full">
+                                    <div className="flex-1" />
+                                    <NodeSocket type="source" position={Position.Right} id="timing"
+                                        def={{ type: 'number', label: 'Timing (ms)' }} label="Timing (ms)" labelColor="#60a5fa" />
+                                </div>
+                                <div className="flex w-full">
+                                    <div className="flex-1" />
+                                    <NodeSocket type="source" position={Position.Right} id="offline"
+                                        def={{ type: 'boolean', label: 'Offline' }} label="Offline" labelColor="#c48888" />
+                                </div>
+                            </>
+                        )}
                     </>
                 ) : (
                     <div className="flex w-full">
                         <div className="flex-1" />
                         <NodeSocket type="source" position={Position.Right} id="output"
-                            def={{ type: 'number', label: 'Value' }} label="Value" />
+                            def={{ type: 'number', label: valueLabel }} label={valueLabel} />
                     </div>
                 )}
             </div>

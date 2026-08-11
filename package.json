@@ -5,7 +5,8 @@
   "scripts": {
     "build": "npm run build -w frontend && vite build",
     "start": "node -e \"console.log('nausab na, \\\"npm run dev\\\" na')\"",
-    "dev": "node scripts/dev.js",
+    "dev": "node entry.js dev",
+    "prod": "node entry.js prod",
     "types": "php artisan scramble:clear && php artisan scramble:export --path=frontend/src/api/api.json && node frontend/scripts/patch-schema.js && npm run types -w frontend",
     "test": "php artisan test",
     "test:filter": "php artisan test --filter",
@@ -13,7 +14,7 @@
     "test:middleware": "php artisan test --filter=JwtAuthenticateTest",
     "gpush": "scripts\\git\\git-push.bat",
     "pull": "git stash && git pull && git stash apply",
-    "resetdb": "php artisan optimize:clear && php artisan migrate:fresh --seed && php artisan system:monitor && npm run loadtestfactory",
+    "resetdb": "node scripts/reset-db.js",
     "resetalerts": "php artisan tinker --execute=\"App\\NodeConfig\\Models\\NodeConfigState::query()->delete();\"",
     "compileagent:go": "powershell -ExecutionPolicy Bypass -File scripts/build-agent.ps1",
     "compileagent": "npm run compileagent:go",

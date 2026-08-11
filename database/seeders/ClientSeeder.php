@@ -43,6 +43,7 @@ class ClientSeeder extends Seeder
                 'cpu_cores' => 8,
                 'ram' => '16GB',
                 'disk' => '512GB',
+                'alert_scope' => 'client',
             ]
         );
 
