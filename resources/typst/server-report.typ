@@ -129,10 +129,19 @@
 #if cpu_7d.len() > 0 {
   v(0.5em)
   section-title("Metrics Trends (" + range-label(d.at("hours", default: 24)) + ")")
+  let x-span = if trend_x.len() >= 2 { (trend_x.last() - trend_x.first()).hours() } else { 0 }
+  let trend-xaxis = if trend_x.len() > 0 and type(trend_x.first()) == datetime and (trend_x.len() <= 12 or x-span < 30) {
+    let step = if trend_x.len() <= 12 { 1 } else { calc.ceil(trend_x.len() / 8) }
+    (ticks: range(0, trend_x.len(), step: step).map(i => (trend_x.at(i), trend-point-label(trend_x.at(i), trend_x))))
+  } else if trend_x.len() > 0 and type(trend_x.first()) == datetime {
+    (tick-args: (density: 40%), format-ticks: lq.format-ticks-datetime.with(format: trend-tick-format))
+  } else {
+    (tick-args: (density: 40%))
+  }
   lq.diagram(
     width: 100%,
     height: 160pt,
-    xaxis: (tick-args: (density: 40%), format-ticks: lq.format-ticks-datetime.with(format: trend-tick-format)),
+    xaxis: trend-xaxis,
     xlabel: [#text(size: 8pt)[Time]],
     ylabel: [#text(size: 8pt)[Usage (%)]],
     legend: (position: bottom),
