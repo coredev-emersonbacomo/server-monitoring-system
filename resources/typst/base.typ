@@ -15,6 +15,20 @@
 
 // ── Re-usable components ─────────────────────────────────────────────────────
 
+#let range-label(hours) = {
+  let h = int(hours)
+  if h < 168 {
+    "Last " + str(h) + " Hours"
+  } else {
+    let days = h / 24
+    if days == 1 {
+      "Last 1 Day"
+    } else {
+      "Last " + str(days) + " Days"
+    }
+  }
+}
+
 #let report-heading(title, subtitle, email: none, location: none, phone: none) = {
   block(below: 1.2em)[
     #text(size: 16pt, weight: "bold")[#title]
@@ -195,6 +209,23 @@
 #let fmt-date(iso) = {
   if iso == none or iso == "" { "—" } else { iso.split("T").at(0) }
 }
+
+// ── Trend chart x-axis tick labels ───────────────────────────────────────────
+#let trend-tick-format = (dt, period: none) => {
+  if period == "hour" {
+    dt.display("[hour repr:12][period]")
+  } else if period == "minute" {
+    dt.display("[hour repr:12]:[minute][period]")
+  } else if period == "day" {
+    dt.display("[weekday repr:short] [day]")
+  } else {
+    dt.display()
+  }
+}
+#let trend-x-components(x) = x.map(c => datetime(
+  year: c.at(0), month: c.at(1), day: c.at(2),
+  hour: c.at(3), minute: c.at(4), second: c.at(5),
+))
 
 #let page-header(title) = context {
   if counter(page).get().first() == 1 {

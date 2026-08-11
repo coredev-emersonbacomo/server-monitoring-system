@@ -8,35 +8,41 @@ function ReportWithUuid({
     uuid,
     isServer,
     orientation,
+    hours,
 }: {
     uuid: string;
     isServer: boolean;
     orientation: ReportOutletContext["orientation"];
+    hours: ReportOutletContext["hours"];
 }) {
     return (
         <TypstPreview
             template={isServer ? "server" : "client"}
             uuid={uuid}
             orientation={orientation}
+            hours={hours}
         />
     );
 }
 
 function GeneralReportWithPreview({
     orientation,
+    hours,
 }: {
     orientation: ReportOutletContext["orientation"];
+    hours: ReportOutletContext["hours"];
 }) {
     return (
         <TypstPreview
             template="general"
             orientation={orientation}
+            hours={hours}
         />
     );
 }
 
 export default function ReportIndexPage() {
-    const { view, orientation } = useOutletContext<ReportOutletContext>();
+    const { view, orientation, hours } = useOutletContext<ReportOutletContext>();
     const { uuid } = useParams<{ uuid?: string }>();
     const location = useLocation();
     const isServer = location.pathname.includes("/report/servers");
@@ -49,6 +55,7 @@ export default function ReportIndexPage() {
                     uuid={uuid}
                     isServer={isServer}
                     orientation={orientation}
+                    hours={hours}
                 />
             </div>
         );
@@ -58,7 +65,7 @@ export default function ReportIndexPage() {
     return (
         <div className="flex justify-center bg-muted/30 rounded-xl py-10 px-4">
             {view === "global" && (
-                <GeneralReportWithPreview orientation={orientation} />
+                <GeneralReportWithPreview orientation={orientation} hours={hours} />
             )}
 
             {(view === "clients" || view === "servers") && (

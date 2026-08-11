@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useMatch, Outlet } from "react-router-dom";
+import { useNavigate, useMatch, useLocation, Outlet } from "react-router-dom";
 import { FileBarChart, RefreshCw } from "lucide-react";
 import IndexHeader from "@/components/IndexHeader";
 import { EntityPickerModal } from "../pages/reports/EntityPickerModal";
 import { FilterDropdown } from "../pages/reports/FilterDropdown";
+import { RangeDropdown } from "../pages/reports/RangeDropdown";
 import type { FilterOption } from "../pages/reports/FilterDropdown";
 
 export type ReportView = "global" | "clients" | "servers";
@@ -12,6 +13,9 @@ export interface ReportOutletContext {
     view: ReportView;
     filters: string[];
     orientation: ReportOrientation;
+    /** Metrics window in hours for server reports (default: 24). */
+    hours: number;
+    setHours: (hours: number) => void;
     /** Increment to force a fresh compile of the currently visible report. */
     refreshToken: number;
     requestRefresh: () => void;
@@ -31,13 +35,61 @@ const FILTER_OPTIONS: FilterOption[] = [
     { value: "development", label: "Development" },
 ];
 
+type EntityType = "clients" | "servers";
+
+const SELECTION_KEY: Record<EntityType, string> = {
+    clients: "report.selected.clients",
+    servers: "report.selected.servers",
+};
+
+const HOURS_KEY = "report.hours";
+
+const RANGE_OPTIONS: { value: number; label: string }[] = [
+    { value: 6, label: "Last 6 hours" },
+    { value: 12, label: "Last 12 hours" },
+    { value: 24, label: "Last 24 hours" },
+    { value: 168, label: "Last 7 days" },
+    { value: 336, label: "Last 14 days" },
+    { value: 672, label: "Last 28 days" },
+];
+
+function loadSavedIds(key: string): string[] {
+    try {
+        const raw = sessionStorage.getItem(key);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed)
+            ? parsed.filter((id): id is string => typeof id === "string")
+            : [];
+    } catch {
+        return [];
+    }
+}
+
+function loadSavedHours(): number {
+    try {
+        const raw = sessionStorage.getItem(HOURS_KEY);
+        if (!raw) return 24;
+        const parsed = Number.parseInt(raw, 10);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 24;
+    } catch {
+        return 24;
+    }
+}
+
 export function ReportsLayout() {
     const [view, setView] = useState<ReportView>("global");
     const [pickerOpen, setPickerOpen] = useState(false);
     const [filters, setFilters] = useState<string[]>([]);
     const [orientation, setOrientation] = useState<ReportOrientation>("portrait");
     const [refreshToken, setRefreshToken] = useState(0);
+    const [savedIds, setSavedIds] = useState<Record<EntityType, string[]>>({
+        clients: loadSavedIds(SELECTION_KEY.clients),
+        servers: loadSavedIds(SELECTION_KEY.servers),
+    });
+    const [hours, setHoursState] = useState<number>(loadSavedHours());
     const navigate = useNavigate();
+    const location = useLocation();
 
     const detailMatch = useMatch("/report/:type/:uuid");
     const multiMatch = useMatch("/report/:type");
@@ -49,16 +101,56 @@ export function ReportsLayout() {
         if (type === "clients") setView("clients");
     }, [detailMatch?.params.type, multiMatch?.params.type]);
 
+    useEffect(() => {
+        sessionStorage.setItem(SELECTION_KEY.clients, JSON.stringify(savedIds.clients));
+        sessionStorage.setItem(SELECTION_KEY.servers, JSON.stringify(savedIds.servers));
+    }, [savedIds]);
+
+    useEffect(() => {
+        sessionStorage.setItem(HOURS_KEY, String(hours));
+    }, [hours]);
+
+    const setHours = (h: number) => setHoursState(h);
+
+    // Capture the selection whenever the user is on a clients/servers list route
+    useEffect(() => {
+        if (location.pathname !== "/report/clients" && location.pathname !== "/report/servers") {
+            return;
+        }
+        const type: EntityType = location.pathname.endsWith("clients") ? "clients" : "servers";
+        const ids = (new URLSearchParams(location.search).get("ids") ?? "")
+            .split(",")
+            .map((id) => id.trim())
+            .filter(Boolean);
+        setSavedIds((prev) =>
+            JSON.stringify(prev[type]) === JSON.stringify(ids)
+                ? prev
+                : { ...prev, [type]: ids },
+        );
+    }, [location.pathname, location.search]);
+
     const handleSelect = (uuids: string[]) => {
         setPickerOpen(false);
         if (uuids.length === 0) return;
 
-        const idsParam = uuids.join(",");
-        if (view === "servers") {
-            navigate(`/report/servers?ids=${idsParam}`);
-        } else {
-            navigate(`/report/clients?ids=${idsParam}`);
+        const type: EntityType = view === "servers" ? "servers" : "clients";
+        setSavedIds((prev) => ({ ...prev, [type]: uuids }));
+        navigate(`/report/${type}?ids=${uuids.join(",")}`);
+    };
+
+    const handleTabClick = (key: ReportView) => {
+        if (key === view) return;
+
+        if (key === "global") {
+            setView("global");
+            if (isDetailRoute) navigate("/report");
+            return;
         }
+
+        const type = key as EntityType;
+        setView(type);
+        const saved = savedIds[type];
+        navigate(saved.length ? `/report/${type}?ids=${saved.join(",")}` : `/report/${type}`);
     };
 
     return (
@@ -83,10 +175,7 @@ export function ReportsLayout() {
                         {VIEWS.map((v) => (
                             <button
                                 key={v.key}
-                                onClick={() => {
-                                    setView(v.key);
-                                    if (isDetailRoute) navigate("/report");
-                                }}
+                                onClick={() => handleTabClick(v.key)}
                                 role="tab"
                                 aria-selected={view === v.key}
                                 className={
@@ -109,6 +198,14 @@ export function ReportsLayout() {
                     onChange={setFilters}
                 />
 
+                {view === "servers" && (
+                    <RangeDropdown
+                        value={hours}
+                        onChange={setHours}
+                        options={RANGE_OPTIONS}
+                    />
+                )}
+
                 <button
                     onClick={() => setRefreshToken((t) => t + 1)}
                     title="Regenerate this report"
@@ -128,7 +225,17 @@ export function ReportsLayout() {
                 </select>
             </div>
 
-            <Outlet context={{ view, filters, orientation, refreshToken, requestRefresh: () => setRefreshToken((t) => t + 1) }} />
+            <Outlet
+                context={{
+                    view,
+                    filters,
+                    orientation,
+                    hours,
+                    setHours,
+                    refreshToken,
+                    requestRefresh: () => setRefreshToken((t) => t + 1),
+                }}
+            />
 
             {pickerOpen && (
                 <EntityPickerModal
