@@ -245,8 +245,10 @@ class ReportController extends Controller
         ]));
 
         // Fetch aggregated stats for the requested window
+        $aggTable = $hours >= 168 ? 'server_updates_agg_day' : 'server_updates_agg_hour';
+
         try {
-            $aggData = DB::table('server_updates_agg_hour')
+            $aggData = DB::table($aggTable)
                 ->selectRaw('cpu, memory, disk, timestamp')
                 ->where('server_id', $server->id)
                 ->where('timestamp', '>=', now()->subHours($hours))
@@ -254,8 +256,8 @@ class ReportController extends Controller
                 ->get();
         } catch (\Throwable $e) {
             if (str_contains($e->getMessage(), 'has not been populated')) {
-                DB::statement("REFRESH MATERIALIZED VIEW server_updates_agg_hour");
-                $aggData = DB::table('server_updates_agg_hour')
+                DB::statement("REFRESH MATERIALIZED VIEW {$aggTable}");
+                $aggData = DB::table($aggTable)
                     ->selectRaw('cpu, memory, disk, timestamp')
                     ->where('server_id', $server->id)
                     ->where('timestamp', '>=', now()->subHours($hours))
