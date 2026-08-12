@@ -17,7 +17,6 @@ use App\Models\Activity;
 use App\Events\ServerStatsUpdated;
 use App\Events\ServerStatusUpdated;
 use App\Enums\ServerStatus;
-use App\NodeConfig\Cache\NodeConfigCache;
 use App\NodeConfig\Jobs\EvaluateNodeConfig;
 use App\NodeConfig\Models\NodeConfig;
 use Illuminate\Support\Facades\DB;
@@ -151,6 +150,18 @@ class HeartbeatService
             // Update Current State: Ports
             if (isset($payload['open_db_ports']) && is_array($payload['open_db_ports'])) {
                 $this->updatePorts($agent, $payload['open_db_ports']);
+            }
+
+            // Ping exposed TCP ports on an interval (drives PingServerPorts + ports_ping node config alerts)
+            $rawPing = (int) \App\Models\Setting::get('port_ping_interval', '60');
+            $pingInterval = $rawPing >= 1000 ? intdiv($rawPing, 1000) : ($rawPing ?: 60);
+            if ($pingInterval > 0 && $agent->ports()->where('protocol', 'tcp')->exists()) {
+                $cacheKey = 'port_ping_last:' . $server->uuid;
+                $lastPing = (int) cache()->get($cacheKey, 0);
+                if (now()->timestamp - $lastPing >= $pingInterval) {
+                    cache()->put($cacheKey, now()->timestamp, $pingInterval * 2);
+                    \App\Jobs\PingServerPorts::dispatch($server);
+                }
             }
 
             // Update Current State: Processes
@@ -519,7 +530,7 @@ class HeartbeatService
 
     private function evaluateMetricsForNodeConfig(Server $server, Agent $agent, array $payload): void
     {
-        $config = NodeConfigCache::findBySlug('alerts');
+        $config = NodeConfig::resolveForServer($server->uuid);
         if (!$config) return;
 
         $metricMap = [
@@ -546,7 +557,7 @@ class HeartbeatService
 
     private function triggerOnlineStatusEvaluation(Server $server): void
     {
-        $config = NodeConfigCache::findBySlug('alerts');
+        $config = NodeConfig::resolveForServer($server->uuid);
         if (!$config) return;
 
         $sourceNodeId = $this->findMetricNode($config, 'server_status');

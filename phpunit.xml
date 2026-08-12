@@ -19,6 +19,8 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <env name="APP_KEY" value="***REMOVED-TEST-APP-KEY***="/>
+        <env name="JWT_SECRET" value="test-jwt-secret-do-not-use-in-prod"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
@@ -36,5 +38,8 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="CLOUDINARY_CLOUD_NAME" value="dwpiboxib"/>
+        <env name="CLOUDINARY_API_KEY" value="***REMOVED-CLOUDINARY-API-KEY***"/>
+        <env name="CLOUDINARY_API_SECRET" value="***REMOVED-CLOUDINARY-API-SECRET***"/>
     </php>
 </phpunit>

@@ -34,6 +34,7 @@ class SettingController extends Controller
             'secop_limit_per_client' => ['sometimes', 'integer', 'min:1', 'max:50'],
             'heartbeat_interval'     => ['sometimes', 'integer', 'min:1', 'max:60'],
             'offline_threshold'      => ['sometimes', 'integer', 'min:1', 'max:60'],
+            'port_ping_interval'     => ['sometimes', 'integer', 'min:1', 'max:3600'],
             'agent_version'          => ['sometimes', 'string'],
         ]);
 

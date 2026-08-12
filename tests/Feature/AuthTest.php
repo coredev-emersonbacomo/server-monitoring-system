@@ -23,11 +23,11 @@ test('login succeeds with valid credentials', function () {
         'password' => 'password123',
     ]);
 
-    $response->assertStatus(200)
+    $response->assertStatus(201)
         ->assertJsonStructure([
             'access_token',
             'expires_in',
-            'user' => ['id', 'first_name', 'last_name', 'email'],
+            'user' => ['uuid', 'first_name', 'last_name', 'email'],
             'session' => ['session_uuid', 'host_name'],
         ]);
 
@@ -66,7 +66,7 @@ test('login respects remember me', function () {
         'remember' => true,
     ]);
 
-    $response->assertStatus(200);
+    $response->assertStatus(201);
     $this->assertDatabaseHas('user_sessions', [
         'user_id' => $this->user->id,
         'remember_me' => true,
@@ -100,7 +100,7 @@ test('me endpoint returns authenticated user', function () {
 
     $response->assertStatus(200)
         ->assertJson([
-            'id' => $this->user->id,
+            'uuid' => $this->user->uuid,
             'email' => 'test@example.com',
         ]);
 });
@@ -154,7 +154,7 @@ test('refresh endpoint rotates token', function () {
     ], []);
     $response = \Illuminate\Testing\TestResponse::fromBaseResponse($response);
 
-    $response->assertStatus(200)
+    $response->assertStatus(201)
         ->assertJsonStructure([
             'access_token',
             'expires_in',

@@ -22,6 +22,7 @@ class NodeConfigEngine
         'network_usage' => 'Network Usage',
         'server_status' => 'Server Status',
         'heartbeat_age' => 'Heartbeat Age',
+        'ports_ping' => 'Ports Ping',
     ];
 
     public function __construct(NodeRegistry $registry)
@@ -83,7 +84,10 @@ class NodeConfigEngine
         $handle = $branch['metric_source_handle'] ?? 'output';
         if ($handle === 'output')
             return true;
-        return $value === $handle;
+        if ($value === $handle)
+            return true;
+        // ports_ping 'timing' socket carries a numeric ping time (ms)
+        return is_numeric($value) && $handle === 'timing';
     }
 
     /**
@@ -124,6 +128,24 @@ class NodeConfigEngine
             $conditionHandler = $this->registry->get($conditionType);
             $conditionSettings = $conditionNode['settings'] ?? $branch['condition'];
 
+            // Resolve any template (parameter) inputs wired into the condition's
+            // threshold/min/max sockets. These override the static settings with a
+            // value injected via extra_state at trigger time, and the settled values
+            // are written back onto $branch['condition'] so downstream timing nodes
+            // (e.g. sustained) read the parameter-supplied threshold.
+            $resolvedCondition = $this->resolveTemplateRefs(
+                $conditionSettings,
+                $branch['condition']['template_refs'] ?? [],
+                $extraState,
+                $branch['template_strings'] ?? [],
+            );
+            $conditionSettings = $resolvedCondition;
+            foreach (['threshold', 'min', 'max'] as $key) {
+                if (array_key_exists($key, $resolvedCondition)) {
+                    $branch['condition'][$key] = $resolvedCondition[$key];
+                }
+            }
+
             $inputValues = $this->resolveNodeInputs($branch['condition_node_id'], $nodeMap, $conditionType, $branch, $metricResult);
 
             if ($conditionHandler) {
@@ -146,6 +168,27 @@ class NodeConfigEngine
                     'node_id' => $branch['condition_node_id'],
                 ]);
             }
+        }
+
+        // ── Branch latch: edge-triggered, no implicit repeat ──
+        // Once a branch has armed (first boolean check passed), it fires once per
+        // incident. While armed it never re-evaluates sub-branches, so a sustained
+        // true condition (or a repeat cycle) can't restart an evaluation. The latch
+        // releases only when the condition clears AND no evaluation is in flight —
+        // a transient false mid-sustain never cancels the running task.
+        $branchKey = "{$metricNodeId}:{$branch['metric_source_handle']}";
+        $latched = $this->loadBranchLatch($config->id, $serverId, $branchKey);
+
+        if ($latched) {
+            if (!$conditionPassed && !$this->branchHasActiveEvaluation($config, $branch, $serverId)) {
+                $this->saveBranchLatch($config->id, $serverId, $branchKey, false);
+            }
+
+            return ['timers' => $timers, 'actions' => $actions, 'outputs' => $outputs];
+        }
+
+        if ($conditionPassed) {
+            $this->saveBranchLatch($config->id, $serverId, $branchKey, true);
         }
 
         // ── Evaluate each sub-branch ──────────────────────────
@@ -550,8 +593,26 @@ class NodeConfigEngine
         }
 
         // If chain is already active, don't start a new timer.
+        // But if the phase is non-idle yet no task is actually scheduled (e.g. the
+        // task was lost due to a cache flush or process restart), reset to idle so
+        // the next heartbeat can re-arm the chain instead of being permanently stuck.
         if (in_array($phase, ['pending', 'firing', 'repeating'])) {
-            return ['timers' => [], 'actions' => [], 'outputs' => []];
+            $hasActiveTask = !empty(NodeTaskScheduler::getActiveTasks($config->id, $serverId));
+            if ($hasActiveTask) {
+                return ['timers' => [], 'actions' => [], 'outputs' => []];
+            }
+            // No live task — phase is stale; fall through to re-arm below.
+            Log::info('[chain] Phase was stale (no active task), resetting to idle', [
+                'chain'     => $chainRootNodeId,
+                'metric'    => $branch['metric'],
+                'server_id' => $serverId,
+                'phase'     => $phase,
+            ]);
+            $this->saveState(
+                $config->id, $serverId, $chainRootNodeId,
+                new NodeResult(false, false, null, ['phase' => 'idle', 'repeat_count' => 0], [], false),
+                $branch['metric'],
+            );
         }
 
         // If condition not met and chain is idle, nothing to start.
@@ -1129,6 +1190,71 @@ class NodeConfigEngine
         }
     }
 
+    private function loadBranchLatch(int $configId, ?int $serverId, string $branchKey): bool
+    {
+        $query = NodeConfigState::where('node_config_id', $configId)
+            ->where('node_id', 'branch:' . $branchKey);
+        if ($serverId !== null) {
+            $query->where('server_id', $serverId);
+        }
+
+        $state = $query->first();
+        return (bool) ($state->context['armed'] ?? false);
+    }
+
+    private function saveBranchLatch(int $configId, ?int $serverId, string $branchKey, bool $armed): void
+    {
+        $attributes = ['node_config_id' => $configId, 'node_id' => 'branch:' . $branchKey];
+        if ($serverId !== null) {
+            $attributes['server_id'] = $serverId;
+        }
+
+        $values = ['context' => ['armed' => $armed]];
+
+        try {
+            NodeConfigState::updateOrCreate($attributes, $values);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            // Race condition: another concurrent job just inserted this row.
+            NodeConfigState::where(
+                ['node_config_id' => $configId, 'node_id' => 'branch:' . $branchKey]
+            )->update($values);
+        }
+    }
+
+    /**
+     * Whether any timing/chain/post-action task for this branch is currently scheduled.
+     * While one is in flight the latch must hold, so a false condition can't cancel it.
+     */
+    private function branchHasActiveEvaluation(NodeConfig $config, array $branch, ?int $serverId): bool
+    {
+        $taskNodeIds = [];
+        foreach ($branch['sub_branches'] as $subBranch) {
+            if (!empty($subBranch['timing_node_id'])) {
+                $taskNodeIds[$subBranch['timing_node_id']] = true;
+            }
+            if (!empty($subBranch['post_action']['node_id'])) {
+                $taskNodeIds[$subBranch['post_action']['node_id']] = true;
+            }
+            foreach ($subBranch['timing_chain'] ?? [] as $step) {
+                if (!empty($step['timing_node_id'])) {
+                    $taskNodeIds[$step['timing_node_id']] = true;
+                }
+            }
+        }
+
+        if (empty($taskNodeIds)) {
+            return false;
+        }
+
+        foreach (NodeTaskScheduler::getActiveTasks($config->id, $serverId) as $task) {
+            if (isset($taskNodeIds[$task['node_id']])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function resolveNodeInputs(
         string $nodeId,
         array $nodeMap,
@@ -1140,7 +1266,47 @@ class NodeConfigEngine
             return [$metricResult->value, null];
         }
 
+        // Multi-output metrics (server_status, ports_ping): feed the condition the
+        // value emitted on this branch's source socket rather than metric result value.
+        $handle = $branch['metric_source_handle'] ?? 'output';
+        if ($handle !== 'output' && !empty($metricResult->outputs)) {
+            return [$metricResult->outputs[$handle] ?? null];
+        }
+
         return [$metricResult->value];
+    }
+
+    /**
+     * Override condition settings that are supplied by a wired Template input node.
+     * The template id is resolved against the injected evaluation context (extra_state).
+     */
+    private function resolveTemplateRefs(array $settings, array $refs, array $extraState, array $templateStrings = []): array
+    {
+        foreach ($refs as $setting => $ref) {
+            $id = $ref['template_id'] ?? null;
+            if ($id === null || $id === '') {
+                continue;
+            }
+
+            // Priority: alert-system injection (bare or {<id>}) overrides the compiled value.
+            if (array_key_exists($id, $extraState)) {
+                $value = $extraState[$id];
+            } elseif (array_key_exists('{'.$id.'}', $extraState)) {
+                $value = $extraState['{'.$id.'}'];
+            } elseif (array_key_exists($id, $templateStrings) && $templateStrings[$id] !== null && $templateStrings[$id] !== '') {
+                $value = $templateStrings[$id];
+            } else {
+                continue;
+            }
+
+            $settings[$setting] = match ($ref['data_type'] ?? 'number') {
+                'boolean' => filter_var($value, FILTER_VALIDATE_BOOL),
+                'string'  => (string) $value,
+                default   => is_numeric($value) ? (float) $value : $value,
+            };
+        }
+
+        return $settings;
     }
 
     private function buildUpstreamContext(array $branch, array $subBranch, mixed $value): array
@@ -1156,6 +1322,10 @@ class NodeConfigEngine
         return [
             'metric_name' => $metricName,
             'sustain_value' => $sustainValue,
+            // ports_ping: feed the actual ping latency and the resolved threshold
+            // (static or the compiled/alert-system template value) into the notify context.
+            'ping' => is_numeric($value) ? (float) $value : null,
+            'threshold' => $branch['condition']['threshold'] ?? null,
         ];
     }
 
@@ -1221,6 +1391,42 @@ class NodeConfigEngine
             ]);
 
             return $sourceHandle === 'offline' ? $isOffline : !$isOffline;
+        }
+
+        // ── ports_ping: check whether a tracked port still matches the socket ──
+        if ($metricType === 'ports_ping') {
+            $agent = \App\Models\Agent::where('server_id', $serverId)->first();
+            if (!$agent) {
+                return true; // fail open
+            }
+
+            $ports = \App\Models\Port::where('agent_id', $agent->id);
+
+            if ($sourceHandle === 'offline') {
+                $holds = (clone $ports)->where('ping_status', 'offline')->exists();
+            } else {
+                $operator = $branch['condition']['operator'] ?? 'greater_than';
+                $threshold = (float) ($branch['condition']['threshold'] ?? 0);
+                $sqlOp = match ($operator) {
+                    'greater_than_equal' => '>=',
+                    'less_than'          => '<',
+                    'less_than_equal'    => '<=',
+                    'equal'              => '=',
+                    default              => '>',
+                };
+                $holds = (clone $ports)
+                    ->where('ping_status', 'online')
+                    ->where('ping_time', $sqlOp, $threshold)
+                    ->exists();
+            }
+
+            Log::debug('[node-config-engine] live condition check (ports_ping)', [
+                'server_id' => $serverId,
+                'source_handle' => $sourceHandle,
+                'holds' => $holds,
+            ]);
+
+            return $holds;
         }
 
         // ── metric conditions: re-check most recent sample vs threshold ──
