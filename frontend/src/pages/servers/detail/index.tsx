@@ -145,33 +145,34 @@ export default function ServerDetail() {
         () =>
             createFormStore({
                 schema: serverInfoSchema,
-                originalData: initial
-                    ? {
-                        name: initial.name,
-                        description: initial.description ?? "",
-                    }
-                    : null,
+                originalData: null,
                 initialMode: "view",
             }),
-        [initial],
+        // Only recreate store when navigating to a different server, not on every poll
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [initial?.uuid],
     );
 
     const form = useForm(store, (s) => s.form);
     const mode = useForm(store, (s) => s.mode);
 
+    // Populate form when server data first loads (uuid change) — never overwrite during active edit
     useEffect(() => {
-        if (initial && mode === "view") {
-            const data = {
-                name: initial.name,
-                description: initial.description ?? "",
-            };
-            store.setState({
-                form: data,
-                originalData: data,
-                externalDirty: false,
-            });
-        }
-    }, [initial, mode, store]);
+        if (!initial) return;
+        const data = {
+            name: initial.name,
+            description: initial.description ?? "",
+            subscription_fee: initial.subscription_fee ?? 0,
+        };
+        store.setState({
+            form: data,
+            originalData: data,
+            externalDirty: false,
+        });
+        store.setMode("view");
+    // Only run when the server uuid changes (navigating to a different server)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initial?.uuid, store]);
 
     useEffect(() => {
         if (initial?.activeProvisionDetails) {

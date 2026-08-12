@@ -3,8 +3,8 @@ import type {
     AgentData,
     AuthUserData,
     ClientData,
+    CreateUserData,
     CustomActivityLog,
-    CustomActivityLogData,
     DashboardStatsData,
     GlobalAlert,
     NodeConfig,
@@ -1168,22 +1168,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/node-configs/{id}/toggle": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["nodeConfig.nodeConfig.toggle_0"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/node-configs/{id}/test": {
         parameters: {
             query?: never;
@@ -1307,22 +1291,6 @@ export interface paths {
         put: operations["nodeConfig.nodeConfig.update_1"];
         post?: never;
         delete: operations["nodeConfig.nodeConfig.destroy_2"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/node-configs/{id}/toggle": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["nodeConfig.nodeConfig.toggle_0"];
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1589,22 +1557,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/clients/{clientUuid}/servers/{serverUuid}/cost-logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1.server.costLogs_0"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/servers/{serverUuid}": {
         parameters: {
             query?: never;
@@ -1695,22 +1647,6 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["v1.server.adjustCost_0"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/clients/{clientUuid}/servers/{serverUuid}/cost-logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1.server.costLogs_0"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2213,10 +2149,10 @@ export interface components {
         AuthUserData: AuthUserData;
         /** ClientData */
         ClientData: ClientData;
+        /** CreateUserData */
+        CreateUserData: CreateUserData;
         /** CustomActivityLog */
         CustomActivityLog: CustomActivityLog;
-        /** CustomActivityLogData */
-        CustomActivityLogData: CustomActivityLogData;
         /** DashboardStatsData */
         DashboardStatsData: DashboardStatsData;
         /** GlobalAlert */
@@ -3615,7 +3551,7 @@ export interface operations {
                 "application/json": {
                     name: string;
                     description?: string | null;
-                    monthly_cost?: number | null;
+                    subscription_fee?: number | null;
                 };
             };
         };
@@ -3687,6 +3623,7 @@ export interface operations {
                     banner_image?: Record<string, never> | null;
                     upload_intent_id?: string | null;
                     banner_image_storage_key?: string | null;
+                    budget?: number | null;
                 };
             };
         };
@@ -3746,6 +3683,7 @@ export interface operations {
                     upload_intent_id?: string | null;
                     banner_image_storage_key?: string | null;
                     alert_scope?: string | null;
+                    budget?: number | null;
                 };
             };
         };
@@ -3787,9 +3725,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        /** @constant */
-                        message: "Cannot delete client with an outstanding cost balance. Please settle all server deductions first before deleting.";
-                    } | {
                         message: string;
                     };
                 };
@@ -3973,7 +3908,7 @@ export interface operations {
                 "application/json": {
                     name: string;
                     description?: string | null;
-                    monthly_cost?: number | null;
+                    subscription_fee?: number | null;
                 };
             };
         };
@@ -4045,6 +3980,7 @@ export interface operations {
                     banner_image?: Record<string, never> | null;
                     upload_intent_id?: string | null;
                     banner_image_storage_key?: string | null;
+                    budget?: number | null;
                 };
             };
         };
@@ -4104,6 +4040,7 @@ export interface operations {
                     upload_intent_id?: string | null;
                     banner_image_storage_key?: string | null;
                     alert_scope?: string | null;
+                    budget?: number | null;
                 };
             };
         };
@@ -4145,9 +4082,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        /** @constant */
-                        message: "Cannot delete client with an outstanding cost balance. Please settle all server deductions first before deleting.";
-                    } | {
                         message: string;
                     };
                 };
@@ -5126,6 +5060,14 @@ export interface operations {
                 content: {
                     "application/json": {
                         branches: unknown[];
+                        template_inputs: {
+                            node_id: string;
+                            id: string;
+                            data_type: string | "number";
+                            /** @constant */
+                            source_handle: "output";
+                            value: string | null;
+                        }[];
                     } | {
                         branches: string[];
                     };
@@ -5219,28 +5161,6 @@ export interface operations {
                         /** @constant */
                         message: "Node config deleted.";
                     };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-        };
-    };
-    "nodeConfig.nodeConfig.toggle_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string;
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -5509,6 +5429,14 @@ export interface operations {
                 content: {
                     "application/json": {
                         branches: unknown[];
+                        template_inputs: {
+                            node_id: string;
+                            id: string;
+                            data_type: string | "number";
+                            /** @constant */
+                            source_handle: "output";
+                            value: string | null;
+                        }[];
                     } | {
                         branches: string[];
                     };
@@ -5602,28 +5530,6 @@ export interface operations {
                         /** @constant */
                         message: "Node config deleted.";
                     };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-        };
-    };
-    "nodeConfig.nodeConfig.toggle_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string;
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -6066,9 +5972,6 @@ export interface operations {
                 content: {
                     "application/json": {
                         /** @constant */
-                        message: "Cannot delete server with an outstanding cost balance. Please settle all deductions first before deleting.";
-                    } | {
-                        /** @constant */
                         message: "Cannot delete server while the agent is still running. Please run the uninstall script first.";
                     };
                 };
@@ -6091,7 +5994,7 @@ export interface operations {
                     name: string;
                     description?: string | null;
                     alert_scope?: string | null;
-                    monthly_cost?: number | null;
+                    subscription_fee?: number | null;
                 };
             };
         };
@@ -6168,29 +6071,6 @@ export interface operations {
             };
             401: components["responses"]["AuthenticationException"];
             422: components["responses"]["ValidationException"];
-        };
-    };
-    "v1.server.costLogs_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                clientUuid: string;
-                serverUuid: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": CustomActivityLogData[];
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
         };
     };
     "v1.server.showWithStats_0": {
@@ -6322,9 +6202,6 @@ export interface operations {
                 content: {
                     "application/json": {
                         /** @constant */
-                        message: "Cannot delete server with an outstanding cost balance. Please settle all deductions first before deleting.";
-                    } | {
-                        /** @constant */
                         message: "Cannot delete server while the agent is still running. Please run the uninstall script first.";
                     };
                 };
@@ -6347,7 +6224,7 @@ export interface operations {
                     name: string;
                     description?: string | null;
                     alert_scope?: string | null;
-                    monthly_cost?: number | null;
+                    subscription_fee?: number | null;
                 };
             };
         };
@@ -6424,29 +6301,6 @@ export interface operations {
             };
             401: components["responses"]["AuthenticationException"];
             422: components["responses"]["ValidationException"];
-        };
-    };
-    "v1.server.costLogs_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                clientUuid: string;
-                serverUuid: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": CustomActivityLogData[];
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
         };
     };
     "v1.server.showWithStats_0": {
@@ -7208,9 +7062,9 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": {
+                "application/json": CreateUserData & {
                     first_name: string;
                     last_name: string;
                     /**
@@ -7227,6 +7081,7 @@ export interface operations {
                     password_confirmation: string;
                     upload_intent_id?: string | null;
                     profile_picture_storage_key?: string | null;
+                    timezone?: string | null;
                 };
             };
         };
@@ -7476,9 +7331,9 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": {
+                "application/json": CreateUserData & {
                     first_name: string;
                     last_name: string;
                     /**
@@ -7495,6 +7350,7 @@ export interface operations {
                     password_confirmation: string;
                     upload_intent_id?: string | null;
                     profile_picture_storage_key?: string | null;
+                    timezone?: string | null;
                 };
             };
         };
