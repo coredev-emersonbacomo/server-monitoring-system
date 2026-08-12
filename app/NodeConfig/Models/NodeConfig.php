@@ -7,8 +7,10 @@ use App\Models\Server;
 use App\Models\User;
 use App\NodeConfig\Cache\NodeConfigCache;
 use App\NodeConfig\Engine\NodeConfigCompiler;
+use App\NodeConfig\Engine\NodeTaskScheduler;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Log;
 
 class NodeConfig extends Model
 {
@@ -34,10 +36,12 @@ class NodeConfig extends Model
 
         static::saved(function (NodeConfig $config) {
             NodeConfigCache::refresh($config);
+            static::cancelTasksForScope($config);
         });
 
         static::deleted(function (NodeConfig $config) {
             NodeConfigCache::invalidate($config);
+            static::cancelTasksForScope($config);
         });
     }
 
@@ -99,14 +103,69 @@ class NodeConfig extends Model
         $server = Server::with('client')->where('uuid', $serverUuid)->first();
         if (!$server) return null;
 
-        $config = static::forServer($server->uuid)->first();
-        if ($config) return $config;
+        $scope = $server->alert_scope ?? 'global';
 
-        if ($server->client) {
+        if ($scope === 'server') {
+            $config = static::forServer($server->uuid)->first();
+            if ($config && static::hasNodes($config)) return $config;
+
+            if ($server->client) {
+                $config = static::forClient($server->client->uuid)->first();
+                if ($config && static::hasNodes($config)) return $config;
+            }
+
+            return static::forGlobal()->first();
+        }
+
+        if ($scope === 'client' && $server->client) {
             $config = static::forClient($server->client->uuid)->first();
-            if ($config) return $config;
+            if ($config && static::hasNodes($config)) return $config;
         }
 
         return static::forGlobal()->first();
+    }
+
+    private static function hasNodes(self $config): bool
+    {
+        return !empty($config->config['nodes'] ?? []);
+    }
+
+    public static function cancelTasksForScope(self $config): void
+    {
+        try {
+            $scopeType = $config->scope_type;
+            $scopeId = $config->scope_id;
+
+            if ($scopeType === 'global') {
+                NodeTaskScheduler::cancelAll();
+                return;
+            }
+
+            if ($scopeType === 'server') {
+                $server = ($scopeId !== null && is_numeric($scopeId))
+                    ? Server::find((int) $scopeId)
+                    : Server::where('uuid', $scopeId)->first();
+                if ($server) {
+                    NodeTaskScheduler::cancelByServer($server->id);
+                }
+                return;
+            }
+
+            if ($scopeType === 'client') {
+                $client = ($scopeId !== null && is_numeric($scopeId))
+                    ? Client::find((int) $scopeId)
+                    : Client::where('uuid', $scopeId)->first();
+                if ($client) {
+                    $affectedServers = Server::where('client_id', $client->id)
+                        ->pluck('id');
+                    foreach ($affectedServers as $serverId) {
+                        NodeTaskScheduler::cancelByServer($serverId);
+                    }
+                }
+                return;
+            }
+        } catch (\Throwable $e) {
+            Log::warning("[node-config] Failed to cancel tasks for scope: " . $e->getMessage());
+        }
     }
 }

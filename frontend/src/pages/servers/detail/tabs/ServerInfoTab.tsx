@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Building2, Cpu, MemoryStick, HardDrive, Monitor } from "lucide-react";
+import { Building2, Cpu, MemoryStick, HardDrive, Monitor, Banknote, AlertTriangle } from "lucide-react";
 import api from "@/api/api";
 import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,15 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useServerDetailContext } from "../context/ServerDetailContext";
 import { DeleteModalDangerZone } from "../dialogs/DeleteModalDangerZone";
+import { useClient, useClientServers } from "@/hooks/useClients";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export function ServerInfoTab() {
     const {
@@ -18,6 +28,57 @@ export function ServerInfoTab() {
         navigate,
     } = useServerDetailContext();
     const queryClient = useQueryClient();
+
+    const { data: client } = useClient(initial?.client_uuid ?? "");
+    const { data: clientServers = [] } = useClientServers(initial?.client_uuid ?? "");
+
+    const [budgetWarning, setBudgetWarning] = useState<{
+        newTotal: number;
+        budget: number;
+        pendingPayload: { nameStr: string; descStr: string; feeNum: number };
+    } | null>(null);
+
+    const executeUpdateServer = async (payload: { nameStr: string; descStr: string; feeNum: number }) => {
+        const { error } = await api.PATCH(
+            "/v1/clients/{clientUuid}/servers/{serverUuid}",
+            {
+                params: {
+                    path: {
+                        clientUuid: initial.client_uuid,
+                        serverUuid: initial.uuid,
+                    },
+                },
+                body: {
+                    name: payload.nameStr,
+                    description: payload.descStr || undefined,
+                    subscription_fee: payload.feeNum,
+                },
+            },
+        );
+        if (error) {
+            toast.error("Failed to update server info.");
+        } else {
+            toast.success("Server info updated.");
+            const newForm = {
+                name: payload.nameStr,
+                description: payload.descStr,
+                subscription_fee: payload.feeNum,
+            };
+            store.setState({
+                form: newForm,
+                originalData: newForm,
+                externalDirty: false,
+                hasChanges: false,
+            });
+            store.setMode("view");
+            queryClient.invalidateQueries({
+                queryKey: ["server", initial.uuid],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["clients", initial.client_uuid],
+            });
+        }
+    };
 
     return (
         <Form.Root store={store}>
@@ -39,41 +100,26 @@ export function ServerInfoTab() {
                                 String(data.description).trim() !== "null"
                                 ? String(data.description).trim()
                                 : "";
+                        const feeNum = typeof data.subscription_fee === "number"
+                            ? data.subscription_fee
+                            : parseFloat(String(data.subscription_fee || 0)) || 0;
 
-                        const { error } = await api.PATCH(
-                            "/v1/clients/{clientUuid}/servers/{serverUuid}",
-                            {
-                                params: {
-                                    path: {
-                                        clientUuid: initial.client_uuid,
-                                        serverUuid: initial.uuid,
-                                    },
-                                },
-                                body: {
-                                    name: nameStr,
-                                    description: descStr || undefined,
-                                },
-                            },
-                        );
-                        if (error) {
-                            toast.error("Failed to update server info.");
-                        } else {
-                            toast.success("Server info updated.");
-                            const newForm = {
-                                name: nameStr,
-                                description: descStr,
-                            };
-                            store.setState({
-                                form: newForm,
-                                originalData: newForm,
-                                externalDirty: false,
-                                hasChanges: false,
+                        const clientBudget = Number(client?.budget) || 0;
+                        const currentOtherServersFee = (clientServers ?? [])
+                            .filter((s) => s.uuid !== initial.uuid)
+                            .reduce((acc, s) => acc + (Number(s.subscription_fee) || 0), 0);
+                        const newTotalFee = currentOtherServersFee + feeNum;
+
+                        if (clientBudget > 0 && newTotalFee > clientBudget) {
+                            setBudgetWarning({
+                                newTotal: newTotalFee,
+                                budget: clientBudget,
+                                pendingPayload: { nameStr, descStr, feeNum },
                             });
-                            store.setMode("view");
-                            queryClient.invalidateQueries({
-                                queryKey: ["server", initial.uuid],
-                            });
+                            return;
                         }
+
+                        await executeUpdateServer({ nameStr, descStr, feeNum });
                     } catch {
                         toast.error("An error occurred.");
                     }
@@ -83,18 +129,35 @@ export function ServerInfoTab() {
                 <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                         {mode !== "view" ? (
-                            <div>
-                                <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
-                                    Server name
-                                </label>
-                                <Input
-                                    value={form.name}
-                                    onChange={(e) =>
-                                        store.set("name")(e.target.value)
-                                    }
-                                    className="text-sm"
-                                    autoFocus
-                                />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                        Server name
+                                    </label>
+                                    <Input
+                                        value={form.name}
+                                        onChange={(e) =>
+                                            store.set("name")(e.target.value)
+                                        }
+                                        className="text-sm"
+                                        autoFocus
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">
+                                        Subscription Fee (₱ / mo)
+                                    </label>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={form.subscription_fee ?? 0}
+                                        onChange={(e) =>
+                                            store.set("subscription_fee")(e.target.value)
+                                        }
+                                        className="text-sm"
+                                    />
+                                </div>
                             </div>
                         ) : (
                             <div>
@@ -162,6 +225,11 @@ export function ServerInfoTab() {
             <div className="flex flex-wrap items-start gap-3 p-4 bg-card border border-t-0 border-border/60 rounded-b-lg">
                 {[
                     {
+                        icon: Banknote,
+                        label: "Subscription Fee",
+                        value: `₱${(Number(server.subscription_fee) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mo`,
+                    },
+                    {
                         icon: Cpu,
                         label: "CPU Model",
                         value: server.cpu_model ?? "Unknown",
@@ -217,6 +285,72 @@ export function ServerInfoTab() {
             </div>
 
             <DeleteModalDangerZone />
+
+            {/* Budget Exceeded Warning Dialog */}
+            <Dialog open={!!budgetWarning} onOpenChange={(open) => !open && setBudgetWarning(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-amber-500">
+                            <AlertTriangle className="h-5 w-5 shrink-0" />
+                            Budget Exceeded Warning
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="py-3 text-sm text-foreground/90 flex flex-col gap-3">
+                        <p>
+                            Updating this server's subscription fee will push the client's total monthly subscription fees over its allocated budget limit.
+                        </p>
+
+                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs space-y-1.5">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Monthly Budget Limit:</span>
+                                <span className="font-semibold text-foreground">
+                                    ₱{(budgetWarning?.budget ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">New Total Subscription Fees:</span>
+                                <span className="font-semibold text-amber-500">
+                                    ₱{(budgetWarning?.newTotal ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                            <div className="flex justify-between border-t border-amber-500/20 pt-1.5">
+                                <span className="text-muted-foreground">Amount Exceeded:</span>
+                                <span className="font-bold text-destructive">
+                                    ₱{((budgetWarning?.newTotal ?? 0) - (budgetWarning?.budget ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground">
+                            Do you still want to proceed and save this update?
+                        </p>
+                    </div>
+
+                    <DialogFooter className="flex gap-2 justify-end">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setBudgetWarning(null)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                            onClick={async () => {
+                                if (budgetWarning?.pendingPayload) {
+                                    const payload = budgetWarning.pendingPayload;
+                                    setBudgetWarning(null);
+                                    await executeUpdateServer(payload);
+                                }
+                            }}
+                        >
+                            Proceed Anyway
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Form.Root>
     );
 }

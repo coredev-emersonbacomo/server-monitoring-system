@@ -26,6 +26,14 @@ if (muteNotification) {
   process.env.MUTE_NOTIFICATION = '1';
 }
 
+const knownArgs = ['muteNotification'];
+const unknownArgs = process.argv.slice(2).filter((arg) => !knownArgs.includes(arg));
+if (unknownArgs.length > 0) {
+  console.error(`Unknown argument(s): ${unknownArgs.join(', ')}`);
+  console.error(`Known arguments: ${knownArgs.join(', ')}`);
+  process.exit(1);
+}
+
 const commands = [
   { command: 'C:\\Users\\User\\Redis\\redis-server.exe', name: 'redis', prefixColor: 'yellow' },
   { command: 'npm run dev -w frontend', name: 'dev', prefixColor: 'green' },

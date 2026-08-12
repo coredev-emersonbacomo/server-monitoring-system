@@ -39,6 +39,7 @@ class NodeConfigCompiler
             $forwardAdj[$edge['source']][] = [
                 'target' => $edge['target'],
                 'sourceHandle' => $edge['sourceHandle'] ?? 'output',
+                'targetHandle' => $edge['targetHandle'] ?? 'input',
             ];
         }
 
@@ -52,7 +53,10 @@ class NodeConfigCompiler
 
         $branches = $this->groupByMetric($flatRules, $forwardAdj);
 
-        return ['branches' => $branches];
+        return [
+            'branches' => $branches,
+            'template_inputs' => $this->collectTemplateInputs($nodes),
+        ];
     }
 
     /**
@@ -71,7 +75,6 @@ class NodeConfigCompiler
         $timingNodeIds = [];
         $actionSettings = $startNode['settings'] ?? [];
 
-        // queue entries are [nodeId, downstreamChildId] — child is the node we came from
         $queue = [[$startNode['id'], null]];
         $visited = [$startNode['id'] => true];
 
@@ -95,6 +98,7 @@ class NodeConfigCompiler
                 $conditions[] = array_merge(
                     ['type' => 'condition'],
                     $this->extractCondition($current),
+                    $this->extractTemplateRefs($currentId, $nodeMap, $reverseAdj, $forwardAdj),
                 );
                 $conditionNodeIds[] = $currentId;
             } elseif ($type === 'severity') {
@@ -141,6 +145,34 @@ class NodeConfigCompiler
         }
 
         return $rules;
+    }
+
+    /**
+     * Collect every Template input node in the graph as a static manifest of
+     * parameter ids + data types, so an external alert system can resolve them
+     * per compiled rule. These ids are static per config — fine to bake at compile.
+     */
+    private function collectTemplateInputs(array $nodes): array
+    {
+        $inputs = [];
+        foreach ($nodes as $node) {
+            if (($node['type'] ?? '') !== 'template') {
+                continue;
+            }
+            $settings = $node['settings'] ?? [];
+            $id = trim((string) ($settings['template_id'] ?? ''), '{}');
+            if ($id === '') {
+                continue;
+            }
+            $inputs[] = [
+                'node_id' => $node['id'],
+                'id' => $id,
+                'data_type' => $settings['data_type'] ?? 'number',
+                'source_handle' => 'output',
+                'value' => $settings['value'] ?? null,
+            ];
+        }
+        return $inputs;
     }
 
     /**
@@ -192,6 +224,7 @@ class NodeConfigCompiler
                     'metric_source_handle' => $rule['metric_source_handle'],
                     'condition' => $rule['condition'],
                     'condition_node_id' => $rule['condition_node_id'],
+                    'template_strings' => $rule['condition']['template_strings'] ?? [],
                     'sub_branches' => [],
                 ];
             }
@@ -362,6 +395,70 @@ class NodeConfigCompiler
             'max' => $settings['max'] ?? null,
         ];
     }
+
+    /**
+     * Detect Template input nodes wired into a condition's value input handles.
+     * The template node supplies a key (e.g. port_ping_slow_threshold_ms) and a
+     * value (e.g. 200) that are baked into the branch's compiled templateStrings
+     * dictionary. The alert system may override at evaluation time via extra_state;
+     * otherwise the compiled value drives resolution (no fallback).
+     */
+    private function extractTemplateRefs(string $conditionId, array $nodeMap, array $reverseAdj, array $forwardAdj): array
+    {
+        // compare input handle → compiled condition setting name
+        $handleToSetting = ['input-b' => 'threshold', 'input-min' => 'min', 'input-max' => 'max'];
+
+        $refs = [];
+        $strings = [];
+        foreach ($reverseAdj[$conditionId] ?? [] as $parentId) {
+            $parent = $nodeMap[$parentId] ?? null;
+            if (!$parent || (($parent['type'] ?? '') !== 'template')) {
+                continue;
+            }
+
+            $parentSettings = $parent['settings'] ?? [];
+            $id = trim((string) ($parentSettings['template_id'] ?? ''), '{}');
+            if ($id === '') {
+                continue;
+            }
+
+            // find the edge targetHandle from parent → conditionId
+            $targetHandle = 'input';
+            foreach ($forwardAdj[$parentId] ?? [] as $edge) {
+                if ($edge['target'] === $conditionId) {
+                    $targetHandle = $edge['targetHandle'] ?? 'input';
+                    break;
+                }
+            }
+
+            $setting = $handleToSetting[$targetHandle] ?? null;
+            if ($setting === null) {
+                continue;
+            }
+
+            $refs[$setting] = [
+                'node_id' => $parentId,
+                'template_id' => $id,
+                'data_type' => $parentSettings['data_type'] ?? 'number',
+                'source_handle' => 'output',
+            ];
+
+            // Bake the template node's key/value into this branch's compiled
+            // templateStrings dictionary. The alert system may override at eval time;
+            // absent an override, this compiled value drives resolution (no fallback).
+            $strings[$id] = $parentSettings['value'] ?? null;
+        }
+
+        if (empty($refs)) {
+            return [];
+        }
+
+        return [
+            'template_refs' => $refs,
+            'template_strings' => $strings,
+        ];
+    }
+
 
     private function extractTiming(array $node): array
     {

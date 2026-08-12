@@ -65,11 +65,12 @@ class ClientController extends Controller
     public function store(CreateClientData $clientdata): ClientData
     {
         $payload = [
-            'name' => $clientdata->name,
-            'description' => $clientdata->description ?? '',
-            'location' => $clientdata->location,
-            'email' => $clientdata->email,
+            'name'           => $clientdata->name,
+            'description'    => $clientdata->description ?? '',
+            'location'       => $clientdata->location,
+            'email'          => $clientdata->email,
             'contact_number' => $clientdata->contact_number,
+            'budget'         => (float) ($clientdata->budget ?? 0.00),
         ];
 
         if ($clientdata->upload_intent_id !== null && $clientdata->banner_image_storage_key !== null) {
@@ -133,10 +134,20 @@ class ClientController extends Controller
 
         if ($newScope !== 'global') {
             app(\App\NodeConfig\Services\NodeConfigService::class)
-                ->copyGlobalConfigIfNeeded('client', $client->id);
+                ->copyGlobalConfigIfNeeded('client', "client_{$client->uuid}");
         }
 
         $client->update(['alert_scope' => $newScope]);
+
+        $store = \Illuminate\Support\Facades\Cache::store(config('cache.default', 'file'));
+        $store->forget('node_config:scope:client:' . $client->uuid);
+
+        $affectedServers = Server::where('client_id', $client->id)->get(['id', 'uuid']);
+        foreach ($affectedServers as $server) {
+            $store->forget('node_config:scope:server:' . $server->uuid);
+            \App\NodeConfig\Engine\NodeTaskScheduler::cancelByServer($server->id);
+            \App\NodeConfig\Models\NodeConfigState::where('server_id', $server->id)->delete();
+        }
     }
 
     public function update(UpdateClientData $data, string $clientUuid): ClientData
@@ -144,11 +155,12 @@ class ClientController extends Controller
         $client = Client::where('uuid', $clientUuid)->firstOrFail();
 
         $updatePayload = [
-            'name' => $data->name,
-            'description' => $data->description instanceof \Spatie\LaravelData\Optional ? ($client->description ?? '') : $data->description,
-            'location' => $data->location,
-            'email' => $data->email,
+            'name'           => $data->name,
+            'description'    => $data->description instanceof \Spatie\LaravelData\Optional ? ($client->description ?? '') : $data->description,
+            'location'       => $data->location,
+            'email'          => $data->email,
             'contact_number' => $data->contact_number,
+            'budget'         => (float) (($data->budget instanceof \Spatie\LaravelData\Optional || $data->budget === null) ? ($client->budget ?? 0.00) : $data->budget),
         ];
 
         if (!($data->alert_scope instanceof \Spatie\LaravelData\Optional)) {

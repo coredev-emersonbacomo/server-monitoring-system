@@ -28,8 +28,6 @@ class ClientData extends Data
 
     public static function fromModel(Client $client): self
     {
-        $totalSubscriptionFee = (float) $client->servers()->sum('subscription_fee');
-
         return new self(
             uuid: $client->uuid,
             name: $client->name,
@@ -46,7 +44,7 @@ class ClientData extends Data
             alert_scope: $client->alert_scope ?? 'global',
             record_status: $client->record_status instanceof \UnitEnum ? $client->record_status->value : ($client->record_status ?? 'active'),
             budget: (float) ($client->budget ?? 0.00),
-            total_subscription_fee: $totalSubscriptionFee,
+            total_subscription_fee: (float) ($client->total_subscription_fee ?? 0.00),
         );
     }
 }

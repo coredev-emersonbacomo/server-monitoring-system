@@ -1,4 +1,4 @@
-import { type ClipboardEvent, type KeyboardEvent, useMemo } from "react";
+import { type ClipboardEvent, type KeyboardEvent, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import {
@@ -14,7 +14,15 @@ import { cn } from "@/lib/utils";
 import IndexHeader from "@/components/IndexHeader";
 import api from "@/api/api";
 import { Form, createFormStore, useForm } from "@/components/ui/form";
-import { useClient } from "@/hooks/useClients";
+import { useClient, useClientServers } from "@/hooks/useClients";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 const blockedSubscriptionFeeKeys = new Set(["e", "E", "-"]);
 
@@ -48,6 +56,13 @@ export default function CreateServer() {
     const clientUuid = searchParams.get("client_uuid") || null;
 
     const { data: client, isLoading: clientLoading } = useClient(clientUuid ?? "");
+    const { data: clientServers = [] } = useClientServers(clientUuid ?? "");
+
+    const [budgetWarning, setBudgetWarning] = useState<{
+        newTotal: number;
+        budget: number;
+        pendingPayload: { name: string; description: string; subscription_fee: number };
+    } | null>(null);
 
     const store = useMemo(
         () => createFormStore({
@@ -78,6 +93,23 @@ export default function CreateServer() {
         );
     }
 
+    const executeCreateServer = async (payload: { name: string; description: string; subscription_fee: number }) => {
+        const { data: result, error: apiError } = await api.POST(
+            "/v1/clients/{clientUuid}/servers",
+            {
+                params: { path: { clientUuid } },
+                body: payload,
+            },
+        );
+        if (apiError) {
+            const msg = (apiError as { message?: string }).message;
+            toast.error(msg ?? "Failed to create server.");
+        } else {
+            toast.success("Server created successfully!");
+            navigate(`/servers/${result.uuid}?client=${clientUuid}`);
+        }
+    };
+
     return (
         <div className="w-full flex flex-col min-h-0 bg-background text-foreground">
             <IndexHeader icon={Server} trail={trail} />
@@ -101,24 +133,29 @@ export default function CreateServer() {
                                     toast.error("No client selected.");
                                     return;
                                 }
-                                const { data: result, error: apiError } = await api.POST(
-                                    "/v1/clients/{clientUuid}/servers",
-                                    {
-                                        params: { path: { clientUuid } },
-                                        body: {
-                                            name: String(data.name).trim(),
-                                            description: (String(data.description ?? "").trim()) || "",
-                                            subscription_fee: Math.max(0, Number(data.subscription_fee) || 0),
-                                        },
-                                    },
+                                const payload = {
+                                    name: String(data.name).trim(),
+                                    description: (String(data.description ?? "").trim()) || "",
+                                    subscription_fee: Math.max(0, Number(data.subscription_fee) || 0),
+                                };
+
+                                const clientBudget = Number(client?.budget) || 0;
+                                const currentTotalFee = (clientServers ?? []).reduce(
+                                    (acc, s) => acc + (Number(s.subscription_fee) || 0),
+                                    0,
                                 );
-                                if (apiError) {
-                                    const msg = (apiError as { message?: string }).message;
-                                    toast.error(msg ?? "Failed to create server.");
-                                } else {
-                                    toast.success("Server created successfully!");
-                                    navigate(`/servers/${result.uuid}?client=${clientUuid}`);
+                                const newTotalFee = currentTotalFee + payload.subscription_fee;
+
+                                if (clientBudget > 0 && newTotalFee > clientBudget) {
+                                    setBudgetWarning({
+                                        newTotal: newTotalFee,
+                                        budget: clientBudget,
+                                        pendingPayload: payload,
+                                    });
+                                    return;
                                 }
+
+                                await executeCreateServer(payload);
                             }}
                         />
 
@@ -160,6 +197,72 @@ export default function CreateServer() {
                     </Form.Root>
                 </div>
             </div>
+
+            {/* Budget Exceeded Warning Dialog */}
+            <Dialog open={!!budgetWarning} onOpenChange={(open) => !open && setBudgetWarning(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-amber-500">
+                            <AlertTriangle className="h-5 w-5 shrink-0" />
+                            Budget Exceeded Warning
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="py-3 text-sm text-foreground/90 flex flex-col gap-3">
+                        <p>
+                            Adding this server will push the client's total monthly subscription fees over its allocated budget limit.
+                        </p>
+
+                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs space-y-1.5">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Monthly Budget Limit:</span>
+                                <span className="font-semibold text-foreground">
+                                    ₱{(budgetWarning?.budget ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">New Total Subscription Fees:</span>
+                                <span className="font-semibold text-amber-500">
+                                    ₱{(budgetWarning?.newTotal ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                            <div className="flex justify-between border-t border-amber-500/20 pt-1.5">
+                                <span className="text-muted-foreground">Amount Exceeded:</span>
+                                <span className="font-bold text-destructive">
+                                    ₱{((budgetWarning?.newTotal ?? 0) - (budgetWarning?.budget ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground">
+                            Do you still want to proceed and create this server?
+                        </p>
+                    </div>
+
+                    <DialogFooter className="flex gap-2 justify-end">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setBudgetWarning(null)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
+                            onClick={async () => {
+                                if (budgetWarning?.pendingPayload) {
+                                    const payload = budgetWarning.pendingPayload;
+                                    setBudgetWarning(null);
+                                    await executeCreateServer(payload);
+                                }
+                            }}
+                        >
+                            Proceed Anyway
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
