@@ -235,7 +235,19 @@ export default function Dashboard() {
                   value: stats.offline_count,
                   color: STATUS_COLORS.offline,
               },
-          ]
+              {
+                  name: "Pending Installation",
+                  value: stats.pending_installation_count,
+                  color: STATUS_COLORS.pending_installation,
+                  status: "pending_installation",
+              },
+              {
+                  name: "Pending Deletion",
+                  value: stats.pending_deletion_count,
+                  color: STATUS_COLORS.pending_deletion,
+                  status: "pending_deletion",
+              },
+          ].filter((d) => d.value > 0)
         : [];
 
     return (

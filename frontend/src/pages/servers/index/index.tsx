@@ -81,10 +81,12 @@ export default function ServersIndex() {
     const filtered = useMemo(() => {
         if (!servers) return [];
         const statusResult = statusFilter
-            ? statusFilter === "pending_deletion"
-                ? servers.filter((s) => s.agent_deleted)
-                : servers.filter((s) => s.status === statusFilter && !s.agent_deleted)
-            : [...servers];
+            ? statusFilter === "archived"
+                ? servers.filter((s) => s.record_status === "archived" || s.status === "archived")
+                : statusFilter === "pending_deletion"
+                ? servers.filter((s) => s.agent_deleted && s.record_status !== "archived" && s.status !== "archived")
+                : servers.filter((s) => (s.status === statusFilter || (statusFilter === "pending_installation" && !s.status)) && !s.agent_deleted && s.record_status !== "archived" && s.status !== "archived")
+            : servers.filter((s) => s.record_status !== "archived" && s.status !== "archived");
 
         const q = search.toLowerCase().trim();
         const result = q

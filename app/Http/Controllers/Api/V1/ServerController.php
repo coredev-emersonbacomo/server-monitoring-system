@@ -63,6 +63,11 @@ class ServerController extends Controller
             ],
         ]);
 
+        // Sync client's stored total_subscription_fee
+        $clientModel->update([
+            'total_subscription_fee' => (float) $clientModel->servers()->sum('subscription_fee'),
+        ]);
+
         return ServerData::fromModel($server);
     } catch (\RuntimeException $e) {
         abort(500, 'Installation failed: ' . $e->getMessage());
@@ -113,90 +118,96 @@ class ServerController extends Controller
     }
 
     public function update(UpdateServerData $data, string $clientUuid, string $serverUuid): ServerData
-    {
-        $serverModel = Server::withTrashed()
-            ->where('uuid', $serverUuid)
-            ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
-            ->firstOrFail();
+{
+    $serverModel = Server::withTrashed()
+        ->where('uuid', $serverUuid)
+        ->whereHas('client', fn($q) => $q->where('uuid', $clientUuid))
+        ->firstOrFail();
 
-        $updatePayload = [];
+    $updatePayload = [];
 
-        if ($data->name !== null && !($data->name instanceof \Spatie\LaravelData\Optional)) {
-            $updatePayload['name'] = $data->name;
-        }
-
-        if ($data->description !== null && !($data->description instanceof \Spatie\LaravelData\Optional)) {
-            $updatePayload['description'] = $data->description;
-        }
-
-        if (!($data->subscription_fee instanceof \Spatie\LaravelData\Optional) && $data->subscription_fee !== null) {
-            $newRate = (float) $data->subscription_fee;
-            $oldRate = (float) ($serverModel->monthly_rate ?? 0.0);
-            if (abs($newRate - $oldRate) > 0.0001) {
-                $updatePayload['monthly_rate'] = $newRate;
-                $updatePayload['rate_updated_at'] = now();
-            }
-        }
-
-        $originalAttributes = $serverModel->getRawOriginal();
-
-        if (!empty($updatePayload)) {
-            $serverModel->update($updatePayload);
-        }
-
-        $actor = auth()->user();
-        $actorName = $actor ? "{$actor->first_name} {$actor->last_name}" : 'System';
-
-        if (isset($updatePayload['monthly_rate'])) {
-            $oldRateFmt = number_format((float) ($originalAttributes['monthly_rate'] ?? 0.0), 2);
-            $newRateFmt = number_format((float) $updatePayload['monthly_rate'], 2);
-
-            CustomActivityLog::create([
-                'logable_type' => Server::class,
-                'logable_id'   => (string) $serverModel->uuid,
-                'user_id'      => $actor?->id,
-                'user'         => $actorName,
-                'action'       => 'Update Subscription Fee',
-                'details'      => [
-                    'message'     => "Subscription fee updated from ₱{$oldRateFmt}/mo to ₱{$newRateFmt}/mo for server: {$serverModel->name}",
-                    'server_name' => $serverModel->name,
-                    'before'      => ['subscription_fee' => (float) ($originalAttributes['monthly_rate'] ?? 0.0)],
-                    'after'       => ['subscription_fee' => (float) $updatePayload['monthly_rate']],
-                ],
-            ]);
-        } elseif ($serverModel->wasChanged()) {
-            $changes = $serverModel->getChanges();
-            unset($changes['updated_at']);
-
-            $before = [];
-            $after = [];
-            foreach (array_keys($changes) as $field) {
-                $before[$field] = $originalAttributes[$field] ?? null;
-                $after[$field] = $serverModel->{$field};
-            }
-
-            CustomActivityLog::create([
-                'logable_type' => Server::class,
-                'logable_id'   => (string) $serverModel->uuid,
-                'user_id'      => $actor?->id,
-                'user'         => $actorName,
-                'action'       => 'Update Server',
-                'details'      => [
-                    'message' => "Updated server: {$serverModel->name}",
-                    'before'  => $before,
-                    'after'   => $after,
-                ],
-            ]);
-        }
-
-        \App\Events\ServerStatusUpdated::dispatch(
-            $serverModel->uuid,
-            $serverModel->status ?? 'online',
-            $serverModel->name
-        );
-
-        return ServerData::fromModel($serverModel);
+    if ($data->name !== null && !($data->name instanceof \Spatie\LaravelData\Optional)) {
+        $updatePayload['name'] = $data->name;
     }
+
+    if ($data->description !== null && !($data->description instanceof \Spatie\LaravelData\Optional)) {
+        $updatePayload['description'] = $data->description;
+    }
+
+    if (!($data->subscription_fee instanceof \Spatie\LaravelData\Optional) && $data->subscription_fee !== null) {
+        $newRate = (float) $data->subscription_fee;
+        $oldRate = (float) ($serverModel->subscription_fee ?? 0.0);
+        if (abs($newRate - $oldRate) > 0.0001) {
+            $updatePayload['subscription_fee'] = $newRate;
+        }
+    }
+
+    $originalAttributes = $serverModel->getRawOriginal();
+
+    if (!empty($updatePayload)) {
+        $serverModel->update($updatePayload);
+    }
+
+    $actor = auth()->user();
+    $actorName = $actor ? "{$actor->first_name} {$actor->last_name}" : 'System';
+
+    if (isset($updatePayload['subscription_fee'])) {
+        $oldRateFmt = number_format((float) ($originalAttributes['subscription_fee'] ?? 0.0), 2);
+        $newRateFmt = number_format((float) $updatePayload['subscription_fee'], 2);
+
+        CustomActivityLog::create([
+            'logable_type' => Server::class,
+            'logable_id'   => (string) $serverModel->uuid,
+            'user_id'      => $actor?->id,
+            'user'         => $actorName,
+            'action'       => 'Update Subscription Fee',
+            'details'      => [
+                'message'     => "Subscription fee updated from ₱{$oldRateFmt}/mo to ₱{$newRateFmt}/mo for server: {$serverModel->name}",
+                'server_name' => $serverModel->name,
+                'before'      => ['subscription_fee' => (float) ($originalAttributes['subscription_fee'] ?? 0.0)],
+                'after'       => ['subscription_fee' => (float) $updatePayload['subscription_fee']],
+            ],
+        ]);
+    } elseif ($serverModel->wasChanged()) {
+        $changes = $serverModel->getChanges();
+        unset($changes['updated_at']);
+
+        $before = [];
+        $after = [];
+        foreach (array_keys($changes) as $field) {
+            $before[$field] = $originalAttributes[$field] ?? null;
+            $after[$field] = $serverModel->{$field};
+        }
+
+        CustomActivityLog::create([
+            'logable_type' => Server::class,
+            'logable_id'   => (string) $serverModel->uuid,
+            'user_id'      => $actor?->id,
+            'user'         => $actorName,
+            'action'       => 'Update Server',
+            'details'      => [
+                'message' => "Updated server: {$serverModel->name}",
+                'before'  => $before,
+                'after'   => $after,
+            ],
+        ]);
+    }
+
+    \App\Events\ServerStatusUpdated::dispatch(
+        $serverModel->uuid,
+        $serverModel->status ?? 'online',
+        $serverModel->name
+    );
+
+    // Sync client's stored total_subscription_fee whenever any server field changes
+    if ($serverModel->client) {
+        $serverModel->client->update([
+            'total_subscription_fee' => (float) $serverModel->client->servers()->sum('subscription_fee'),
+        ]);
+    }
+
+    return ServerData::fromModel($serverModel);
+}
 
     public function adjustCost(Request $request, string $clientUuid, string $serverUuid): ServerData
     {
@@ -216,11 +227,6 @@ class ServerController extends Controller
 
         if ($actionType === 'reset_usage') {
             $serverModel->update([
-                'cost_reset_at'    => now(),
-                'rate_updated_at'  => now(),
-                'historical_cost'  => 0.0,
-                'accumulated_cost' => 0.0,
-                'remitted'         => 0.0,
                 'online_seconds'   => 0,
             ]);
 
@@ -303,6 +309,14 @@ class ServerController extends Controller
             'status'        => 'archived',
         ]);
         $serverModel->delete();
+
+        // Sync client's stored total_subscription_fee after server removal
+        $clientModel = \App\Models\Client::where('uuid', $clientUuid)->first();
+        if ($clientModel) {
+            $clientModel->update([
+                'total_subscription_fee' => (float) $clientModel->servers()->sum('subscription_fee'),
+            ]);
+        }
 
         return response()->json(['status' => 'success']);
     }

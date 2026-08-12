@@ -65,11 +65,12 @@ class ClientController extends Controller
     public function store(CreateClientData $clientdata): ClientData
     {
         $payload = [
-            'name' => $clientdata->name,
-            'description' => $clientdata->description ?? '',
-            'location' => $clientdata->location,
-            'email' => $clientdata->email,
+            'name'           => $clientdata->name,
+            'description'    => $clientdata->description ?? '',
+            'location'       => $clientdata->location,
+            'email'          => $clientdata->email,
             'contact_number' => $clientdata->contact_number,
+            'budget'         => (float) ($clientdata->budget ?? 0.00),
         ];
 
         if ($clientdata->upload_intent_id !== null && $clientdata->banner_image_storage_key !== null) {
@@ -154,11 +155,12 @@ class ClientController extends Controller
         $client = Client::where('uuid', $clientUuid)->firstOrFail();
 
         $updatePayload = [
-            'name' => $data->name,
-            'description' => $data->description instanceof \Spatie\LaravelData\Optional ? ($client->description ?? '') : $data->description,
-            'location' => $data->location,
-            'email' => $data->email,
+            'name'           => $data->name,
+            'description'    => $data->description instanceof \Spatie\LaravelData\Optional ? ($client->description ?? '') : $data->description,
+            'location'       => $data->location,
+            'email'          => $data->email,
             'contact_number' => $data->contact_number,
+            'budget'         => (float) (($data->budget instanceof \Spatie\LaravelData\Optional || $data->budget === null) ? ($client->budget ?? 0.00) : $data->budget),
         ];
 
         if (!($data->alert_scope instanceof \Spatie\LaravelData\Optional)) {
