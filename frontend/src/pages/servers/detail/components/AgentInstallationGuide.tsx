@@ -26,7 +26,6 @@ export function AgentInstallationGuide({
         [
             "pending_installation",
             "waiting_for_installation",
-            "waiting_for_first_heartbeat",
         ].includes(status)
     )
         return (

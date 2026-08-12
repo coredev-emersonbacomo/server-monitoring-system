@@ -12,6 +12,7 @@ use App\NodeConfig\NodeTypes\CheckAfterNode;
 use App\NodeConfig\NodeTypes\LogicNode;
 use App\NodeConfig\NodeTypes\MetricNode;
 use App\NodeConfig\NodeTypes\NotificationNode;
+use App\NodeConfig\NodeTypes\TemplateNode;
 use App\NodeConfig\NodeTypes\SeverityNode;
 use App\NodeConfig\NodeTypes\SustainedNode;
 use Illuminate\Console\Scheduling\Schedule;
@@ -39,6 +40,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Severity node
         $registry->register(new SeverityNode);
+
+        // Template input node (parameterizes compare thresholds by a bare id)
+        $registry->register(new TemplateNode);
 
         // Action nodes (merged notification)
         $registry->register(new NotificationNode);

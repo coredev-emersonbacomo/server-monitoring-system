@@ -21,6 +21,9 @@ export function DeleteModalDangerZone() {
         copyToClipboard,
     } = useServerDetailContext();
 
+    const isArchived = initial?.record_status === "archived" || initial?.status === "archived";
+    if (isArchived) return null;
+
     return (
         <div className="mt-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5">
             <p className="text-xs font-semibold text-destructive uppercase tracking-wider mb-3">

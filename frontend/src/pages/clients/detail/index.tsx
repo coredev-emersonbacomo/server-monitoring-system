@@ -73,10 +73,19 @@ import type { ServerData } from "@/types/models";
 
 const clientSchema = z.object({
     name: z.string().trim().min(2, "Minimum 2 characters"),
-    description: z.string().trim().min(2, "Minimum 2 characters").max(255, "Maximum 255 characters"),
+    description: z
+        .string()
+        .trim()
+        .min(2, "Minimum 2 characters")
+        .max(255, "Maximum 255 characters"),
     location: z.string().trim().min(2, "Minimum 2 characters"),
     email: z.email("Invalid email address").trim().min(1, "Required"),
     contact_number: z.string().trim().min(5, "Minimum 5 characters"),
+    budget: z.union([z.string(), z.number()]).transform((val) => {
+        if (val === "" || val === undefined || val === null) return 0;
+        const num = typeof val === "number" ? val : parseFloat(String(val).replace(/,/g, ""));
+        return isNaN(num) ? 0 : Math.max(0, num);
+    }),
 });
 
 // ─── Client Alert Tab ────────────────────────────────────────────────────────
@@ -186,6 +195,7 @@ export default function ClientDetail() {
                     location: "",
                     email: "",
                     contact_number: "",
+                    budget: 0,
                 },
                 initialMode: "create",
             });
@@ -194,19 +204,21 @@ export default function ClientDetail() {
             schema: clientSchema,
             originalData: client
                 ? {
-                    name: client.name,
-                    description: client.description ?? "",
-                    location: client.location,
-                    email: client.email,
-                    contact_number: client.contact_number,
-                }
+                      name: client.name,
+                      description: client.description ?? "",
+                      location: client.location,
+                      email: client.email,
+                      contact_number: client.contact_number,
+                      budget: client.budget ?? 0,
+                  }
                 : {
-                    name: "",
-                    description: "",
-                    location: "",
-                    email: "",
-                    contact_number: "",
-                },
+                      name: "",
+                      description: "",
+                      location: "",
+                      email: "",
+                      contact_number: "",
+                      budget: 0,
+                  },
             initialMode: "view",
         });
     }, [isCreate]);
@@ -216,28 +228,31 @@ export default function ClientDetail() {
     const errors = useForm(store, (s) => s.errors);
     const showEdit = mode !== "view";
 
-    // Populate form when client data arrives
+    // Populate form when client data first arrives (uuid-keyed so it only fires on navigation)
+    // Never overwrite the store while the user is actively editing
     useEffect(() => {
-        if (client && !isCreate) {
-            store.setState({
-                form: {
-                    name: client.name,
-                    description: client.description ?? "",
-                    location: client.location,
-                    email: client.email,
-                    contact_number: client.contact_number,
-                },
-                originalData: {
-                    name: client.name,
-                    description: client.description ?? "",
-                    location: client.location,
-                    email: client.email,
-                    contact_number: client.contact_number,
-                },
-            });
-            setBannerPreview(client.banner_image_url);
-        }
-    }, [client, client?.uuid, isCreate, store]);
+        if (!client || isCreate) return;
+        store.setState({
+            form: {
+                name: client.name,
+                description: client.description ?? "",
+                location: client.location,
+                email: client.email,
+                contact_number: client.contact_number,
+                budget: client.budget ?? 0,
+            },
+            originalData: {
+                name: client.name,
+                description: client.description ?? "",
+                location: client.location,
+                email: client.email,
+                contact_number: client.contact_number,
+                budget: client.budget ?? 0,
+            },
+        });
+        setBannerPreview(client.banner_image_url);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [client?.uuid, isCreate, store]);
 
     const hasChanges = useMemo(() => {
         if (isCreate) {
@@ -247,6 +262,7 @@ export default function ClientDetail() {
                 form.location !== "" ||
                 form.email !== "" ||
                 form.contact_number !== "" ||
+                (form.budget !== undefined && form.budget !== 0) ||
                 bannerFile !== null
             );
         }
@@ -256,7 +272,8 @@ export default function ClientDetail() {
             form.description !== (client.description ?? "") ||
             form.location !== client.location ||
             form.email !== client.email ||
-            form.contact_number !== client.contact_number;
+            form.contact_number !== client.contact_number ||
+            Number(form.budget ?? 0) !== Number(client.budget ?? 0);
         return formChanged || bannerFile !== null;
     }, [form, client, bannerFile, isCreate]);
 
@@ -283,6 +300,7 @@ export default function ClientDetail() {
         fd.append("location", form.location);
         fd.append("email", form.email);
         fd.append("contact_number", form.contact_number);
+        fd.append("budget", String(form.budget ?? 0));
 
         if (bannerFile) {
             try {
@@ -345,7 +363,7 @@ export default function ClientDetail() {
             await deleteClient.mutateAsync(clientUuid!);
             toast.success("Client deleted.");
             navigate("/clients");
-        } catch (err: any) {
+        } catch (err) {
             toast.error(
                 err?.response?.data?.message ||
                     err?.message ||
@@ -456,14 +474,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                        backgroundImage: `url(${bannerPreview})`,
-                                        backgroundSize: "cover",
-                                        backgroundPosition: "top center",
-                                    }
+                                          backgroundImage: `url(${bannerPreview})`,
+                                          backgroundSize: "cover",
+                                          backgroundPosition: "top center",
+                                      }
                                     : {
-                                        background:
-                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                    }
+                                          background:
+                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                      }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -524,7 +542,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                        defaultBanner,
+                                                            defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -612,13 +630,14 @@ export default function ClientDetail() {
                         </div>
 
                         {/* ── Description (always in banner) ── */}
+                        {/* ── Description (always in banner) ── */}
                         <div className="mt-3 max-w-xl">
                             {showEdit ? (
                                 <div>
                                     <Label className="text-[11px] uppercase tracking-widest text-muted-foreground/70 mb-1">
                                         Description
                                     </Label>
-                                   <textarea
+                                    <textarea
                                         value={form.description}
                                         onChange={(e) =>
                                             store.set("description")(
@@ -631,8 +650,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none break-all",
                                             errors.description &&
-                                            "border-destructive",
-                                            "border-destructive",
+                                                "border-destructive",
                                         )}
                                     />
                                     {errors.description && (
@@ -733,12 +751,8 @@ export default function ClientDetail() {
                                             {showEdit ? (
                                                 <FloatingInput
                                                     label="Contact Number"
-                                                    value={
-                                                        form.contact_number
-                                                    }
-                                                    onValueChange={(
-                                                        value,
-                                                    ) => {
+                                                    value={form.contact_number}
+                                                    onValueChange={(value) => {
                                                         store.set(
                                                             "contact_number",
                                                         )(
@@ -747,7 +761,9 @@ export default function ClientDetail() {
                                                             ),
                                                         );
                                                     }}
-                                                    error={errors.contact_number}
+                                                    error={
+                                                        errors.contact_number
+                                                    }
                                                 />
                                             ) : (
                                                 <Field
@@ -759,8 +775,53 @@ export default function ClientDetail() {
                                                     <p className="text-base font-semibold text-foreground">
                                                         {formatPhoneNumber(
                                                             client?.contact_number ||
-                                                            "",
+                                                                "",
                                                         )}
+                                                    </p>
+                                                </Field>
+                                            )}
+                                        </div>
+                                    </section>
+
+                                    <div className="h-px bg-border" />
+
+                                    {/* Financial & Subscription Details */}
+                                    <section className="space-y-4">
+                                        <SectionHeader
+                                            title="Financial & Subscription"
+                                            description="Budget limit and combined server subscription fees."
+                                        />
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {showEdit ? (
+                                                <FloatingInput
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    label="Monthly Budget (₱)"
+                                                    value={String(form.budget ?? 0)}
+                                                    onValueChange={(val) => store.set("budget")(val)}
+                                                    error={errors.budget}
+                                                />
+                                            ) : (
+                                                <Field
+                                                    label="Monthly Budget"
+                                                    icon={Landmark}
+                                                    isEdit={showEdit}
+                                                >
+                                                    <p className="text-base font-semibold text-foreground">
+                                                        ₱{(Number(client?.budget) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mo
+                                                    </p>
+                                                </Field>
+                                            )}
+
+                                            {!isCreate && (
+                                                <Field
+                                                    label="Total Server Subscription Fee"
+                                                    icon={Landmark}
+                                                    isEdit={false}
+                                                >
+                                                    <p className="text-base font-semibold text-foreground">
+                                                        ₱{(Number(client?.total_subscription_fee) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mo
                                                     </p>
                                                 </Field>
                                             )}
@@ -970,8 +1031,6 @@ export default function ClientDetail() {
                                     </div>
                                 </Tab.Item>
                             )}
-
-
                         </Tab>
 
                         {mode === "view" && client && (
@@ -1019,8 +1078,8 @@ export default function ClientDetail() {
                                                         ? "All"
                                                         : serverFilter ===
                                                             "online"
-                                                            ? "Online"
-                                                            : "Offline"}
+                                                          ? "Online"
+                                                          : "Offline"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -1047,9 +1106,9 @@ export default function ClientDetail() {
                                                         onClick={() =>
                                                             setServerFilter(
                                                                 opt.value as
-                                                                | "all"
-                                                                | "online"
-                                                                | "offline",
+                                                                    | "all"
+                                                                    | "online"
+                                                                    | "offline",
                                                             )
                                                         }
                                                         className={cn(
@@ -1164,7 +1223,10 @@ export default function ClientDetail() {
                                                     Active Server Agents Running
                                                 </p>
                                                 <p className="text-muted-foreground mt-0.5">
-                                                    You must uninstall the agent service on all associated servers before you can delete this client.
+                                                    You must uninstall the agent
+                                                    service on all associated
+                                                    servers before you can
+                                                    delete this client.
                                                 </p>
                                             </div>
                                         </div>
@@ -1355,8 +1417,6 @@ export default function ClientDetail() {
                         </div>
                     </DialogContent>
                 </Dialog>
-
-
             </div>
         </>
     );

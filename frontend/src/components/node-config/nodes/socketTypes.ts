@@ -1,4 +1,4 @@
-export type SocketDataType = 'number' | 'boolean' | 'any' | 'event' | 'severity';
+export type SocketDataType = 'number' | 'boolean' | 'string' | 'any' | 'event' | 'severity';
 
 export interface HandleTypeDef {
     type: SocketDataType;
@@ -8,6 +8,7 @@ export interface HandleTypeDef {
 export const TYPE_COLORS: Record<SocketDataType, string> = {
     number: '#60a5fa',
     boolean: '#34d399',
+    string: '#a78bfa',
     any: '#9ca3af',
     event: '#f59e0b',
     severity: '#fb923c',
@@ -55,9 +56,23 @@ export function getInputType(nodeType: string, handleId: string): HandleTypeDef 
     return INPUT_TYPES[nodeType]?.[handleId];
 }
 
-export function getOutputType(nodeType: string, handleId?: string): HandleTypeDef | undefined {
+export function getOutputType(
+    nodeType: string,
+    handleId?: string,
+    data?: Record<string, unknown>,
+): HandleTypeDef | undefined {
     if (nodeType === 'metric' && handleId && (handleId === 'online' || handleId === 'offline')) {
         return { type: 'boolean', label: handleId === 'online' ? 'Online' : 'Offline' };
+    }
+    if (nodeType === 'metric' && handleId === 'timing') {
+        return { type: 'number', label: 'Timing (ms)' };
+    }
+    if (nodeType === 'template') {
+        const dt = (data?.data_type as SocketDataType) || 'number';
+        return {
+            type: dt === 'boolean' ? 'boolean' : dt === 'string' ? 'string' : 'number',
+            label: 'Value',
+        };
     }
     if (handleId === 'chain-out') {
         return { type: 'any', label: 'Chain Out' };

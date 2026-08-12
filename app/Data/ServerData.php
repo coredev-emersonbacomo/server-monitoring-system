@@ -185,11 +185,6 @@ class ServerData extends Data
             );
         }
 
-        $monthlyCost = (float) ($server->monthly_rate ?? 0.0);
-        $costOffset = (float) ($server->remitted ?? 0.0);
-        $costResetAtStr = $server->cost_reset_at ? $server->cost_reset_at->toIso8601String() : null;
-        $historicalCost = (float) ($server->historical_cost ?? 0.0);
-        $rateUpdatedAtStr = $server->rate_updated_at ? $server->rate_updated_at->toIso8601String() : null;
 
         $dbOnlineSeconds = (int) ($server->online_seconds ?? 0);
         $rawOffline = (int) \App\Models\Setting::get('offline_threshold', '15');

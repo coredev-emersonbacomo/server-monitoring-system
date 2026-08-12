@@ -29,10 +29,12 @@ public function newUniqueId(): string
         'uuid',
         'alert_scope',
         'budget',
+        'total_subscription_fee',
     ];
 
     protected $casts = [
-        'budget' => 'decimal:2',
+        'budget'                  => 'decimal:2',
+        'total_subscription_fee'  => 'decimal:2',
     ];
 public function uniqueIds(): array
     {

@@ -21,6 +21,7 @@ import { Form, createFormStore, useForm, type FormStore } from "@/components/ui/
 const schema = z.object({
     heartbeat_interval: z.string(),
     offline_threshold: z.string(),
+    port_ping_interval: z.string(),
 });
 
 // ─── Settings field wrapper ───────────────────────────────────────────────────
@@ -78,8 +79,13 @@ export default function AgentSettings() {
                               ? Math.floor(parseInt(settings.offline_threshold, 10) / 1000)
                               : parseInt(settings.offline_threshold, 10) || 15
                       ),
+                      port_ping_interval: String(
+                          parseInt(settings.port_ping_interval, 10) >= 1000
+                              ? Math.floor(parseInt(settings.port_ping_interval, 10) / 1000)
+                              : parseInt(settings.port_ping_interval, 10) || 60
+                      ),
                   }
-                : { heartbeat_interval: "5", offline_threshold: "15" },
+                : { heartbeat_interval: "5", offline_threshold: "15", port_ping_interval: "60" },
             initialMode: "edit",
         }),
         [settings],
@@ -132,12 +138,14 @@ function AgentSettingsContent<T extends FormData>({
 
     const heartbeatValue = parseInt(form.heartbeat_interval, 10) || 0;
     const offlineValue = parseInt(form.offline_threshold, 10) || 0;
+    const portPingValue = parseInt(form.port_ping_interval, 10) || 0;
     const offlineBelowHeartbeat = offlineValue < heartbeatValue;
 
     const isValid =
         heartbeatValue >= 1 && heartbeatValue <= 1000 &&
         offlineValue >= 1 && offlineValue <= 1000 &&
-        offlineValue >= heartbeatValue;
+        offlineValue >= heartbeatValue &&
+        portPingValue >= 1 && portPingValue <= 3600;
 
     return (
         <Form.Root store={store}>
@@ -161,6 +169,7 @@ function AgentSettingsContent<T extends FormData>({
                 handler={async (data: Record<string, unknown>) => {
                     const hb = parseInt(String(data.heartbeat_interval), 10);
                     const off = parseInt(String(data.offline_threshold), 10);
+                    const pp = parseInt(String(data.port_ping_interval), 10);
 
                     if (isNaN(hb) || hb < 1 || hb > 1000) {
                         toast.error("Heartbeat interval must be between 1s and ~16m.");
@@ -174,11 +183,16 @@ function AgentSettingsContent<T extends FormData>({
                         toast.error("Offline threshold must be greater than or equal to the heartbeat interval.");
                         return;
                     }
+                    if (isNaN(pp) || pp < 1 || pp > 3600) {
+                        toast.error("Port ping interval must be between 1s and 1h.");
+                        return;
+                    }
 
                     try {
                         await updateSettings.mutateAsync({
                             heartbeat_interval: String(hb),
                             offline_threshold: String(off),
+                            port_ping_interval: String(pp),
                         });
                         toast.success("Agent settings saved.");
                     } catch {
@@ -235,6 +249,21 @@ function AgentSettingsContent<T extends FormData>({
                                         store.set("offline_threshold")(String(secs));
                                     }}
                                     placeholder="15s"
+                                />
+                            </SettingRow>
+
+                            <SettingRow
+                                label="Port Ping Interval"
+                                description="How often the backend TCP-pings the server's exposed ports. Results show in the server details port list and drive port ping alerts."
+                            >
+                                <DurationInput
+                                    label=""
+                                    value={portPingValue * 1000}
+                                    onChange={(ms) => {
+                                        const secs = Math.max(1, Math.round(ms / 1000));
+                                        store.set("port_ping_interval")(String(secs));
+                                    }}
+                                    placeholder="60s"
                                 />
                             </SettingRow>
                         </div>

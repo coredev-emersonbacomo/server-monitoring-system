@@ -65,14 +65,16 @@ class DashboardController extends Controller
         $totalUsers = User::count();
 
         return new DashboardStatsData(
-            total_users:      $totalUsers,
-            total_clients:    $totalClients,
-            total_servers:    $totalServers,
-            online_count:     $onlineCount,
-            offline_count:    $offlineCount,
-            top_usage_cpu:    $buildRanking('cpu_usage'),
-            top_usage_memory: $buildRanking('memory_usage'),
-            top_usage_disk: $buildRanking('storage'),
+            total_users:                $totalUsers,
+            total_clients:              $totalClients,
+            total_servers:              $totalServers,
+            online_count:               $onlineCount,
+            offline_count:              $offlineCount,
+            pending_installation_count: 0,
+            pending_deletion_count:     0,
+            top_usage_cpu:              $buildRanking('cpu_usage'),
+            top_usage_memory:           $buildRanking('memory_usage'),
+            top_usage_disk:             $buildRanking('storage'),
         );
     }
 

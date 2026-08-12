@@ -220,17 +220,10 @@ class HeartbeatFlowTest extends TestCase
         ]);
 
         $this->assertTrue($result['success'], 'Engine should succeed');
+        $this->assertEmpty($result['actions'], 'First trigger should only arm the sustain window');
+        $this->assertNotEmpty($result['timers'], 'Sustain window should be scheduled');
 
-        if (!empty($result['actions'])) {
-            foreach ($result['actions'] as $action) {
-                Log::info("[TEST] Action dispatched:", [
-                    'node_id' => $action['node_id'],
-                    'type' => $action['type'],
-                    'channel' => $action['settings']['channel'] ?? 'unknown',
-                    'subject' => $action['settings']['subject'] ?? '',
-                ]);
-            }
-        }
+        $firedResults = [];
 
         if (!empty($result['timers'])) {
             foreach ($result['timers'] as $timer) {
@@ -252,6 +245,8 @@ class HeartbeatFlowTest extends TestCase
                     'actions_count' => count($timerResult['actions'] ?? []),
                 ]);
 
+                $firedResults[] = $timerResult;
+
                 if (!empty($timerResult['actions'])) {
                     foreach ($timerResult['actions'] as $action) {
                         Log::info("[TEST] Timer action:", [
@@ -264,8 +259,9 @@ class HeartbeatFlowTest extends TestCase
             }
         }
 
-        $this->assertNotEmpty($result['actions'], 'Should trigger email notification for high CPU');
-        $emailAction = collect($result['actions'])->first(fn($a) => ($a['settings']['channel'] ?? '') === 'email');
+        $firedActions = collect($firedResults)->flatMap(fn($r) => $r['actions'] ?? []);
+        $this->assertNotEmpty($firedActions, 'Sustain timer fire should emit the email notification');
+        $emailAction = $firedActions->first(fn($a) => ($a['settings']['channel'] ?? '') === 'email');
         $this->assertNotNull($emailAction, 'Should have an email notification action');
         $this->assertEquals('email_10', $emailAction['node_id']);
     }
@@ -495,6 +491,22 @@ class HeartbeatFlowTest extends TestCase
         foreach ($metricNodes as $mn) {
             Log::info("[TEST]   - {$mn['id']}: {$mn['settings']['metric_type']}");
         }
+    }
+
+    public function test_resolve_for_server_client_scope_with_global_client_returns_global_config(): void
+    {
+        Log::info('[TEST] === Client is Global + Server is Client Scoped ===');
+
+        $this->server->update(['alert_scope' => 'client']);
+        $this->client->update(['alert_scope' => 'global']);
+
+        NodeConfigCache::warm();
+
+        $resolved = NodeConfig::resolveForServerFromDb($this->server->uuid);
+
+        $this->assertNotNull($resolved, 'resolveForServer should return a config');
+        $this->assertEquals($this->alertsConfig->id, $resolved->id, 'Server with client scope but global client should resolve to global config');
+        $this->assertEquals('global', $resolved->scope_type, 'Resolved config should be the global scope config');
     }
 
     // ──────────────────────────────────────────────────────
