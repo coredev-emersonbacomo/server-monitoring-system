@@ -51,13 +51,14 @@ export interface NodeSettingDefinition {
     default?: unknown;
     options?: Record<string, string>;
     description?: string;
+    placeholder?: string;
 }
 
 export type NodeCategory = 'metric' | 'condition' | 'logic' | 'time' | 'action';
 
 export const NODE_CATEGORIES: { key: NodeCategory; label: string; color: string }[] = [
     { key: 'metric', label: 'Metrics', color: '#3b82f6' },
-    { key: 'condition', label: 'Conditions', color: '#f59e0b' },
+    { key: 'condition', label: 'Compare', color: '#f59e0b' },
     { key: 'logic', label: 'Logic', color: '#8b5cf6' },
     { key: 'time', label: 'Time', color: '#10b981' },
     { key: 'action', label: 'Actions', color: '#ef4444' },

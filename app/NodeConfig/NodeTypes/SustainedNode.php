@@ -4,6 +4,7 @@ namespace App\NodeConfig\NodeTypes;
 
 use App\Models\Agent;
 use App\Models\MetricSample;
+use App\Models\Port;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Log;
 
@@ -151,6 +152,10 @@ class SustainedNode extends BaseNode
             return $this->checkServerStatusCondition($serverId, $cfg['duration_ms']);
         }
 
+        if ($metricType === 'ports_ping') {
+            return $this->checkPortTimingCondition($serverId, $cfg['threshold'], $cfg['operator']);
+        }
+
         if ($cfg['threshold'] === null) {
             return false;
         }
@@ -177,6 +182,26 @@ class SustainedNode extends BaseNode
         $offlineSec = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
 
         return $agent->last_seen_at->lt(now()->subSeconds($offlineSec)->subMilliseconds($requiredMs));
+    }
+
+    private function checkPortTimingCondition(int $serverId, ?float $threshold, string $operator): bool
+    {
+        if ($threshold === null) {
+            return false;
+        }
+
+        $agent = Agent::where('server_id', $serverId)->first();
+        if (!$agent) {
+            return false;
+        }
+
+        $sqlOp = $this->toSqlOperator($operator);
+
+        return Port::where('agent_id', $agent->id)
+            ->where('ping_status', 'online')
+            ->whereNotNull('ping_time')
+            ->where('ping_time', $sqlOp, $threshold)
+            ->exists();
     }
 
     private function checkMetricCondition(

@@ -40,7 +40,9 @@ First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 <b>[{server.client.name}] {server.name}\'s {runtime.metricName}</b> has been above 85% for {runtime.sustainValue}!
 
 Alert Trigger: <t:{runtime.eventTimestampUnix}:f>
+<if-repeat>
 First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
+</if-repeat>
 <if-repeat>
 <discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>
 </if-repeat>
@@ -65,7 +67,50 @@ First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 <b>[{server.client.name}] {server.name}</b> has been offline for {runtime.offlineDuration}
 
 Alert Trigger: <t:{runtime.eventTimestampUnix}:f>
+<if-repeat>
 First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
+</if-repeat>
+<if-repeat>
+<discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>
+</if-repeat>
+</discord-embed>
+<discord-button url="{server.url}">View Server Details</discord-button>']],
+
+            // ── Ports Ping section: slow timing → sustain → Discord; unreachable → check later → Discord ──
+
+            ['id' => 'metric_ports',     'type' => 'metric',      'position' => ['x' => -300, 'y' => 1100], 'settings' => ['label' => 'Ports Ping', 'metric_type' => 'ports_ping']],
+
+            ['id' => 'compare_ping',     'type' => 'condition',   'position' => ['x' => -60,  'y' => 1100], 'settings' => ['label' => 'Ping > threshold', 'operator' => 'greater_than', 'threshold' => 200, 'min' => 0, 'max' => 0]],
+            ['id' => 'ping_slow_threshold', 'type' => 'template',    'position' => ['x' => -300, 'y' => 1270], 'settings' => ['label' => 'Ping slow threshold ms', 'template_id' => 'port_ping_slow_threshold_ms', 'value' => '200', 'data_type' => 'number']],
+
+            ['id' => 'sustained_ping',   'type' => 'sustained',   'position' => ['x' => 200,  'y' => 1100], 'settings' => ['label' => 'Sustained 10s', 'duration' => '10000']],
+            ['id' => 'check_after_ping', 'type' => 'check_after', 'position' => ['x' => -60,  'y' => 1390], 'settings' => ['label' => 'Check After 10s', 'duration' => '10000', 'repeat_interval' => '10000', 'repeat_max_repeats' => -1]],
+
+            ['id' => 'discord_ping',     'type' => 'notification','position' => ['x' => 460,  'y' => 1100], 'settings' => ['label' => 'Discord Ping Slow', 'channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'severity' => 'warning', 'message' => '{runtime.discordRoleCallout} [{server.client.name}] {server.name} — Port Ping Slow ({runtime.severity})
+<discord-embed>
+<discord-embed-title>:rotating_light: Port Ping Alert ({runtime.severity})</discord-embed-title>
+
+<b>[{server.client.name}] {server.name}</b> port {runtime.port} ({runtime.portName}) ping **{runtime.ping} ms** is above the **{runtime.threshold} ms** slow-ping threshold for {runtime.sustainValue}!
+
+Alert Trigger: <t:{runtime.eventTimestampUnix}:f>
+<if-repeat>
+First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
+</if-repeat>
+<if-repeat>
+<discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>
+</if-repeat>
+</discord-embed>
+<discord-button url="{server.url}">View Server Details</discord-button>']],
+            ['id' => 'discord_ping_off', 'type' => 'notification','position' => ['x' => 200,  'y' => 1390], 'settings' => ['label' => 'Discord Port Unreachable', 'channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '{runtime.discordRoleCallout} [{server.client.name}] {server.name} — Port Unreachable ({runtime.severity})
+<discord-embed>
+<discord-embed-title>:rotating_light: Port Unreachable ({runtime.severity})</discord-embed-title>
+
+<b>[{server.client.name}] {server.name}</b> port {runtime.port} ({runtime.portName}) is unreachable.
+
+Alert Trigger: <t:{runtime.eventTimestampUnix}:f>
+<if-repeat>
+First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
+</if-repeat>
 <if-repeat>
 <discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>
 </if-repeat>
@@ -96,6 +141,16 @@ First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
             // Server Status Offline → Check After 10m → Discord
             ['id' => 'e_off_check',     'source' => 'metric_status',  'target' => 'check_after_10m','sourceHandle' => 'offline', 'targetHandle' => 'input'],
             ['id' => 'e_check_discord',  'source' => 'check_after_10m','target' => 'discord_offline','sourceHandle' => 'output', 'targetHandle' => 'input'],
+
+             // Ports Ping Timing → Compare (threshold supplied by template) → Sustained → Discord
+             ['id' => 'e_ping_timing',   'source' => 'metric_ports',  'target' => 'compare_ping',   'sourceHandle' => 'timing',  'targetHandle' => 'input-a'],
+             ['id' => 'e_ping_threshold','source' => 'ping_slow_threshold', 'target' => 'compare_ping',   'sourceHandle' => 'output',  'targetHandle' => 'input-b'],
+             ['id' => 'e_ping_cond',     'source' => 'compare_ping',  'target' => 'sustained_ping', 'sourceHandle' => 'output',  'targetHandle' => 'input'],
+             ['id' => 'e_ping_sustain',  'source' => 'sustained_ping','target' => 'discord_ping',   'sourceHandle' => 'output',  'targetHandle' => 'input'],
+
+            // Ports Ping Offline → Check After → Discord
+            ['id' => 'e_ping_off',      'source' => 'metric_ports',  'target' => 'check_after_ping','sourceHandle' => 'offline', 'targetHandle' => 'input'],
+            ['id' => 'e_ping_check',    'source' => 'check_after_ping','target' => 'discord_ping_off','sourceHandle' => 'output', 'targetHandle' => 'input'],
         ];
 
         $config = ['nodes' => $nodes, 'edges' => $edges];

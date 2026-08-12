@@ -160,7 +160,7 @@ export function MetricsTab({
                                             </td>
                                             <td className="py-2 text-right text-foreground">
                                                 {p.ping_status === "offline"
-                                                    ? "offline"
+                                                    ? "unreachable"
                                                     : p.ping_status === "online"
                                                       ? `${p.ping_time}ms`
                                                       : "-"}
