@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
+import { getEchoInstance } from "@/hooks/useServerSocket";
 
 export const useClients = (params?: {
     exclude_user_uuid?: string;
@@ -73,6 +75,31 @@ export const useUpdateClient = (clientUuid: string) => {
 };
 
 export const useClientServers = (clientUuid: string) => {
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        if (!clientUuid) return;
+
+        try {
+            const echo = getEchoInstance();
+            const channel = echo.private("dashboard");
+
+            const handler = () => {
+                queryClient.invalidateQueries({
+                    queryKey: ["clients", clientUuid, "servers"],
+                });
+            };
+
+            channel.listen(".ServerStatusUpdated", handler);
+
+            return () => {
+                channel.stopListening(".ServerStatusUpdated", handler);
+            };
+        } catch {
+            // Echo not available yet
+        }
+    }, [clientUuid, queryClient]);
+
     return useQuery({
         queryKey: ["clients", clientUuid, "servers"],
         queryFn: async () => {
@@ -86,6 +113,7 @@ export const useClientServers = (clientUuid: string) => {
             return data;
         },
         enabled: !!clientUuid,
+        refetchInterval: 5000,
     });
 };
 
