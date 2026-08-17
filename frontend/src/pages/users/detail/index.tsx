@@ -1037,170 +1037,38 @@ export default function UserDetail() {
                                                 <SectionHeader
                                                     title={
                                                         isCreate
-                                                            ? "Password"
+                                                            ? "Set Password"
                                                             : "Change Password"
                                                     }
                                                     description={
                                                         isCreate
-                                                            ? "Set an initial password for this account."
-                                                            : "Leave blank to keep the current password."
+                                                            ? "Must be at least 8 characters."
+                                                            : "Leave blank to keep current password."
                                                     }
                                                 />
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <div className="flex flex-col gap-1.5">
-                                                        <FloatingInput
-                                                            type="password"
-                                                            label={
-                                                                isCreate
-                                                                    ? "Password"
-                                                                    : "New password"
-                                                            }
-                                                            value={
-                                                                form.password
-                                                            }
-                                                            onValueChange={(
-                                                                value,
-                                                            ) => {
-                                                                store.set(
-                                                                    "password",
-                                                                )(value);
-
-                                                                // Live validation
-                                                                setErrors(
-                                                                    (prev) => {
-                                                                        const next =
-                                                                        {
-                                                                            ...prev,
-                                                                        };
-
-                                                                        if (
-                                                                            !value
-                                                                        ) {
-                                                                            if (
-                                                                                isCreate
-                                                                            )
-                                                                                next.password =
-                                                                                    "Password is required";
-                                                                            else
-                                                                                delete next.password;
-                                                                        } else {
-                                                                            const checks =
-                                                                            {
-                                                                                length:
-                                                                                    value.length >=
-                                                                                    8,
-                                                                                upper: /[A-Z]/.test(
-                                                                                    value,
-                                                                                ),
-                                                                                number: /[0-9]/.test(
-                                                                                    value,
-                                                                                ),
-                                                                                symbol: /[^A-Za-z0-9]/.test(
-                                                                                    value,
-                                                                                ),
-                                                                            };
-                                                                            const failed =
-                                                                                !checks.length
-                                                                                    ? "Must be at least 8 characters"
-                                                                                    : !checks.upper
-                                                                                        ? "Must include an uppercase letter"
-                                                                                        : !checks.number
-                                                                                            ? "Must include a number"
-                                                                                            : !checks.symbol
-                                                                                                ? "Must include a symbol (!@#$...)"
-                                                                                                : null;
-
-                                                                            if (
-                                                                                failed
-                                                                            )
-                                                                                next.password =
-                                                                                    failed;
-                                                                            else
-                                                                                delete next.password;
-                                                                        }
-
-                                                                        // Re-check confirm field whenever password changes
-                                                                        if (
-                                                                            form.password_confirmation
-                                                                        ) {
-                                                                            if (
-                                                                                form.password_confirmation !==
-                                                                                value
-                                                                            ) {
-                                                                                next.password_confirmation =
-                                                                                    "Passwords do not match";
-                                                                            } else {
-                                                                                delete next.password_confirmation;
-                                                                            }
-                                                                        }
-
-                                                                        return next;
-                                                                    },
-                                                                );
-                                                            }}
-                                                            error={
-                                                                errors.password
-                                                            }
-                                                        />
-
-                                                        {/* Strength meter */}
-                                                        {form.password && (
-                                                            <PasswordStrength
-                                                                password={
-                                                                    form.password
-                                                                }
-                                                            />
+                                                    <FloatingInput
+                                                        type="password"
+                                                        label="Password"
+                                                        value={form.password}
+                                                        onValueChange={store.set(
+                                                            "password",
                                                         )}
-                                                    </div>
-
-                                                    <div>
-                                                        <FloatingInput
-                                                            type="password"
-                                                            label="Confirm password"
-                                                            value={
-                                                                form.password_confirmation
-                                                            }
-                                                            onValueChange={(
-                                                                value,
-                                                            ) => {
-                                                                store.set(
-                                                                    "password_confirmation",
-                                                                )(value);
-
-                                                                setErrors(
-                                                                    (prev) => {
-                                                                        const next =
-                                                                        {
-                                                                            ...prev,
-                                                                        };
-                                                                        if (
-                                                                            !value
-                                                                        ) {
-                                                                            if (
-                                                                                isCreate
-                                                                            )
-                                                                                next.password_confirmation =
-                                                                                    "Please confirm your password";
-                                                                            else
-                                                                                delete next.password_confirmation;
-                                                                        } else if (
-                                                                            value !==
-                                                                            form.password
-                                                                        ) {
-                                                                            next.password_confirmation =
-                                                                                "Passwords do not match";
-                                                                        } else {
-                                                                            delete next.password_confirmation;
-                                                                        }
-                                                                        return next;
-                                                                    },
-                                                                );
-                                                            }}
-                                                          error={
-                                                                errors.password_confirmation
-                                                            }
-                                                        />
-                                                    </div>
+                                                        error={errors.password}
+                                                    />
+                                                    <FloatingInput
+                                                        type="password"
+                                                        label="Confirm Password"
+                                                        value={
+                                                            form.password_confirmation
+                                                        }
+                                                        onValueChange={store.set(
+                                                            "password_confirmation",
+                                                        )}
+                                                        error={
+                                                            errors.password_confirmation
+                                                        }
+                                                    />
                                                 </div>
                                             </section>
                                         </>
@@ -1208,17 +1076,17 @@ export default function UserDetail() {
                                 </Form.Root>
                             </Tab.Item>
 
-                            {!isCreate && user && (
-                                <Tab.Item icon={Building} title="Clients">
+                            {mode === "view" && user && (
+                                <Tab.Item icon={Building} title="Client Scope">
                                     <div className="bg-card border border-border/60 shadow-sm p-6 sm:p-8 flex flex-col gap-8">
                                         <div className="flex items-center justify-between mb-6">
                                             <div>
                                                 <h2 className="text-base font-semibold text-foreground">
-                                                    Client Assignments
+                                                    Assigned Clients
                                                 </h2>
                                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                                    Manage clients assigned to
-                                                    this user.
+                                                    Manage clients this SecOps user
+                                                    is assigned to.
                                                 </p>
                                             </div>
                                             <Button
@@ -1243,21 +1111,14 @@ export default function UserDetail() {
                                                     />
                                                 ))}
                                             </div>
-                                        ) : userClients.length > 0 ? (
+                                        ) : assignedClients.length > 0 ? (
                                             <div className="space-y-2">
-                                                {userClients.map((client) => (
+                                                {assignedClients.map((client) => (
                                                     <div
                                                         key={client.uuid}
                                                         className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"
                                                     >
-                                                        <div
-                                                            className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
-                                                            onClick={() =>
-                                                                navigate(
-                                                                    `/clients/${client.uuid}`,
-                                                                )
-                                                            }
-                                                        >
+                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
                                                             <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted shrink-0 flex items-center justify-center">
                                                                 {client.banner_image_url ? (
                                                                     <img
@@ -1271,32 +1132,17 @@ export default function UserDetail() {
                                                                     />
                                                                 ) : (
                                                                     <Building
-                                                                        size={
-                                                                            16
-                                                                        }
+                                                                        size={14}
                                                                         className="text-muted-foreground"
                                                                     />
                                                                 )}
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-sm font-medium text-foreground truncate">
-                                                                    {
-                                                                        client.name
-                                                                    }
+                                                                    {client.name}
                                                                 </p>
                                                                 <p className="text-xs text-muted-foreground truncate">
-                                                                    {
-                                                                        client.location
-                                                                    }{" "}
-                                                                    •{" "}
-                                                                    {
-                                                                        client.servers_count
-                                                                    }{" "}
-                                                                    server
-                                                                    {client.servers_count !==
-                                                                        1
-                                                                        ? "s"
-                                                                        : ""}
+                                                                    {client.location}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -1307,17 +1153,15 @@ export default function UserDetail() {
                                                                     client.uuid,
                                                                     {
                                                                         onSuccess:
-                                                                            () => {
-                                                                                toast.error(
-                                                                                    `${client.name} removed from ${user.first_name}'s list.`,
-                                                                                );
-                                                                            },
+                                                                            () =>
+                                                                                toast.success(
+                                                                                    `${client.name} removed.`,
+                                                                                ),
                                                                         onError:
-                                                                            () => {
+                                                                            () =>
                                                                                 toast.error(
-                                                                                    "Failed to remove client.",
-                                                                                );
-                                                                            },
+                                                                                    "Failed to remove.",
+                                                                                ),
                                                                     },
                                                                 )
                                                             }
@@ -1336,10 +1180,6 @@ export default function UserDetail() {
                                                 <p className="text-sm">
                                                     No clients assigned yet.
                                                 </p>
-                                                <p className="text-xs">
-                                                    Assign clients to this user
-                                                    to let them monitor servers.
-                                                </p>
                                             </div>
                                         )}
                                     </div>
@@ -1350,141 +1190,34 @@ export default function UserDetail() {
                 </div>
 
                 {/* ── Delete dialog ── */}
-                <Dialog open={showDelete} onOpenChange={setShowDelete}>
-                    <DialogContent className="sm:max-w-sm">
-                        <DialogHeader>
-                            <DialogTitle>Delete User</DialogTitle>
-                        </DialogHeader>
-                        <p className="text-sm text-muted-foreground">
-                            This will permanently delete{" "}
-                            <strong className="text-foreground">
-                                {user?.first_name} {user?.last_name}
-                            </strong>{" "}
-                            and all associated data. This cannot be undone.
-                        </p>
-                        <div className="flex justify-end gap-3 pt-2">
-                            <DialogClose asChild>
-                                <Button
-                                    variant="outline"
-                                    label="Cancel"
-                                    onClick={() => setShowDelete(false)}
-                                />
-                            </DialogClose>
-                            <Button
-                                variant="danger"
-                                label={
-                                    deleteUser.isPending
-                                        ? "Deleting…"
-                                        : "Delete"
-                                }
-                                disabled={deleteUser.isPending}
-                                onClick={handleDelete}
-                            />
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                <DeleteUserDialog
+                    open={showDelete}
+                    onOpenChange={setShowDelete}
+                    userName={`${user?.first_name} ${user?.last_name}`}
+                    isPending={deleteUser.isPending}
+                    onDelete={handleDelete}
+                />
 
                 {/* ── Add Client Dialog ── */}
-                <Dialog
+                <AssignClientDialog
                     open={showClientDialog}
                     onOpenChange={setShowClientDialog}
-                >
-                    <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                            <DialogTitle>Assign Client</DialogTitle>
-                        </DialogHeader>
-                        <div className="flex flex-col gap-4">
-                            <p className="text-xs text-muted-foreground">
-                                Select a client account to assign to this user.
-                            </p>
-                            <div className="relative">
-                                <Search
-                                    size={16}
-                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                                />
-
-                                <input
-                                    type="text"
-                                    value={clientSearch}
-                                    onChange={(e) =>
-                                        setClientSearch(e.target.value)
-                                    }
-                                    placeholder="Search Clients..."
-                                    className="w-full h-10 rounded-lg border border-border bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                                />
-                            </div>
-
-                            <div className="space-y-2 max-h-64 overflow-y-auto animate-fade-in-up duration-150">
-                                {availableClients.map((client) => (
-                                    <button
-                                        key={client.uuid}
-                                        onClick={() => {
-                                            setSelectedClientToAdd(client.uuid);
-                                            addClient.mutate(client.uuid, {
-                                                onSuccess: () => {
-                                                    toast.success(
-                                                        `${client.name} assigned successfully.`,
-                                                    );
-                                                    setShowClientDialog(false);
-                                                    setSelectedClientToAdd(
-                                                        null,
-                                                    );
-                                                    setClientSearch("");
-                                                },
-                                                onError: () => {
-                                                    toast.error(
-                                                        "Failed to assign client.",
-                                                    );
-                                                },
-                                            });
-                                        }}
-                                        disabled={
-                                            addClient.isPending ||
-                                            selectedClientToAdd === client.uuid
-                                        }
-                                        className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 text-left border border-border/40 hover:border-border cursor-pointer"
-                                    >
-                                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted shrink-0 flex items-center justify-center">
-                                            {client.banner_image_url ? (
-                                                <img
-                                                    src={
-                                                        client.banner_image_url
-                                                    }
-                                                    alt={client.name}
-                                                    className="h-full w-full object-cover"
-                                                />
-                                            ) : (
-                                                <Building
-                                                    size={14}
-                                                    className="text-muted-foreground"
-                                                />
-                                            )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-foreground truncate">
-                                                {client.name}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground truncate">
-                                                {client.location}
-                                            </p>
-                                        </div>
-                                        {selectedClientToAdd === client.uuid &&
-                                            addClient.isPending && (
-                                                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                                            )}
-                                    </button>
-                                ))}
-                                {availableClients.length === 0 && (
-                                    <p className="text-sm text-muted-foreground text-center py-4">
-                                        {clientSearch
-                                            ? "No matching clients found."
-                                            : "All clients are already assigned."}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                    availableClients={availableClients}
+                    isAdding={addClient.isPending}
+                    onAssignClient={(clientUuid, clientName) => {
+                        addClient.mutate(clientUuid, {
+                            onSuccess: () => {
+                                toast.success(
+                                    `${clientName} assigned successfully.`,
+                                );
+                                setShowClientDialog(false);
+                            },
+                            onError: () => {
+                                toast.error("Failed to assign client.");
+                            },
+                        });
+                    }}
+                />
             </div>
         </>
     );

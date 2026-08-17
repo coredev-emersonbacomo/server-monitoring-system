@@ -61,6 +61,10 @@
     ),
     (label: "Memory", value: if item.at("ram", default: "") != "" { item.ram } else { "—" }),
     (label: "Disk", value: if item.at("disk", default: "") != "" { item.disk } else { "—" }),
+    (
+      label: "Subscription Fee",
+      value: text(fill: green, weight: "bold")[₱#str(item.at("subscription_fee"))]
+    )
   ))
 
   if metrics.len() > 0 {

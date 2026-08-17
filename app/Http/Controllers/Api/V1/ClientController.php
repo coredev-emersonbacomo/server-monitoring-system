@@ -253,7 +253,7 @@ class ClientController extends Controller
     public function servers(string $clientUuid): array
     {
         $client = Client::where('uuid', $clientUuid)->firstOrFail();
-        $servers = $client->servers()->get();
+        $servers = $client->servers()->withTrashed()->get();
 
         return ServerData::collect($servers->map(fn(Server $s) => ServerData::fromModel($s)))->toArray();
     }

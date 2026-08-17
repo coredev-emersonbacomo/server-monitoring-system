@@ -19,6 +19,7 @@ class ServerReportData extends Data
         public ?string $disk,
         public ?string $operating_system,
         public string $status,
+        public ?int $subscription_fee,
 
         /** @var Collection<ServerMetricPointData> */
         public Collection $metrics,

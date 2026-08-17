@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import api from "@/api/api";
 import {
     Pencil,
     Upload,
@@ -10,7 +9,6 @@ import {
     Server,
     RefreshCw,
     Plus,
-    Loader2,
     Info,
     Shield,
     MapPin,
@@ -18,11 +16,11 @@ import {
     Phone,
     Bell,
     Landmark,
+    Search,
+    Filter,
+    ChevronDown,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { Input } from "@/components/ui/input";
 import { Form, createFormStore, useForm } from "@/components/ui/form";
-import { z } from "zod";
 import { toast } from "sonner";
 import {
     useClient,
@@ -42,13 +40,6 @@ import IndexHeader from "@/components/IndexHeader";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { Label } from "@/components/ui/label";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogClose,
-} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { uploadFile } from "@/lib/uploadToast";
@@ -57,7 +48,10 @@ import Field from "./components/Field";
 import SectionHeader from "./components/SectionHeader";
 import ServerCard from "./components/ServerCard";
 import ServerCardSkeleton from "./components/ServerCardSkeleton";
-import { Search, Filter, ChevronDown } from "lucide-react";
+import { DeleteClientDialog } from "./components/DeleteClientDialog";
+import { AddSecopDialog } from "./components/AddSecopDialog";
+import { clientSchema } from "./constants/schema";
+import { useClientAlertTab } from "./hooks/useClientAlertTab";
 import {
     Popover,
     PopoverContent,
@@ -67,77 +61,12 @@ import { NodeConfigEditor } from "@/components/node-config/NodeConfigEditor";
 
 // Helper function to format phone numbers
 import { formatPhoneNumber } from "@/utils/helpers";
-import type { ServerData } from "@/types/models";
-
-// ─── Schema ──────────────────────────────────────────────────────────────────
-
-const clientSchema = z.object({
-    name: z.string().trim().min(2, "Minimum 2 characters"),
-    description: z
-        .string()
-        .trim()
-        .min(2, "Minimum 2 characters")
-        .max(255, "Maximum 255 characters"),
-    location: z.string().trim().min(2, "Minimum 2 characters"),
-    email: z.email("Invalid email address").trim().min(1, "Required"),
-    contact_number: z.string().trim().min(5, "Minimum 5 characters"),
-    budget: z.union([z.string(), z.number()]).transform((val) => {
-        if (val === "" || val === undefined || val === null) return 0;
-        const num = typeof val === "number" ? val : parseFloat(String(val).replace(/,/g, ""));
-        return isNaN(num) ? 0 : Math.max(0, num);
-    }),
-});
-
-// ─── Client Alert Tab ────────────────────────────────────────────────────────
-
-function useClientAlertTab(
-    clientUuid: string,
-    clientName: string,
-    initialScope?: string,
-) {
-    const queryClient = useQueryClient();
-    const [alertScope, setAlertScopeState] = useState<"global" | "client">(
-        "global",
-    );
-    const hydratedRef = useRef(false);
-    useEffect(() => {
-        if (!hydratedRef.current && initialScope) {
-            hydratedRef.current = true;
-            setAlertScopeState(initialScope as "global" | "client");
-        }
-    }, [initialScope]);
-
-    const configKey =
-        alertScope === "global" ? "alerts" : `client_${clientUuid}`;
-    const scopeLabel =
-        alertScope === "global" ? "Global" : `Client: ${clientName}`;
-
-    const setAlertScope = useCallback(
-        (scope: "global" | "client") => {
-            setAlertScopeState(scope);
-            api.PATCH("/v1/clients/{clientUuid}/alert-scope", {
-                params: { path: { clientUuid } },
-                body: { alert_scope: scope },
-            }).then(() => {
-                queryClient.invalidateQueries({
-                    queryKey: ["clients", clientUuid],
-                });
-            });
-        },
-        [clientUuid, queryClient],
-    );
-
-    return { alertScope, setAlertScope, configKey, scopeLabel };
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClientDetail() {
     const navigate = useNavigate();
     const { uuid: clientUuid } = useParams<{ uuid: string }>();
-    const queryClient = useQueryClient();
-
-    const [secopSearch, setSecopSearch] = useState("");
 
     // ── Data fetching ──────────────────────────────────────────────────────────
     const { data: client, isLoading, isError } = useClient(clientUuid!);
@@ -168,18 +97,14 @@ export default function ClientDetail() {
     // ── Local state ────────────────────────────────────────────────────────────
     const [showDelete, setShowDelete] = useState(false);
     const [showSecopDialog, setShowSecopDialog] = useState(false);
-    const [selectedSecopToAdd, setSelectedSecopToAdd] = useState<string | null>(
-        null,
-    );
     const defaultBanner = import.meta.env.VITE_DEFAULT_CLIENT_BANNER as string;
     const [bannerFile, setBannerFile] = useState<File | null>(null);
     const [bannerPreview, setBannerPreview] = useState<string | null>(
         clientUuid ? null : defaultBanner,
     );
-    // Add state inside the component
     const [serverSearch, setServerSearch] = useState("");
     const [serverFilter, setServerFilter] = useState<
-        "all" | "online" | "offline"
+        "all" | "online" | "offline" | "archived"
     >("all");
 
     // ── Form store ─────────────────────────────────────────────────────────────
@@ -221,15 +146,13 @@ export default function ClientDetail() {
                   },
             initialMode: "view",
         });
-    }, [isCreate]);
+    }, [isCreate, client]);
 
     const form = useForm(store, (s) => s.form);
     const mode = useForm(store, (s) => s.mode);
     const errors = useForm(store, (s) => s.errors);
     const showEdit = mode !== "view";
 
-    // Populate form when client data first arrives (uuid-keyed so it only fires on navigation)
-    // Never overwrite the store while the user is actively editing
     useEffect(() => {
         if (!client || isCreate) return;
         store.setState({
@@ -251,7 +174,6 @@ export default function ClientDetail() {
             },
         });
         setBannerPreview(client.banner_image_url);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [client?.uuid, isCreate, store]);
 
     const hasChanges = useMemo(() => {
@@ -356,14 +278,12 @@ export default function ClientDetail() {
         }
     };
 
-    const [deleteConfirmText, setDeleteConfirmText] = useState("");
-
     const handleDelete = async () => {
         try {
             await deleteClient.mutateAsync(clientUuid!);
             toast.success("Client deleted.");
             navigate("/clients");
-        } catch (err) {
+        } catch (err: any) {
             toast.error(
                 err?.response?.data?.message ||
                     err?.message ||
@@ -439,25 +359,31 @@ export default function ClientDetail() {
         const matchSearch = s.name
             .toLowerCase()
             .includes(serverSearch.toLowerCase());
-        return matchSearch;
+        if (!matchSearch) return false;
+
+        const isArchived =
+            s.record_status === "archived" || s.status === "archived";
+
+        if (serverFilter === "archived") {
+            return isArchived;
+        }
+
+        // For "all", "online", "offline", exclude archived servers by default
+        if (isArchived) return false;
+
+        if (serverFilter === "online") {
+            return s.status === "online";
+        }
+        if (serverFilter === "offline") {
+            return s.status === "offline";
+        }
+
+        return true;
     });
 
-    // Filter the users
-    const availableSecops = allUsers
-        .filter((user) => !currentSecops.some((s) => s.uuid === user.uuid))
-        .filter((user) => {
-            const q = secopSearch.trim().toLowerCase();
-
-            if (!q) return true;
-
-            return (
-                `${user.first_name} ${user.last_name}`
-                    .toLowerCase()
-                    .includes(q) ||
-                user.email.toLowerCase().includes(q) ||
-                user.username.toLowerCase().includes(q)
-            );
-        });
+    const availableSecops = allUsers.filter(
+        (user) => !currentSecops.some((s) => s.uuid === user.uuid),
+    );
 
     return (
         <>
@@ -521,7 +447,6 @@ export default function ClientDetail() {
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
-                                {/* Upload — always accessible */}
                                 {showEdit && (
                                     <>
                                         <label className="inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring h-8 px-3 py-1 border border-border bg-transparent hover:bg-muted text-foreground cursor-pointer">
@@ -629,8 +554,7 @@ export default function ClientDetail() {
                             </div>
                         </div>
 
-                        {/* ── Description (always in banner) ── */}
-                        {/* ── Description (always in banner) ── */}
+                        {/* ── Description ── */}
                         <div className="mt-3 max-w-xl">
                             {showEdit ? (
                                 <div>
@@ -798,8 +722,12 @@ export default function ClientDetail() {
                                                     step="0.01"
                                                     min="0"
                                                     label="Monthly Budget (₱)"
-                                                    value={String(form.budget ?? 0)}
-                                                    onValueChange={(val) => store.set("budget")(val)}
+                                                    value={String(
+                                                        form.budget ?? 0,
+                                                    )}
+                                                    onValueChange={(val) =>
+                                                        store.set("budget")(val)
+                                                    }
                                                     error={errors.budget}
                                                 />
                                             ) : (
@@ -809,7 +737,19 @@ export default function ClientDetail() {
                                                     isEdit={showEdit}
                                                 >
                                                     <p className="text-base font-semibold text-foreground">
-                                                        ₱{(Number(client?.budget) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mo
+                                                        ₱
+                                                        {(
+                                                            Number(
+                                                                client?.budget,
+                                                            ) || 0
+                                                        ).toLocaleString(
+                                                            undefined,
+                                                            {
+                                                                minimumFractionDigits: 2,
+                                                                maximumFractionDigits: 2,
+                                                            },
+                                                        )}{" "}
+                                                        / mo
                                                     </p>
                                                 </Field>
                                             )}
@@ -821,7 +761,19 @@ export default function ClientDetail() {
                                                     isEdit={false}
                                                 >
                                                     <p className="text-base font-semibold text-foreground">
-                                                        ₱{(Number(client?.total_subscription_fee) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mo
+                                                        ₱
+                                                        {(
+                                                            Number(
+                                                                client?.total_subscription_fee,
+                                                            ) || 0
+                                                        ).toLocaleString(
+                                                            undefined,
+                                                            {
+                                                                minimumFractionDigits: 2,
+                                                                maximumFractionDigits: 2,
+                                                            },
+                                                        )}{" "}
+                                                        / mo
                                                     </p>
                                                 </Field>
                                             )}
@@ -1079,7 +1031,10 @@ export default function ClientDetail() {
                                                         : serverFilter ===
                                                             "online"
                                                           ? "Online"
-                                                          : "Offline"}
+                                                          : serverFilter ===
+                                                              "offline"
+                                                            ? "Offline"
+                                                            : "Archived"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -1100,6 +1055,10 @@ export default function ClientDetail() {
                                                         label: "Offline",
                                                         value: "offline",
                                                     },
+                                                    {
+                                                        label: "Archived",
+                                                        value: "archived",
+                                                    },
                                                 ].map((opt) => (
                                                     <button
                                                         key={opt.value}
@@ -1108,7 +1067,8 @@ export default function ClientDetail() {
                                                                 opt.value as
                                                                     | "all"
                                                                     | "online"
-                                                                    | "offline",
+                                                                    | "offline"
+                                                                    | "archived",
                                                             )
                                                         }
                                                         className={cn(
@@ -1186,238 +1146,42 @@ export default function ClientDetail() {
                 </div>
 
                 {/* ── Delete dialog ── */}
-                <Dialog
+                <DeleteClientDialog
                     open={showDelete}
-                    onOpenChange={(open) => {
-                        setShowDelete(open);
-                        if (!open) setDeleteConfirmText("");
-                    }}
-                >
-                    <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2 text-destructive">
-                                <Trash2 size={16} />
-                                Delete Client
-                            </DialogTitle>
-                        </DialogHeader>
-                        <p className="text-sm text-muted-foreground">
-                            This will permanently delete{" "}
-                            <strong className="text-foreground">
-                                {client?.name}
-                            </strong>{" "}
-                            and all associated data. This cannot be undone.
-                        </p>
-
-                        {(() => {
-                            const hasRunningAgents = servers.some(
-                                (s) => !s.agent_deleted && s.agent,
-                            );
-
-                            return (
-                                <>
-                                    {hasRunningAgents && (
-                                        <div className="flex items-start gap-2 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
-                                            <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-                                            <div>
-                                                <p className="font-semibold text-foreground">
-                                                    Active Server Agents Running
-                                                </p>
-                                                <p className="text-muted-foreground mt-0.5">
-                                                    You must uninstall the agent
-                                                    service on all associated
-                                                    servers before you can
-                                                    delete this client.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="flex flex-col gap-2 pt-1">
-                                        <label className="text-xs text-muted-foreground">
-                                            Type{" "}
-                                            <strong className="text-foreground font-mono">
-                                                {client?.name}
-                                            </strong>{" "}
-                                            to confirm
-                                        </label>
-                                        <Input
-                                            value={deleteConfirmText}
-                                            onChange={(e) =>
-                                                setDeleteConfirmText(
-                                                    e.target.value,
-                                                )
-                                            }
-                                            placeholder={client?.name}
-                                            autoFocus
-                                            className="font-mono text-sm"
-                                        />
-                                    </div>
-
-                                    <div className="flex justify-end gap-3 pt-2">
-                                        <DialogClose asChild>
-                                            <Button
-                                                variant="outline"
-                                                label="Cancel"
-                                                onClick={() => {
-                                                    setShowDelete(false);
-                                                    setDeleteConfirmText("");
-                                                }}
-                                            />
-                                        </DialogClose>
-                                        <Button
-                                            variant="danger"
-                                            label={
-                                                deleteClient.isPending
-                                                    ? "Deleting…"
-                                                    : "Delete"
-                                            }
-                                            disabled={
-                                                deleteConfirmText !==
-                                                    client?.name ||
-                                                deleteClient.isPending ||
-                                                hasRunningAgents
-                                            }
-                                            onClick={handleDelete}
-                                        />
-                                    </div>
-                                </>
-                            );
-                        })()}
-                    </DialogContent>
-                </Dialog>
+                    onOpenChange={setShowDelete}
+                    clientName={client?.name}
+                    servers={servers}
+                    isPending={deleteClient.isPending}
+                    onDelete={handleDelete}
+                />
 
                 {/* ── SecOps Dialog ── */}
-                <Dialog
+                <AddSecopDialog
                     open={showSecopDialog}
                     onOpenChange={setShowSecopDialog}
-                >
-                    <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                            <DialogTitle>Add SecOps</DialogTitle>
-                        </DialogHeader>
-                        <div className="flex flex-col gap-4">
-                            <p className="text-xs text-muted-foreground">
-                                Select a SecOps account to assign to this
-                                client. You can add up to{" "}
-                                <span className="font-semibold">
-                                    {settings?.secop_limit_per_client ?? "5"}
-                                </span>{" "}
-                                SecOps per client.
-                            </p>
-                            <div className="relative">
-                                <Search
-                                    size={16}
-                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                                />
-
-                                <input
-                                    type="text"
-                                    value={secopSearch}
-                                    onChange={(e) =>
-                                        setSecopSearch(e.target.value)
-                                    }
-                                    placeholder="Search SecOps..."
-                                    className="w-full h-10 rounded-lg border border-border bg-background pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                                />
-                            </div>
-
-                            {usersLoading ? (
-                                <div className="space-y-2">
-                                    {[0, 1, 2].map((i) => (
-                                        <div
-                                            key={i}
-                                            className="h-10 bg-muted rounded animate-pulse"
-                                        />
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="space-y-2 max-h-64 overflow-y-auto">
-                                    {availableSecops.map((user) => (
-                                        <button
-                                            key={user.uuid}
-                                            onClick={() => {
-                                                setSelectedSecopToAdd(
-                                                    user.uuid,
-                                                );
-                                                addSecop.mutate(user.uuid, {
-                                                    onSuccess: () => {
-                                                        toast.success(
-                                                            `${user.first_name} added to ${client?.name}.`,
-                                                        );
-                                                        setShowSecopDialog(
-                                                            false,
-                                                        );
-                                                        setSelectedSecopToAdd(
-                                                            null,
-                                                        );
-                                                    },
-                                                    onError: () => {
-                                                        toast.error(
-                                                            "Failed to add SecOps. You may have reached the limit.",
-                                                        );
-                                                    },
-                                                });
-                                            }}
-                                            disabled={
-                                                addSecop.isPending ||
-                                                selectedSecopToAdd === user.uuid
-                                            }
-                                            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 text-left border border-border/40 hover:border-border cursor-pointer"
-                                        >
-                                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                                <div className="w-8 h-8 rounded-full overflow-hidden bg-muted shrink-0">
-                                                    <img
-                                                        src={
-                                                            user.profile_picture_url
-                                                        }
-                                                        alt={`${user.first_name} ${user.last_name}`}
-                                                        className="h-full w-full object-cover"
-                                                        onError={(e) => {
-                                                            (
-                                                                e.target as HTMLImageElement
-                                                            ).style.display =
-                                                                "none";
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-foreground truncate">
-                                                    {user.first_name}{" "}
-                                                    {user.last_name}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground truncate">
-                                                    {user.email}
-                                                </p>
-                                            </div>
-                                            {selectedSecopToAdd === user.uuid &&
-                                                addSecop.isPending && (
-                                                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                                                )}
-                                        </button>
-                                    ))}
-                                    {availableSecops.length === 0 && (
-                                        <p className="text-sm text-muted-foreground text-center py-4">
-                                            {secopSearch
-                                                ? "No matching SecOps found."
-                                                : "All users are already assigned to this client."}
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex justify-end gap-3 pt-2">
-                            <DialogClose asChild>
-                                <Button
-                                    variant="outline"
-                                    label="Close"
-                                    onClick={() => setShowSecopDialog(false)}
-                                />
-                            </DialogClose>
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                    clientName={client?.name}
+                    secopLimit={secopLimit}
+                    availableSecops={availableSecops}
+                    isLoading={usersLoading}
+                    isAdding={addSecop.isPending}
+                    onAddSecop={(userUuid, userName) => {
+                        addSecop.mutate(userUuid, {
+                            onSuccess: () => {
+                                toast.success(
+                                    `${userName} added to ${client?.name}.`,
+                                );
+                                setShowSecopDialog(false);
+                            },
+                            onError: () => {
+                                toast.error(
+                                    "Failed to add SecOps. You may have reached the limit.",
+                                );
+                            },
+                        });
+                    }}
+                />
             </div>
         </>
     );
 }
+

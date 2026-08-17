@@ -94,7 +94,7 @@
             } else { used }
           } else { "—" }
         ),
-        text(weight: "bold", fill: green)[₱#str(item.at("subscription_fee", default: 0))]
+        text(weight: "bold", fill: green)[₱#str(s.at("subscription_fee", default: 0))]
       )),
       widths: (1.2fr, 0.5fr, 1.5fr, 0.5fr, 0.7fr, 0.5fr, 1fr),
     )
