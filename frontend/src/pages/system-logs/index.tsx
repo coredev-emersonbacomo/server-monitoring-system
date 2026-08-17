@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import PageLayout from "@/components/PageLayout";
 import IndexHeader from "@/components/IndexHeader";
 import { ScrollText, Terminal, FileText, Server } from "lucide-react";
@@ -20,6 +20,10 @@ export default function LogsPage() {
         useServerHealthLogs();
     const { data: agentLogs = [], isLoading: isLoadingAgent } = useAgentLogs();
 
+    const typedActivity = activityLogs as ActivityLogData[];
+    const typedHealth = healthLogs as ActivityLogData[];
+    const typedAgent = agentLogs as ActivityLogData[];
+
     const [sortField, setSortField] = useState<SortableKey>("created_at");
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
     const [selectedLog, setSelectedLog] = useState<ActivityLogData | null>(
@@ -35,7 +39,7 @@ export default function LogsPage() {
         }
     };
 
-    const sortFn = (list: ActivityLogData[]) => {
+    const sortFn = useCallback((list: ActivityLogData[]) => {
         const copy = [...list];
         copy.sort((a, b) => {
             const aVal = a[sortField] ?? "";
@@ -55,19 +59,19 @@ export default function LogsPage() {
             return 0;
         });
         return copy;
-    };
+    }, [sortField, sortDir]);
 
     const sortedActivity = useMemo(
-        () => sortFn(activityLogs),
-        [activityLogs, sortField, sortDir],
+        () => sortFn(typedActivity),
+        [typedActivity, sortFn],
     );
     const sortedHealth = useMemo(
-        () => sortFn(healthLogs),
-        [healthLogs, sortField, sortDir],
+        () => sortFn(typedHealth),
+        [typedHealth, sortFn],
     );
     const sortedAgent = useMemo(
-        () => sortFn(agentLogs),
-        [agentLogs, sortField, sortDir],
+        () => sortFn(typedAgent),
+        [typedAgent, sortFn],
     );
 
     return (

@@ -30,9 +30,9 @@ export function actionBadgeClass(action: string): string {
 export function getLogSubjectLabel(log: ActivityLogData): string {
     if (log.details) {
         if (typeof log.details === "object") {
-            const obj = log.details as Record<string, any>;
+            const obj = log.details as Record<string, unknown>;
             if (obj && (obj.server_name || obj.name)) {
-                return obj.server_name || obj.name;
+                return (obj.server_name || obj.name) as string;
             }
         } else if (typeof log.details === "string") {
             try {
@@ -45,7 +45,7 @@ export function getLogSubjectLabel(log: ActivityLogData): string {
                 ) {
                     return obj.server_name || obj.name;
                 }
-            } catch {}
+            } catch { /* ignore parse errors */ }
         }
     }
     return shortModel(log.logable_type);

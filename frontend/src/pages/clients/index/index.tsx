@@ -228,14 +228,14 @@ export default function ClientsIndex() {
         }
 
         list.sort((a, b) => {
-            let aVal: any = a[sortField as keyof ClientData];
-            let bVal: any = b[sortField as keyof ClientData];
+            let aVal: unknown = a[sortField as keyof ClientData];
+            let bVal: unknown = b[sortField as keyof ClientData];
             if (typeof aVal === "string") {
                 aVal = aVal.toLowerCase();
-                bVal = (bVal ?? "").toLowerCase();
+                bVal = typeof bVal === "string" ? bVal.toLowerCase() : "";
             }
-            if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
-            if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
+            if (aVal < (bVal as typeof aVal)) return sortDir === "asc" ? -1 : 1;
+            if (aVal > (bVal as typeof aVal)) return sortDir === "asc" ? 1 : -1;
             return 0;
         });
 
@@ -273,6 +273,7 @@ export default function ClientsIndex() {
                         setPage(1);
                     }}
                     sortLabel={currentSortLabel}
+                    filterLabel="Status"
                     onCreate={() => navigate("/clients/create")}
                     createLabel="Add client"
                 />
