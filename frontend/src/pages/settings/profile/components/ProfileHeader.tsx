@@ -1,10 +1,11 @@
 import { ChevronLeft, Upload } from "lucide-react";
 import { Form } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
+import type { AuthUserData } from "@/types/models";
 
 interface ProfileHeaderProps {
     mode: "view" | "edit" | "create";
-    user: Record<string, unknown>;
+    user: AuthUserData;
     form: Record<string, string>;
     store: { set: (key: string) => (value: string) => void };
     fullName: string;

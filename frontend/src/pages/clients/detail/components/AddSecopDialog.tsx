@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Search, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -30,7 +30,6 @@ interface AddSecopDialogProps {
 export function AddSecopDialog({
     open,
     onOpenChange,
-    clientName,
     secopLimit,
     availableSecops,
     isLoading,

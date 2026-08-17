@@ -4,8 +4,8 @@ import { FloatingInput } from "@/components/ui/floatingInput";
 import { PasswordStrength } from "./PasswordStrength";
 
 interface PasswordSectionProps {
-    form: any;
-    store: any;
+    form: { password: string; password_confirmation: string };
+    store: { set: (key: string) => (value: string) => void };
 }
 
 export function PasswordSection({ form, store }: PasswordSectionProps) {
