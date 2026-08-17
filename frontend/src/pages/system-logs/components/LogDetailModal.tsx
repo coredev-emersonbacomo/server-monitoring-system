@@ -17,7 +17,7 @@ interface LogDetailModalProps {
 export function LogDetailModal({ log, onClose }: LogDetailModalProps) {
     if (!log) return null;
 
-    let parsed: Record<string, any> | null = null;
+    let parsed: Record<string, unknown> | null = null;
     if (log.details) {
         if (typeof log.details === "object") {
             parsed = log.details;
@@ -69,9 +69,9 @@ export function LogDetailModal({ log, onClose }: LogDetailModalProps) {
     );
 
     // Helper to render value for extra details (like expiry tokens)
-    const renderExtraValue = (key: string, val: any) => {
+    const renderExtraValue = (key: string, val: unknown): string => {
         if (key.toLowerCase().includes("expires")) {
-            const date = new Date(val);
+            const date = new Date(val as string);
             if (!isNaN(date.getTime())) {
                 return date.toLocaleString();
             }

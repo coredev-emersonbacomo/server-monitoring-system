@@ -1,12 +1,12 @@
-import { ChevronLeft, Upload, Label } from "lucide-react";
+import { ChevronLeft, Upload } from "lucide-react";
 import { Form } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 
 interface ProfileHeaderProps {
     mode: "view" | "edit" | "create";
-    user: any;
-    form: any;
-    store: any;
+    user: Record<string, unknown>;
+    form: Record<string, string>;
+    store: { set: (key: string) => (value: string) => void };
     fullName: string;
     avatarSrc: string | null;
     onNavigateBack: () => void;

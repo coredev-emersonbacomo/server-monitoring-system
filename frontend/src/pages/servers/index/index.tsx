@@ -60,15 +60,18 @@ export default function ServersIndex() {
             : statusResult;
 
         return result.sort((a, b) => {
-            let aVal: any = a[sortField as keyof typeof a];
-            let bVal: any = b[sortField as keyof typeof b];
+            const rawA: unknown = a[sortField as keyof typeof a];
+            const rawB: unknown = b[sortField as keyof typeof b];
+
+            let aVal: number | string;
+            let bVal: number | string;
 
             if (sortField === "created_at") {
-                aVal = aVal ? new Date(aVal).getTime() : 0;
-                bVal = bVal ? new Date(bVal).getTime() : 0;
+                aVal = rawA ? new Date(rawA as string).getTime() : 0;
+                bVal = rawB ? new Date(rawB as string).getTime() : 0;
             } else {
-                aVal = (aVal ?? "").toString().toLowerCase();
-                bVal = (bVal ?? "").toString().toLowerCase();
+                aVal = (rawA != null ? String(rawA) : "").toLowerCase();
+                bVal = (rawB != null ? String(rawB) : "").toLowerCase();
             }
 
             if (aVal < bVal) return sortDir === "asc" ? -1 : 1;

@@ -4,8 +4,8 @@ import { InfoBlock } from "./InfoBlock";
 
 interface TimezoneSectionProps {
     mode: "view" | "edit" | "create";
-    form: any;
-    store: any;
+    form: Record<string, string>;
+    store: { set: (key: string) => (value: string) => void };
     timezone?: string;
 }
 
