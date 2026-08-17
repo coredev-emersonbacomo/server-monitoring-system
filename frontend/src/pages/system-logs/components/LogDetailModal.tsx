@@ -37,13 +37,20 @@ export function LogDetailModal({ log, onClose }: LogDetailModalProps) {
     const rawMessage =
         parsed?.message ??
         (typeof log.details === "string" ? log.details : null);
-    const message =
+    const message: string | null =
         typeof rawMessage === "object" && rawMessage !== null
             ? JSON.stringify(rawMessage)
             : typeof rawMessage === "string"
             ? cleanDiscordMarkup(rawMessage)
-            : rawMessage;
-    const serverName = parsed?.server_name || parsed?.name;
+            : typeof rawMessage === "number" || typeof rawMessage === "boolean"
+            ? String(rawMessage)
+            : null;
+    const serverName: string | undefined =
+        typeof parsed?.server_name === "string"
+            ? parsed.server_name
+            : typeof parsed?.name === "string"
+            ? parsed.name
+            : undefined;
     const isServerSubject = log.logable_type?.includes("Server");
 
     // Dynamic extraction of expiration field to prevent undefined values

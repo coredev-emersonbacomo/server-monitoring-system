@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+
 import {
     Pencil,
     Upload,
@@ -174,7 +174,7 @@ export default function ClientDetail() {
             },
         });
         setBannerPreview(client.banner_image_url);
-    }, [client?.uuid, isCreate, store]);
+    }, [client, isCreate, store]);
 
     const hasChanges = useMemo(() => {
         if (isCreate) {
@@ -283,10 +283,11 @@ export default function ClientDetail() {
             await deleteClient.mutateAsync(clientUuid!);
             toast.success("Client deleted.");
             navigate("/clients");
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { message?: string } }; message?: string };
             toast.error(
-                err?.response?.data?.message ||
-                    err?.message ||
+                e?.response?.data?.message ||
+                    e?.message ||
                     "Failed to delete client.",
             );
         }
@@ -314,6 +315,7 @@ export default function ClientDetail() {
                     location: client.location,
                     email: client.email,
                     contact_number: client.contact_number,
+                    budget: client.budget ?? 0,
                 },
             });
             setBannerPreview(client.banner_image_url);
