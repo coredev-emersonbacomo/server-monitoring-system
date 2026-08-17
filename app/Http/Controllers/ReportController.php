@@ -299,6 +299,7 @@ class ReportController extends Controller
             'cpu_7d'           => $cpu7d,
             'memory_7d'        => $memory7d,
             'disk_7d'          => $disk7d,
+            'subscription_fee' => $server->subscription_fee,
             'trend_x'          => $trendX,
         ]);
     }
