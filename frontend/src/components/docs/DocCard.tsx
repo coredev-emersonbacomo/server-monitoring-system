@@ -7,6 +7,7 @@ interface DocCardProps {
     description: string;
     icon: React.ComponentType<{ className?: string }>;
     href: string;
+    onClick?: () => void;
     thumbnail?: string;
     badge?: ReactNode;
 }
@@ -16,12 +17,19 @@ export default function DocCard({
     description,
     icon: Icon,
     href,
+    onClick,
     thumbnail,
     badge,
 }: DocCardProps) {
     return (
         <Link
             to={href}
+            onClick={(e) => {
+                if (onClick) {
+                    e.preventDefault();
+                    onClick();
+                }
+            }}
             className="group flex flex-col bg-card border border-border/40 rounded-xl shadow-sm hover:shadow-md hover:border-primary/30 transition-all duration-200 overflow-hidden cursor-pointer"
         >
             {thumbnail ? (

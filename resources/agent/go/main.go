@@ -1,127 +1,319 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 )
 
+// currentInstance records the installation UUID of the running loop so the
+// restart helper can relaunch the same installation after a binary update.
+var currentInstance string
+
+// writeStartupLog appends a line to <dataRoot>/startup.log. It exists because
+// early failures in runAgentLoop happen before agent.log is wired up, and a
+// service's stderr is invisible to the SCM. LocalSystem owns ProgramData, so
+// this file is always writable.
+func writeStartupLog(format string, args ...interface{}) {
+	dir := dataRoot()
+	_ = os.MkdirAll(dir, 0755)
+	f, err := os.OpenFile(filepath.Join(dir, "startup.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "%s %s\n", time.Now().Format("2006-01-02 15:04:05"), fmt.Sprintf(format, args...))
+}
+
 func main() {
-	// Global panic recovery and logging
+	// Global panic recovery and logging. crash.log lives in the instance
+	// directory when we know the instance, else in the data root.
 	defer func() {
 		if r := recover(); r != nil {
-			appDir := filepath.Dir(os.Args[0])
-			if execPath, err := os.Executable(); err == nil {
-				appDir = filepath.Dir(execPath)
+			dir := dataRoot()
+			if inst := parseInstance(os.Args); inst != "" {
+				dir = instanceDir(inst)
 			}
-			logFile := filepath.Join(appDir, "crash.log")
+			_ = os.MkdirAll(dir, 0755)
+			logFile := filepath.Join(dir, "crash.log")
 			f, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 			if err == nil {
 				defer f.Close()
 				timestamp := time.Now().Format("2006-01-02 15:04:05")
 				fmt.Fprintf(f, "\n=== CRASH LOG %s ===\n", timestamp)
 				fmt.Fprintf(f, "Panic: %v\n", r)
-				// Write stack trace
 				buf := make([]byte, 2048)
 				n := runtime.Stack(buf, false)
 				f.Write(buf[:n])
-				fmt.Fprintln(f, "=====================\n")
+				fmt.Fprintln(f, "=====================")
 			}
 			fmt.Fprintf(os.Stderr, "Fatal crash: %v. Check crash.log for details.\n", r)
 			os.Exit(1)
 		}
 	}()
-//
+
 	if len(os.Args) > 1 {
 		cmd := os.Args[1]
 		switch cmd {
 		case "-install", "--install":
-			if err := installService("MonitorAgent", "Monitor Agent Service"); err != nil {
+			instance := parseInstance(os.Args)
+			if instance == "" {
+				fatalUsage("-install requires -instance <uuid>")
+			}
+			if err := installService(serviceNameFor(instance), instance); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to install service: %v\n", err)
 				os.Exit(1)
 			}
-			fmt.Println("Service installed successfully.")
+			fmt.Printf("Service %s installed successfully.\n", serviceNameFor(instance))
 			return
 		case "-uninstall", "--uninstall":
-			if err := uninstallService("MonitorAgent"); err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to uninstall service: %v\n", err)
+			instance := parseInstance(os.Args)
+			if instance == "" {
+				fatalUsage("-uninstall requires -instance <uuid>")
+			}
+			if err := uninstallWithMarker(instance); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to uninstall: %v\n", err)
 				os.Exit(1)
 			}
-			fmt.Println("Service uninstalled successfully.")
+			return
+		case "-has-key", "--has-key":
+			keyName := flagValue(os.Args, "-key")
+			if keyName == "" {
+				fatalUsage("-has-key requires -key <keyName>")
+			}
+			ok, err := newKeyStore().HasKey(context.Background(), keyName)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to check key store: %v\n", err)
+				os.Exit(1)
+			}
+			if ok {
+				fmt.Println("present")
+			} else {
+				fmt.Println("absent")
+				os.Exit(1)
+			}
+			return
+		case "-selftest", "--selftest":
+			if err := runSelfTest(); err != nil {
+				fmt.Fprintf(os.Stderr, "Self-test failed: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("Self-test passed.")
 			return
 		}
+	}
+
+	instance := parseInstance(os.Args)
+	if instance == "" {
+		instance = os.Getenv("MONITOR_AGENT_INSTANCE")
+	}
+	if instance == "" {
+		log.SetOutput(os.Stderr)
+		log.Println("Fatal: no installation UUID given. Run with -instance <uuid> or set MONITOR_AGENT_INSTANCE.")
+		os.Exit(1)
 	}
 
 	isSvc, err := isServiceSession()
 	if err == nil && isSvc {
+		writeStartupLog("service mode: instance=%s running %s", instance, serviceNameFor(instance))
 		IsService = true
-		if err := runService("MonitorAgent"); err != nil {
+		if err := runService(serviceNameFor(instance)); err != nil {
+			writeStartupLog("runService error: %v", err)
 			fmt.Fprintf(os.Stderr, "Service execution failed: %v\n", err)
 			os.Exit(1)
 		}
+		writeStartupLog("runService returned")
+		return
+	}
+	writeStartupLog("foreground mode: instance=%s", instance)
+
+	stopChan := make(chan struct{})
+	runAgentLoop(instance, stopChan)
+}
+
+func fatalUsage(msg string) {
+	fmt.Fprintf(os.Stderr, "%s\n", msg)
+	os.Exit(1)
+}
+
+// flagValue returns the value following the named flag, or "" if absent.
+func flagValue(args []string, name string) string {
+	for i := 0; i < len(args); i++ {
+		if args[i] == name && i+1 < len(args) {
+			return args[i+1]
+		}
+	}
+	return ""
+}
+
+// serviceNameFor derives the per-installation service name. Every installation
+// gets its own service, so multiple agents on one machine are fully isolated
+// and can be managed (start/stop/uninstall) independently.
+func serviceNameFor(instance string) string {
+	return "MonitorAgent-" + instance
+}
+
+const uninstallFlagFile = "uninstall.flag"
+
+// uninstallWithMarker performs a marker-based uninstall. The uninstaller runs
+// as the administrator, but the identity key lives in the keystore of the
+// service account (LocalSystem on Windows) — which the administrator cannot
+// read or delete. So the key deletion is delegated to the running service:
+//
+//  1. write uninstall.flag into the instance directory
+//  2. stop the service; the service, upon seeing the flag, revokes the agent
+//     on the backend, deletes its own identity key and records "done"
+//  3. when the service has stopped, remove the service registration and the
+//     instance directory
+func uninstallWithMarker(instance string) error {
+	dir := instanceDir(instance)
+	marker := filepath.Join(dir, uninstallFlagFile)
+	serviceName := serviceNameFor(instance)
+
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to access instance directory: %w", err)
+	}
+	if err := os.WriteFile(marker, []byte("pending"), 0644); err != nil {
+		return fmt.Errorf("failed to write uninstall marker: %w", err)
+	}
+	fmt.Println("Uninstall marker written; stopping service for cleanup...")
+
+	if err := stopServiceAndWait(serviceName, 90*time.Second); err != nil {
+		return fmt.Errorf("service did not stop cleanly (identity key may remain): %w", err)
+	}
+
+	if data, err := os.ReadFile(marker); err == nil && string(data) == "done" {
+		fmt.Println("Agent revoked and identity key deleted.")
+	} else {
+		fmt.Println("Warning: service did not confirm cleanup; the identity key may remain.")
+	}
+
+	if err := deleteService(serviceName); err != nil {
+		return fmt.Errorf("failed to delete service: %w", err)
+	}
+	if err := os.RemoveAll(dir); err != nil {
+		return fmt.Errorf("failed to remove instance directory: %w", err)
+	}
+	fmt.Println("Uninstall complete.")
+	return nil
+}
+
+// handleUninstallMarker runs at agent startup. If an uninstall.flag is present,
+// the agent revokes itself on the backend, deletes its own identity key and
+// records the result so the uninstaller can confirm. Returns true when the
+// agent should exit (it is being uninstalled).
+func handleUninstallMarker(instance, dir, keyName string, keystore KeyStore, client *AgentClient) bool {
+	marker := filepath.Join(dir, uninstallFlagFile)
+	if _, err := os.Stat(marker); err != nil {
+		return false
+	}
+
+	log.Println("Uninstall marker detected — revoking agent and removing identity key.")
+	if client != nil {
+		if err := client.revokeInstallation(); err != nil {
+			log.Printf("Warning: revocation request failed: %v", err)
+		}
+	}
+	if err := keystore.DeleteKey(context.Background(), keyName); err != nil {
+		if errors.Is(err, ErrKeyNotFound) {
+			log.Println("No identity key found — nothing to remove.")
+		} else {
+			log.Printf("Warning: failed to delete identity key: %v", err)
+		}
+	}
+	if err := os.WriteFile(marker, []byte("done"), 0644); err != nil {
+		log.Printf("Warning: failed to record uninstall result: %v", err)
+	}
+	return true
+}
+
+func runAgentLoop(instance string, stopChan <-chan struct{}) {
+	currentInstance = instance
+	dir := instanceDir(instance)
+	writeStartupLog("runAgentLoop start: instance=%s dir=%s", instance, dir)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		writeStartupLog("MkdirAll failed: %v", err)
+		log.Printf("Failed to create instance directory %s: %v", dir, err)
 		return
 	}
 
-	stopChan := make(chan struct{})
-	runAgentLoop(stopChan)
-}
-
-func runAgentLoop(stopChan <-chan struct{}) {
-	appDir := filepath.Dir(os.Args[0])
-	if execPath, err := os.Executable(); err == nil {
-		appDir = filepath.Dir(execPath)
-	}
-
-	// Redirect stdout and stderr to agent.log for service logging
-	logFile, err := os.OpenFile(filepath.Join(appDir, "agent.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	// Redirect stdout and stderr to agent.log in the instance directory. The
+	// log package writes timestamped lines to the same file.
+	logFile, err := os.OpenFile(filepath.Join(dir, "agent.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err == nil {
 		os.Stdout = logFile
 		os.Stderr = logFile
+		log.SetOutput(logFile)
+		log.SetFlags(log.LstdFlags)
+	} else {
+		writeStartupLog("agent.log open failed: %v", err)
 	}
 
-	bootstrapPath := filepath.Join(appDir, "bootstrap.json")
-	config, err := readConfig(bootstrapPath)
+	config, configPath, err := loadConfig(dir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to read bootstrap.json: %v\n", err)
+		writeStartupLog("loadConfig failed: %v", err)
+		log.Printf("Failed to load config: %v", err)
 		return
 	}
 
-	var identityToken string
+	// The -instance argument is the source of truth for the installation UUID.
+	// Persist it once so the config always records which installation this is.
+	if config.InstallationID == "" {
+		config.InstallationID = instance
+		_ = writeConfig(configPath, config)
+	}
+
+	keyName := keyIDForInstallation(instance)
+	keystore := newKeyStore()
+	key, err := keystore.GetOrCreateKey(context.Background(), keyName)
+	if err != nil {
+		writeStartupLog("GetOrCreateKey failed: %v", err)
+		log.Printf("Failed to obtain agent key: %v", err)
+		return
+	}
+	log.Printf("Identity key stored: %s", keyName)
+	pub, err := keystore.PublicKey(context.Background(), key)
+	if err != nil {
+		writeStartupLog("PublicKey failed: %v", err)
+		log.Printf("Failed to read public key: %v", err)
+		return
+	}
+	pubHash := publicKeyHashHex(pub)
+
+	metrics := newMetricsCollector()
+	client := NewAgentClient(keystore, key, config.ServerURL, instance)
+	client.SetPublicKeyHash(pubHash)
+
+	// Handle a pending uninstall before doing anything else.
+	if handleUninstallMarker(instance, dir, keyName, keystore, client) {
+		return
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "PANIC RECOVERED: %v\n", r)
-			if config != nil && identityToken != "" {
-				reportAgentPanic(config, identityToken, r)
-			}
+			log.Printf("PANIC RECOVERED: %v", r)
+			reportAgentPanic(client, r)
 		}
 	}()
 
-	metrics := newMetricsCollector()
-	client := NewAgentClient()
+	log.Println("Agent starting...")
 
-	fmt.Println("Agent v2 starting...")
-//
-	heartbeatInterval := config.HeartbeatInterval
-	if heartbeatInterval <= 0 {
-		heartbeatInterval = 5
-	}
-
-	if config.IdentityToken != "" {
-		fmt.Println("Existing identity token found. Skipping registration.")
-		identityToken = config.IdentityToken
-		// Send version update notification to backend on agent start
-		if config.UpdateURL != "" {
-			_ = client.postNotification(config.UpdateURL, identityToken, map[string]string{"agent_version": config.AgentVersion})
-		}
-	} else {
-		fmt.Println("Registering with server...")
+	// First install: register the public key using the one-time provision token,
+	// then strip the token so the persistent config contains no secret.
+	if config.ProvisionToken != "" {
+		log.Println("Registering with server...")
 		registerPayload := &RegisterRequest{
-			Token:           config.Token,
+			Token:           config.ProvisionToken,
+			InstallationID:  instance,
+			PublicKey:       publicKeyBase64(pub),
+			PublicKeyHash:   pubHash,
 			AgentVersion:    config.AgentVersion,
-			Hostname:        config.Hostname,
+			Hostname:        metrics.GetHostname(),
 			OperatingSystem: metrics.GetOS(),
 			Architecture:    metrics.GetArch(),
 			Cpu:             metrics.GetCPUSpec(),
@@ -129,77 +321,72 @@ func runAgentLoop(stopChan <-chan struct{}) {
 			Disk:            metrics.GetDiskSpec(),
 			Capabilities:    []string{"metrics.cpu", "metrics.memory", "metrics.disk", "metrics.network", "metrics.processes", "ports.scan"},
 		}
-		if registerPayload.Hostname == "" {
-			registerPayload.Hostname = metrics.GetHostname()
-		}
-
-		registerResult, err := client.register(config.RegisterURL, registerPayload)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Registration failed: %v\n", err)
-			return
-		}
-
-		identityToken = registerResult.Identity
-		fmt.Println("Registered successfully.")
-
-		if registerResult.HeartbeatInterval > 0 {
-			heartbeatInterval = registerResult.HeartbeatInterval
-		}
-
-		if v, ok := registerResult.Configuration["version"].(float64); ok {
-			config.confVersion = int(v)
-		}
-
-		// Persist Reverb/WS connection details and the identity token so they survive restarts
-		config.IdentityToken = identityToken
-		if registerResult.ServerUUID != "" {
-			config.ServerUUID = registerResult.ServerUUID
-		}
-		if registerResult.UpdateURL != "" {
-			config.UpdateURL = registerResult.UpdateURL
-		}
-		if registerResult.ReverbHost != "" {
-			config.ReverbHost = registerResult.ReverbHost
-		}
-		if registerResult.ReverbPort > 0 {
-			config.ReverbPort = registerResult.ReverbPort
-		}
-		if registerResult.ReverbScheme != "" {
-			config.ReverbScheme = registerResult.ReverbScheme
-		}
-		if registerResult.ReverbAppKey != "" {
-			config.ReverbAppKey = registerResult.ReverbAppKey
-		}
-		// Write updated config back to bootstrap.json
-		if err := writeConfig(bootstrapPath, config); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to persist Reverb config: %v\n", err)
+		if _, err := client.register(registerPayload); err != nil {
+			log.Printf("Registration failed: %v", err)
+			// Not fatal — the agent may already be registered (stale token).
+			// Proceed to challenge-response; the backend will reject us if not.
+		} else {
+			log.Println("Registered successfully.")
+			config.ProvisionToken = ""
+			if err := writeConfig(configPath, config); err != nil {
+				log.Printf("Warning: failed to persist config: %v", err)
+			}
 		}
 	}
 
-	fmt.Printf("Starting heartbeat loop (interval: %ds)...\n", heartbeatInterval)
+	// Authenticate with the backend using the private key.
+	sess, err := client.ensureSession()
+	if err != nil {
+		log.Printf("Authentication failed: %v", err)
+		return
+	}
+	log.Println("Authenticated with server.")
+
+	// A successful auth also proves registration — drop any stale provision token.
+	if config.ProvisionToken != "" {
+		config.ProvisionToken = ""
+		_ = writeConfig(configPath, config)
+	}
+
+	heartbeatInterval := sess.HeartbeatInterval
+	if heartbeatInterval <= 0 {
+		heartbeatInterval = 5
+	}
+
+	log.Printf("Starting heartbeat loop (interval: %ds)...", heartbeatInterval)
 
 	ticker := time.NewTicker(time.Duration(heartbeatInterval) * time.Second)
 	defer ticker.Stop()
-	//
-	// Run once initially to register the first heartbeat and populate config / Reverb credentials
-	sendHeartbeatStep(config, client, metrics, identityToken, &heartbeatInterval)
+
+	// Run once initially to register the first heartbeat
+	sendHeartbeatStep(config, configPath, client, metrics, &heartbeatInterval)
 
 	// Start the WebSocket control channel goroutine
-	go connectControlChannel(config, identityToken, &heartbeatInterval, stopChan)
+	go connectControlChannel(client, &heartbeatInterval, stopChan)
 
 	for {
 		select {
 		case <-stopChan:
+			// Service is being stopped. If this is an uninstall, the marker is
+			// already pending and this is the last chance to revoke + delete
+			// the identity key under the service account.
+			handleUninstallMarker(instance, dir, keyName, keystore, client)
 			return
 		case <-ticker.C:
-			sendHeartbeatStep(config, client, metrics, identityToken, &heartbeatInterval)
+			// A marker may appear mid-run (admin starts uninstall while the
+			// agent is healthy). Handle it, then exit so the service stops.
+			if handleUninstallMarker(instance, dir, keyName, keystore, client) {
+				return
+			}
+			sendHeartbeatStep(config, configPath, client, metrics, &heartbeatInterval)
 			ticker.Reset(time.Duration(heartbeatInterval) * time.Second)
 		}
 	}
 }
 
-func sendHeartbeatStep(config *BootstrapConfig, client *AgentClient, metrics *metricsCollector, identityToken string, heartbeatInterval *int) {
+func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *AgentClient, metrics *metricsCollector, heartbeatInterval *int) {
 	payload := &HeartbeatRequest{
+		AgentVersion:         config.AgentVersion,
 		ConfigurationVersion: config.confVersion,
 		Timestamp:            time.Now().Unix(),
 		Hostname:             metrics.GetHostname(),
@@ -211,110 +398,64 @@ func sendHeartbeatStep(config *BootstrapConfig, client *AgentClient, metrics *me
 		TopProcesses:         metrics.GetTopProcesses(),
 		OpenDbPorts:          metrics.GetOpenDatabasePorts(),
 		AgentConfig: &AgentConfigReport{
-			HeartbeatInterval: config.HeartbeatInterval,
+			HeartbeatInterval: *heartbeatInterval,
 			AgentVersion:      config.AgentVersion,
 		},
 	}
 
-	if response, err := client.sendHeartbeat(config.ApiURL, identityToken, payload); err != nil {
-		fmt.Fprintf(os.Stderr, "Heartbeat failed: %v\n", err)
-	} else {
-		hasChanges := false
-		if response.HeartbeatInterval > 0 && config.HeartbeatInterval != response.HeartbeatInterval {
-			*heartbeatInterval = response.HeartbeatInterval
-			config.HeartbeatInterval = response.HeartbeatInterval
-			hasChanges = true
-		}
-		if response.ServerUUID != "" && config.ServerUUID != response.ServerUUID {
-			config.ServerUUID = response.ServerUUID
-			hasChanges = true
-		}
-		if response.UpdateURL != "" && config.UpdateURL != response.UpdateURL {
-			config.UpdateURL = response.UpdateURL
-			hasChanges = true
-		}
-		if response.ReverbHost != "" && config.ReverbHost != response.ReverbHost {
-			config.ReverbHost = response.ReverbHost
-			hasChanges = true
-		}
-		if response.ReverbPort > 0 && config.ReverbPort != response.ReverbPort {
-			config.ReverbPort = response.ReverbPort
-			hasChanges = true
-		}
-		if response.ReverbScheme != "" && config.ReverbScheme != response.ReverbScheme {
-			config.ReverbScheme = response.ReverbScheme
-			hasChanges = true
-		}
-		if response.ReverbAppKey != "" && config.ReverbAppKey != response.ReverbAppKey {
-			config.ReverbAppKey = response.ReverbAppKey
-			hasChanges = true
-		}
-		
-		if hasChanges {
-			appDir := filepath.Dir(os.Args[0])
-			if execPath, err := os.Executable(); err == nil {
-				appDir = filepath.Dir(execPath)
-			}
-			bootstrapPath := filepath.Join(appDir, "bootstrap.json")
-			if err := writeConfig(bootstrapPath, config); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: failed to persist Reverb config: %v\n", err)
-			}
+	response, err := client.sendHeartbeat(payload)
+	if err != nil {
+		log.Printf("Heartbeat failed: %v", err)
+		return
+	}
+
+	if response.HeartbeatInterval > 0 && *heartbeatInterval != response.HeartbeatInterval {
+		*heartbeatInterval = response.HeartbeatInterval
+		log.Printf("Heartbeat interval updated to %ds", *heartbeatInterval)
+	}
+
+	if v, ok := response.Configuration["version"].(float64); ok {
+		config.confVersion = int(v)
+		log.Printf("Configuration updated to version %d", config.confVersion)
+	}
+
+	if response.PendingUpdate != nil {
+		log.Printf("Received agent update notification to version %s", response.PendingUpdate.Version)
+
+		if response.PendingUpdate.HeartbeatInterval > 0 {
+			*heartbeatInterval = response.PendingUpdate.HeartbeatInterval
 		}
 
-		if v, ok := response.Configuration["version"].(float64); ok {
-			config.confVersion = int(v)
-			fmt.Printf("Configuration updated to version %d\n", config.confVersion)
-		}
-		if response.PendingUpdate != nil {
-			fmt.Printf("Received agent update notification to version %s\n", response.PendingUpdate.Version)
+		config.AgentVersion = response.PendingUpdate.Version
+		_ = writeConfig(configPath, config)
 
-			// Notify backend that we are starting update
-			updatingURL := strings.Replace(config.UpdateURL, "/update", "/updating", 1)
-			client.postNotification(updatingURL, identityToken, map[string]string{"version": response.PendingUpdate.Version})
-
-			if response.PendingUpdate.HeartbeatInterval > 0 {
-				*heartbeatInterval = response.PendingUpdate.HeartbeatInterval
-				config.HeartbeatInterval = response.PendingUpdate.HeartbeatInterval
-			}
-
-			config.AgentVersion = response.PendingUpdate.Version
-
-			appDir := filepath.Dir(os.Args[0])
-			if execPath, err := os.Executable(); err == nil {
-				appDir = filepath.Dir(execPath)
-			}
-			bootstrapPath := filepath.Join(appDir, "bootstrap.json")
-			if err := writeConfig(bootstrapPath, config); err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to write updated config: %v\n", err)
-			}
-
-			if response.PendingUpdate.BinaryURL != "" {
-				fmt.Printf("Updating agent binary from %s...\n", response.PendingUpdate.BinaryURL)
-				if err := updateBinary(response.PendingUpdate.BinaryURL); err != nil {
-					fmt.Fprintf(os.Stderr, "Binary update failed: %v\n", err)
-				} else {
-					fmt.Println("Binary updated successfully! Exiting to allow restart.")
-					restartAgent()
-					os.Exit(0)
-				}//
+		if response.PendingUpdate.BinaryURL != "" {
+			log.Printf("Updating agent binary from %s...", response.PendingUpdate.BinaryURL)
+			if err := updateBinary(response.PendingUpdate.BinaryURL); err != nil {
+				log.Printf("Binary update failed: %v", err)
+			} else {
+				log.Println("Binary updated successfully! Exiting to allow restart.")
+				restartAgent()
+				os.Exit(0)
 			}
 		}
-		if len(response.PendingCommands) > 0 {
-			var completed []CommandResult
-			for _, cmd := range response.PendingCommands {
-				fmt.Printf("Executing command: %s (id: %d)\n", cmd.Type, cmd.Id)
-				result := executeCommand(cmd)
-				completed = append(completed, result)
+	}
+
+	if len(response.PendingCommands) > 0 {
+		var completed []CommandResult
+		for _, cmd := range response.PendingCommands {
+			log.Printf("Executing command: %s (id: %d)", cmd.Type, cmd.Id)
+			result := executeCommand(cmd)
+			completed = append(completed, result)
+		}
+		if len(completed) > 0 {
+			ackPayload := &HeartbeatRequest{
+				ConfigurationVersion: config.confVersion,
+				Timestamp:            time.Now().Unix(),
+				Hostname:             metrics.GetHostname(),
+				CompletedCommands:    completed,
 			}
-			if len(completed) > 0 {
-				ackPayload := &HeartbeatRequest{
-					ConfigurationVersion: config.confVersion,
-					Timestamp:           time.Now().Unix(),
-					Hostname:            metrics.GetHostname(),
-					CompletedCommands:   completed,
-				}
-				client.sendHeartbeat(config.ApiURL, identityToken, ackPayload)
-			}
+			client.sendHeartbeat(ackPayload)
 		}
 	}
 }

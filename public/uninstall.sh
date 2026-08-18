@@ -1,70 +1,81 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TOKEN="${1:-}"
-APP_URL="${2:-{{APP_URL}}}"
+# Usage: uninstall.sh [instance_uuid]
+# With no argument, every monitor-agent instance on this host is uninstalled.
 
-readonly SERVICE_NAME="monitor-agent"
-readonly APP_DIR="/opt/monitor-agent"
-readonly BOOTSTRAP_FILE="${APP_DIR}/bootstrap.json"
-readonly SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
-readonly LOG_FILE="/var/log/${SERVICE_NAME}-uninstall.log"
+INSTANCE="${1:-}"
+
+readonly DATA_ROOT="/var/lib/monitor-agent"
+readonly APP_ROOT="/opt/monitor-agent"
+readonly LOG_FILE="/var/log/monitor-agent-uninstall.log"
 readonly SERVICE_USER="monitor"
 
 log()  { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]  $*" | tee -a "$LOG_FILE"; }
 warn() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [WARN]  $*" | tee -a "$LOG_FILE"; }
-fail() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $*" | tee -a "$LOG_FILE"; exit 1; }
 
 if [[ $EUID -ne 0 ]]; then
-    fail "This script must be run as root."
+    echo "This script must be run as root." >&2
+    exit 1
 fi
 
-if [[ -z "$TOKEN" && -f "$BOOTSTRAP_FILE" ]]; then
-    TOKEN=$(python3 -c "import json; print(json.load(open('$BOOTSTRAP_FILE')).get('token', ''))" 2>/dev/null || true)
+# Discover instances: the one named explicitly, or every instance on this host.
+INSTANCES=()
+if [[ -n "$INSTANCE" ]]; then
+    INSTANCES=("$INSTANCE")
+elif [[ -d "$DATA_ROOT/instances" ]]; then
+    for dir in "$DATA_ROOT"/instances/*; do
+        [[ -d "$dir" ]] && INSTANCES+=("$(basename "$dir")")
+    done
 fi
 
-log "Starting uninstallation of ${SERVICE_NAME}..."
-
-if systemctl is-active --quiet "$SERVICE_NAME"; then
-    log "Stopping service..."
-    systemctl stop "$SERVICE_NAME"
-else
-    warn "Service was not running — skipping stop."
+if [[ ${#INSTANCES[@]} -eq 0 ]]; then
+    log "No monitor-agent instances found. Nothing to uninstall."
+    exit 0
 fi
 
-if systemctl is-enabled --quiet "$SERVICE_NAME" 2>/dev/null; then
-    log "Disabling service..."
-    systemctl disable "$SERVICE_NAME"
-else
-    warn "Service was not enabled — skipping disable."
-fi
+for INSTALLATION_ID in "${INSTANCES[@]}"; do
+    log "Uninstalling instance: ${INSTALLATION_ID}"
+    INSTANCE_DIR="$DATA_ROOT/instances/$INSTALLATION_ID"
+    UNIT="monitor-agent@${INSTALLATION_ID}.service"
+    AGENT_FILE="$APP_ROOT/$INSTALLATION_ID/monitor-agent"
 
-if [[ -f "$SERVICE_FILE" ]]; then
-    log "Removing service file..."
-    rm -f "$SERVICE_FILE"
-fi
+    if [[ -f "$AGENT_FILE" ]]; then
+        # Marker-based uninstall: write the flag, restart the unit, and the
+        # agent (running as the monitor user) revokes itself on the backend,
+        # deletes its own identity key file, then exits cleanly.
+        mkdir -p "$INSTANCE_DIR"
+        touch "$INSTANCE_DIR/uninstall.flag"
+        if systemctl list-unit-files | grep -q "^${UNIT} "; then
+            systemctl restart "$UNIT" || warn "Unit failed to restart for cleanup."
+            # Wait for the agent to process the marker and exit.
+            for _ in $(seq 1 30); do
+                systemctl is-active --quiet "$UNIT" || break
+                sleep 1
+            done
+        fi
+    else
+        warn "Agent binary not found - skipping marker-based cleanup."
+    fi
 
-log "Reloading systemd daemon..."
-systemctl daemon-reload
-systemctl reset-failed 2>/dev/null || true
+    if systemctl list-unit-files | grep -q "^${UNIT} "; then
+        systemctl disable "$UNIT" 2>/dev/null || true
+        systemctl stop "$UNIT" 2>/dev/null || true
+        rm -f "/etc/systemd/system/${UNIT}"
+    fi
+    systemctl daemon-reload
 
-if [[ -n "$TOKEN" ]]; then
-    log "Notifying backend of uninstallation..."
-    curl -fsSL -X POST \
-      -H "Content-Type: application/json" \
-      -d "{\"token\":\"$TOKEN\",\"platform\":\"linux\"}" \
-      "${APP_URL}/api/v1/agent/uninstall" || warn "Failed to notify backend."
-fi
+    if [[ -d "$INSTANCE_DIR" ]]; then
+        rm -rf "$INSTANCE_DIR"
+        log "Removed instance directory."
+    fi
+    rmdir "$DATA_ROOT/instances" 2>/dev/null || true
 
-if [[ -d "$APP_DIR" ]]; then
-    log "Removing app directory: ${APP_DIR}..."
-    rm -rf "$APP_DIR"
-fi
-
-if id "$SERVICE_USER" &>/dev/null; then
-    log "Removing service user '${SERVICE_USER}'..."
-    userdel "$SERVICE_USER"
-fi
+    if [[ -d "$APP_ROOT/$INSTALLATION_ID" ]]; then
+        rm -rf "$APP_ROOT/$INSTALLATION_ID"
+        log "Removed program directory."
+    fi
+done
 
 log "Uninstallation complete."
 echo ""

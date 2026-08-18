@@ -17,7 +17,13 @@ class Agent extends Model
     protected $casts = [
         'registered_at' => 'datetime',
         'last_seen_at' => 'datetime',
+        'revoked_at' => 'datetime',
     ];
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
 
     public function server(): BelongsTo
     {
@@ -32,6 +38,11 @@ class Agent extends Model
     public function activeIdentity(): HasOne
     {
         return $this->hasOne(AgentIdentity::class)->where('status', 'active');
+    }
+
+    public function challenges(): HasMany
+    {
+        return $this->hasMany(AgentChallenge::class);
     }
 
     public function heartbeats(): HasMany

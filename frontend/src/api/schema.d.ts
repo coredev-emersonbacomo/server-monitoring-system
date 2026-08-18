@@ -223,6 +223,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/agent/auth/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Step 1 of challenge-response authentication. The agent identifies itself
+         *     by its public key fingerprint; the backend answers with a random,
+         *     short-lived, single-use challenge bound to that agent
+         */
+        post: operations["v1.agent.challenge_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/agent/auth/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Step 2 of challenge-response authentication. Verifies the agent's
+         *     signature over the challenge using its registered public key, then
+         *     issues short-lived session credentials
+         */
+        post: operations["v1.agent.verify_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/agent/heartbeat": {
         parameters: {
             query?: never;
@@ -255,7 +297,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/agent/{serverUuid}/error": {
+    "/v1/agent/error": {
         parameters: {
             query?: never;
             header?: never;
@@ -265,43 +307,6 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["v1.agent.agentError_0"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/agent/{serverUuid}/update": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Called by the agent after it has successfully applied a config update received via WebSocket.
-         *     The agent authenticates using its Bearer identity token
-         */
-        post: operations["v1.agent.agentUpdate_0"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/agent/{serverUuid}/updating": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Log that the agent is starting its binary update process */
-        post: operations["v1.agent.agentUpdating_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -372,6 +377,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/auth/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Step 1 of challenge-response authentication. The agent identifies itself
+         *     by its public key fingerprint; the backend answers with a random,
+         *     short-lived, single-use challenge bound to that agent
+         */
+        post: operations["v1.agent.challenge_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/auth/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Step 2 of challenge-response authentication. Verifies the agent's
+         *     signature over the challenge using its registered public key, then
+         *     issues short-lived session credentials
+         */
+        post: operations["v1.agent.verify_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/heartbeat": {
         parameters: {
             query?: never;
@@ -404,7 +451,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/agent/{serverUuid}/error": {
+    "/agent/error": {
         parameters: {
             query?: never;
             header?: never;
@@ -414,43 +461,6 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["v1.agent.agentError_0"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/agent/{serverUuid}/update": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Called by the agent after it has successfully applied a config update received via WebSocket.
-         *     The agent authenticates using its Bearer identity token
-         */
-        post: operations["v1.agent.agentUpdate_0"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/agent/{serverUuid}/updating": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Log that the agent is starting its binary update process */
-        post: operations["v1.agent.agentUpdating_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -468,7 +478,7 @@ export interface paths {
         put?: never;
         /**
          * Authorize a Go agent's private Reverb channel subscription
-         * @description The agent passes its Bearer identity token in the Authorization header.
+         * @description The agent presents its short-lived agent JWT in the Authorization header.
          *     We validate the token, confirm the agent owns the requested channel,
          *     then return a Pusher-signed auth string.
          */
@@ -2558,9 +2568,7 @@ export interface operations {
                         download_url: string;
                         expected_sha256: Record<string, never> | string;
                         agent_version: string;
-                        heartbeat_interval: number;
-                        api_url: string;
-                        register_url: string;
+                        server_url: string;
                     };
                 };
             };
@@ -2578,6 +2586,8 @@ export interface operations {
             content: {
                 "application/json": {
                     token: string;
+                    public_key: string;
+                    public_key_hash: string;
                     agent_version?: string | null;
                     capabilities?: string[] | null;
                     hostname?: string | null;
@@ -2599,29 +2609,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        identity: string;
-                        configuration: {
-                            heartbeat_interval: number;
-                            /** @constant */
-                            metrics_interval: 5;
-                            /** @constant */
-                            port_scan_interval: 60;
-                            /** @constant */
-                            service_scan_interval: 60;
-                            /** @constant */
-                            process_scan_interval: 60;
-                        };
-                        heartbeat_interval: number;
+                        registered: boolean;
+                        agent_id: number;
                         server_uuid: string;
-                        update_url: string;
-                        reverb_host: unknown;
-                        reverb_port: number;
-                        reverb_scheme: unknown;
-                        reverb_app_key: unknown;
                     };
                 };
             };
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.agent.challenge_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    public_key_hash: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        challenge_id: number;
+                        challenge: string;
+                        expires_in: number;
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unknown or inactive agent.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.agent.verify_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    challenge_id: number;
+                    signature: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        access_token: string;
+                        expires_in: number;
+                        websocket_expires_in: number;
+                        server_uuid: string;
+                        config: {
+                            heartbeat_interval: number;
+                            realtime: {
+                                host: unknown;
+                                port: number;
+                                scheme: unknown;
+                                app_key: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Challenge already used.";
+                    } | {
+                        /** @constant */
+                        message: "Challenge is invalid or expired.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Signature verification failed.";
+                    } | {
+                        /** @constant */
+                        message: "Agent is revoked or disabled.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Invalid registered public key.";
+                    };
+                };
+            };
         };
     };
     "v1.agent.heartbeat_0": {
@@ -2647,7 +2762,6 @@ export interface operations {
                          *     even if bootstrap.json on disk is missing these fields (e.g. due to permissions)
                          */
                         server_uuid: string;
-                        update_url: string;
                         reverb_host: unknown;
                         reverb_port: number;
                         reverb_scheme: unknown;
@@ -2674,17 +2788,6 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Unauthenticated.";
-                    };
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Invalid or revoked agent identity.";
                     };
                 };
             };
@@ -2740,9 +2843,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                serverUuid: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
@@ -2773,157 +2874,6 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Unauthenticated.";
-                    };
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Invalid or revoked agent identity.";
-                    };
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Agent not found.";
-                    };
-                };
-            };
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "v1.agent.agentUpdate_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                serverUuid: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": {
-                    agent_version?: string | null;
-                    heartbeat_interval?: number | null;
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        status: "ok";
-                    };
-                };
-            };
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Unauthenticated.";
-                    };
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Invalid or revoked agent identity.";
-                    };
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Agent not found.";
-                    };
-                };
-            };
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "v1.agent.agentUpdating_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                serverUuid: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    version: string;
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        status: "ok";
-                    };
-                };
-            };
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Unauthenticated.";
-                    };
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Invalid or revoked agent identity.";
-                    };
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Agent not found.";
                     };
                 };
             };
@@ -3069,9 +3019,7 @@ export interface operations {
                         download_url: string;
                         expected_sha256: Record<string, never> | string;
                         agent_version: string;
-                        heartbeat_interval: number;
-                        api_url: string;
-                        register_url: string;
+                        server_url: string;
                     };
                 };
             };
@@ -3089,6 +3037,8 @@ export interface operations {
             content: {
                 "application/json": {
                     token: string;
+                    public_key: string;
+                    public_key_hash: string;
                     agent_version?: string | null;
                     capabilities?: string[] | null;
                     hostname?: string | null;
@@ -3110,29 +3060,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        identity: string;
-                        configuration: {
-                            heartbeat_interval: number;
-                            /** @constant */
-                            metrics_interval: 5;
-                            /** @constant */
-                            port_scan_interval: 60;
-                            /** @constant */
-                            service_scan_interval: 60;
-                            /** @constant */
-                            process_scan_interval: 60;
-                        };
-                        heartbeat_interval: number;
+                        registered: boolean;
+                        agent_id: number;
                         server_uuid: string;
-                        update_url: string;
-                        reverb_host: unknown;
-                        reverb_port: number;
-                        reverb_scheme: unknown;
-                        reverb_app_key: unknown;
                     };
                 };
             };
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.agent.challenge_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    public_key_hash: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        challenge_id: number;
+                        challenge: string;
+                        expires_in: number;
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unknown or inactive agent.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.agent.verify_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    challenge_id: number;
+                    signature: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        access_token: string;
+                        expires_in: number;
+                        websocket_expires_in: number;
+                        server_uuid: string;
+                        config: {
+                            heartbeat_interval: number;
+                            realtime: {
+                                host: unknown;
+                                port: number;
+                                scheme: unknown;
+                                app_key: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Challenge already used.";
+                    } | {
+                        /** @constant */
+                        message: "Challenge is invalid or expired.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Signature verification failed.";
+                    } | {
+                        /** @constant */
+                        message: "Agent is revoked or disabled.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Invalid registered public key.";
+                    };
+                };
+            };
         };
     };
     "v1.agent.heartbeat_0": {
@@ -3158,7 +3213,6 @@ export interface operations {
                          *     even if bootstrap.json on disk is missing these fields (e.g. due to permissions)
                          */
                         server_uuid: string;
-                        update_url: string;
                         reverb_host: unknown;
                         reverb_port: number;
                         reverb_scheme: unknown;
@@ -3185,17 +3239,6 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Unauthenticated.";
-                    };
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Invalid or revoked agent identity.";
                     };
                 };
             };
@@ -3251,9 +3294,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                serverUuid: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
@@ -3284,157 +3325,6 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Unauthenticated.";
-                    };
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Invalid or revoked agent identity.";
-                    };
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Agent not found.";
-                    };
-                };
-            };
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "v1.agent.agentUpdate_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                serverUuid: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": {
-                    agent_version?: string | null;
-                    heartbeat_interval?: number | null;
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        status: "ok";
-                    };
-                };
-            };
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Unauthenticated.";
-                    };
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Invalid or revoked agent identity.";
-                    };
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Agent not found.";
-                    };
-                };
-            };
-            422: components["responses"]["ValidationException"];
-        };
-    };
-    "v1.agent.agentUpdating_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                serverUuid: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    version: string;
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        status: "ok";
-                    };
-                };
-            };
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Unauthenticated.";
-                    };
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Invalid or revoked agent identity.";
-                    };
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Agent not found.";
                     };
                 };
             };
@@ -3488,9 +3378,6 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Channel not authorized.";
-                    } | {
-                        /** @constant */
-                        message: "Invalid or revoked agent identity.";
                     };
                 };
             };
@@ -4256,6 +4143,8 @@ export interface operations {
                 unit: "minute" | "hour" | "day" | "week" | "month";
                 metric: "cpu" | "memory" | "disk";
                 before?: number | null;
+                scope?: "all" | "avg" | "server" | null;
+                server_uuid?: string | null;
             };
             header?: never;
             path?: never;
@@ -4271,6 +4160,7 @@ export interface operations {
                     "application/json": {
                         unit: string;
                         metric: string;
+                        scope: string | "all";
                         series: {
                             server_uuid: string;
                             server_name: string;
@@ -4287,6 +4177,38 @@ export interface operations {
                     } | {
                         unit: string;
                         metric: string;
+                        scope: string;
+                        series: [
+                            {
+                                /** @constant */
+                                server_uuid: "avg";
+                                /** @constant */
+                                server_name: "All Servers";
+                                client_name: string;
+                                points: {
+                                    timestamp: number;
+                                    value: number;
+                                }[];
+                            }
+                        ];
+                        top: string[];
+                        nextCursor: null;
+                    } | {
+                        unit: string;
+                        metric: string;
+                        scope: string;
+                        series: {
+                            server_uuid: string;
+                            server_name: string;
+                            client_name: string | "";
+                            points: string | string[];
+                        }[];
+                        top: string[];
+                        nextCursor: null;
+                    } | {
+                        unit: string;
+                        metric: string;
+                        scope: string;
                         series: string[];
                         top: string[];
                         nextCursor: null;
@@ -4410,6 +4332,8 @@ export interface operations {
                 unit: "minute" | "hour" | "day" | "week" | "month";
                 metric: "cpu" | "memory" | "disk";
                 before?: number | null;
+                scope?: "all" | "avg" | "server" | null;
+                server_uuid?: string | null;
             };
             header?: never;
             path?: never;
@@ -4425,6 +4349,7 @@ export interface operations {
                     "application/json": {
                         unit: string;
                         metric: string;
+                        scope: string | "all";
                         series: {
                             server_uuid: string;
                             server_name: string;
@@ -4441,6 +4366,38 @@ export interface operations {
                     } | {
                         unit: string;
                         metric: string;
+                        scope: string;
+                        series: [
+                            {
+                                /** @constant */
+                                server_uuid: "avg";
+                                /** @constant */
+                                server_name: "All Servers";
+                                client_name: string;
+                                points: {
+                                    timestamp: number;
+                                    value: number;
+                                }[];
+                            }
+                        ];
+                        top: string[];
+                        nextCursor: null;
+                    } | {
+                        unit: string;
+                        metric: string;
+                        scope: string;
+                        series: {
+                            server_uuid: string;
+                            server_name: string;
+                            client_name: string | "";
+                            points: string | string[];
+                        }[];
+                        top: string[];
+                        nextCursor: null;
+                    } | {
+                        unit: string;
+                        metric: string;
+                        scope: string;
                         series: string[];
                         top: string[];
                         nextCursor: null;
@@ -5804,8 +5761,8 @@ export interface operations {
                     /** @enum {string|null} */
                     orientation?: "landscape" | "portrait" | null;
                     hours?: number | null;
-                    uuids?: string[] | null;
                     refresh?: boolean | null;
+                    uuids?: string[] | null;
                 };
             };
         };
@@ -5813,6 +5770,7 @@ export interface operations {
             200: {
                 headers: {
                     "Content-Disposition"?: "inline; filename=\"report.pdf\"";
+                    "X-Generated-At"?: string;
                     [name: string]: unknown;
                 };
                 content: {

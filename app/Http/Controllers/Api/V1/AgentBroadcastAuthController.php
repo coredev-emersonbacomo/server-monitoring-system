@@ -3,41 +3,27 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\AgentIdentity;
+use App\Services\AgentAuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Broadcast;
 
 class AgentBroadcastAuthController extends Controller
 {
     /**
      * Authorize a Go agent's private Reverb channel subscription.
      *
-     * The agent passes its Bearer identity token in the Authorization header.
+     * The agent presents its short-lived agent JWT in the Authorization header.
      * We validate the token, confirm the agent owns the requested channel,
      * then return a Pusher-signed auth string.
      */
-    public function authorize(Request $request): JsonResponse
+    public function authorize(Request $request, AgentAuthService $agentAuthService): JsonResponse
     {
-        $authHeader = $request->header('Authorization') ?? $request->header('X-Agent-Auth');
-
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+        $agent = $agentAuthService->authenticate($request);
+        if (!$agent) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        $rawIdentity = substr($authHeader, 7);
-        $identityHash = hash('sha256', $rawIdentity);
-
-        $identity = AgentIdentity::where('identity_hash', $identityHash)
-            ->where('status', 'active')
-            ->with('agent.server')
-            ->first();
-
-        if (!$identity || !$identity->agent?->server) {
-            return response()->json(['message' => 'Invalid or revoked agent identity.'], 403);
-        }
-
-        $serverUuid = $identity->agent->server->uuid;
+        $serverUuid = $agent->server->uuid;
         $channelName = $request->input('channel_name', '');
         $socketId    = $request->input('socket_id', '');
 

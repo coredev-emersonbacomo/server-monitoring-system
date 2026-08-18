@@ -27,7 +27,7 @@ class SettingSeeder extends Seeder
             ['value' => '15', 'updated_at' => now(), 'created_at' => now()]
         );
 
-        // ponytail: debug — seed port ping to match the default heartbeat interval (5s) so
+        // debug — seed port ping to match the default heartbeat interval (5s) so
         // results/alerting are easy to observe. Production default is 1min (60s).
         DB::table('settings')->updateOrInsert(
             ['key' => 'port_ping_interval'],

@@ -139,7 +139,6 @@ export interface NodeConfig {
             name: string;
             description: string | null;
             config: unknown[];
-            enabled: string;
             created_by: number | null;
             /** Format: date-time */
             created_at: string | null;
@@ -271,6 +270,7 @@ export interface ServerReportData {
             disk?: string | null;
             operating_system?: string | null;
             status: string;
+            subscription_fee?: number | null;
             metrics: Record<string, never>;
             uptime: ServerUptimeData;
             record_status?: string;
@@ -287,6 +287,7 @@ export interface ServerReportData {
             cpu_7d?: number[];
             memory_7d?: number[];
             disk_7d?: number[];
+            trend_x?: number[];
         }
 
 /** ServerUptimeData */
@@ -295,6 +296,8 @@ export interface ServerUptimeData {
             uptime_percentage: number;
             outage_count: number;
             last_downtime?: string | null;
+            uptime_hours: number;
+            range_hours: number;
         }
 
 /** StatPointData */

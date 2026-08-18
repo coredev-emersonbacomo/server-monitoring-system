@@ -12,10 +12,10 @@ Route::middleware('auth:jwt')->group(function () {
 // Public / Agent endpoints
 Route::post('provision', [AgentController::class, 'bootstrap']);
 Route::post('register', [AgentController::class, 'register']);
+Route::post('agent/auth/challenge', [AgentController::class, 'challenge']);
+Route::post('agent/auth/verify', [AgentController::class, 'verify']);
 Route::post('agent/heartbeat', [AgentController::class, 'heartbeat']);
 Route::post('agent/uninstall', [AgentController::class, 'uninstall']);
-Route::post('agent/{serverUuid}/error', [AgentController::class, 'agentError']);
-Route::post('agent/{serverUuid}/update', [AgentController::class, 'agentUpdate']);
-Route::post('agent/{serverUuid}/updating', [AgentController::class, 'agentUpdating']);
+Route::post('agent/error', [AgentController::class, 'agentError']);
 
 

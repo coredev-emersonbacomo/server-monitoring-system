@@ -19,7 +19,6 @@
         "pjadanowski/scramble-extras": "*",
         "predis/predis": "*",
         "spatie/laravel-data": "^4.23",
-        "team-reflex/discord-php": "^10.52",
         "tpetry/laravel-postgresql-enhanced": "*"
     },
     "require-dev": {
@@ -58,10 +57,7 @@
             "npm install --ignore-scripts",
             "npm run build"
         ],
-        "dev": [
-            "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd\" \"php artisan queue:listen --tries=1\" \"npm run dev\" --names='queue,vite'"
-        ],
+        "dev": "npm run dev",
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",
             "@php artisan test"

@@ -68,31 +68,28 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
     return (
         <aside
             className={twMerge(
-                "flex flex-col gap-sidebar-section-gap bg-background text-foreground py-5 px-sidebar-padding",
+                "flex flex-col bg-background text-foreground py-5 px-sidebar-padding gap-5",
                 isCollapsed ? "w-sidebar-collapsed" : "w-sidebar",
                 "transition-all duration-300 ease-in-out overflow-x-hidden fixed top-0 left-0 h-screen! overflow-y-auto z-60",
                 !isFullScreen && "border-r border-border/90",
             )}
         >
-            <div className="flex gap-sidebar-section-gap items-center h-16">
-                <button
-                    className="p-sidebar-item-padding cursor-pointer"
-                    onClick={toggleSidebar}
-                >
+            <div className="flex items-center gap-sidebar-item-gap p-sidebar-item-padding w-sidebar-button cursor-pointer">
+                <button className="cursor-pointer" onClick={toggleSidebar}>
                     <Menu
                         className={twMerge(
-                            "size-icon transition-all duration-300 ease-in-out",
+                            "size-sidebar-icon transition-all duration-300 ease-in-out p-sidebar-icon-padding-burger",
                             isCollapsed && "rotate-180",
                         )}
                     />
                 </button>
-                <label className="text-xl font-bold tracking-tight mx-auto -translate-y-0.5">
+                <label className="font-brand text-2xl font-extrabold tracking-tight translate-x-[0.4rem]">
                     Name
                 </label>
-                <Menu className="size-icon opacity-0" />
+                <Menu className="size-sidebar-icon opacity-0" />
             </div>
 
-            <nav className="flex flex-col gap-2 mb-auto">
+            <nav className="flex flex-col gap-1 mb-auto">
                 {links.map((link) => {
                     const isActive =
                         link.href === "/"
@@ -114,7 +111,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                                             : "text-muted-foreground hover:bg-sidebar-hover",
                                     )}
                                 >
-                                    <div className="flex items-center gap-sidebar-section-gap p-sidebar-item-padding w-sidebar-button cursor-pointer">
+                                    <div className="flex items-center gap-sidebar-item-gap p-sidebar-item-padding w-sidebar-button cursor-pointer">
                                         {
                                             <link.icon
                                                 variant={
@@ -123,14 +120,14 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                                                         : "outline"
                                                 }
                                                 className={twMerge(
-                                                    "size-icon",
+                                                    "size-sidebar-icon p-sidebar-icon-padding",
                                                     isActive
                                                         ? "text-sidebar-foreground"
                                                         : "text-foreground",
                                                 )}
                                             />
                                         }
-                                        <label className="cursor-pointer">
+                                        <label className="cursor-pointer text-[16px]">
                                             {link.name}
                                         </label>
                                     </div>
@@ -215,7 +212,7 @@ const ProfileBar = ({
 
     const firstName = user.first_name;
     const lastName = user.last_name;
-    const username = user.username || (user.email?.split("@")[0] || "");
+    const username = user.username || user.email?.split("@")[0] || "";
     const avatarSrc =
         user.profile_picture_url ||
         import.meta.env.VITE_DEFAULT_PROFILE_PICTURE ||
@@ -231,13 +228,15 @@ const ProfileBar = ({
                     "cursor-pointer rounded-lg py-2 hover:bg-foreground/2 hover:ring-transparent",
             )}
         >
-            <div className="flex items-center gap-sidebar-section-gap p-[calc(var(--spacing-sidebar-item-padding)-0.25rem)] w-sidebar-button">
-                <div className="size-[calc(var(--size-icon)+0.5rem)] rounded-full overflow-hidden bg-foreground/10">
-                    <img
-                        src={avatarSrc}
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                    />
+            <div className="flex items-center gap-sidebar-item-gap p-sidebar-item-padding w-sidebar-button cursor-pointer">
+                <div className="size-sidebar-icon p-sidebar-icon-padding-profile">
+                    <div className="w-full h-full relative rounded-full overflow-hidden bg-foreground/10">
+                        <img
+                            src={avatarSrc}
+                            alt="Avatar"
+                            className="w-full h-full object-cover"
+                        />
+                    </div>
                 </div>
                 <div className="leading-6 flex-1 w-full flex flex-col text-left min-w-0">
                     <div className="font-semibold text-foreground/80 group-hover:text-foreground text-base truncate">

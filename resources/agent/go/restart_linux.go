@@ -3,7 +3,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"os/exec"
 )
@@ -13,14 +13,19 @@ var IsService bool
 func restartAgent() {
 	exePath, err := os.Executable()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get executable path: %v\n", err)
+		log.Printf("Failed to get executable path: %v", err)
 		return
 	}
 
-	// For Linux, spawn the new binary process directly.
-	// If running under systemd/service, systemd is usually configured to restart on exit.
-	cmd := exec.Command(exePath)
+	// For Linux, spawn the new binary process directly, pinned to the same
+	// instance. If running under systemd, the unit is configured to restart on
+	// exit, so this process will die and systemd takes over.
+	args := []string{}
+	if currentInstance != "" {
+		args = []string{"-instance", currentInstance}
+	}
+	cmd := exec.Command(exePath, args...)
 	if err := cmd.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to restart agent: %v\n", err)
+		log.Printf("Failed to restart agent: %v", err)
 	}
 }

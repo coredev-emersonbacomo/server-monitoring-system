@@ -12,7 +12,7 @@ class AgentVersionSync extends Command
     protected $signature = 'agent:version-sync
                             {--force : Force a version bump even if hash unchanged}';
 
-    protected $description = 'Check if the compiled agent binary has changed and auto-bump the AgentVersion record, then broadcast the update to connected agents.';
+    protected $description = 'Check if the compiled agent binary has changed and auto-bump the AgentVersion record, then broadcast the update to connected agents for immediate pickup.';
 
     public function handle(): int
     {
@@ -59,10 +59,17 @@ class AgentVersionSync extends Command
         $anyChanged     = $windowsChanged || $linuxChanged;
 
         if (!$anyChanged && !$this->option('force')) {
-            $this->info('✓ Agent binaries unchanged — no version bump needed.');
-            $this->line("  Windows SHA256: {$curWindowsHash}");
-            $this->line("  Linux   SHA256: {$curLinuxHash}");
-            return self::SUCCESS;
+            // Resetdb seeds an AgentVersion row, so the table may disagree
+            // with the manifest even when binaries are unchanged — the row must
+            // still be recreated so bootstrap serves the current version.
+            $manifestVersion = $previous['version'] ?? null;
+            $latestVersion   = AgentVersion::latest('id')->value('version');
+            if ($latestVersion === $manifestVersion) {
+                $this->info('✓ Agent binaries unchanged — no version bump needed.');
+                $this->line("  Windows SHA256: {$curWindowsHash}");
+                $this->line("  Linux   SHA256: {$curLinuxHash}");
+                return self::SUCCESS;
+            }
         }
 
         if ($this->option('force')) {
@@ -101,10 +108,10 @@ class AgentVersionSync extends Command
 
         $this->info("✓ Created AgentVersion: {$nextVersion}");
 
-        // Broadcast binary update to all active agents via WebSocket
+        // Broadcast binary update to connected agents for immediate pickup
+        // (heartbeat pending_update remains the fallback trigger).
         $heartbeatInterval = (int) (Setting::get('heartbeat_interval') ?: 5);
-        $binaryUrl         = url('/MonitorAgent.exe'); // Windows; Linux agents will need their own URL
-        $agents = Agent::where('status', '!=', 'archived')->with('server')->get();
+        $agents = Agent::where('status', 'active')->with('server')->get();
         $dispatched = 0;
 
         foreach ($agents as $agent) {
