@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-
 import {
     Pencil,
     Upload,
@@ -60,8 +59,10 @@ import {
 import { NodeConfigEditor } from "@/components/node-config/NodeConfigEditor";
 
 // Helper function to format phone numbers
-import { formatPhoneNumber } from "@/utils/helpers";
-
+import {
+    formatContactNumber,
+    validateContactNumber,
+} from "../utils/client-helper";
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClientDetail() {
@@ -284,7 +285,10 @@ export default function ClientDetail() {
             toast.success("Client deleted.");
             navigate("/clients");
         } catch (err: unknown) {
-            const e = err as { response?: { data?: { message?: string } }; message?: string };
+            const e = err as {
+                response?: { data?: { message?: string } };
+                message?: string;
+            };
             toast.error(
                 e?.response?.data?.message ||
                     e?.message ||
@@ -442,7 +446,10 @@ export default function ClientDetail() {
                                         )}
                                     </div>
                                 ) : (
-                                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                                    <h1
+                                        className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground break-all overflow-hidden line-clamp-2"
+                                        title={client?.name}
+                                    >
                                         {client?.name ?? "Client"}
                                     </h1>
                                 )}
@@ -678,14 +685,29 @@ export default function ClientDetail() {
                                                 <FloatingInput
                                                     label="Contact Number"
                                                     value={form.contact_number}
+                                                    maxLength={15}
                                                     onValueChange={(value) => {
+                                                        const cleaned =
+                                                            formatContactNumber(
+                                                                value,
+                                                            );
                                                         store.set(
                                                             "contact_number",
-                                                        )(
-                                                            formatPhoneNumber(
-                                                                value,
-                                                            ),
-                                                        );
+                                                        )(cleaned);
+
+                                                        // Live validation
+                                                        const message =
+                                                            validateContactNumber(
+                                                                cleaned,
+                                                            );
+                                                        store.setState({
+                                                            errors: {
+                                                                ...errors,
+                                                                contact_number:
+                                                                    message ??
+                                                                    "",
+                                                            },
+                                                        });
                                                     }}
                                                     error={
                                                         errors.contact_number
@@ -699,10 +721,8 @@ export default function ClientDetail() {
                                                     isEdit={showEdit}
                                                 >
                                                     <p className="text-base font-semibold text-foreground">
-                                                        {formatPhoneNumber(
-                                                            client?.contact_number ||
-                                                                "",
-                                                        )}
+                                                        {client?.contact_number ||
+                                                            ""}
                                                     </p>
                                                 </Field>
                                             )}
@@ -1186,4 +1206,3 @@ export default function ClientDetail() {
         </>
     );
 }
-

@@ -49,8 +49,7 @@ const IndexHeader: React.FC<IndexHeaderProps> = ({
                         <Breadcrumb className="min-w-0 max-w-full">
                             <BreadcrumbList className="min-w-0 max-w-full flex-nowrap overflow-hidden items-end">
                                 {trail.map((crumb, index) => {
-                                    const isLast =
-                                        index === trail.length - 1;
+                                    const isLast = index === trail.length - 1;
 
                                     return (
                                         <React.Fragment
@@ -59,8 +58,7 @@ const IndexHeader: React.FC<IndexHeaderProps> = ({
                                             <BreadcrumbItem
                                                 className={cn(
                                                     "shrink-0",
-                                                    isLast &&
-                                                        "min-w-0 flex-1",
+                                                    isLast && "min-w-0 flex-1",
                                                 )}
                                             >
                                                 {isLast ? (

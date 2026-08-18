@@ -12,7 +12,7 @@ use Illuminate\Http\UploadedFile;
 class CreateClientData extends Data
 {
     public function __construct(
-        #[Required, Min(2), Max(255)]
+        #[Required, Min(2), Max(64)]
         public string $name,
 
         #[Required, Min(5)]
@@ -24,7 +24,7 @@ class CreateClientData extends Data
         #[Required, Min(5)]
         public string $contact_number,
 
-        #[Required, Min(5), Max(255)]
+        #[Min(5), Max(255)]
         public ?string $description = null,
 
         public ?UploadedFile $banner_image = null,

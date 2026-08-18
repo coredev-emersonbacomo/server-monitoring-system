@@ -17,19 +17,19 @@ use Spatie\LaravelData\Support\Validation\ValidationContext;
 class UpdateUserData extends Data
 {
     public function __construct(
-        #[Sometimes, Max(255)]
+        #[Sometimes, Max(64)]
         public string|Optional $first_name,
 
-        #[Sometimes, Max(255)]
+        #[Sometimes, Max(64)]
         public string|Optional $last_name,
 
-        #[Sometimes, Email, Max(255)]
+        #[Sometimes, Email, Max(64)]
         public string|Optional $email,
 
-        #[Required, Min(11)]
+        #[Required, Min(7), Max(15)]
         public string $phone_number,
 
-        #[Sometimes, Max(255)]
+        #[Sometimes, Max(64)]
         public string|Optional $username,
 
         #[Sometimes, Nullable, Max(255)]

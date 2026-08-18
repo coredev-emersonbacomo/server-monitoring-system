@@ -6,12 +6,15 @@ use App\Data\ActionItemData;
 use App\Data\DashboardStatsData;
 use App\Enums\ActionItemSeverity;
 use App\Enums\ServerHealth;
+use App\Enums\ServerStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ActionItem;
 use App\Models\Client;
+use App\Models\CustomActivityLog;
 use App\Models\Server;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -20,61 +23,93 @@ class DashboardController extends Controller
     {
         $totalClients = Client::count();
 
-        $servers = Server::with('client', 'latestUpdate')->get();
+        $servers = Server::with(['client', 'latestUpdate', 'agent', 'provisionTokens'])->get();
         $totalServers = $servers->count();
 
         $onlineCount = 0;
         $offlineCount = 0;
+        $pendingInstallationCount = 0;
+        $waitingForInstallationCount = 0;
+        $pendingDeletionCount = 0;
 
         $latestUpdates = collect();
 
         foreach ($servers as $server) {
+            $server->checkTokenExpiration();
+
+            $isArchived = $server->trashed() || $server->record_status === 'archived' || $server->status === 'archived';
+            if ($isArchived) {
+                continue;
+            }
+
+            $agent = $server->agent;
+            $agentDeleted = $agent && $agent->registered_at ? (bool) $server->agent_deleted : false;
+
+            if ($agentDeleted) {
+                $pendingDeletionCount++;
+                continue;
+            }
+
+            if ($server->status === ServerStatus::WaitingForInstallation->value) {
+                $waitingForInstallationCount++;
+                continue;
+            }
+
+            if (! $agent || ! $agent->registered_at || in_array($server->status, [
+                ServerStatus::PendingInstallation->value,
+                ServerStatus::WaitingForFirstHeartbeat->value,
+            ])) {
+                $pendingInstallationCount++;
+                continue;
+            }
+
             $health = $server->health;
 
             match ($health) {
-                ServerHealth::Online  => $onlineCount++,
+                ServerHealth::Online => $onlineCount++,
                 ServerHealth::Offline => $offlineCount++,
             };
 
             if ($server->latestUpdate) {
                 $latestUpdates->push((object) [
-                    'server_id'   => $server->id,
+                    'server_id' => $server->id,
                     'server_uuid' => $server->uuid,
                     'server_name' => $server->name,
                     'client_name' => $server->client->name,
-                    'cpu_usage'   => $server->latestUpdate->cpu_usage,
+                    'cpu_usage' => $server->latestUpdate->cpu_usage,
                     'memory_usage' => $server->latestUpdate->memory_usage,
-                    'storage'     => $server->latestUpdate->storage,
+                    'storage' => $server->latestUpdate->storage,
                 ]);
             }
         }
 
-        $buildRanking = fn(string $column) => $latestUpdates
+        $buildRanking = fn (string $column) => $latestUpdates
             ->sortByDesc($column)
             ->take(5)
             ->values()
-            ->map(fn($row) => [
-                'server_id'   => $row->server_id,
+            ->map(fn ($row) => [
+                'server_id' => $row->server_id,
                 'server_uuid' => $row->server_uuid,
                 'server_name' => $row->server_name,
                 'client_name' => $row->client_name,
-                'value'       => round((float) $row->$column, 1),
+                'value' => round((float) $row->$column, 1),
             ])
             ->toArray();
 
         $totalUsers = User::count();
 
         return new DashboardStatsData(
-            total_users:                $totalUsers,
-            total_clients:              $totalClients,
-            total_servers:              $totalServers,
-            online_count:               $onlineCount,
-            offline_count:              $offlineCount,
-            pending_installation_count: 0,
-            pending_deletion_count:     0,
-            top_usage_cpu:              $buildRanking('cpu_usage'),
-            top_usage_memory:           $buildRanking('memory_usage'),
-            top_usage_disk:             $buildRanking('storage'),
+            total_users: $totalUsers,
+            total_clients: $totalClients,
+            total_servers: $totalServers,
+            online_count: $onlineCount,
+            offline_count: $offlineCount,
+            pending_installation_count: $pendingInstallationCount,
+            waiting_for_installation_count: $waitingForInstallationCount,
+            pending_deletion_count: $pendingDeletionCount,
+            top_usage_cpu: $buildRanking('cpu_usage'),
+            top_usage_memory: $buildRanking('memory_usage'),
+            top_usage_disk: $buildRanking('storage'),
         );
     }
 
@@ -87,14 +122,14 @@ class DashboardController extends Controller
                 // Keep action items that have no server (e.g. client-level) OR
                 // that reference an existing server (excludes orphaned items from deleted servers).
                 $q->whereNull('server_id')
-                  ->orWhereHas('server');
+                    ->orWhereHas('server');
             })
             ->get()
             ->sort(function ($a, $b) {
                 $severityOrder = [
                     ActionItemSeverity::Critical->value => 0,
-                    ActionItemSeverity::Warning->value  => 1,
-                    ActionItemSeverity::Info->value     => 2,
+                    ActionItemSeverity::Warning->value => 1,
+                    ActionItemSeverity::Info->value => 2,
                 ];
 
                 $aOrder = $severityOrder[$a->severity->value] ?? 3;
@@ -136,7 +171,7 @@ class DashboardController extends Controller
             }
         }
 
-        \App\Models\CustomActivityLog::create([
+        CustomActivityLog::create([
             'logable_type' => ActionItem::class,
             'logable_id' => (string) $action->id,
             'user_id' => $user ? $user->id : null,
@@ -150,6 +185,7 @@ class DashboardController extends Controller
         ]);
 
         $action->load(['assignedUser', 'server', 'client']);
+
         return ActionItemData::fromModel($action);
     }
 
@@ -166,7 +202,7 @@ class DashboardController extends Controller
         if ($data['status'] === 'completed') {
             $updates['completed_at'] = now();
             $logAction = 'complete action item';
-            $message = "User " . request()->user()->username . " completed action item #{$action->id}";
+            $message = 'User '.request()->user()->username." completed action item #{$action->id}";
         } else {
             $logAction = 'update action status';
             $message = "Changed action item #{$action->id} status from '{$oldStatus}' to '{$data['status']}'";
@@ -176,7 +212,7 @@ class DashboardController extends Controller
 
         $actor = request()->user();
 
-        \App\Models\CustomActivityLog::create([
+        CustomActivityLog::create([
             'logable_type' => ActionItem::class,
             'logable_id' => (string) $action->id,
             'user_id' => $actor ? $actor->id : null,
@@ -191,51 +227,52 @@ class DashboardController extends Controller
         ]);
 
         $action->load(['assignedUser', 'server', 'client']);
+
         return ActionItemData::fromModel($action);
     }
 
     public function usage(Request $request): array
     {
         $validated = $request->validate([
-            'unit'        => 'required|in:minute,hour,day,week,month',
-            'metric'      => 'required|in:cpu,memory,disk',
-            'before'      => 'nullable|numeric',
-            'scope'       => 'nullable|in:all,avg,server',
+            'unit' => 'required|in:minute,hour,day,week,month',
+            'metric' => 'required|in:cpu,memory,disk',
+            'before' => 'nullable|numeric',
+            'scope' => 'nullable|in:all,avg,server',
             'server_uuid' => 'nullable|string',
         ]);
 
-        $unit   = $validated['unit'];
+        $unit = $validated['unit'];
         $metric = $validated['metric'];
-        $scope  = $validated['scope'] ?? 'all';
+        $scope = $validated['scope'] ?? 'all';
 
         // Map API unit names to TimescaleDB agg tables and window sizes
         $config = [
             'minute' => ['table' => 'server_updates_agg_minute', 'seconds' => 3600],
-            'hour'   => ['table' => 'server_updates_agg_hour',   'seconds' => 86400],
-            'day'    => ['table' => 'server_updates_agg_day',    'seconds' => 604800],
-            'week'   => ['table' => 'server_updates_agg_week',   'seconds' => 2419200],
-            'month'  => ['table' => 'server_updates_agg_month',  'seconds' => 31104000],
+            'hour' => ['table' => 'server_updates_agg_hour',   'seconds' => 86400],
+            'day' => ['table' => 'server_updates_agg_day',    'seconds' => 604800],
+            'week' => ['table' => 'server_updates_agg_week',   'seconds' => 2419200],
+            'month' => ['table' => 'server_updates_agg_month',  'seconds' => 31104000],
         ];
 
-        $cfg   = $config[$unit];
+        $cfg = $config[$unit];
         $table = $cfg['table'];
 
-        $servers   = Server::with('client', 'latestUpdate')->get();
+        $servers = Server::with('client', 'latestUpdate')->get();
         $serverIds = $servers->pluck('id');
 
         $endTime = isset($validated['before'])
-            ? \Illuminate\Support\Carbon::createFromTimestampMs((int) $validated['before'])
+            ? Carbon::createFromTimestampMs((int) $validated['before'])
                 ->setTimezone(config('app.timezone'))
             : now();
 
         // Anchor to latest agg record so chart always has data
-        if (!isset($validated['before'])) {
+        if (! isset($validated['before'])) {
             try {
                 $latestRecord = DB::table($table)
                     ->whereIn('server_id', $serverIds)
                     ->max('timestamp');
                 if ($latestRecord) {
-                    $endTime = \Illuminate\Support\Carbon::createFromTimestampMs(
+                    $endTime = Carbon::createFromTimestampMs(
                         $this->parseAggTimestamp($latestRecord)
                     )->addSecond()->setTimezone(config('app.timezone'));
                 }
@@ -247,11 +284,11 @@ class DashboardController extends Controller
         $startTime = $endTime->copy()->subSeconds($cfg['seconds']);
 
         $empty = [
-            'unit'       => $unit,
-            'metric'     => $metric,
-            'scope'      => $scope,
-            'series'     => [],
-            'top'        => [],
+            'unit' => $unit,
+            'metric' => $metric,
+            'scope' => $scope,
+            'series' => [],
+            'top' => [],
             'nextCursor' => null,
         ];
 
@@ -289,7 +326,7 @@ class DashboardController extends Controller
                 $epochMs = $this->parseAggTimestamp($row->timestamp);
                 $seriesMap[$row->server_id][] = [
                     'timestamp' => $epochMs,
-                    'value'     => round((float) $row->{$metric}, 1),
+                    'value' => round((float) $row->{$metric}, 1),
                 ];
             }
 
@@ -299,7 +336,7 @@ class DashboardController extends Controller
                     'server_uuid' => $target->uuid,
                     'server_name' => $target->name,
                     'client_name' => $target->client?->name ?? '',
-                    'points'      => $seriesMap[$target->id] ?? [],
+                    'points' => $seriesMap[$target->id] ?? [],
                 ];
             }
 
@@ -309,11 +346,11 @@ class DashboardController extends Controller
                 ->exists();
 
             return [
-                'unit'       => $unit,
-                'metric'     => $metric,
-                'scope'      => $scope,
-                'series'     => $series,
-                'top'        => [],
+                'unit' => $unit,
+                'metric' => $metric,
+                'scope' => $scope,
+                'series' => $series,
+                'top' => [],
                 'nextCursor' => $hasOlderData ? $startTime->getPreciseTimestamp(3) : null,
             ];
         }
@@ -322,7 +359,7 @@ class DashboardController extends Controller
         if ($scope === 'avg') {
             $rows = $this->aggQueryWithRefresh(
                 fn () => DB::table($table)
-                    ->select('timestamp', DB::raw('AVG("' . $metric . '") AS value'))
+                    ->select('timestamp', DB::raw('AVG("'.$metric.'") AS value'))
                     ->whereIn('server_id', $serverIds)
                     ->where('timestamp', '>=', $startTime)
                     ->where('timestamp', '<', $endTime)
@@ -337,7 +374,7 @@ class DashboardController extends Controller
                 $epochMs = $this->parseAggTimestamp($row->timestamp);
                 $points[] = [
                     'timestamp' => $epochMs,
-                    'value'     => round((float) $row->value, 1),
+                    'value' => round((float) $row->value, 1),
                 ];
             }
 
@@ -347,16 +384,16 @@ class DashboardController extends Controller
                 ->exists();
 
             return [
-                'unit'       => $unit,
-                'metric'     => $metric,
-                'scope'      => $scope,
-                'series'     => [[
+                'unit' => $unit,
+                'metric' => $metric,
+                'scope' => $scope,
+                'series' => [[
                     'server_uuid' => 'avg',
                     'server_name' => 'All Servers',
                     'client_name' => '',
-                    'points'      => $points,
+                    'points' => $points,
                 ]],
-                'top'        => [],
+                'top' => [],
                 'nextCursor' => $hasOlderData ? $startTime->getPreciseTimestamp(3) : null,
             ];
         }
@@ -380,15 +417,15 @@ class DashboardController extends Controller
             $epochMs = $this->parseAggTimestamp($row->timestamp);
             $seriesMap[$row->server_id][] = [
                 'timestamp' => $epochMs,
-                'value'     => round((float) $row->{$metric}, 1),
+                'value' => round((float) $row->{$metric}, 1),
             ];
         }
 
         $series = [];
-        $top    = [];
+        $top = [];
 
         foreach ($servers as $server) {
-            if (!$server->latestUpdate) {
+            if (! $server->latestUpdate) {
                 continue;
             }
 
@@ -398,7 +435,7 @@ class DashboardController extends Controller
                 'server_uuid' => $server->uuid,
                 'server_name' => $server->name,
                 'client_name' => $server->client->name,
-                'points'      => $points,
+                'points' => $points,
             ];
 
             $columnMap = ['cpu' => 'cpu_usage', 'memory' => 'memory_usage', 'disk' => 'disk_usage'];
@@ -407,7 +444,7 @@ class DashboardController extends Controller
                 'server_uuid' => $server->uuid,
                 'server_name' => $server->name,
                 'client_name' => $server->client->name,
-                'value'       => round($latestValue, 1),
+                'value' => round($latestValue, 1),
             ];
         }
 
@@ -419,11 +456,11 @@ class DashboardController extends Controller
             ->exists();
 
         return [
-            'unit'       => $unit,
-            'metric'     => $metric,
-            'scope'      => $scope,
-            'series'     => $series,
-            'top'        => $top,
+            'unit' => $unit,
+            'metric' => $metric,
+            'scope' => $scope,
+            'series' => $series,
+            'top' => $top,
             'nextCursor' => $hasOlderData ? $startTime->getPreciseTimestamp(3) : null,
         ];
     }
@@ -436,7 +473,7 @@ class DashboardController extends Controller
      */
     private function parseAggTimestamp(string $raw): int
     {
-        return \Illuminate\Support\Carbon::parse($raw)->getPreciseTimestamp(3);
+        return Carbon::parse($raw)->getPreciseTimestamp(3);
     }
 
     /**
@@ -450,6 +487,7 @@ class DashboardController extends Controller
         } catch (\Throwable $e) {
             if (str_contains($e->getMessage(), 'has not been populated')) {
                 DB::statement("REFRESH MATERIALIZED VIEW {$table}");
+
                 return $run();
             }
             throw $e;
