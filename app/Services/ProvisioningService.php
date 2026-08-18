@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Models\ProvisionToken;
 use App\Models\AgentInstallation;
 use App\Models\Agent;
-use App\Models\AgentIdentity;
 use App\Models\AgentConfiguration;
 use App\Models\Activity;
 use Illuminate\Support\Str;
@@ -45,7 +44,7 @@ class ProvisioningService
 
         // Generate new token
         $rawToken = Str::random(64);
-        $expiresAt = now()->addHour();
+        $expiresAt = now()->addMinutes(30);
 
         $token = DB::transaction(function () use ($server, $rawToken, $expiresAt, $user) {
             // Revoke any previous active tokens
@@ -164,15 +163,12 @@ class ProvisioningService
         $sha256 = file_exists($agentPath) ? hash_file('sha256', $agentPath) : '';
         $latestAgentVersion = \App\Models\AgentVersion::orderBy('id', 'desc')->first();
         $agentVersion = $latestAgentVersion ? $latestAgentVersion->version : '2.0';
-        $heartbeatInterval = (int) (\App\Models\Setting::get('heartbeat_interval') ?: 5);
 
         return [
             'download_url' => $downloadUrl,
             'expected_sha256' => $sha256,
             'agent_version' => $agentVersion,
-            'heartbeat_interval' => $heartbeatInterval,
-            'api_url' => url('/api/v1/agent/heartbeat'),
-            'register_url' => url('/api/v1/register'),
+            'server_url' => url('/'),
         ];
     }
 
@@ -186,7 +182,23 @@ class ProvisioningService
 
         $server = $token->server;
 
-        return DB::transaction(function () use ($token, $server, $metadata) {
+        // Every installation carries an immutable UUID generated at install time.
+        // It is the binding between the agent process, its keystore identity and
+        // the backend agent row.
+        $installationId = $metadata['installation_id'] ?? null;
+        if (!$installationId || strlen($installationId) > 36) {
+            abort(422, 'A valid installation_id is required for registration.');
+        }
+
+        // The agent proves its identity by possessing a locally generated private
+        // key; it registers only the matching public key with the backend.
+        $publicKey = $metadata['public_key'] ?? null;
+        $publicKeyHash = $metadata['public_key_hash'] ?? null;
+        if (!$publicKey || !$publicKeyHash || strlen($publicKeyHash) !== 64) {
+            abort(422, 'A valid public key and public key hash are required for registration.');
+        }
+
+        return DB::transaction(function () use ($token, $server, $metadata, $installationId, $publicKey, $publicKeyHash) {
             // Invalidate provision token
             $token->update([
                 'status' => 'used',
@@ -204,52 +216,93 @@ class ProvisioningService
                 'cpu_cores' => $cpuSpec['cores'] ?? $server->cpu_cores,
                 'ram' => $metadata['memory'] ?? $server->ram,
                 'disk' => $metadata['disk'] ?? $server->disk,
-                'status' => \App\Enums\ServerStatus::WaitingForFirstHeartbeat->value,
             ]);
 
-            // Create Agent
-            $agent = Agent::create([
-                'server_id' => $server->id,
-                'version' => $metadata['agent_version'] ?? '1.0',
-                'protocol_version' => '1.0',
-                'status' => 'registering',
-                'registered_at' => now(),
-            ]);
+            // The same physical installation can only ever be bound to one
+            // server. An installation UUID that already belongs to another
+            // server is rejected outright.
+            $bound = Agent::where('installation_uuid', $installationId)->first();
+            if ($bound && $bound->server_id !== $server->id) {
+                abort(409, 'This installation is already registered to another server.');
+            }
 
-            // Create Agent Identity
-            $rawIdentity = 'agent_identity_' . Str::random(64);
-            $identityHash = hash('sha256', $rawIdentity);
+            $active = $server->agent;
+            $isSameInstallation = $active && $active->installation_uuid === $installationId;
 
-            AgentIdentity::create([
-                'agent_id' => $agent->id,
-                'identity_hash' => $identityHash,
-                'status' => 'active',
-                'issued_at' => now(),
-            ]);
+            if ($active && $isSameInstallation) {
+                // Re-registration of the same installation: the agent retries
+                // with a stale token, or reclaims its own row after an
+                // uninstall. Update in place — never create a second row.
+                $agent = $active;
+                $agent->update([
+                    'public_key' => $publicKey,
+                    'public_key_hash' => $publicKeyHash,
+                    'version' => $metadata['agent_version'] ?? $agent->version,
+                    'status' => 'active',
+                    'revoked_at' => null,
+                    'last_seen_at' => null,
+                ]);
+            } else {
+                // A different installation is taking over this server, or this
+                // is the first registration. If an active agent already exists
+                // it must be revoked first (the partial unique index only ever
+                // allows ONE active agent per server).
+                if ($active) {
+                    $active->update([
+                        'status' => 'revoked',
+                        'revoked_at' => now(),
+                        'last_seen_at' => null,
+                    ]);
+                }
 
-            $heartbeatInterval = (int) (\App\Models\Setting::get('heartbeat_interval') ?: 5);
+                if ($bound) {
+                    // Reinstall with the same installation UUID after its own
+                    // uninstall: reactivate the historical row in place.
+                    $agent = $bound;
+                    $agent->update([
+                        'public_key' => $publicKey,
+                        'public_key_hash' => $publicKeyHash,
+                        'version' => $metadata['agent_version'] ?? $agent->version,
+                        'status' => 'active',
+                        'revoked_at' => null,
+                        'last_seen_at' => null,
+                    ]);
+                } else {
+                    $agent = Agent::create([
+                        'server_id' => $server->id,
+                        'installation_uuid' => $installationId,
+                        'version' => $metadata['agent_version'] ?? '1.0',
+                        'protocol_version' => '1.0',
+                        'public_key' => $publicKey,
+                        'public_key_hash' => $publicKeyHash,
+                        'status' => 'active',
+                        'registered_at' => now(),
+                    ]);
 
-            // Create Agent Configuration
-            $configJson = [
-                'heartbeat_interval' => $heartbeatInterval,
-                'metrics_interval' => 5,
-                'port_scan_interval' => 60,
-                'service_scan_interval' => 60,
-                'process_scan_interval' => 60,
-            ];
+                    $heartbeatInterval = (int) (\App\Models\Setting::get('heartbeat_interval') ?: 5);
 
-            AgentConfiguration::create([
-                'agent_id' => $agent->id,
-                'version' => 1,
-                'heartbeat_interval' => $heartbeatInterval,
-                'metrics_interval' => 5,
-                'port_scan_interval' => 60,
-                'service_scan_interval' => 60,
-                'process_scan_interval' => 60,
-                'update_channel' => 'stable',
-                'auto_update' => true,
-                'configuration_json' => $configJson,
-            ]);
+                    $configJson = [
+                        'heartbeat_interval' => $heartbeatInterval,
+                        'metrics_interval' => 5,
+                        'port_scan_interval' => 60,
+                        'service_scan_interval' => 60,
+                        'process_scan_interval' => 60,
+                    ];
+
+                    AgentConfiguration::create([
+                        'agent_id' => $agent->id,
+                        'version' => 1,
+                        'heartbeat_interval' => $heartbeatInterval,
+                        'metrics_interval' => 5,
+                        'port_scan_interval' => 60,
+                        'service_scan_interval' => 60,
+                        'process_scan_interval' => 60,
+                        'update_channel' => 'stable',
+                        'auto_update' => true,
+                        'configuration_json' => $configJson,
+                    ]);
+                }
+            }
 
             // Update installation record
             AgentInstallation::where('server_id', $server->id)
@@ -290,15 +343,9 @@ class ProvisioningService
             } catch (\Throwable $e) {}
 
             return [
-                'identity'           => $rawIdentity,
-                'configuration'      => $configJson,
-                'heartbeat_interval' => $heartbeatInterval,
-                'server_uuid'        => $server->uuid,
-                'update_url'         => url('/api/v1/agent/' . $server->uuid . '/update'),
-                'reverb_host'        => env('REVERB_HOST', '127.0.0.1'),
-                'reverb_port'        => (int) env('REVERB_PORT', 8080),
-                'reverb_scheme'      => env('REVERB_SCHEME', 'http'),
-                'reverb_app_key'     => env('REVERB_APP_KEY'),
+                'registered'    => true,
+                'agent_id'      => $agent->id,
+                'server_uuid'   => $server->uuid,
             ];
         });
     }

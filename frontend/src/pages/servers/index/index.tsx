@@ -1,14 +1,19 @@
 import { useState, useMemo } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import PageLayout from "@/components/PageLayout";
-import { Server, Wifi, WifiOff, AlertTriangle, Search, Trash2 } from "lucide-react";
+import { Server, Wifi, WifiOff, AlertTriangle, Trash2 } from "lucide-react";
 import { useServers } from "@/hooks/useServers";
 import { useClients } from "@/hooks/useClients";
 import IndexToolbar from "@/components/IndexToolbar";
 import type { SortOption } from "@/components/IndexToolbar";
 import IndexHeader from "@/components/IndexHeader";
 import { SelectClientDialog } from "./components/SelectClientDialog";
-import { ServerGridCard } from "./components/ServerGridCard";
+import {
+    STATUS_CONFIG,
+    resolveServerStatusKey,
+} from "@/constants/serverStatus";
+import { ServerStatusBadge } from "@/components/ServerStatusBadge";
+import { cn } from "@/lib/utils";
 
 export default function ServersIndex() {
     const navigate = useNavigate();
@@ -106,14 +111,20 @@ export default function ServersIndex() {
         };
     }, [servers]);
 
-    return (
-        <PageLayout>
-            <IndexHeader
-                icon={Server}
-                title={clientUuid && clientName ? `Servers — ${clientName}` : "Servers"}
-            />
+return (
+    <PageLayout>
+        <IndexHeader
+            icon={Server}
+            title={
+                clientUuid && clientName
+                    ? `${clientName} Servers`
+                    : "Servers"
+            }
+            description={`Manage ${clientUuid ? clientName + "'s" : "all"} servers.`}
+        />
 
-            <main className="w-full flex-1 min-h-0 flex flex-col gap-5">
+        <main className="w-full flex-1 min-h-0 flex flex-col gap-5">
+          
                 <IndexToolbar
                     search={search}
                     onSearchChange={setSearch}
@@ -213,12 +224,6 @@ export default function ServersIndex() {
                     }
                 />
 
-                {!isLoading && (
-                    <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
-                        {filtered.length} server
-                        {filtered.length !== 1 ? "s" : ""}
-                    </p>
-                )}
 
                 {isLoading ? (
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
@@ -228,26 +233,51 @@ export default function ServersIndex() {
                                 className="h-48 bg-card border border-border rounded-lg animate-pulse"
                             />
                         ))}
-                    </div>
-                ) : !filtered.length ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                        <Search className="size-8 mb-2" />
-                        <p className="text-sm">
-                            {clientUuid
-                                ? `No ${statusFilter ? statusFilter + " " : ""}servers found for this client.`
-                                : `No ${statusFilter ? statusFilter + " " : ""}servers found.`}
-                        </p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
-                        {filtered.map((server) => (
-                            <ServerGridCard key={server.uuid} server={server} />
-                        ))}
-                    </div>
-                )}
-            </main>
+                </div>
+            ) : (
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
+                    {filtered.map((server) => {
+                        const effectiveStatus =
+                            resolveServerStatusKey(
+                                server.status,
+                                server.record_status,
+                                server.agent_deleted,
+                            );
+                        const meta = STATUS_CONFIG[effectiveStatus];
+                        const Icon = meta.icon;
+                        return (
+                            <Link
+                                key={server.uuid}
+                                to={`/servers/${server.uuid}?client=all`}
+                                className="block rounded-lg transition-transform duration-200 hover:-translate-y-1"
+                            >
+                                <div className="relative size-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans gap-3 transition-shadow hover:shadow-md">
+                                    <div className={cn("p-3 rounded-lg", meta.bg)}>
+                                        <Icon className={cn("size-5", meta.color)} />
+                                    </div>
+                                    <div className="text-center w-full flex flex-col items-center gap-1.5">
+                                        <p className="text-sm font-medium text-foreground truncate w-full">
+                                            {server.name}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground truncate w-full">
+                                            {server.client_name}
+                                        </p>
+                                        <ServerStatusBadge
+                                            status={server.status}
+                                            record_status={server.record_status}
+                                            agent_deleted={server.agent_deleted}
+                                            size="sm"
+                                        />
+                                    </div>
+                                </div>
+                            </Link>
+                        );
+                    })}
+                </div>
+            )}
+        </main>
 
-            {/* Client Pickers */}
+        {/* Client Pickers */}
             <SelectClientDialog
                 open={showClientPicker}
                 onOpenChange={setShowClientPicker}

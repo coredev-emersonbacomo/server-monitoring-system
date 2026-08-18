@@ -4,9 +4,10 @@
   "type": "module",
   "scripts": {
     "build": "npm run build -w frontend && vite build",
-    "start": "node -e \"console.log('nausab na, \\\"npm run dev\\\" na')\"",
+    "start": "npm run build && node scripts/start.js",
     "dev": "node entry.js dev",
     "prod": "node entry.js prod",
+    "setup": "composer install && npm install",
     "types": "php artisan scramble:clear && php artisan scramble:export --path=frontend/src/api/api.json && node frontend/scripts/patch-schema.js && npm run types -w frontend",
     "test": "php artisan test",
     "test:filter": "php artisan test --filter",

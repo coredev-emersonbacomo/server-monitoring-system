@@ -1,32 +1,37 @@
 package main
 
+// BootstrapConfig is the persistent, non-sensitive agent configuration.
+//
+// It intentionally contains no secrets: no tokens, keys, JWTs, WebSocket
+// credentials or machine identifiers. The server URL is public bootstrap
+// information; everything sensitive is obtained in-memory after
+// challenge-response authentication.
 type BootstrapConfig struct {
-	Token             string `json:"token"`
-	ApiURL            string `json:"api_url"`
-	RegisterURL       string `json:"register_url"`
-	HeartbeatInterval int    `json:"heartbeat_interval"`
-	Hostname          string `json:"hostname"`
-	AgentVersion      string `json:"agent_version"`
-	ServerUUID        string `json:"server_uuid"`
-	UpdateURL         string `json:"update_url"`
-	ReverbHost        string `json:"reverb_host"`
-	ReverbPort        int    `json:"reverb_port"`
-	ReverbScheme      string `json:"reverb_scheme"`
-	ReverbAppKey      string `json:"reverb_app_key"`
-	IdentityToken     string `json:"identity_token"`
-	confVersion       int
+	ServerURL      string `json:"server_url"`
+	AgentVersion   string `json:"agent_version"`
+	InstallationID string `json:"installation_id"`
+	ProvisionToken string `json:"provision_token,omitempty"` // one-time, stripped after registration
+
+	confVersion int
 }
 
+// RegisterRequest is sent once during first install. The public key (and its
+// fingerprint) is the only authentication material; the private key stays on
+// the machine. InstallationID is the immutable per-installation UUID the
+// backend uses to bind the identity.
 type RegisterRequest struct {
 	Token           string   `json:"token"`
+	InstallationID  string   `json:"installation_id"`
+	PublicKey       string   `json:"public_key"`
+	PublicKeyHash   string   `json:"public_key_hash"`
 	AgentVersion    string   `json:"agent_version"`
+	Capabilities    []string `json:"capabilities"`
 	Hostname        string   `json:"hostname"`
 	OperatingSystem string   `json:"operating_system"`
 	Architecture    string   `json:"architecture"`
 	Cpu             *CPUSpec `json:"cpu"`
 	Memory          string   `json:"memory"`
 	Disk            string   `json:"disk"`
-	Capabilities    []string `json:"capabilities"`
 }
 
 type CPUSpec struct {
@@ -35,34 +40,58 @@ type CPUSpec struct {
 }
 
 type RegisterResponse struct {
-	Identity          string                 `json:"identity"`
-	Configuration     map[string]interface{} `json:"configuration,omitempty"`
-	HeartbeatInterval int                    `json:"heartbeat_interval"`
-	ServerUUID        string                 `json:"server_uuid"`
-	UpdateURL         string                 `json:"update_url"`
-	ReverbHost        string                 `json:"reverb_host"`
-	ReverbPort        int                    `json:"reverb_port"`
-	ReverbScheme      string                 `json:"reverb_scheme"`
-	ReverbAppKey      string                 `json:"reverb_app_key"`
+	Registered bool   `json:"registered"`
+	AgentID    int    `json:"agent_id"`
+	ServerUUID string `json:"server_uuid"`
+}
+
+// ChallengeResponse is the backend's answer to a challenge request.
+type ChallengeResponse struct {
+	ChallengeID int64  `json:"challenge_id"`
+	Challenge   string `json:"challenge"`
+	ExpiresIn   int    `json:"expires_in"`
+}
+
+// AuthResponse is the short-lived session credential payload issued after a
+// successful challenge-response verification.
+type AuthResponse struct {
+	AccessToken         string `json:"access_token"`
+	ExpiresIn           int    `json:"expires_in"`
+	WebsocketExpiresIn  int    `json:"websocket_expires_in"`
+	ServerUUID          string `json:"server_uuid"`
+	Config              AuthConfig `json:"config"`
+}
+
+type AuthConfig struct {
+	HeartbeatInterval int              `json:"heartbeat_interval"`
+	Realtime          RealtimeConfig   `json:"realtime"`
+}
+
+type RealtimeConfig struct {
+	Host    string `json:"host"`
+	Port    int    `json:"port"`
+	Scheme  string `json:"scheme"`
+	AppKey  string `json:"app_key"`
 }
 
 type HeartbeatRequest struct {
-	ConfigurationVersion int               `json:"configuration_version"`
-	Timestamp            int64             `json:"timestamp"`
-	Hostname             string            `json:"hostname"`
-	Cpu                  *CPUMetrics       `json:"cpu"`
-	Memory               *MemoryMetrics    `json:"memory"`
-	Disk                 *DiskMetrics      `json:"disk"`
-	Uptime               float64           `json:"uptime"`
-	Network              []NetworkMetrics  `json:"network"`
-	TopProcesses         []ProcessInfo     `json:"top_processes"`
-	OpenDbPorts          []PortInfo        `json:"open_db_ports"`
-	CompletedCommands    []CommandResult   `json:"completed_commands,omitempty"`
+	AgentVersion         string             `json:"agent_version"`
+	ConfigurationVersion int                `json:"configuration_version"`
+	Timestamp            int64              `json:"timestamp"`
+	Hostname             string             `json:"hostname"`
+	Cpu                  *CPUMetrics        `json:"cpu"`
+	Memory               *MemoryMetrics     `json:"memory"`
+	Disk                 *DiskMetrics       `json:"disk"`
+	Uptime               float64            `json:"uptime"`
+	Network              []NetworkMetrics   `json:"network"`
+	TopProcesses         []ProcessInfo      `json:"top_processes"`
+	OpenDbPorts          []PortInfo         `json:"open_db_ports"`
+	CompletedCommands    []CommandResult    `json:"completed_commands,omitempty"`
 	AgentConfig          *AgentConfigReport `json:"agent_config,omitempty"`
 }
 
-// AgentConfigReport is sent with every heartbeat so the backend can use
-// bootstrap.json values as the source of truth for the Agent tab.
+// AgentConfigReport is sent with every heartbeat so the backend can use the
+// agent's effective values as the source of truth for the Agent tab.
 type AgentConfigReport struct {
 	HeartbeatInterval int    `json:"heartbeat_interval"`
 	AgentVersion      string `json:"agent_version"`
@@ -109,20 +138,13 @@ type PortInfo struct {
 	State    string `json:"state"`
 }
 
-
 type HeartbeatResponse struct {
 	HeartbeatInterval int                    `json:"heartbeat_interval"`
 	CurrentTime       int64                  `json:"current_time"`
 	PendingCommands   []AgentCommand         `json:"pending_commands,omitempty"`
 	Configuration     map[string]interface{} `json:"configuration,omitempty"`
 	PendingUpdate     *AgentUpdateInfo       `json:"pending_update,omitempty"`
-	// Reverb credentials — always returned so bootstrap.json disk state is not required
-	ServerUUID    string `json:"server_uuid"`
-	UpdateURL     string `json:"update_url"`
-	ReverbHost    string `json:"reverb_host"`
-	ReverbPort    int    `json:"reverb_port"`
-	ReverbScheme  string `json:"reverb_scheme"`
-	ReverbAppKey  string `json:"reverb_app_key"`
+	ServerUUID        string                 `json:"server_uuid"`
 }
 
 type AgentUpdateInfo struct {

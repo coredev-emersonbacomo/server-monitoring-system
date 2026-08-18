@@ -21,6 +21,11 @@ frontend/src/api/api.json
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
+# SPA deployed into public/ by `npm start`
+/public/index.html
+/public/assets
+/public/favicon.svg
+/public/icons.svg
 /storage/*.key
 /storage/pail
 /storage/app/agent_build_manifest.json
@@ -32,6 +37,7 @@ Thumbs.db
 dump.rdb
 
 scripts/git/*
+personal-todo.txt
 
 # .NET build outputs
 **/bin/

@@ -56,7 +56,16 @@ class Server extends Model
 
     public function agent(): HasOne
     {
-        return $this->hasOne(Agent::class);
+        // Only the ACTIVE agent counts as "the" agent of a server. Historical
+        // (revoked/archived) agents exist for audit but must never be resolved
+        // through this relation — that is what stops resurrected agents from
+        // reactivating a decommissioned server.
+        return $this->hasOne(Agent::class)->where('status', 'active');
+    }
+
+    public function agents(): HasMany
+    {
+        return $this->hasMany(Agent::class);
     }
 
     public function provisionTokens(): HasMany

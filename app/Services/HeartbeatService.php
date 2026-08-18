@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Agent;
-use App\Models\AgentIdentity;
 use App\Models\Server;
 use App\Models\Heartbeat;
 use App\Models\MetricBatch;
@@ -24,9 +23,8 @@ use Carbon\Carbon;
 
 class HeartbeatService
 {
-    public function process(AgentIdentity $identity, array $payload): array
+    public function process(Agent $agent, array $payload): array
     {
-        $agent = $identity->agent;
         $server = $agent->server;
         $oldStatus = $server->status;
 
@@ -45,10 +43,7 @@ class HeartbeatService
             }
         }
 
-        return DB::transaction(function () use ($identity, $agent, $server, $payload, $offlineThresholdSeconds) {
-            // Update last_used_at on identity
-            $identity->update(['last_used_at' => now()]);
-
+        return DB::transaction(function () use ($agent, $server, $payload, $offlineThresholdSeconds) {
             $oldVersion = $agent->version;
             $newVersion = $payload['agent_version'] ?? $agent->version;
             if ($oldVersion !== $newVersion) {
@@ -203,7 +198,6 @@ class HeartbeatService
                 // Always include Reverb credentials so the agent can connect the WS control channel
                 // even if bootstrap.json on disk is missing these fields (e.g. due to permissions)
                 'server_uuid'        => $server->uuid,
-                'update_url'         => url('/api/v1/agent/' . $server->uuid . '/update'),
                 'reverb_host'        => env('REVERB_HOST', '127.0.0.1'),
                 'reverb_port'        => (int) env('REVERB_PORT', 8080),
                 'reverb_scheme'      => env('REVERB_SCHEME', 'http'),
@@ -214,10 +208,14 @@ class HeartbeatService
                 ->first();
             $agentVersion = $agent->version;
             if ($latestBinaryUpdate && $agentVersion !== $latestBinaryUpdate->version) {
+                // Pick the binary URL for the agent's platform — the AgentVersion
+                // record only stores the Windows URL.
+                $os = strtolower($server->operating_system ?? '');
+                $binaryUrl = str_contains($os, 'windows') ? url('/MonitorAgent.exe') : url('/agent');
                 $response['pending_update'] = [
                     'version'            => $latestBinaryUpdate->version,
                     'heartbeat_interval' => null,
-                    'binary_url'         => $latestBinaryUpdate->binary_url,
+                    'binary_url'         => $binaryUrl,
                 ];
             }
 

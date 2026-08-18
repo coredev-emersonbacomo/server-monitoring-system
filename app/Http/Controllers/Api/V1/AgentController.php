@@ -5,19 +5,21 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Server;
 use App\Models\Agent;
-use App\Models\AgentIdentity;
-use App\Models\AgentConfiguration;
+use App\Models\AgentChallenge;
 use App\Models\Activity;
+use App\Services\AgentAuthService;
 use App\Services\ProvisioningService;
 use App\Services\HeartbeatService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class AgentController extends Controller
 {
     public function __construct(
-        private ProvisioningService $provisioningService
+        private ProvisioningService $provisioningService,
+        private AgentAuthService $agentAuthService
     ) {}
 
     public function provision(string $uuid, Request $request): JsonResponse
@@ -74,6 +76,9 @@ class AgentController extends Controller
     {
         $validated = $request->validate([
             'token' => 'required|string',
+            'installation_id' => 'required|string|max:36',
+            'public_key' => 'required|string',
+            'public_key_hash' => 'required|string|max:64',
             'agent_version' => 'nullable|string',
             'capabilities' => 'nullable|array',
             'hostname' => 'nullable|string',
@@ -86,6 +91,7 @@ class AgentController extends Controller
         ]);
 
         $metadata = [
+            'installation_id' => $validated['installation_id'],
             'agent_version' => $validated['agent_version'] ?? '1.0',
             'capabilities' => $validated['capabilities'] ?? [],
             'hostname' => $validated['hostname'] ?? null,
@@ -99,212 +105,156 @@ class AgentController extends Controller
             'disk' => $validated['disk'] ?? null,
         ];
 
-        $result = $this->provisioningService->register($validated['token'], $metadata);
+        $result = $this->provisioningService->register(
+            $validated['token'],
+            $metadata + [
+                'public_key' => $validated['public_key'],
+                'public_key_hash' => $validated['public_key_hash'],
+            ]
+        );
         return response()->json($result, 200);
+    }
+
+    /**
+     * Step 1 of challenge-response authentication. The agent identifies itself
+     * by its immutable installation UUID; the backend answers with a random,
+     * short-lived, single-use challenge bound to that agent.
+     */
+    public function challenge(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'installation_uuid' => 'required|string|max:36',
+        ]);
+
+        $agent = Agent::where('installation_uuid', $validated['installation_uuid'])
+            ->where('status', 'active')
+            ->first();
+
+        if (!$agent) {
+            return response()->json(['message' => 'Unknown or inactive agent.'], 403);
+        }
+
+        $challenge = bin2hex(random_bytes(32));
+        $challengeModel = $agent->challenges()->create([
+            'challenge' => $challenge,
+            'status' => 'pending',
+            'expires_at' => now()->addSeconds((int) config('agent.challenge_ttl', 60)),
+        ]);
+
+        return response()->json([
+            'challenge_id' => $challengeModel->id,
+            'challenge' => $challenge,
+            'expires_in' => (int) config('agent.challenge_ttl', 60),
+        ], 200);
+    }
+
+    /**
+     * Step 2 of challenge-response authentication. Verifies the agent's
+     * signature over the challenge using its registered public key, then
+     * issues short-lived session credentials.
+     */
+    public function verify(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'challenge_id' => 'required|integer',
+            'signature' => 'required|string',
+        ]);
+
+        $challenge = AgentChallenge::with('agent.server')->find($validated['challenge_id']);
+        if (!$challenge || $challenge->status !== 'pending' || $challenge->expires_at->isPast()) {
+            return response()->json(['message' => 'Challenge is invalid or expired.'], 401);
+        }
+
+        // Single-use claim — prevents a captured challenge/signature pair being replayed.
+        $claimed = AgentChallenge::where('id', $challenge->id)
+            ->where('status', 'pending')
+            ->update(['status' => 'used', 'used_at' => now()]);
+        if (!$claimed) {
+            return response()->json(['message' => 'Challenge already used.'], 401);
+        }
+
+        $agent = $challenge->agent;
+        if (!$agent || $agent->status !== 'active' || $agent->revoked_at || !$agent->public_key) {
+            return response()->json(['message' => 'Agent is revoked or disabled.'], 403);
+        }
+
+        // A decommissioned server must never accept a session, even from a
+        // still-active agent row — the no-resurrection guarantee.
+        $server = $agent->server;
+        if ($server && ($server->agent_deleted || $server->status === \App\Enums\ServerStatus::Archived->value)) {
+            return response()->json(['message' => 'Server has been decommissioned.'], 403);
+        }
+
+        $der = base64_decode($agent->public_key);
+        $publicKeyPem = "-----BEGIN PUBLIC KEY-----\n" . chunk_split(base64_encode($der), 64, "\n") . "-----END PUBLIC KEY-----\n";
+        $publicKey = openssl_pkey_get_public($publicKeyPem);
+        if (!$publicKey) {
+            return response()->json(['message' => 'Invalid registered public key.'], 500);
+        }
+
+        $signature = base64_decode($validated['signature']);
+        $ok = openssl_verify($challenge->challenge, $signature, $publicKey, OPENSSL_ALGO_SHA256);
+        if ($ok !== 1) {
+            return response()->json(['message' => 'Signature verification failed.'], 403);
+        }
+
+        return response()->json($this->agentAuthService->issueSession($agent), 200);
     }
 
     public function heartbeat(Request $request, HeartbeatService $heartbeatService): JsonResponse
     {
-        $authHeader = $request->header('Authorization');
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+        $agent = $this->agentAuthService->authenticate($request);
+        if (!$agent) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        $rawIdentity = substr($authHeader, 7);
-        $identityHash = hash('sha256', $rawIdentity);
-
-        $identity = AgentIdentity::where('identity_hash', $identityHash)
-            ->where('status', 'active')
-            ->first();
-
-        if (!$identity) {
-            return response()->json(['message' => 'Invalid or revoked agent identity.'], 403);
+        // No-resurrection guard: a revoked agent or a decommissioned server must
+        // never be flipped back to Online, no matter what the client sends.
+        $server = $agent->server;
+        if ($agent->revoked_at || !$server || $server->agent_deleted || $server->status === \App\Enums\ServerStatus::Archived->value) {
+            return response()->json(['message' => 'Agent or server has been decommissioned.'], 403);
         }
 
-        $payload = $request->all();
-        $response = $heartbeatService->process($identity, $payload);
-
+        $response = $heartbeatService->process($agent, $request->all());
         return response()->json($response, 200);
     }
 
-    /**
-     * Called by the agent after it has successfully applied a config update received via WebSocket.
-     * The agent authenticates using its Bearer identity token.
-     */
-    public function agentUpdate(string $serverUuid, Request $request): JsonResponse
-    {
-        $authHeader = $request->header('Authorization');
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
-        }
-
-        $rawIdentity = substr($authHeader, 7);
-        $identityHash = hash('sha256', $rawIdentity);
-
-        $identity = AgentIdentity::where('identity_hash', $identityHash)
-            ->where('status', 'active')
-            ->first();
-
-        if (!$identity) {
-            return response()->json(['message' => 'Invalid or revoked agent identity.'], 403);
-        }
-
-        $agent = $identity->agent;
-        if (!$agent) {
-            return response()->json(['message' => 'Agent not found.'], 404);
-        }
-
-        $validated = $request->validate([
-            'agent_version'      => ['nullable', 'string'],
-            'heartbeat_interval' => ['nullable', 'integer', 'min:1'],
-        ]);
-
-        // Update the latest AgentConfiguration record
-        $config = $agent->currentConfiguration;
-        if ($config) {
-            $updates = [];
-            if (isset($validated['heartbeat_interval'])) {
-                $updates['heartbeat_interval'] = $validated['heartbeat_interval'];
-            }
-            if (!empty($updates)) {
-                $config->update($updates);
-            }
-        }
-
-        // Update agent version if provided
-        if (!empty($validated['agent_version'])) {
-            $agent->update(['version' => $validated['agent_version']]);
-        }
-
-        // Log the update as an activity
-        $server = $agent->server;
-        Activity::create([
-            'server_id'   => $server->id,
-            'agent_id'    => $agent->id,
-            'type'        => 'agent_version_updated',
-            'description' => 'Agent version updated successfully.',
-        ]);
-
-        \App\Models\CustomActivityLog::create([
-            'logable_type' => Server::class,
-            'logable_id' => (string) $server->uuid,
-            'user_id' => null,
-            'user' => 'System',
-            'action' => 'Agent Version Updated',
-            'details' => json_encode([
-                'message' => "Agent version updated successfully to version " . ($validated['agent_version'] ?? $agent->version) . " on server: {$server->name}",
-                'server_name' => $server->name,
-                'agent_version' => $validated['agent_version'] ?? $agent->version,
-            ]),
-        ]);
-
-        return response()->json(['status' => 'ok']);
-    }
-
-    /**
-     * Log that the agent is starting its binary update process.
-     */
-    public function agentUpdating(string $serverUuid, Request $request): JsonResponse
-    {
-        $authHeader = $request->header('Authorization');
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
-        }
-
-        $rawIdentity = substr($authHeader, 7);
-        $identityHash = hash('sha256', $rawIdentity);
-
-        $identity = AgentIdentity::where('identity_hash', $identityHash)
-            ->where('status', 'active')
-            ->first();
-
-        if (!$identity) {
-            return response()->json(['message' => 'Invalid or revoked agent identity.'], 403);
-        }
-
-        $agent = $identity->agent;
-        if (!$agent) {
-            return response()->json(['message' => 'Agent not found.'], 404);
-        }
-
-        $validated = $request->validate([
-            'version' => ['required', 'string'],
-        ]);
-
-        Activity::create([
-            'server_id'   => $agent->server->id,
-            'agent_id'    => $agent->id,
-            'type'        => 'agent_updating',
-            'description' => "Agent started download and update to v{$validated['version']}.",
-        ]);
-
-        \App\Models\CustomActivityLog::create([
-            'type'         => 'agent',
-            'logable_type' => Server::class,
-            'logable_id'   => (string) $agent->server->uuid,
-            'user_id'      => null,
-            'user'         => 'System',
-            'action'       => 'Agent Updating',
-            'details'      => json_encode([
-                'message'     => "Agent started download and update to v{$validated['version']} on server: {$agent->server->name}",
-                'server_name' => $agent->server->name,
-                'version'     => $validated['version'],
-            ]),
-        ]);
-
-        return response()->json(['status' => 'ok']);
-     }
- 
-     public function agentError(string $serverUuid, Request $request): JsonResponse
+    public function agentError(Request $request): JsonResponse
      {
-         $authHeader = $request->header('Authorization');
-         if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+         $agent = $this->agentAuthService->authenticate($request);
+         if (!$agent) {
              return response()->json(['message' => 'Unauthenticated.'], 401);
          }
- 
-         $rawIdentity = substr($authHeader, 7);
-         $identityHash = hash('sha256', $rawIdentity);
- 
-         $identity = AgentIdentity::where('identity_hash', $identityHash)
-             ->where('status', 'active')
-             ->first();
- 
-         if (!$identity) {
-             return response()->json(['message' => 'Invalid or revoked agent identity.'], 403);
-         }
- 
-         $agent = $identity->agent;
-         if (!$agent) {
-             return response()->json(['message' => 'Agent not found.'], 404);
-         }
- 
+
          $validated = $request->validate([
              'error' => ['required', 'string'],
              'stack_trace' => ['nullable', 'string'],
          ]);
- 
+
+         $server = $agent->server;
+
          Activity::create([
-             'server_id'   => $agent->server->id,
+             'server_id'   => $server->id,
              'agent_id'    => $agent->id,
              'type'        => 'agent_error',
              'description' => "Agent encountered error: " . substr($validated['error'], 0, 150),
          ]);
- 
+
          \App\Models\CustomActivityLog::create([
              'type'         => 'agent',
              'logable_type' => Server::class,
-             'logable_id'   => (string) $agent->server->uuid,
+             'logable_id'   => (string) $server->uuid,
              'user_id'      => null,
              'user'         => 'System',
              'action'       => 'Agent Error',
              'details'      => json_encode([
-                 'message'     => "Agent encountered error on server: {$agent->server->name}",
-                 'server_name' => $agent->server->name,
+                 'message'     => "Agent encountered error on server: {$server->name}",
+                 'server_name' => $server->name,
                  'error'       => $validated['error'],
                  'stack_trace' => $validated['stack_trace'] ?? '',
              ]),
          ]);
- 
+
          return response()->json(['status' => 'ok']);
      }
 
@@ -324,35 +274,50 @@ class AgentController extends Controller
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }
 
+    /**
+     * Uninstall is invoked BY THE AGENT ITSELF (the running service, acting
+     * under the service account). The agent authenticates with its JWT session,
+     * proving it still holds the identity key, then the backend revokes the
+     * agent and archives the server. The agent deletes its keystore key locally.
+     */
     public function uninstall(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'token' => 'required|string',
-            'platform' => 'nullable|string',
-        ]);
-
-        $token = \App\Models\ProvisionToken::where('token', $validated['token'])->first();
-        if (!$token) {
-            return response()->json(['message' => 'Invalid provision token.'], 404);
+        $agent = $this->agentAuthService->authenticate($request);
+        if (!$agent) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        $server = $token->server;
+        $validated = $request->validate([
+            'reason' => 'nullable|string',
+        ]);
+
+        $server = $agent->server;
         if (!$server) {
             return response()->json(['message' => 'Server not found.'], 404);
         }
 
-        $server->update([
-            'agent_deleted' => true,
-            'status' => \App\Enums\ServerStatus::Archived->value
-        ]);
+        DB::transaction(function () use ($agent, $server, $validated) {
+            // Revoke the agent so its identity can never authenticate again.
+            $agent->update([
+                'status' => 'revoked',
+                'revoked_at' => now(),
+                'last_seen_at' => null,
+            ]);
+
+            $server->update([
+                'agent_deleted' => true,
+                'status' => \App\Enums\ServerStatus::Archived->value,
+            ]);
+        });
 
         event(new \App\Events\AgentUninstalled($server->uuid));
 
         \App\Models\Activity::create([
             'server_id' => $server->id,
-            'agent_id' => $server->agent?->id,
+            'agent_id' => $agent->id,
             'type' => 'agent_uninstalled',
-            'description' => 'Agent service has been uninstalled from the host.',
+            'description' => 'Agent service has been uninstalled from the host.'
+                . (($validated['reason'] ?? null) ? ' Reason: ' . $validated['reason'] : ''),
         ]);
 
         \App\Models\CustomActivityLog::create([
@@ -365,11 +330,10 @@ class AgentController extends Controller
             'details'      => [
                 'message'     => "Agent uninstalled on host: {$server->name}",
                 'server_name' => $server->name,
-                'platform'    => $validated['platform'] ?? 'unknown',
             ],
         ]);
 
-        return response()->json(['status' => 'success', 'message' => 'Agent uninstalled and flag updated successfully.']);
+        return response()->json(['status' => 'success', 'message' => 'Agent revoked and server archived successfully.']);
     }
 
     public function uninstallLinux(): Response

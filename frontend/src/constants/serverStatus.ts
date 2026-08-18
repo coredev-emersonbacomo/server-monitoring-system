@@ -1,4 +1,10 @@
-import { Wifi, AlertTriangle, WifiOff, Trash2 } from "lucide-react";
+import {
+    Wifi,
+    WifiOff,
+    AlertTriangle,
+    Trash2,
+    type LucideIcon,
+} from "lucide-react";
 
 export const STATUS_CONFIG = {
     online: {
@@ -49,4 +55,21 @@ export const STATUS_CONFIG = {
         color: "text-orange-400",
         bg: "bg-orange-500/10 border-orange-500/20",
     },
-} as const;
+} as const satisfies Record<
+    string,
+    { label: string; icon: LucideIcon; color: string; bg: string }
+>;
+
+export type ServerStatusKey = keyof typeof STATUS_CONFIG;
+
+export function resolveServerStatusKey(
+    status?: string | null,
+    recordStatus?: string | null,
+    agentDeleted?: boolean,
+): ServerStatusKey {
+    if (recordStatus === "archived" || status === "archived") return "archived";
+    if (agentDeleted) return "pending_deletion";
+    return (status as ServerStatusKey) in STATUS_CONFIG
+        ? (status as ServerStatusKey)
+        : "pending_installation";
+}

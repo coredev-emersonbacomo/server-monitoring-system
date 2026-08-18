@@ -35,7 +35,7 @@ if (unknownArgs.length > 0) {
 }
 
 const commands = [
-  { command: 'C:\\Users\\User\\Redis\\redis-server.exe', name: 'redis', prefixColor: 'yellow' },
+  { command: 'redis-server || C:\\redis\\redis-server.exe', name: 'redis', prefixColor: 'yellow' },
   { command: 'npm run dev -w frontend', name: 'dev', prefixColor: 'green' },
   { command: 'php artisan reverb:start', name: 'ws', prefixColor: 'cyan' },
   { command: 'php artisan queue:work -q', name: 'queue', prefixColor: 'magenta' },

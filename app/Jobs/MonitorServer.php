@@ -42,6 +42,10 @@ class MonitorServer implements ShouldQueue
         $server = Server::with(['client.secopclients', 'agent'])->where('uuid', $this->serverUuid)->first();
         if (!$server) return;
 
+        // Decommissioned servers are out of the lifecycle: no offline flips, no
+        // online recovery, no alerts. Only an explicit re-provision revives one.
+        if ($server->agent_deleted || $server->status === ServerStatus::Archived->value) return;
+
         if (!$server->agent) return;
 
         $config = NodeConfig::resolveForServer($this->serverUuid);

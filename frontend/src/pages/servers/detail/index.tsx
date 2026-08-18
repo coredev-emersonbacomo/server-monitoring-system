@@ -26,7 +26,8 @@ import { createFormStore, useForm } from "@/components/ui/form";
 import { useServer } from "./hooks/useServer";
 import { useDeleteServer } from "./hooks/useDeleteServer";
 import { useServerAlertTab } from "./hooks/useServerAlertTab";
-import { STATUS_CONFIG } from "./constants/statusConfig";
+import { resolveServerStatusKey } from "@/constants/serverStatus";
+import { ServerStatusBadge } from "@/components/ServerStatusBadge";
 import { serverInfoSchema } from "./types";
 import type { TimeSpan } from "./types";
 
@@ -310,7 +311,7 @@ export default function ServerDetail() {
 
     if (isLoading) {
         return (
-            <PageLayout title="Server Details">
+            <PageLayout>
                 <div className="flex items-center justify-center min-h-100">
                     <Loader2 className="size-8 animate-spin text-primary" />
                 </div>
@@ -320,7 +321,7 @@ export default function ServerDetail() {
 
     if (isError || !initial) {
         return (
-            <PageLayout title="Server Details">
+            <PageLayout>
                 <div className="flex flex-col items-center justify-center min-h-100 gap-4">
                     <p className="text-muted-foreground">Server not found.</p>
                     <Button
@@ -353,21 +354,11 @@ export default function ServerDetail() {
             },
             { label: server.name },
         ];
-    const isArchived = server.record_status === "archived" || server.status === "archived";
-    const statusKey = isArchived
-        ? "archived"
-        : server.agent_deleted
-            ? "pending_deletion"
-            : (server.status as keyof typeof STATUS_CONFIG) in STATUS_CONFIG
-                ? (server.status as keyof typeof STATUS_CONFIG)
-                : "pending_installation";
-
-    const {
-        label: statusLabel,
-        icon: StatusIcon,
-        color: statusColor,
-        bg: statusBg,
-    } = STATUS_CONFIG[statusKey];
+    const statusKey = resolveServerStatusKey(
+        server.status,
+        server.record_status,
+        server.agent_deleted,
+    );
 
     const isInstalled =
         statusKey === "online" ||
@@ -395,7 +386,7 @@ export default function ServerDetail() {
     return (
         <ServerDetailContext.Provider value={contextValue}>
             <ChartZoomProvider>
-                <PageLayout title={`${server.name} Details`}>
+                <PageLayout>
                     <IndexHeader
                         icon={Server}
                         title={server.name}
@@ -404,12 +395,11 @@ export default function ServerDetail() {
                     />
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                        <span
-                            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${statusBg} ${statusColor}`}
-                        >
-                            <StatusIcon size={14} />
-                            {statusLabel}
-                        </span>
+                        <ServerStatusBadge
+                            status={server.status}
+                            record_status={server.record_status}
+                            agent_deleted={server.agent_deleted}
+                        />
                     </div>
 
                     <AgentInstallationGuide

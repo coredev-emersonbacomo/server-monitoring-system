@@ -6,16 +6,6 @@
    - Add frontend UI (verification prompt, resend button)
    - `email_verified_at` column already exists
 
-2. Password Reset
-   - Create ForgotPassword controller + route
-   - Create ResetPassword controller + route
-   - Create frontend pages (ForgotPassword, ResetPassword)
-   - `password_reset_tokens` table already exists
-
-3. Password Change UI
-   - Add "Change Password" form in Profile or Settings page
-   - API endpoint: POST /api/password/change (current_password, new_password, new_password_confirmation)
-
 4. Account Lockout (DB-persistent)
    - Add `locked_until` column to users table
    - After N consecutive failed attempts, lock the account
@@ -23,11 +13,6 @@
    - Frontend feedback for locked accounts
 
 === Other Features the App Needs ===
-
-6. Two-Factor Authentication (2FA)
-   - TOTP setup + verification
-   - Backup codes
-   - Enforce 2FA for certain roles
 
 7. Personal Access Tokens (API Tokens)
    - UI to create/revoke tokens in Settings

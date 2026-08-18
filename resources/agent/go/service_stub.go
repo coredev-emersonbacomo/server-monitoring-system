@@ -4,6 +4,7 @@ package main
 
 import (
 	"errors"
+	"time"
 )
 
 func runService(name string) error {
@@ -14,10 +15,14 @@ func isServiceSession() (bool, error) {
 	return false, nil
 }
 
-func installService(name, desc string) error {
+func installService(name, instance string) error {
 	return errors.New("service installation is only supported on Windows")
 }
 
-func uninstallService(name string) error {
-	return errors.New("service uninstallation is only supported on Windows")
+func stopServiceAndWait(name string, timeout time.Duration) error {
+	return errors.New("service management is only supported on Windows")
+}
+
+func deleteService(name string) error {
+	return errors.New("service management is only supported on Windows")
 }

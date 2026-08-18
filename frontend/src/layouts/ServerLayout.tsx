@@ -1,24 +1,12 @@
 import { Outlet, useParams, useSearchParams, Link } from "react-router-dom";
 import { useServers } from "@/hooks/useServers";
 import { cn } from "@/lib/utils";
-import { Wifi, WifiOff, AlertTriangle, Search, Trash2 } from "lucide-react";
+import { Search } from "lucide-react";
 import { useState } from "react";
-
-const STATUS_META = {
-    online: { icon: Wifi, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-    warning: {
-        icon: AlertTriangle,
-        color: "text-amber-400",
-        bg: "bg-amber-500/10",
-    },
-    offline: { icon: WifiOff, color: "text-red-400", bg: "bg-red-500/10" },
-    pending_deletion: { icon: Trash2, color: "text-orange-400", bg: "bg-orange-500/10" },
-    unknown: {
-        icon: AlertTriangle,
-        color: "text-muted-foreground",
-        bg: "bg-muted/40",
-    },
-} as const;
+import {
+    STATUS_CONFIG,
+    resolveServerStatusKey,
+} from "@/constants/serverStatus";
 
 export default function ServerLayout() {
     const { uuid } = useParams<{ uuid: string }>();
@@ -78,13 +66,12 @@ export default function ServerLayout() {
                     ) : (
                         filtered?.map((server) => {
                             const isActive = server.uuid === uuid;
-                            const isArchived = server.record_status === "archived" || server.status === "archived";
-                            const statusKey = isArchived
-                                ? "archived"
-                                : server.agent_deleted
-                                ? "pending_deletion"
-                                : ((server.status ?? "") in STATUS_META ? server.status : "unknown");
-                            const meta = STATUS_META[statusKey as keyof typeof STATUS_META] ?? STATUS_META.unknown;
+                            const statusKey = resolveServerStatusKey(
+                                server.status,
+                                server.record_status,
+                                server.agent_deleted,
+                            );
+                            const meta = STATUS_CONFIG[statusKey];
                             const Icon = meta.icon;
                             return (
                                 <Link

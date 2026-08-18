@@ -1,14 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
+	"log"
 	"os"
-	"path/filepath"
 	"time"
 
 	"nhooyr.io/websocket"
@@ -40,19 +37,15 @@ type configUpdatePayload struct {
 }
 
 // connectControlChannel maintains a persistent WebSocket connection to Reverb.
-// It runs as a goroutine alongside the heartbeat ticker.
-func connectControlChannel(config *BootstrapConfig, identityToken string, heartbeatInterval *int, stop <-chan struct{}) {
+// All Reverb config and credentials come from the authenticated session, never
+// from disk.
+func connectControlChannel(client *AgentClient, heartbeatInterval *int, stop <-chan struct{}) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "[WS] PANIC RECOVERED in control channel: %v\n", r)
-			reportAgentPanic(config, identityToken, r)
+			log.Printf("[WS] PANIC RECOVERED in control channel: %v", r)
+			reportAgentPanic(client, r)
 		}
 	}()
-
-	if config.ReverbHost == "" || config.ReverbAppKey == "" {
-		fmt.Println("[WS] Reverb config not available — control channel disabled.")
-		return
-	}
 
 	backoff := 2 * time.Second
 	const maxBackoff = 60 * time.Second
@@ -64,9 +57,9 @@ func connectControlChannel(config *BootstrapConfig, identityToken string, heartb
 		default:
 		}
 
-		err := runWsSession(config, identityToken, heartbeatInterval, stop)
+		err := runWsSession(client, heartbeatInterval, stop)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[WS] Session ended with error: %v — retrying in %s\n", err, backoff)
+			log.Printf("[WS] Session ended with error: %v — retrying in %s", err, backoff)
 		} else {
 			// Clean stop
 			return
@@ -86,20 +79,28 @@ func connectControlChannel(config *BootstrapConfig, identityToken string, heartb
 }
 
 // runWsSession opens one WebSocket session and handles the full Pusher handshake:
-//  1. Connect → receive pusher:connection_established (get real socket_id)
-//  2. Call HTTP auth endpoint with real socket_id → get signed auth token
+//  1. Connect -> receive pusher:connection_established (get real socket_id)
+//  2. Call HTTP auth endpoint with real socket_id -> get signed auth token
 //  3. Send pusher:subscribe with auth token
 //  4. Listen for events; send pusher:ping every 30s
-func runWsSession(config *BootstrapConfig, identityToken string, heartbeatInterval *int, stop <-chan struct{}) error {
+func runWsSession(client *AgentClient, heartbeatInterval *int, stop <-chan struct{}) error {
+	sess, err := client.ensureSession()
+	if err != nil {
+		return fmt.Errorf("session: %w", err)
+	}
+	if sess.ReverbHost == "" || sess.ReverbAppKey == "" {
+		return fmt.Errorf("reverb config not available")
+	}
+
 	scheme := "ws"
-	if config.ReverbScheme == "https" {
+	if sess.ReverbScheme == "https" {
 		scheme = "wss"
 	}
 
 	wsURL := fmt.Sprintf("%s://%s:%d/app/%s?protocol=7&client=go-agent&version=1.0",
-		scheme, config.ReverbHost, config.ReverbPort, config.ReverbAppKey)
+		scheme, sess.ReverbHost, sess.ReverbPort, sess.ReverbAppKey)
 
-	fmt.Printf("[WS] Connecting to %s\n", wsURL)
+	log.Printf("[WS] Connecting to %s", wsURL)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -113,9 +114,7 @@ func runWsSession(config *BootstrapConfig, identityToken string, heartbeatInterv
 		}
 	}()
 
-	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
-		HTTPHeader: http.Header{},
-	})
+	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{})
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
 	}
@@ -126,11 +125,11 @@ func runWsSession(config *BootstrapConfig, identityToken string, heartbeatInterv
 	if err != nil {
 		return fmt.Errorf("connection_established: %w", err)
 	}
-	fmt.Printf("[WS] Got socket_id: %s\n", socketID)
+	log.Printf("[WS] Got socket_id: %s", socketID)
 
 	// --- Step 2: Authenticate the private channel using the real socket_id ---
-	channelName := "private-agent." + config.ServerUUID
-	authToken, err := requestChannelAuth(config, identityToken, channelName, socketID)
+	channelName := "private-agent." + sess.ServerUUID
+	authToken, err := requestChannelAuth(client, channelName, socketID)
 	if err != nil {
 		return fmt.Errorf("channel auth: %w", err)
 	}
@@ -160,7 +159,7 @@ func runWsSession(config *BootstrapConfig, identityToken string, heartbeatInterv
 			}
 			var msg pusherMsg
 			if jsonErr := json.Unmarshal(raw, &msg); jsonErr != nil {
-				fmt.Fprintf(os.Stderr, "[WS] Parse error: %v — raw: %s\n", jsonErr, string(raw))
+				log.Printf("[WS] Parse error: %v", jsonErr)
 				continue
 			}
 			msgCh <- msg
@@ -184,7 +183,7 @@ func runWsSession(config *BootstrapConfig, identityToken string, heartbeatInterv
 			}
 
 		case msg := <-msgCh:
-			handlePusherEvent(msg, config, identityToken, heartbeatInterval)
+			handlePusherEvent(client, msg, heartbeatInterval)
 		}
 	}
 }
@@ -238,179 +237,86 @@ func subscribeToPusherChannel(ctx context.Context, conn *websocket.Conn, channel
 }
 
 // handlePusherEvent dispatches a parsed Pusher message.
-func handlePusherEvent(msg pusherMsg, config *BootstrapConfig, identityToken string, heartbeatInterval *int) {
+func handlePusherEvent(client *AgentClient, msg pusherMsg, heartbeatInterval *int) {
 	switch msg.Event {
 	case pusherSubscribed:
-		fmt.Printf("[WS] Subscribed to channel: %s\n", msg.Channel)
+		log.Printf("[WS] Subscribed to channel: %s", msg.Channel)
 
 	case pusherPong:
 		// Server pong — no action needed
 
 	case pusherError:
-		fmt.Fprintf(os.Stderr, "[WS] Pusher error: %s\n", msg.Data)
+		log.Printf("[WS] Pusher error: %s", msg.Data)
 
 	case "config.update":
 		var payload configUpdatePayload
 		if err := json.Unmarshal([]byte(msg.Data), &payload); err != nil {
-			fmt.Fprintf(os.Stderr, "[WS] Failed to decode event payload: %v\n", err)
+			log.Printf("[WS] Failed to decode event payload: %v", err)
 			return
 		}
 		switch payload.Type {
 		case "binary_update":
-			handleBinaryUpdate(payload, config, identityToken, heartbeatInterval)
+			handleBinaryUpdate(client, payload, heartbeatInterval)
 		default:
-			handleConfigUpdate(payload, config, identityToken, heartbeatInterval)
+			handleConfigUpdate(client, payload, heartbeatInterval)
 		}
 
 	default:
-		fmt.Printf("[WS] Event: %s\n", msg.Event)
+		log.Printf("[WS] Event: %s", msg.Event)
 	}
 }
 
-// handleConfigUpdate processes a config_update pushed from the server.
-// Reverb's broadcastWith() wraps the payload as a JSON-encoded string in the data field.
-func handleConfigUpdate(payload configUpdatePayload, config *BootstrapConfig, identityToken string, heartbeatInterval *int) {
-	fmt.Printf("[WS] Config update received: heartbeat_interval=%d\n", payload.HeartbeatInterval)
+// handleConfigUpdate applies a config.update pushed from the server. The
+// effective heartbeat interval is persisted via the next heartbeat's
+// agent_config payload.
+func handleConfigUpdate(client *AgentClient, payload configUpdatePayload, heartbeatInterval *int) {
+	log.Printf("[WS] Config update received: heartbeat_interval=%d", payload.HeartbeatInterval)
 
 	if payload.HeartbeatInterval > 0 {
 		*heartbeatInterval = payload.HeartbeatInterval
-		config.HeartbeatInterval = payload.HeartbeatInterval
 	}
-
-	// Persist to bootstrap.json
-	appDir := filepath.Dir(os.Args[0])
-	if execPath, err := os.Executable(); err == nil {
-		appDir = filepath.Dir(execPath)
-	}
-	bootstrapPath := filepath.Join(appDir, "bootstrap.json")
-	if err := writeConfig(bootstrapPath, config); err != nil {
-		fmt.Fprintf(os.Stderr, "[WS] Failed to persist updated config: %v\n", err)
-	}
-
-	// Notify backend that update was applied
-	postConfigUpdateAck(config, identityToken, payload.HeartbeatInterval)
 }
 
 // handleBinaryUpdate downloads a new agent binary and restarts the process.
-func handleBinaryUpdate(payload configUpdatePayload, config *BootstrapConfig, identityToken string, heartbeatInterval *int) {
+// The heartbeat's pending_update is the fallback trigger; the WS broadcast
+// makes updates immediate after e.g. a compileagent run.
+func handleBinaryUpdate(client *AgentClient, payload configUpdatePayload, heartbeatInterval *int) {
 	if payload.BinaryURL == "" {
-		fmt.Fprintln(os.Stderr, "[WS] binary_update received but no binary_url provided — skipping.")
+		log.Println("[WS] binary_update received but no binary_url provided — skipping.")
 		return
 	}
 
-	fmt.Printf("[WS] Binary update received: version=%s url=%s\n", payload.Version, payload.BinaryURL)
+	log.Printf("[WS] Binary update received: version=%s url=%s", payload.Version, payload.BinaryURL)
 
-	// First apply any config changes
 	if payload.HeartbeatInterval > 0 {
 		*heartbeatInterval = payload.HeartbeatInterval
-		config.HeartbeatInterval = payload.HeartbeatInterval
-	}
-	if payload.Version != "" {
-		config.AgentVersion = payload.Version
 	}
 
-	// Persist updated config before replacing binary
-	appDir := filepath.Dir(os.Args[0])
-	if execPath, err := os.Executable(); err == nil {
-		appDir = filepath.Dir(execPath)
-	}
-	bootstrapPath := filepath.Join(appDir, "bootstrap.json")
-	if err := writeConfig(bootstrapPath, config); err != nil {
-		fmt.Fprintf(os.Stderr, "[WS] Failed to persist config before update: %v\n", err)
-	}
-
-	// Download and replace the binary
-	fmt.Printf("[WS] Downloading new binary from %s...\n", payload.BinaryURL)
-	postConfigUpdatingLog(config, identityToken, payload.Version)
+	log.Printf("[WS] Downloading new binary from %s...", payload.BinaryURL)
 	if err := updateBinary(payload.BinaryURL); err != nil {
-		fmt.Fprintf(os.Stderr, "[WS] Binary update failed: %v\n", err)
+		log.Printf("[WS] Binary update failed: %v", err)
 		return
 	}
 
-	fmt.Println("[WS] Binary updated successfully — exiting to allow restart...")
+	log.Println("[WS] Binary updated successfully — exiting to allow restart...")
 	restartAgent()
 	os.Exit(0)
 }
 
-// postConfigUpdatingLog POSTs to /api/v1/agent/{serverUUID}/updating to log that the update process has begun.
-func postConfigUpdatingLog(config *BootstrapConfig, identityToken string, newVersion string) {
-	if config.UpdateURL == "" {
-		return
-	}
-	// Derive updating URL from update URL
-	updatingURL := extractBaseURL(config.UpdateURL) + "/api/v1/agent/" + config.ServerUUID + "/updating"
-
-	body, _ := json.Marshal(map[string]interface{}{
-		"version": newVersion,
-	})
-
-	req, err := http.NewRequest(http.MethodPost, updatingURL, bytes.NewReader(body))
-	if err != nil {
-		return
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+identityToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err == nil {
-		resp.Body.Close()
-	}
-}
-
-// postConfigUpdateAck POSTs to /api/v1/agent/{serverUUID}/update to confirm the update was applied.
-func postConfigUpdateAck(config *BootstrapConfig, identityToken string, heartbeatInterval int) {
-	if config.UpdateURL == "" {
-		return
-	}
-
-	body, _ := json.Marshal(map[string]interface{}{
-		"agent_version":      config.AgentVersion,
-		"heartbeat_interval": heartbeatInterval,
-	})
-
-	req, err := http.NewRequest(http.MethodPost, config.UpdateURL, bytes.NewReader(body))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[WS] Failed to create update ack: %v\n", err)
-		return
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+identityToken)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[WS] Update ack failed: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-	io.ReadAll(resp.Body)
-
-	fmt.Printf("[WS] Update ack sent, status: %d\n", resp.StatusCode)
-}
-
-// requestChannelAuth calls the agent-specific broadcasting auth endpoint.
-// The real socket_id from Reverb's connection_established message must be passed.
-func requestChannelAuth(config *BootstrapConfig, identityToken, channelName, socketID string) (string, error) {
-	apiHost := extractBaseURL(config.ApiURL)
-	authURL := apiHost + "/api/broadcasting/auth/agent"
-
+// requestChannelAuth calls the agent-specific broadcasting auth endpoint using
+// the short-lived session token. The real socket_id from Reverb's
+// connection_established message must be passed.
+func requestChannelAuth(client *AgentClient, channelName, socketID string) (string, error) {
+	authURL := client.apiURL("/api/broadcasting/auth/agent")
 	bodyData := fmt.Sprintf("socket_id=%s&channel_name=%s", socketID, channelName)
-	req, err := http.NewRequest(http.MethodPost, authURL, bytes.NewBufferString(bodyData))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", "Bearer "+identityToken)
 
-	resp, err := http.DefaultClient.Do(req)
+	respBody, status, err := client.postAuthenticated(authURL, bodyData)
 	if err != nil {
 		return "", fmt.Errorf("channel auth request: %w", err)
 	}
-	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("channel auth HTTP %d: %s", resp.StatusCode, string(respBody))
+	if status != 200 {
+		return "", fmt.Errorf("channel auth HTTP %d: %s", status, string(respBody))
 	}
 
 	var authResp struct {
@@ -420,20 +326,4 @@ func requestChannelAuth(config *BootstrapConfig, identityToken, channelName, soc
 		return "", fmt.Errorf("parse auth response: %w", err)
 	}
 	return authResp.Auth, nil
-}
-
-// extractBaseURL strips the path from a full URL, returning scheme://host[:port].
-func extractBaseURL(rawURL string) string {
-	for _, pfx := range []string{"https://", "http://"} {
-		if len(rawURL) >= len(pfx) && rawURL[:len(pfx)] == pfx {
-			rest := rawURL[len(pfx):]
-			for i, c := range rest {
-				if c == '/' {
-					return pfx + rest[:i]
-				}
-			}
-			return pfx + rest
-		}
-	}
-	return rawURL
 }

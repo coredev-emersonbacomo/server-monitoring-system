@@ -1,15 +1,28 @@
 import type { ReactNode } from "react";
 
+function slugify(text: string): string {
+    return text
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+}
+
 export function Section({
     title,
+    id,
     children,
 }: {
     title: string;
+    id?: string;
     children: ReactNode;
 }) {
     return (
         <section className="mb-10">
-            <h2 className="text-base font-semibold text-foreground mb-3 pb-2 border-b border-border/40">
+            <h2
+                id={id ?? slugify(title)}
+                className="text-base font-semibold text-foreground mb-3 pb-2 border-b border-border/40 scroll-mt-6"
+            >
                 {title}
             </h2>
             <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
@@ -21,14 +34,19 @@ export function Section({
 
 export function SubSection({
     title,
+    id,
     children,
 }: {
     title: string;
+    id?: string;
     children: ReactNode;
 }) {
     return (
         <div className="mt-5 mb-2">
-            <h3 className="text-sm font-semibold text-foreground mb-2">
+            <h3
+                id={id ?? slugify(title)}
+                className="text-sm font-semibold text-foreground mb-2 scroll-mt-6"
+            >
                 {title}
             </h3>
             <div className="space-y-2 text-sm text-muted-foreground leading-relaxed">

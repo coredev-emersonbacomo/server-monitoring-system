@@ -23,8 +23,22 @@ if (!fs.existsSync(source)) {
   process.exit(1);
 }
 
-fs.copyFileSync(source, path.join(root, '.env'));
-console.log(`[entry] Injected ${ENV_FILES[mode]} -> .env`);
+// .env.production is gitignored, so .env.example is regenerated from the
+// tracked .env.development on every run. Values are stripped so the example
+// stays in sync with the real config without ever leaking secrets.
+const devBase = fs.readFileSync(path.join(root, '.env.development'), 'utf8');
+const example = devBase
+  .split('\n')
+  .map((line) => {
+    const trimmed = line.trim();
+    if (trimmed === '' || trimmed.startsWith('#') || !line.includes('=')) {
+      return line;
+    }
+    return line.replace(/=(.*)$/, '=');
+  })
+  .join('\n');
+fs.writeFileSync(path.join(root, '.env.example'), example);
+console.log('[entry] Regenerated .env.example from .env.development');
 
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 

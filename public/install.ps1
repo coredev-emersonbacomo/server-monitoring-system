@@ -12,26 +12,32 @@ if (-not $isAdmin) {
     exit 1
 }
 
-$bootstrapUrl = "$($AppUrl.TrimEnd('/'))/api/v1/provision"
-$appDir = "C:\Program Files\MonitorAgent"
-$agentFile = "$appDir\MonitorAgent.exe"
-$logFile = "$env:TEMP\monitor-agent-install.log"
+# Every installation gets a fresh, immutable UUID. It names the instance
+# directory, the keystore identity and the Windows service, so multiple agents
+# on one machine never collide.
+$InstallationId = [guid]::NewGuid().ToString()
+$ServiceName = "MonitorAgent-$InstallationId"
+$KeyName = "MonitorAgentIdentity-$InstallationId"
+$DataRoot = "C:\ProgramData\MonitorAgent"
+$InstanceDir = "$DataRoot\instances\$InstallationId"
+$AppDir = "C:\Program Files\MonitorAgent\$InstallationId"
+$AgentFile = "$AppDir\MonitorAgent.exe"
+$LogFile = "$env:TEMP\monitor-agent-install.log"
 
 function Log($msg) {
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    "$timestamp [INFO] $msg" | Out-File -FilePath $logFile -Append
+    "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [INFO] $msg" | Out-File -FilePath $LogFile -Append
     Write-Host $msg
 }
 
 function Fail($msg) {
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    "$timestamp [ERROR] $msg" | Out-File -FilePath $logFile -Append
+    "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [ERROR] $msg" | Out-File -FilePath $LogFile -Append
     Write-Error $msg
     exit 1
 }
 
-Log "Starting MonitorAgent installation..."
+Log "Starting MonitorAgent installation (instance: $InstallationId)..."
 
+$bootstrapUrl = "$($AppUrl.TrimEnd('/'))/api/v1/provision"
 Log "Contacting provision endpoint..."
 $body = @{
     token = $ProvisionToken
@@ -49,62 +55,83 @@ try {
 
 $downloadUrl = $response.download_url
 $expectedSha256 = $response.expected_sha256
-$apiUrl = $response.api_url
-$registerUrl = $response.register_url
-$heartbeatInterval = $response.heartbeat_interval
+$serverUrl = $response.server_url
 $agentVersion = $response.agent_version
-if (-not $apiUrl -or -not $registerUrl) {
+if (-not $serverUrl) {
     Fail "Invalid bootstrap configuration returned by server."
 }
 
-$serviceName = "MonitorAgent"
-if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
-    Log "Stopping existing service to release file lock..."
-    Stop-Service -Name $serviceName -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 1
+# --- Collision prevention -------------------------------------
+if (Test-Path $InstanceDir) {
+    Fail "Installation directory already exists: $InstanceDir"
 }
-
-if (-not (Test-Path $appDir)) {
-    New-Item -ItemType Directory -Path $appDir -Force | Out-Null
+if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
+    Fail "A service named $ServiceName already exists - installation collision."
 }
-
-Log "Downloading agent binary from $downloadUrl..."
-try {
-    Invoke-WebRequest -Uri $downloadUrl -OutFile "$agentFile.tmp" -UseBasicParsing
-} catch {
-    Fail "Failed to download agent: $_"
-}
-
-if ($expectedSha256) {
-    Log "Verifying checksum..."
-    $actualHash = (Get-FileHash "$agentFile.tmp" -Algorithm SHA256).Hash.ToLower()
-    if ($actualHash -ne $expectedSha256.ToLower()) {
-        Remove-Item "$agentFile.tmp" -Force
-        Fail "Checksum verification failed! Expected $expectedSha256, got $actualHash"
+if (Test-Path $AgentFile) {
+    $keyCheck = & "$AgentFile" -has-key -key $KeyName 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Fail "Identity key $KeyName already exists in the keystore - installation collision."
     }
-    Log "Checksum verified."
 }
 
-Move-Item "$agentFile.tmp" $agentFile -Force
+# --- Per-installation program folder (never shared with other agents) ---
+if (-not (Test-Path $AppDir)) {
+    New-Item -ItemType Directory -Path $AppDir -Force | Out-Null
+}
 
-$bootstrapJson = @{
-    token = $ProvisionToken
-    api_url = $apiUrl
-    register_url = $registerUrl
-    heartbeat_interval = $heartbeatInterval
-    hostname = [System.Net.Dns]::GetHostName()
+$needDownload = $true
+if (Test-Path $AgentFile) {
+    $currentHash = (Get-FileHash $AgentFile -Algorithm SHA256).Hash.ToLower()
+    if ($expectedSha256 -and $currentHash -eq $expectedSha256.ToLower()) {
+        $needDownload = $false
+        Log "Agent binary already up to date."
+    }
+}
+
+if ($needDownload) {
+    Log "Downloading agent binary from $downloadUrl..."
+    try {
+        Invoke-WebRequest -Uri $downloadUrl -OutFile "$AgentFile.tmp" -UseBasicParsing
+    } catch {
+        Fail "Failed to download agent: $_"
+    }
+
+    if ($expectedSha256) {
+        Log "Verifying checksum..."
+        $actualHash = (Get-FileHash "$AgentFile.tmp" -Algorithm SHA256).Hash.ToLower()
+        if ($actualHash -ne $expectedSha256.ToLower()) {
+            Remove-Item "$AgentFile.tmp" -Force
+            Fail "Checksum verification failed! Expected $expectedSha256, got $actualHash"
+        }
+        Log "Checksum verified."
+    }
+
+    try {
+        Move-Item "$AgentFile.tmp" $AgentFile -Force
+    } catch {
+        Remove-Item "$AgentFile.tmp" -Force
+        Fail "Failed to replace agent binary (is another instance running?): $_"
+    }
+}
+
+# --- Instance config ------------------------------------------
+New-Item -ItemType Directory -Path $InstanceDir -Force | Out-Null
+$agentConfig = @{
+    server_url = $serverUrl
     agent_version = $agentVersion
+    installation_id = $InstallationId
+    provision_token = $ProvisionToken
 } | ConvertTo-Json
-
-Set-Content -Path "$appDir\bootstrap.json" -Value $bootstrapJson -Force
-Log "Bootstrap configuration written."
+Set-Content -Path "$InstanceDir\config.json" -Value $agentConfig -Force
+Log "Instance configuration written."
 
 try {
-    & "$agentFile" -install | Out-Null
-    Log "Windows service registered and started via agent."
+    & "$AgentFile" -install -instance $InstallationId | Out-Null
+    if ($LASTEXITCODE -ne 0) { Fail "Agent service registration failed." }
+    Log "Windows service $ServiceName registered and started."
 } catch {
-    Log "Warning: Could not register Windows service: $_"
-    Log "You can manually run the agent: $agentFile"
+    Fail "Could not register Windows service: $_"
 }
 
 Log "Installation complete."

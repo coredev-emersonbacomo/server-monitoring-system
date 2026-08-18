@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"os/exec"
@@ -314,7 +315,7 @@ func (m *metricsCollector) GetTopProcesses() []ProcessInfo {
 		if errSingle := json.Unmarshal(out, &single); errSingle == nil {
 			wmiList = []wmiProcess{single}
 		} else {
-			fmt.Fprintf(os.Stderr, "[Metrics] Failed to parse top processes JSON: %v\n", err)
+			log.Printf("[Metrics] Failed to parse top processes JSON: %v", err)
 			return nil
 		}
 	}

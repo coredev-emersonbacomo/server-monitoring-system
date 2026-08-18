@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import Dashboard from "./pages/dashboard/index";
 import Login from "./pages/login";
 import ForgotPassword from "./pages/forgot-password";
@@ -23,9 +23,6 @@ import AgentSettings from "./pages/settings/agent/index";
 import { NodeConfigEditor } from "./components/node-config/NodeConfigEditor";
 import AlertVisualizer from "./pages/settings/alerts/index";
 import Docs from "./pages/docs/index";
-import DocsAlerts from "./pages/docs/alerts";
-import DocsGmailSmtp from "./pages/docs/gmail-smtp";
-import DocsStorageProviders from "./pages/docs/storage-providers";
 import ReportIndexPage from "./pages/reports/report-index.tsx";
 import { ReportsLayout } from "./layouts/ReportsLayout";
 import MultiReportsPreview from "./pages/reports/MultiReportsPreview.tsx";
@@ -164,19 +161,13 @@ const router = createBrowserRouter([
                 children: [
                     {
                         path: "/docs",
+                        element: (
+                            <Navigate to="/docs/overview" replace />
+                        ),
+                    },
+                    {
+                        path: "/docs/:sectionId",
                         element: <Docs />,
-                    },
-                    {
-                        path: "/docs/alerts",
-                        element: <DocsAlerts />,
-                    },
-                    {
-                        path: "/docs/gmail-smtp",
-                        element: <DocsGmailSmtp />,
-                    },
-                    {
-                        path: "/docs/storage-providers",
-                        element: <DocsStorageProviders />,
                     },
                 ],
             },
