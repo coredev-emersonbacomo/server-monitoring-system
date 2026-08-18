@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, type SubmitEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Server, ChevronLeft, Eye, EyeOff } from "lucide-react";
+import { Loader2, ChevronLeft, Eye, EyeOff, Mail, Lock, Key } from "lucide-react";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { cn } from "@/lib/utils";
 import axios from "axios";
@@ -134,209 +134,270 @@ export default function ForgotPassword() {
     const strengthColor = passedCount <= 1 ? "bg-destructive" : passedCount === 2 ? "bg-amber-500" : passedCount === 3 ? "bg-blue-500" : "bg-emerald-500";
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-8">
-            <div className="w-full max-w-sm">
-                <button
-                    type="button"
-                    onClick={() => {
-                        if (step === 1) navigate("/login");
-                        else setStep((s) => (s - 1) as Step);
-                    }}
-                    className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6 cursor-pointer"
-                >
-                    <ChevronLeft className="w-4 h-4" />
-                    {step === 1 ? "Back to login" : "Back"}
-                </button>
-
-                <div className="flex flex-col items-center mb-8">
-                    <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center mb-4">
-                        <Server className="w-6 h-6 text-primary-foreground" />
+        <div className="coreDevDark min-h-screen w-full flex bg-background text-foreground font-sans">
+            {/* Left Pane */}
+            <div className="w-full lg:w-[40%] flex flex-col justify-center lg:justify-between px-8 py-12 lg:px-20 lg:py-16">
+                <div className="w-full max-w-sm mx-auto lg:mx-0">
+                    <div className="flex items-center gap-3 opacity-50 mb-16 lg:mb-24">
+                        <img src="/images/coreDevlogo.png" alt="CoreDev Logo" className="w-8 h-8 object-contain" />
+                        <span className="font-bold text-2xl tracking-wide">Server Monitoring</span>
                     </div>
-                    <h1 className="text-2xl font-semibold text-foreground">
-                        {step === 1 ? "Forgot Password" : step === 2 ? "Enter Code" : "New Password"}
-                    </h1>
-                    <p className="text-sm text-muted-foreground mt-1 text-center">
-                        {step === 1
-                            ? "Enter your email or username to receive a reset code"
-                            : step === 2
-                                ? `Code sent to ${maskedEmail}`
-                                : "Enter your new password"}
-                    </p>
+
+                    <div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (step === 1) navigate("/login");
+                                else setStep((s) => (s - 1) as Step);
+                            }}
+                            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6 cursor-pointer"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                            {step === 1 ? "Back to login" : "Back"}
+                        </button>
+
+                        <h1 className="text-4xl font-semibold mb-2">
+                            {step === 1 ? "Forgot Password" : step === 2 ? "Enter Code" : "New Password"}
+                        </h1>
+                        <p className="text-sm text-muted-foreground mb-12">
+                            {step === 1
+                                ? "Enter your email or username to receive a reset code"
+                                : step === 2
+                                    ? `Code sent to ${maskedEmail}`
+                                    : "Enter your new password"}
+                        </p>
+
+                        {step === 1 && (
+                            <form onSubmit={handleSendCode} className="space-y-6">
+                                <div>
+                                    <FloatingInput
+                                        id="email"
+                                        name="email"
+                                        label={
+                                            <span className="flex items-center gap-2">
+                                                <Mail className="w-4 h-4 text-primary" />
+                                                Email or Username
+                                            </span>
+                                        }
+                                        type="text"
+                                        autoComplete="username"
+                                        value={email}
+                                        onValueChange={(value) => setEmail(value)}
+                                        required
+                                        disabled={isPending}
+                                        inputBg="bg-background"
+                                        divClassName="border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary h-14"
+                                        error={errors.email?.[0]}
+                                    />
+                                    {/* Additional error map if multiple errors returned, though FloatingInput handles the first via 'error' prop */}
+                                    {errors.email?.length > 1 && errors.email.slice(1).map((e) => (
+                                        <p key={e} className="text-xs text-destructive mt-1">{e}</p>
+                                    ))}
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={isPending || !email}
+                                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3.5 rounded-md mt-8 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    Send Code
+                                </button>
+                            </form>
+                        )}
+
+                        {step === 2 && (
+                            <form onSubmit={handleVerifyCode} className="space-y-6">
+                                <div>
+                                    <FloatingInput
+                                        id="code"
+                                        name="code"
+                                        label={
+                                            <span className="flex items-center gap-2">
+                                                <Key className="w-4 h-4 text-primary" />
+                                                Reset Code
+                                            </span>
+                                        }
+                                        type="text"
+                                        inputMode="numeric"
+                                        autoComplete="one-time-code"
+                                        value={code}
+                                        onValueChange={(value) => setCode(value.replace(/\D/g, "").slice(0, 6))}
+                                        required
+                                        disabled={isPending}
+                                        inputBg="bg-background"
+                                        divClassName="border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary h-14"
+                                        error={errors.code?.[0]}
+                                    />
+                                    {errors.code?.length > 1 && errors.code.slice(1).map((e) => (
+                                        <p key={e} className="text-xs text-destructive mt-1">{e}</p>
+                                    ))}
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={isPending || code.length !== 6}
+                                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3.5 rounded-md mt-8 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    Verify Code
+                                </button>
+                                <div className="flex justify-center mt-4">
+                                    <button
+                                        type="button"
+                                        onClick={handleResendCode}
+                                        disabled={resendCooldown > 0 || isPending}
+                                        className="text-sm text-primary hover:text-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                    >
+                                        {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+
+                        {step === 3 && (
+                            <form onSubmit={handleResetPassword} className="space-y-6">
+                                <div>
+                                    <FloatingInput
+                                        id="password"
+                                        name="password"
+                                        label={
+                                            <span className="flex items-center gap-2">
+                                                <Lock className="w-4 h-4 text-muted-foreground" />
+                                                New Password
+                                            </span>
+                                        }
+                                        type={showPassword ? "text" : "password"}
+                                        autoComplete="new-password"
+                                        value={password}
+                                        onValueChange={(value) => setPassword(value)}
+                                        required
+                                        disabled={isPending}
+                                        inputBg="bg-background"
+                                        divClassName="border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary h-14"
+                                        className="pr-10"
+                                        error={errors.password?.[0]}
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword((p) => !p)}
+                                            disabled={isPending}
+                                            className="mr-2 text-muted-foreground hover:text-foreground disabled:opacity-50"
+                                            tabIndex={-1}
+                                        >
+                                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                    </FloatingInput>
+                                    
+                                    {errors.password?.length > 1 && errors.password.slice(1).map((e) => (
+                                        <p key={e} className="text-xs text-destructive mt-1">{e}</p>
+                                    ))}
+
+                                    {password && (
+                                        <div className="flex flex-col gap-1.5 mt-3">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="flex-1 grid grid-cols-4 gap-1">
+                                                    {Array.from({ length: 4 }).map((_, i) => (
+                                                        <div key={i} className={cn("h-1 rounded-full transition-colors", i < passedCount ? strengthColor : "bg-muted")} />
+                                                    ))}
+                                                </div>
+                                                <span className={cn("text-[11px] font-medium shrink-0", passedCount <= 1 && "text-destructive", passedCount === 2 && "text-amber-500", passedCount === 3 && "text-blue-500", passedCount === 4 && "text-emerald-500")}>
+                                                    {strengthLabel}
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                                                {passwordChecks.map((c) => (
+                                                    <span key={c.label} className={cn("text-[11px] flex items-center gap-1", c.passed ? "text-emerald-500" : "text-muted-foreground")}>
+                                                        {c.passed ? "✓" : "○"} {c.label}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <FloatingInput
+                                        id="password_confirmation"
+                                        name="password_confirmation"
+                                        label={
+                                            <span className="flex items-center gap-2">
+                                                <Lock className="w-4 h-4 text-muted-foreground" />
+                                                Confirm Password
+                                            </span>
+                                        }
+                                        type={showPasswordConfirmation ? "text" : "password"}
+                                        autoComplete="new-password"
+                                        value={passwordConfirmation}
+                                        onValueChange={(value) => setPasswordConfirmation(value)}
+                                        required
+                                        disabled={isPending}
+                                        inputBg="bg-background"
+                                        divClassName="border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary h-14"
+                                        className="pr-10"
+                                        error={errors.password_confirmation?.[0]}
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPasswordConfirmation((p) => !p)}
+                                            disabled={isPending}
+                                            className="mr-2 text-muted-foreground hover:text-foreground disabled:opacity-50"
+                                            tabIndex={-1}
+                                        >
+                                            {showPasswordConfirmation ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                    </FloatingInput>
+                                    {errors.password_confirmation?.length > 1 && errors.password_confirmation.slice(1).map((e) => (
+                                        <p key={e} className="text-xs text-destructive mt-1">{e}</p>
+                                    ))}
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={isPending || !password || !passwordConfirmation}
+                                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3.5 rounded-md mt-8 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    Reset Password
+                                </button>
+                            </form>
+                        )}
+
+                        <div className="flex justify-center mt-8">
+                            <div className="flex items-center gap-2">
+                                {[1, 2, 3].map((s) => (
+                                    <div
+                                        key={s}
+                                        className={cn(
+                                            "w-2 h-2 rounded-full transition-all",
+                                            s === step ? "bg-primary scale-125" : s < step ? "bg-primary/30" : "bg-muted",
+                                        )}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {step === 1 && (
-                    <form onSubmit={handleSendCode} className="space-y-4">
-                        <div>
-                            <FloatingInput
-                                id="email"
-                                label="Email or Username"
-                                type="text"
-                                autoComplete="username"
-                                value={email}
-                                onValueChange={(value) => setEmail(value)}
-                                required
-                                disabled={isPending}
-                                inputBg="bg-background"
-                                className={cn(errors.email && "border-destructive")}
-                            />
-                            {errors.email?.map((e) => (
-                                <p key={e} className="text-xs text-destructive mt-1">{e}</p>
-                            ))}
-                        </div>
-                        <button
-                            type="submit"
-                            disabled={isPending || !email}
-                            className="w-full h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium shadow hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                            {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                            Send Code
-                        </button>
-                    </form>
-                )}
+                <div className="mt-12 w-full max-w-sm mx-auto lg:mx-0"></div>
+            </div>
 
-                {step === 2 && (
-                    <form onSubmit={handleVerifyCode} className="space-y-4">
-                        <div>
-                            <FloatingInput
-                                id="code"
-                                label="Reset Code"
-                                type="text"
-                                inputMode="numeric"
-                                autoComplete="one-time-code"
-                                value={code}
-                                onValueChange={(value) => setCode(value.replace(/\D/g, "").slice(0, 6))}
-                                required
-                                disabled={isPending}
-                                inputBg="bg-background"
-                                className={cn(errors.code && "border-destructive")}
-                            />
-                            {errors.code?.map((e) => (
-                                <p key={e} className="text-xs text-destructive mt-1">{e}</p>
-                            ))}
-                        </div>
-                        <button
-                            type="submit"
-                            disabled={isPending || code.length !== 6}
-                            className="w-full h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium shadow hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                            {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                            Verify Code
-                        </button>
-                        <div className="flex justify-center">
-                            <button
-                                type="button"
-                                onClick={handleResendCode}
-                                disabled={resendCooldown > 0 || isPending}
-                                className="text-sm text-primary hover:text-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                            >
-                                {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
-                            </button>
-                        </div>
-                    </form>
-                )}
+            {/* Right Pane */}
+            <div className="hidden lg:flex lg:w-[60%] relative bg-muted overflow-hidden">
+                <div
+                    className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-luminosity"
+                    style={{ backgroundImage: "url('https://images.unsplash.com/photo-1639066648921-82d4500abf1a?q=80&w=1587&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')" }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-transparent opacity-80" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-40" />
 
-                {step === 3 && (
-                    <form onSubmit={handleResetPassword} className="space-y-4">
-                        <div>
-                            <div className="relative">
-                                <FloatingInput
-                                    id="password"
-                                    label="New Password"
-                                    type={showPassword ? "text" : "password"}
-                                    autoComplete="new-password"
-                                    value={password}
-                                    onValueChange={(value) => setPassword(value)}
-                                    required
-                                    disabled={isPending}
-                                    inputBg="bg-background"
-                                    className={cn("pr-9", errors.password && "border-destructive")}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword((p) => !p)}
-                                    disabled={isPending}
-                                    className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground disabled:opacity-50"
-                                    tabIndex={-1}
-                                >
-                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                </button>
-                            </div>
-                            {errors.password?.map((e) => (
-                                <p key={e} className="text-xs text-destructive mt-1">{e}</p>
-                            ))}
-                            {password && (
-                                <div className="flex flex-col gap-1.5 mt-2">
-                                    <div className="flex items-center gap-1.5">
-                                        <div className="flex-1 grid grid-cols-4 gap-1">
-                                            {Array.from({ length: 4 }).map((_, i) => (
-                                                <div key={i} className={cn("h-1 rounded-full transition-colors", i < passedCount ? strengthColor : "bg-muted")} />
-                                            ))}
-                                        </div>
-                                        <span className={cn("text-[11px] font-medium shrink-0", passedCount <= 1 && "text-destructive", passedCount === 2 && "text-amber-500", passedCount === 3 && "text-blue-500", passedCount === 4 && "text-emerald-500")}>
-                                            {strengthLabel}
-                                        </span>
-                                    </div>
-                                    <div className="flex flex-wrap gap-x-3 gap-y-1">
-                                        {passwordChecks.map((c) => (
-                                            <span key={c.label} className={cn("text-[11px] flex items-center gap-1", c.passed ? "text-emerald-500" : "text-muted-foreground")}>
-                                                {c.passed ? "✓" : "○"} {c.label}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        <div>
-                            <div className="relative">
-                                <FloatingInput
-                                    id="password_confirmation"
-                                    label="Confirm Password"
-                                    type={showPasswordConfirmation ? "text" : "password"}
-                                    autoComplete="new-password"
-                                    value={passwordConfirmation}
-                                    onValueChange={(value) => setPasswordConfirmation(value)}
-                                    required
-                                    disabled={isPending}
-                                    inputBg="bg-background"
-                                    className={cn("pr-9", errors.password_confirmation && "border-destructive")}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPasswordConfirmation((p) => !p)}
-                                    disabled={isPending}
-                                    className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground disabled:opacity-50"
-                                    tabIndex={-1}
-                                >
-                                    {showPasswordConfirmation ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                </button>
-                            </div>
-                            {errors.password_confirmation?.map((e) => (
-                                <p key={e} className="text-xs text-destructive mt-1">{e}</p>
-                            ))}
-                        </div>
-                        <button
-                            type="submit"
-                            disabled={isPending || !password || !passwordConfirmation}
-                            className="w-full h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium shadow hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                            {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                            Reset Password
-                        </button>
-                    </form>
-                )}
-
-                <div className="flex justify-center mt-6">
-                    <div className="flex items-center gap-2">
-                        {[1, 2, 3].map((s) => (
-                            <div
-                                key={s}
-                                className={cn(
-                                    "w-2 h-2 rounded-full transition-all",
-                                    s === step ? "bg-primary scale-125" : s < step ? "bg-primary/30" : "bg-muted",
-                                )}
-                            />
-                        ))}
-                    </div>
+                <div className="relative z-10 flex flex-col justify-center px-24 w-full">
+                    <h2 className="text-3xl lg:text-4xl font-light leading-relaxed text-foreground max-w-lg mb-8">
+                        Monitor system with ease, battery included metrics-dashboard, reports, flexible-configuration, easy-to-setup.
+                    </h2>
+                    <a
+                        href="https://www.coredev.ph/"
+                        target="_blank"
+                        className="text-xs font-semibold text-muted-foreground uppercase tracking-widest underline underline-offset-4 hover:text-foreground transition-colors w-fit"
+                    >
+                        Learn More
+                    </a>
                 </div>
             </div>
         </div>

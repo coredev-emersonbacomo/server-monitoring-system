@@ -174,15 +174,6 @@ export default function Login() {
                         </form>
                     </div>
                 </div>
-
-                <div className="mt-12 w-full max-w-sm mx-auto lg:mx-0">
-                    <p className="text-sm text-muted-foreground">
-                        Don't have an account?{" "}
-                        <Link to="/signup" className="text-foreground hover:underline hover:text-primary">
-                            Sign up
-                        </Link>
-                    </p>
-                </div>
             </div>
 
             {/* Right Pane */}
