@@ -82,13 +82,15 @@ export function ClientCard({ client, onDelete }: ClientCardProps) {
                     </span>
                 </div>
 
-                <div className="text-center w-full flex flex-col items-center gap-1.5">
-                    {client.name}
-                    <div className="flex flex-col items-center gap-1.5 mt-1 text-center w-full">
-                        <p className="text-sm text-muted-foreground text-center line-clamp-3 break-all">
+                <div className="text-center w-full flex flex-col items-center gap-1 min-w-0 px-2">
+                    <h3 className="font-semibold text-foreground text-base tracking-tight truncate w-full" title={client.name}>
+                        {client.name}
+                    </h3>
+                    {client.description && (
+                        <p className="text-xs text-muted-foreground text-center line-clamp-2 break-words w-full">
                             {client.description}
                         </p>
-                    </div>
+                    )}
                 </div>
             </div>
         </Link>
