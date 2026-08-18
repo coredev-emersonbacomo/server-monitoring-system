@@ -9,8 +9,6 @@ import {
     Info,
     Building,
     Plus,
-    Loader2,
-    Search,
     Users,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { Label } from "@/components/ui/label";
 import {
-    Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
@@ -43,6 +40,8 @@ import { formatPhoneNumber } from "@/utils/helpers";
 import { Form, createFormStore, useForm } from "@/components/ui/form";
 import { TimezoneCombobox, tzOffsetLabel } from "@/components/TimezoneCombobox";
 import { FormStoreProvider } from "@/components/ui/form/FormStoreProvider";
+import { AssignClientDialog } from "./components/AssignClientDialog";
+import { DeleteUserDialog } from "./components/DeleteUserDialog";
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
 const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -169,79 +168,7 @@ function SectionHeader({
     );
 }
 
-function PasswordStrength({ password }: { password: string }) {
-    const checks = [
-        { label: "8+ characters", passed: password.length >= 8 },
-        { label: "Uppercase letter", passed: /[A-Z]/.test(password) },
-        { label: "Number", passed: /[0-9]/.test(password) },
-        { label: "Symbol", passed: /[^A-Za-z0-9]/.test(password) },
-    ];
-    const passedCount = checks.filter((c) => c.passed).length;
 
-    const strengthLabel =
-        passedCount <= 1
-            ? "Weak"
-            : passedCount === 2
-                ? "Fair"
-                : passedCount === 3
-                    ? "Good"
-                    : "Strong";
-    const strengthColor =
-        passedCount <= 1
-            ? "bg-destructive"
-            : passedCount === 2
-                ? "bg-amber-500"
-                : passedCount === 3
-                    ? "bg-blue-500"
-                    : "bg-emerald-500";
-
-    return (
-        <div className="flex flex-col gap-1.5">
-            {/* Bar */}
-            <div className="flex items-center gap-1.5">
-                <div className="flex-1 grid grid-cols-4 gap-1">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <div
-                            key={i}
-                            className={cn(
-                                "h-1 rounded-full transition-colors",
-                                i < passedCount ? strengthColor : "bg-muted",
-                            )}
-                        />
-                    ))}
-                </div>
-                <span
-                    className={cn(
-                        "text-[11px] font-medium shrink-0",
-                        passedCount <= 1 && "text-destructive",
-                        passedCount === 2 && "text-amber-500",
-                        passedCount === 3 && "text-blue-500",
-                        passedCount === 4 && "text-emerald-500",
-                    )}
-                >
-                    {strengthLabel}
-                </span>
-            </div>
-
-            {/* Checklist */}
-            <div className="flex flex-wrap gap-x-3 gap-y-1">
-                {checks.map((c) => (
-                    <span
-                        key={c.label}
-                        className={cn(
-                            "text-[11px] flex items-center gap-1",
-                            c.passed
-                                ? "text-emerald-500"
-                                : "text-muted-foreground",
-                        )}
-                    >
-                        {c.passed ? "✓" : "○"} {c.label}
-                    </span>
-                ))}
-            </div>
-        </div>
-    );
-}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -290,25 +217,25 @@ export default function UserDetail() {
             schema: userSchema,
             originalData: user
                 ? {
-                    first_name: user.first_name,
-                    last_name: user.last_name,
-                    email: user.email,
-                    username: user.username,
-                    phone_number: user.phone_number,
+                      first_name: user.first_name,
+                      last_name: user.last_name,
+                      email: user.email,
+                      username: user.username,
+                      phone_number: user.phone_number,
                       timezone: user.timezone || "",
-                    password: "",
-                    password_confirmation: "",
-                }
+                      password: "",
+                      password_confirmation: "",
+                  }
                 : {
-                    first_name: "",
-                    last_name: "",
-                    email: "",
-                    username: "",
-                    phone_number: "",
+                      first_name: "",
+                      last_name: "",
+                      email: "",
+                      username: "",
+                      phone_number: "",
                       timezone: "",
-                    password: "",
-                    password_confirmation: "",
-                },
+                      password: "",
+                      password_confirmation: "",
+                  },
             initialMode: "view",
         });
     }, [isCreate, user]);
@@ -316,10 +243,6 @@ export default function UserDetail() {
     // ── Local state ────────────────────────────────────────────────────────────
     const [showDelete, setShowDelete] = useState(false);
     const [showClientDialog, setShowClientDialog] = useState(false);
-    const [clientSearch, setClientSearch] = useState("");
-    const [selectedClientToAdd, setSelectedClientToAdd] = useState<
-        string | null
-    >(null);
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [localErrors, setErrors] = useState<Record<string, string>>({});
@@ -400,12 +323,31 @@ export default function UserDetail() {
 
     // ── Handlers ───────────────────────────────────────────────────────────────
     const handleSubmit = async () => {
+        // Run Zod schema validation
+        const result = userSchema.safeParse(form);
+        const newErrors: Record<string, string> = {};
+
+        if (!result.success) {
+            for (const issue of result.error.issues) {
+                const key = issue.path[0] as string;
+                if (!newErrors[key]) newErrors[key] = issue.message;
+            }
+        }
+
         // Extra validation for create mode: password required
         if (isCreate && !form.password) {
-            setErrors({ password: "Password is required" });
+            newErrors.password = "Password is required";
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            store.setState({ errors: newErrors });
+            toast.error("Please fill in all required fields correctly.");
             return;
         }
+
         setErrors({});
+        store.setState({ errors: {} });
 
         try {
             let uploadFields: Record<string, string> = {};
@@ -447,9 +389,9 @@ export default function UserDetail() {
                     timezone: form.timezone,
                     ...(form.password
                         ? {
-                            password: form.password,
-                            password_confirmation: form.password_confirmation,
-                        }
+                              password: form.password,
+                              password_confirmation: form.password_confirmation,
+                          }
                         : {}),
                     ...uploadFields,
                 };
@@ -462,6 +404,13 @@ export default function UserDetail() {
                         password: "",
                         password_confirmation: "",
                     },
+                    originalData: {
+                        ...form,
+                        password: "",
+                        password_confirmation: "",
+                    },
+                    errors: {},
+                    externalDirty: false,
                 });
             }
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -475,14 +424,15 @@ export default function UserDetail() {
                     mapped[k] = Array.isArray(v) ? v[0] : String(v);
                 }
                 setErrors(mapped);
+                store.setState({ errors: mapped });
             } else {
                 const serverMessage =
                     err?.response?.data?.message || err?.message;
                 toast.error(
                     serverMessage ||
-                    (isCreate
-                        ? "Failed to create user."
-                        : "Failed to update user."),
+                        (isCreate
+                            ? "Failed to create user."
+                            : "Failed to update user."),
                 );
             }
         }
@@ -566,16 +516,9 @@ export default function UserDetail() {
     const avatarSrc = avatarPreview || DEFAULT_AVATAR;
     const avatarInputId = "avatar-upload";
 
-    const availableClients = allClients
-        .filter((client) => !userClients.some((uc) => uc.uuid === client.uuid))
-        .filter((client) => {
-            const q = clientSearch.trim().toLowerCase();
-            if (!q) return true;
-            return (
-                client.name.toLowerCase().includes(q) ||
-                client.location.toLowerCase().includes(q)
-            );
-        });
+    const availableClients = allClients.filter(
+        (client) => !userClients.some((uc) => uc.uuid === client.uuid),
+    );
 
     return (
         <>
@@ -607,7 +550,8 @@ export default function UserDetail() {
                                         <Form.DeleteModal
                                             buttonProps={{
                                                 size: "sm",
-                                                className: "bg-red-600/70 cursor-pointer",
+                                                className:
+                                                    "bg-red-600/70 cursor-pointer",
                                             }}
                                             onOpenChange={(open) => {
                                                 if (open) setShowDelete(true);
@@ -620,13 +564,14 @@ export default function UserDetail() {
                                                         </DialogTitle>
                                                     </DialogHeader>
                                                     <p className="text-sm text-muted-foreground">
-                                                        This will permanently delete{" "}
+                                                        This will permanently
+                                                        delete{" "}
                                                         <strong className="text-foreground">
                                                             {user?.first_name}{" "}
                                                             {user?.last_name}
                                                         </strong>{" "}
-                                                        and all associated data. This
-                                                        cannot be undone.
+                                                        and all associated data.
+                                                        This cannot be undone.
                                                     </p>
                                                     <div className="flex justify-end gap-3 pt-2">
                                                         <DialogClose asChild>
@@ -684,6 +629,7 @@ export default function UserDetail() {
                                             type="submit"
                                             form="user-detail-form"
                                             size="sm"
+                                            onClick={handleSubmit}
                                             disabled={isSaving || !hasChanges}
                                             label={
                                                 isSaving
@@ -706,6 +652,7 @@ export default function UserDetail() {
                                             type="submit"
                                             form="user-detail-form"
                                             size="sm"
+                                            onClick={handleSubmit}
                                             disabled={isSaving}
                                             label={
                                                 isSaving
@@ -968,9 +915,9 @@ export default function UserDetail() {
                                                                 setErrors(
                                                                     (prev) => {
                                                                         const n =
-                                                                        {
-                                                                            ...prev,
-                                                                        };
+                                                                            {
+                                                                                ...prev,
+                                                                            };
                                                                         delete n.phone_number;
                                                                         return n;
                                                                     },
@@ -978,7 +925,9 @@ export default function UserDetail() {
                                                             }
                                                         }}
                                                         maxLength={11}
-                                                        error={errors.phone_number}
+                                                        error={
+                                                            errors.phone_number
+                                                        }
                                                     />
                                                 </div>
                                             ) : (
@@ -990,8 +939,8 @@ export default function UserDetail() {
                                                     <p className="text-base font-semibold text-foreground py-1">
                                                         {user?.phone_number
                                                             ? formatPhoneNumber(
-                                                                user.phone_number,
-                                                            )
+                                                                  user.phone_number,
+                                                              )
                                                             : "—"}
                                                     </p>
                                                 </Field>
@@ -1085,8 +1034,8 @@ export default function UserDetail() {
                                                     Assigned Clients
                                                 </h2>
                                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                                    Manage clients this SecOps user
-                                                    is assigned to.
+                                                    Manage clients this SecOps
+                                                    user is assigned to.
                                                 </p>
                                             </div>
                                             <Button
@@ -1111,9 +1060,9 @@ export default function UserDetail() {
                                                     />
                                                 ))}
                                             </div>
-                                        ) : assignedClients.length > 0 ? (
+                                        ) : userClients.length > 0 ? (
                                             <div className="space-y-2">
-                                                {assignedClients.map((client) => (
+                                                {userClients.map((client) => (
                                                     <div
                                                         key={client.uuid}
                                                         className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"
@@ -1132,17 +1081,23 @@ export default function UserDetail() {
                                                                     />
                                                                 ) : (
                                                                     <Building
-                                                                        size={14}
+                                                                        size={
+                                                                            14
+                                                                        }
                                                                         className="text-muted-foreground"
                                                                     />
                                                                 )}
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-sm font-medium text-foreground truncate">
-                                                                    {client.name}
+                                                                    {
+                                                                        client.name
+                                                                    }
                                                                 </p>
                                                                 <p className="text-xs text-muted-foreground truncate">
-                                                                    {client.location}
+                                                                    {
+                                                                        client.location
+                                                                    }
                                                                 </p>
                                                             </div>
                                                         </div>

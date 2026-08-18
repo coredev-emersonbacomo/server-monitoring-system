@@ -160,7 +160,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                     align="end"
                     side="right"
                     sideOffset={8}
-                    className="w-64 bg-background p-5 rounded-lg flex flex-col gap-2 ring-foreground/50 z-9999"
+                    className="w-80 bg-background p-5 rounded-lg flex flex-col gap-2 ring-foreground/50 z-9999"
                 >
                     {isCollapsed ? (
                         <Link

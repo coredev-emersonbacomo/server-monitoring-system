@@ -12,7 +12,7 @@ use Spatie\LaravelData\Data;
 class CreateServerData extends Data
 {
     public function __construct(
-        #[Required, StringType, Max(255)]
+        #[Required, StringType, Max(64)]
         public string $name,
 
         #[StringType, Max(512)]
