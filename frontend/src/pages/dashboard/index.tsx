@@ -44,6 +44,7 @@ const STATUS_COLORS = {
     warning: "#f59e0b",
     offline: "#ef4444",
     pending_installation: "#94a3b8",
+    waiting_for_installation: "#f59e0b",
     pending_deletion: "#fb923c",
 };
 
@@ -244,6 +245,12 @@ export default function Dashboard() {
                   status: "pending_installation",
               },
               {
+                  name: "Waiting For Installation",
+                  value: stats.waiting_for_installation_count ?? 0,
+                  color: STATUS_COLORS.waiting_for_installation,
+                  status: "waiting_for_installation",
+              },
+              {
                   name: "Pending Deletion",
                   value: stats.pending_deletion_count,
                   color: STATUS_COLORS.pending_deletion,
@@ -380,7 +387,7 @@ export default function Dashboard() {
                                         {pieData.map((d) => (
                                             <Link
                                                 key={d.name}
-                                                to={`/servers?status=${d.name.toLowerCase()}`}
+                                                to={`/servers?status=${d.status ?? d.name.toLowerCase()}`}
                                                 className="flex items-center gap-1.5 text-xs cursor-pointer hover:opacity-80 transition-opacity"
                                             >
                                                 <span

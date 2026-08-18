@@ -23,35 +23,43 @@ class DashboardController extends Controller
     {
         $totalClients = Client::count();
 
-        $servers = Server::with('client', 'latestUpdate')->get();
+        $servers = Server::with(['client', 'latestUpdate', 'agent', 'provisionTokens'])->get();
         $totalServers = $servers->count();
-
-        $pendingInstallationCount = Server::query()
-            ->where('record_status', 'active')
-            ->whereIn('status', [
-                ServerStatus::PendingInstallation->value,
-                ServerStatus::WaitingForInstallation->value,
-                ServerStatus::WaitingForFirstHeartbeat->value,
-            ])
-            ->count();
-
-        $pendingDeletionCount = Server::query()
-            ->where('record_status', 'active')
-            ->where('status', ServerStatus::Archived->value)
-            ->count();
 
         $onlineCount = 0;
         $offlineCount = 0;
+        $pendingInstallationCount = 0;
+        $waitingForInstallationCount = 0;
+        $pendingDeletionCount = 0;
 
         $latestUpdates = collect();
 
-        $countableStatuses = [
-            ServerStatus::Online->value,
-            ServerStatus::Offline->value,
-        ];
-
         foreach ($servers as $server) {
-            if (! in_array($server->status, $countableStatuses)) {
+            $server->checkTokenExpiration();
+
+            $isArchived = $server->trashed() || $server->record_status === 'archived' || $server->status === 'archived';
+            if ($isArchived) {
+                continue;
+            }
+
+            $agent = $server->agent;
+            $agentDeleted = $agent && $agent->registered_at ? (bool) $server->agent_deleted : false;
+
+            if ($agentDeleted) {
+                $pendingDeletionCount++;
+                continue;
+            }
+
+            if ($server->status === ServerStatus::WaitingForInstallation->value) {
+                $waitingForInstallationCount++;
+                continue;
+            }
+
+            if (! $agent || ! $agent->registered_at || in_array($server->status, [
+                ServerStatus::PendingInstallation->value,
+                ServerStatus::WaitingForFirstHeartbeat->value,
+            ])) {
+                $pendingInstallationCount++;
                 continue;
             }
 
@@ -97,6 +105,7 @@ class DashboardController extends Controller
             online_count: $onlineCount,
             offline_count: $offlineCount,
             pending_installation_count: $pendingInstallationCount,
+            waiting_for_installation_count: $waitingForInstallationCount,
             pending_deletion_count: $pendingDeletionCount,
             top_usage_cpu: $buildRanking('cpu_usage'),
             top_usage_memory: $buildRanking('memory_usage'),

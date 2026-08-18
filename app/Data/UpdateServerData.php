@@ -14,7 +14,7 @@ use Spatie\LaravelData\Attributes\Validation\Numeric;
 class UpdateServerData extends Data
 {
     public function __construct(
-        #[Required, StringType, Max(255)]
+        #[Required, StringType, Max(64)]
         public string $name,
         #[StringType, Max(512)]
         public ?string $description = null,

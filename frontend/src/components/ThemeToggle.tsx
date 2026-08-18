@@ -192,11 +192,6 @@ export default function ThemeToggle({
                                             >
                                                 {option.title}
                                             </span>
-                                            {isCoreDev && (
-                                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
-                                                    Orange
-                                                </span>
-                                            )}
                                         </div>
                                         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                                             {option.description}

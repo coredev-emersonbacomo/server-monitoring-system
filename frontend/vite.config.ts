@@ -24,11 +24,11 @@ export default defineConfig({
         // target: "http://server-monitoring-system.test",
         proxy: {
             "/api": {
-                target: "http://127.0.0.1:8000",
+                target: "http://server-monitoring-system.test",
                 changeOrigin: true,
             },
             "/sanctum": {
-                target: "http://127.0.0.1:8000",
+                target: "http://server-monitoring-system.test",
                 changeOrigin: true,
             },
         },
