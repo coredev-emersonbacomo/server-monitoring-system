@@ -43,6 +43,8 @@ const STATUS_COLORS = {
     online: "#10b981",
     warning: "#f59e0b",
     offline: "#ef4444",
+    pending_installation: "#94a3b8",
+    pending_deletion: "#fb923c",
 };
 
 // ─── Custom tooltip — uses CSS variables for dark-mode awareness ───────────────
