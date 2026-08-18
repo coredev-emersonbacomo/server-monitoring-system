@@ -104,10 +104,17 @@ CREATE TABLE public.server_updates (
 
 
 --
+<<<<<<< HEAD
 -- Name: _direct_view_233; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_233 AS
+=======
+-- Name: _direct_view_2; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_2 AS
+>>>>>>> main
  SELECT public.time_bucket('00:01:00'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -120,10 +127,17 @@ CREATE VIEW _timescaledb_internal._direct_view_233 AS
 
 
 --
+<<<<<<< HEAD
 -- Name: _direct_view_235; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_235 AS
+=======
+-- Name: _direct_view_3; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_3 AS
+>>>>>>> main
  SELECT public.time_bucket('01:00:00'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -136,10 +150,17 @@ CREATE VIEW _timescaledb_internal._direct_view_235 AS
 
 
 --
+<<<<<<< HEAD
 -- Name: _direct_view_237; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_237 AS
+=======
+-- Name: _direct_view_4; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_4 AS
+>>>>>>> main
  SELECT public.time_bucket('1 day'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -152,10 +173,17 @@ CREATE VIEW _timescaledb_internal._direct_view_237 AS
 
 
 --
+<<<<<<< HEAD
 -- Name: _direct_view_239; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_239 AS
+=======
+-- Name: _direct_view_5; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_5 AS
+>>>>>>> main
  SELECT public.time_bucket('7 days'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -168,10 +196,17 @@ CREATE VIEW _timescaledb_internal._direct_view_239 AS
 
 
 --
+<<<<<<< HEAD
 -- Name: _direct_view_241; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_241 AS
+=======
+-- Name: _direct_view_6; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_6 AS
+>>>>>>> main
  SELECT public.time_bucket('1 mon'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -184,10 +219,17 @@ CREATE VIEW _timescaledb_internal._direct_view_241 AS
 
 
 --
+<<<<<<< HEAD
 -- Name: _materialized_hypertable_233; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_233 (
+=======
+-- Name: _materialized_hypertable_2; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_2 (
+>>>>>>> main
     "timestamp" timestamp with time zone,
     server_id bigint,
     cpu double precision,
@@ -199,10 +241,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_233 (
 
 
 --
+<<<<<<< HEAD
 -- Name: _materialized_hypertable_235; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_235 (
+=======
+-- Name: _materialized_hypertable_3; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_3 (
+>>>>>>> main
     "timestamp" timestamp with time zone,
     server_id bigint,
     cpu double precision,
@@ -214,10 +263,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_235 (
 
 
 --
+<<<<<<< HEAD
 -- Name: _materialized_hypertable_237; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_237 (
+=======
+-- Name: _materialized_hypertable_4; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_4 (
+>>>>>>> main
     "timestamp" timestamp with time zone,
     server_id bigint,
     cpu double precision,
@@ -229,10 +285,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_237 (
 
 
 --
+<<<<<<< HEAD
 -- Name: _materialized_hypertable_239; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_239 (
+=======
+-- Name: _materialized_hypertable_5; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_5 (
+>>>>>>> main
     "timestamp" timestamp with time zone,
     server_id bigint,
     cpu double precision,
@@ -244,10 +307,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_239 (
 
 
 --
+<<<<<<< HEAD
 -- Name: _materialized_hypertable_241; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_241 (
+=======
+-- Name: _materialized_hypertable_6; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_6 (
+>>>>>>> main
     "timestamp" timestamp with time zone,
     server_id bigint,
     cpu double precision,
@@ -259,10 +329,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_241 (
 
 
 --
+<<<<<<< HEAD
 -- Name: _partial_view_233; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_233 AS
+=======
+-- Name: _partial_view_2; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_2 AS
+>>>>>>> main
  SELECT public.time_bucket('00:01:00'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -275,10 +352,17 @@ CREATE VIEW _timescaledb_internal._partial_view_233 AS
 
 
 --
+<<<<<<< HEAD
 -- Name: _partial_view_235; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_235 AS
+=======
+-- Name: _partial_view_3; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_3 AS
+>>>>>>> main
  SELECT public.time_bucket('01:00:00'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -291,10 +375,17 @@ CREATE VIEW _timescaledb_internal._partial_view_235 AS
 
 
 --
+<<<<<<< HEAD
 -- Name: _partial_view_237; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_237 AS
+=======
+-- Name: _partial_view_4; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_4 AS
+>>>>>>> main
  SELECT public.time_bucket('1 day'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -307,10 +398,17 @@ CREATE VIEW _timescaledb_internal._partial_view_237 AS
 
 
 --
+<<<<<<< HEAD
 -- Name: _partial_view_239; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_239 AS
+=======
+-- Name: _partial_view_5; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_5 AS
+>>>>>>> main
  SELECT public.time_bucket('7 days'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -323,10 +421,17 @@ CREATE VIEW _timescaledb_internal._partial_view_239 AS
 
 
 --
+<<<<<<< HEAD
 -- Name: _partial_view_241; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_241 AS
+=======
+-- Name: _partial_view_6; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_6 AS
+>>>>>>> main
  SELECT public.time_bucket('1 mon'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -339,6 +444,7 @@ CREATE VIEW _timescaledb_internal._partial_view_241 AS
 
 
 --
+<<<<<<< HEAD
 -- Name: compress_hyper_202_27_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
@@ -385,6 +491,8 @@ ALTER TABLE ONLY _timescaledb_internal.compress_hyper_202_27_chunk ALTER COLUMN 
 
 
 --
+=======
+>>>>>>> main
 -- Name: action_items; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -493,10 +601,22 @@ CREATE SEQUENCE public.activity_logs_id_seq
 
 
 --
--- Name: activity_logs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: activity_logs_id_seq1; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.activity_logs_id_seq OWNED BY public.activity_logs.id;
+CREATE SEQUENCE public.activity_logs_id_seq1
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: activity_logs_id_seq1; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.activity_logs_id_seq1 OWNED BY public.activity_logs.id;
 
 
 --
@@ -1534,6 +1654,7 @@ ALTER SEQUENCE public.server_logs_id_seq OWNED BY public.server_logs.id;
 --
 
 CREATE VIEW public.server_updates_agg_day AS
+<<<<<<< HEAD
  SELECT _materialized_hypertable_237."timestamp",
     _materialized_hypertable_237.server_id,
     _materialized_hypertable_237.cpu,
@@ -1543,6 +1664,17 @@ CREATE VIEW public.server_updates_agg_day AS
     _materialized_hypertable_237.netout
    FROM _timescaledb_internal._materialized_hypertable_237
   WHERE (_materialized_hypertable_237."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(237)), '-infinity'::timestamp with time zone))
+=======
+ SELECT _materialized_hypertable_4."timestamp",
+    _materialized_hypertable_4.server_id,
+    _materialized_hypertable_4.cpu,
+    _materialized_hypertable_4.memory,
+    _materialized_hypertable_4.disk,
+    _materialized_hypertable_4.netin,
+    _materialized_hypertable_4.netout
+   FROM _timescaledb_internal._materialized_hypertable_4
+  WHERE (_materialized_hypertable_4."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(4)), '-infinity'::timestamp with time zone))
+>>>>>>> main
 UNION ALL
  SELECT public.time_bucket('1 day'::interval, server_updates.created_at) AS "timestamp",
     server_updates.server_id,
@@ -1552,7 +1684,11 @@ UNION ALL
     avg(server_updates.network_rbytes) AS netin,
     avg(server_updates.network_tbytes) AS netout
    FROM public.server_updates
+<<<<<<< HEAD
   WHERE (server_updates.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(237)), '-infinity'::timestamp with time zone))
+=======
+  WHERE (server_updates.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(4)), '-infinity'::timestamp with time zone))
+>>>>>>> main
   GROUP BY (public.time_bucket('1 day'::interval, server_updates.created_at)), server_updates.server_id;
 
 
@@ -1561,6 +1697,7 @@ UNION ALL
 --
 
 CREATE VIEW public.server_updates_agg_hour AS
+<<<<<<< HEAD
  SELECT _materialized_hypertable_235."timestamp",
     _materialized_hypertable_235.server_id,
     _materialized_hypertable_235.cpu,
@@ -1570,6 +1707,17 @@ CREATE VIEW public.server_updates_agg_hour AS
     _materialized_hypertable_235.netout
    FROM _timescaledb_internal._materialized_hypertable_235
   WHERE (_materialized_hypertable_235."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(235)), '-infinity'::timestamp with time zone))
+=======
+ SELECT _materialized_hypertable_3."timestamp",
+    _materialized_hypertable_3.server_id,
+    _materialized_hypertable_3.cpu,
+    _materialized_hypertable_3.memory,
+    _materialized_hypertable_3.disk,
+    _materialized_hypertable_3.netin,
+    _materialized_hypertable_3.netout
+   FROM _timescaledb_internal._materialized_hypertable_3
+  WHERE (_materialized_hypertable_3."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(3)), '-infinity'::timestamp with time zone))
+>>>>>>> main
 UNION ALL
  SELECT public.time_bucket('01:00:00'::interval, server_updates.created_at) AS "timestamp",
     server_updates.server_id,
@@ -1579,7 +1727,11 @@ UNION ALL
     avg(server_updates.network_rbytes) AS netin,
     avg(server_updates.network_tbytes) AS netout
    FROM public.server_updates
+<<<<<<< HEAD
   WHERE (server_updates.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(235)), '-infinity'::timestamp with time zone))
+=======
+  WHERE (server_updates.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(3)), '-infinity'::timestamp with time zone))
+>>>>>>> main
   GROUP BY (public.time_bucket('01:00:00'::interval, server_updates.created_at)), server_updates.server_id;
 
 
@@ -1588,6 +1740,7 @@ UNION ALL
 --
 
 CREATE VIEW public.server_updates_agg_minute AS
+<<<<<<< HEAD
  SELECT _materialized_hypertable_233."timestamp",
     _materialized_hypertable_233.server_id,
     _materialized_hypertable_233.cpu,
@@ -1597,6 +1750,17 @@ CREATE VIEW public.server_updates_agg_minute AS
     _materialized_hypertable_233.netout
    FROM _timescaledb_internal._materialized_hypertable_233
   WHERE (_materialized_hypertable_233."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(233)), '-infinity'::timestamp with time zone))
+=======
+ SELECT _materialized_hypertable_2."timestamp",
+    _materialized_hypertable_2.server_id,
+    _materialized_hypertable_2.cpu,
+    _materialized_hypertable_2.memory,
+    _materialized_hypertable_2.disk,
+    _materialized_hypertable_2.netin,
+    _materialized_hypertable_2.netout
+   FROM _timescaledb_internal._materialized_hypertable_2
+  WHERE (_materialized_hypertable_2."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(2)), '-infinity'::timestamp with time zone))
+>>>>>>> main
 UNION ALL
  SELECT public.time_bucket('00:01:00'::interval, server_updates.created_at) AS "timestamp",
     server_updates.server_id,
@@ -1606,7 +1770,11 @@ UNION ALL
     avg(server_updates.network_rbytes) AS netin,
     avg(server_updates.network_tbytes) AS netout
    FROM public.server_updates
+<<<<<<< HEAD
   WHERE (server_updates.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(233)), '-infinity'::timestamp with time zone))
+=======
+  WHERE (server_updates.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(2)), '-infinity'::timestamp with time zone))
+>>>>>>> main
   GROUP BY (public.time_bucket('00:01:00'::interval, server_updates.created_at)), server_updates.server_id;
 
 
@@ -1622,7 +1790,11 @@ CREATE VIEW public.server_updates_agg_month AS
     disk,
     netin,
     netout
+<<<<<<< HEAD
    FROM _timescaledb_internal._materialized_hypertable_241;
+=======
+   FROM _timescaledb_internal._materialized_hypertable_6;
+>>>>>>> main
 
 
 --
@@ -1637,7 +1809,11 @@ CREATE VIEW public.server_updates_agg_week AS
     disk,
     netin,
     netout
+<<<<<<< HEAD
    FROM _timescaledb_internal._materialized_hypertable_239;
+=======
+   FROM _timescaledb_internal._materialized_hypertable_5;
+>>>>>>> main
 
 
 --
@@ -1979,7 +2155,7 @@ ALTER TABLE ONLY public.activities ALTER COLUMN id SET DEFAULT nextval('public.a
 -- Name: activity_logs id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.activity_logs ALTER COLUMN id SET DEFAULT nextval('public.activity_logs_id_seq'::regclass);
+ALTER TABLE ONLY public.activity_logs ALTER COLUMN id SET DEFAULT nextval('public.activity_logs_id_seq1'::regclass);
 
 
 --
@@ -2765,6 +2941,7 @@ ALTER TABLE ONLY public.users
 
 
 --
+<<<<<<< HEAD
 -- Name: _materialized_hypertable_233_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
@@ -2804,41 +2981,95 @@ CREATE INDEX _materialized_hypertable_241_timestamp_idx ON _timescaledb_internal
 --
 
 CREATE INDEX compress_hyper_202_27_chunk__ts_meta_v2_first_timestamp__ts_idx ON _timescaledb_internal.compress_hyper_202_27_chunk USING btree (_ts_meta_v2_first_timestamp, _ts_meta_v2_last_timestamp, _ts_meta_v2_first_server_id, _ts_meta_v2_last_server_id);
+=======
+-- Name: _materialized_hypertable_2_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_2_timestamp_idx ON _timescaledb_internal._materialized_hypertable_2 USING btree ("timestamp" DESC);
+
+
+--
+-- Name: _materialized_hypertable_3_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_3_timestamp_idx ON _timescaledb_internal._materialized_hypertable_3 USING btree ("timestamp" DESC);
+
+
+--
+-- Name: _materialized_hypertable_4_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_4_timestamp_idx ON _timescaledb_internal._materialized_hypertable_4 USING btree ("timestamp" DESC);
+
+
+--
+-- Name: _materialized_hypertable_5_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_5_timestamp_idx ON _timescaledb_internal._materialized_hypertable_5 USING btree ("timestamp" DESC);
+
+
+--
+-- Name: _materialized_hypertable_6_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_6_timestamp_idx ON _timescaledb_internal._materialized_hypertable_6 USING btree ("timestamp" DESC);
+>>>>>>> main
 
 
 --
 -- Name: server_updates_agg_day_server_id_timestamp_index; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< HEAD
 CREATE INDEX server_updates_agg_day_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_237 USING btree (server_id, "timestamp");
+=======
+CREATE INDEX server_updates_agg_day_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_4 USING btree (server_id, "timestamp");
+>>>>>>> main
 
 
 --
 -- Name: server_updates_agg_hour_server_id_timestamp_index; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< HEAD
 CREATE INDEX server_updates_agg_hour_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_235 USING btree (server_id, "timestamp");
+=======
+CREATE INDEX server_updates_agg_hour_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_3 USING btree (server_id, "timestamp");
+>>>>>>> main
 
 
 --
 -- Name: server_updates_agg_minute_server_id_timestamp_index; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< HEAD
 CREATE INDEX server_updates_agg_minute_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_233 USING btree (server_id, "timestamp");
+=======
+CREATE INDEX server_updates_agg_minute_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_2 USING btree (server_id, "timestamp");
+>>>>>>> main
 
 
 --
 -- Name: server_updates_agg_month_server_id_timestamp_index; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< HEAD
 CREATE INDEX server_updates_agg_month_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_241 USING btree (server_id, "timestamp");
+=======
+CREATE INDEX server_updates_agg_month_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_6 USING btree (server_id, "timestamp");
+>>>>>>> main
 
 
 --
 -- Name: server_updates_agg_week_server_id_timestamp_index; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< HEAD
 CREATE INDEX server_updates_agg_week_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_239 USING btree (server_id, "timestamp");
+=======
+CREATE INDEX server_updates_agg_week_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_5 USING btree (server_id, "timestamp");
+>>>>>>> main
 
 
 --
@@ -3436,13 +3667,21 @@ ALTER TABLE ONLY public.user_sessions
 -- PostgreSQL database dump complete
 --
 
+<<<<<<< HEAD
 \unrestrict UvOXO68kLuoFuSKC0FrheywYxnJLEzAfbcGxeWarffwuESmgE5wKdxb7LW4HXpV
+=======
+\unrestrict YPPMnyITH5VniZTTWJw7btOQLXqjWGlwwQU5Qs8pkZhSCS0Z8QlJT4xGp0Z2GVg
+>>>>>>> main
 
 --
 -- PostgreSQL database dump
 --
 
+<<<<<<< HEAD
 \restrict WA4I0WBseS4a7CsDmBQRdusnlj1EgiK4SYMdiQAgRKIl1XlSemiVMqmWhLLwPO2
+=======
+\restrict sjwKO4hC5SangMC98LsUdWhkRXLs9yDpbnjjEUBHCydY7gwcLnDFaXkTXsdfG5Z
+>>>>>>> main
 
 -- Dumped from database version 18.4
 -- Dumped by pg_dump version 18.4
@@ -3524,5 +3763,9 @@ SELECT pg_catalog.setval('public.migrations_id_seq', 46, true);
 -- PostgreSQL database dump complete
 --
 
+<<<<<<< HEAD
 \unrestrict WA4I0WBseS4a7CsDmBQRdusnlj1EgiK4SYMdiQAgRKIl1XlSemiVMqmWhLLwPO2
+=======
+\unrestrict sjwKO4hC5SangMC98LsUdWhkRXLs9yDpbnjjEUBHCydY7gwcLnDFaXkTXsdfG5Z
+>>>>>>> main
 

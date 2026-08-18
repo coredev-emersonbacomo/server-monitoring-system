@@ -1,3 +1,4 @@
+// Path: frontend/src/pages/clients/index/index.tsx
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { Landmark, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -11,7 +12,6 @@ import type { ClientData } from "@/types/models";
 import { ClientCard, SkeletonGrid } from "./components/ClientCard";
 import { DeleteClientIndexModal } from "./components/DeleteClientIndexModal";
 import { useVirtualizer } from "@tanstack/react-virtual";
-
 type FilterTab = "all" | "with-servers" | "no-servers" | "archived";
 
 const PAGE_SIZE = 12;
