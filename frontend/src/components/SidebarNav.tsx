@@ -163,7 +163,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                     align="end"
                     side="right"
                     sideOffset={8}
-                    className="w-64 bg-background p-5 rounded-lg flex flex-col gap-2 ring-foreground/50 z-9999"
+                    className="w-80 bg-background p-5 rounded-lg flex flex-col gap-2 ring-foreground/50 z-9999"
                 >
                     {isCollapsed ? (
                         <Link
@@ -215,7 +215,7 @@ const ProfileBar = ({
 
     const firstName = user.first_name;
     const lastName = user.last_name;
-    const username = user.username || (user.email?.split("@")[0] || "");
+    const username = user.username || user.email?.split("@")[0] || "";
     const avatarSrc =
         user.profile_picture_url ||
         import.meta.env.VITE_DEFAULT_PROFILE_PICTURE ||

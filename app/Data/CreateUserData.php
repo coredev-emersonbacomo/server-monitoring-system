@@ -15,7 +15,7 @@ use Spatie\LaravelData\Support\Validation\ValidationContext;
 class CreateUserData extends Data
 {
     public function __construct(
-        #[Required, Max(255)]
+        #[Required, Max(64)]
         public string $first_name,
 
         #[Required, Max(255)]

@@ -12,16 +12,16 @@ use Spatie\LaravelData\Optional;
 class UpdateClientData extends Data
 {
     public function __construct(
-        #[Required, Min(2), Max(255)]
+        #[Required, Min(2), Max(64)]
         public string $name,
 
         #[Required, Min(5)]
         public string $location,
 
-        #[Required, Min(5), Max(255)]
+        #[Required, Min(5), Max(64)]
         public string $email,
 
-        #[Required, Min(5)]
+        #[Required, Min(5), Max(15)]
         public string $contact_number,
 
         #[Min(5), Max(255), Sometimes]
