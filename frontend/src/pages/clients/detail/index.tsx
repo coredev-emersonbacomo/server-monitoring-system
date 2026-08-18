@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-
 import {
     Pencil,
     Upload,
@@ -60,8 +59,7 @@ import {
 import { NodeConfigEditor } from "@/components/node-config/NodeConfigEditor";
 
 // Helper function to format phone numbers
-import { formatPhoneNumber } from "@/utils/helpers";
-
+import { formatContactNumber, validateContactNumber } from "../utils/client-helper";
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClientDetail() {
@@ -129,21 +127,21 @@ export default function ClientDetail() {
             schema: clientSchema,
             originalData: client
                 ? {
-                      name: client.name,
-                      description: client.description ?? "",
-                      location: client.location,
-                      email: client.email,
-                      contact_number: client.contact_number,
-                      budget: client.budget ?? 0,
-                  }
+                    name: client.name,
+                    description: client.description ?? "",
+                    location: client.location,
+                    email: client.email,
+                    contact_number: client.contact_number,
+                    budget: client.budget ?? 0,
+                }
                 : {
-                      name: "",
-                      description: "",
-                      location: "",
-                      email: "",
-                      contact_number: "",
-                      budget: 0,
-                  },
+                    name: "",
+                    description: "",
+                    location: "",
+                    email: "",
+                    contact_number: "",
+                    budget: 0,
+                },
             initialMode: "view",
         });
     }, [isCreate, client]);
@@ -286,9 +284,9 @@ export default function ClientDetail() {
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } }; message?: string };
             toast.error(
-                e?.response?.data?.message ||
-                    e?.message ||
-                    "Failed to delete client.",
+                err?.response?.data?.message ||
+                err?.message ||
+                "Failed to delete client.",
             );
         }
     };
@@ -322,6 +320,7 @@ export default function ClientDetail() {
             setBannerFile(null);
         }
     };
+
 
     // ── Loading state ──────────────────────────────────────────────────────────
     if (!isCreate && isLoading) {
@@ -402,14 +401,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                          backgroundImage: `url(${bannerPreview})`,
-                                          backgroundSize: "cover",
-                                          backgroundPosition: "top center",
-                                      }
+                                        backgroundImage: `url(${bannerPreview})`,
+                                        backgroundSize: "cover",
+                                        backgroundPosition: "top center",
+                                    }
                                     : {
-                                          background:
-                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                      }
+                                        background:
+                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                    }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -469,7 +468,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                            defaultBanner,
+                                                        defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -576,7 +575,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none break-all",
                                             errors.description &&
-                                                "border-destructive",
+                                            "border-destructive",
                                         )}
                                     />
                                     {errors.description && (
@@ -679,13 +678,26 @@ export default function ClientDetail() {
                                                     label="Contact Number"
                                                     value={form.contact_number}
                                                     onValueChange={(value) => {
+                                                        const cleaned =
+                                                            formatContactNumber(
+                                                                value,
+                                                            );
                                                         store.set(
                                                             "contact_number",
-                                                        )(
-                                                            formatPhoneNumber(
-                                                                value,
-                                                            ),
-                                                        );
+                                                        )(cleaned);
+
+                                                        // Live validation
+                                                        const message =
+                                                            validateContactNumber(
+                                                                cleaned,
+                                                            );
+                                                        store.setState({
+                                                            errors: {
+                                                                ...errors,
+                                                                contact_number:
+                                                                    message ?? "",
+                                                            },
+                                                        });
                                                     }}
                                                     error={
                                                         errors.contact_number
@@ -699,10 +711,8 @@ export default function ClientDetail() {
                                                     isEdit={showEdit}
                                                 >
                                                     <p className="text-base font-semibold text-foreground">
-                                                        {formatPhoneNumber(
-                                                            client?.contact_number ||
-                                                                "",
-                                                        )}
+                                                        {client?.contact_number ||
+                                                            ""}
                                                     </p>
                                                 </Field>
                                             )}
@@ -1032,11 +1042,11 @@ export default function ClientDetail() {
                                                         ? "All"
                                                         : serverFilter ===
                                                             "online"
-                                                          ? "Online"
-                                                          : serverFilter ===
-                                                              "offline"
-                                                            ? "Offline"
-                                                            : "Archived"}
+                                                            ? "Online"
+                                                            : serverFilter ===
+                                                                "offline"
+                                                                ? "Offline"
+                                                                : "Archived"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -1067,10 +1077,10 @@ export default function ClientDetail() {
                                                         onClick={() =>
                                                             setServerFilter(
                                                                 opt.value as
-                                                                    | "all"
-                                                                    | "online"
-                                                                    | "offline"
-                                                                    | "archived",
+                                                                | "all"
+                                                                | "online"
+                                                                | "offline"
+                                                                | "archived",
                                                             )
                                                         }
                                                         className={cn(

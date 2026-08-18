@@ -43,6 +43,8 @@ import { formatPhoneNumber } from "@/utils/helpers";
 import { Form, createFormStore, useForm } from "@/components/ui/form";
 import { TimezoneCombobox, tzOffsetLabel } from "@/components/TimezoneCombobox";
 import { FormStoreProvider } from "@/components/ui/form/FormStoreProvider";
+import { AssignClientDialog } from "./components/AssignClientDialog";
+import { DeleteUserDialog } from "./components/DeleteUserDialog";
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
 const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
