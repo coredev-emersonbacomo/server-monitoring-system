@@ -67,6 +67,7 @@ export function useProfile() {
             lastName: data.last_name,
             email: data.email,
             username: data.username,
+            phoneNumber: data.phone_number,
             status: user.record_status,
             timezone: data.timezone,
         };
