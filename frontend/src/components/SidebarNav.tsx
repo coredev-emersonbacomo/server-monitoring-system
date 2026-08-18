@@ -87,7 +87,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                     />
                 </button>
                 <label className="text-xl font-bold tracking-tight mx-auto -translate-y-0.5">
-                    Name
+                    Server Monitoring
                 </label>
                 <Menu className="size-icon opacity-0" />
             </div>
