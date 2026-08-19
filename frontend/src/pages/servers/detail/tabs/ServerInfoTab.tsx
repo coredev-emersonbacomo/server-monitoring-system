@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Building2, Cpu, MemoryStick, HardDrive, Monitor, Banknote, AlertTriangle } from "lucide-react";
+import {
+    Building2,
+    Cpu,
+    MemoryStick,
+    HardDrive,
+    Monitor,
+    Banknote,
+    AlertTriangle,
+} from "lucide-react";
 import api from "@/api/api";
 import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -19,18 +27,14 @@ import {
 import { Button } from "@/components/ui/button";
 
 export function ServerInfoTab() {
-    const {
-        store,
-        initial,
-        server,
-        mode,
-        form,
-        navigate,
-    } = useServerDetailContext();
+    const { store, initial, server, mode, form, navigate } =
+        useServerDetailContext();
     const queryClient = useQueryClient();
 
     const { data: client } = useClient(initial?.client_uuid ?? "");
-    const { data: clientServers = [] } = useClientServers(initial?.client_uuid ?? "");
+    const { data: clientServers = [] } = useClientServers(
+        initial?.client_uuid ?? "",
+    );
 
     const [budgetWarning, setBudgetWarning] = useState<{
         newTotal: number;
@@ -38,7 +42,11 @@ export function ServerInfoTab() {
         pendingPayload: { nameStr: string; descStr: string; feeNum: number };
     } | null>(null);
 
-    const executeUpdateServer = async (payload: { nameStr: string; descStr: string; feeNum: number }) => {
+    const executeUpdateServer = async (payload: {
+        nameStr: string;
+        descStr: string;
+        feeNum: number;
+    }) => {
         const { error } = await api.PATCH(
             "/v1/clients/{clientUuid}/servers/{serverUuid}",
             {
@@ -96,21 +104,28 @@ export function ServerInfoTab() {
                             : "";
                         const descStr =
                             data.description &&
-                                String(data.description).trim() !== "undefined" &&
-                                String(data.description).trim() !== "null"
+                            String(data.description).trim() !== "undefined" &&
+                            String(data.description).trim() !== "null"
                                 ? String(data.description).trim()
                                 : "";
-                        const feeNum = typeof data.subscription_fee === "number"
-                            ? data.subscription_fee
-                            : parseFloat(String(data.subscription_fee || 0)) || 0;
+                        const feeNum =
+                            typeof data.subscription_fee === "number"
+                                ? data.subscription_fee
+                                : parseFloat(
+                                      String(data.subscription_fee || 0),
+                                  ) || 0;
 
                         const clientBudget = Number(client?.budget) || 0;
                         const currentOtherServersFee = (clientServers ?? [])
                             .filter((s) => s.uuid !== initial.uuid)
-                            .reduce((acc, s) => acc + (Number(s.subscription_fee) || 0), 0);
+                            .reduce(
+                                (acc, s) =>
+                                    acc + (Number(s.subscription_fee) || 0),
+                                0,
+                            );
                         const newTotalFee = currentOtherServersFee + feeNum;
 
-                        if (clientBudget > 0 && newTotalFee > clientBudget) {
+                        if (newTotalFee > clientBudget) {
                             setBudgetWarning({
                                 newTotal: newTotalFee,
                                 budget: clientBudget,
@@ -153,7 +168,9 @@ export function ServerInfoTab() {
                                         min="0"
                                         value={form.subscription_fee ?? 0}
                                         onChange={(e) =>
-                                            store.set("subscription_fee")(e.target.value)
+                                            store.set("subscription_fee")(
+                                                e.target.value,
+                                            )
                                         }
                                         className="text-sm"
                                     />
@@ -287,7 +304,10 @@ export function ServerInfoTab() {
             <DeleteModalDangerZone />
 
             {/* Budget Exceeded Warning Dialog */}
-            <Dialog open={!!budgetWarning} onOpenChange={(open) => !open && setBudgetWarning(null)}>
+            <Dialog
+                open={!!budgetWarning}
+                onOpenChange={(open) => !open && setBudgetWarning(null)}
+            >
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-amber-500">
@@ -298,26 +318,50 @@ export function ServerInfoTab() {
 
                     <div className="py-3 text-sm text-foreground/90 flex flex-col gap-3">
                         <p>
-                            Updating this server's subscription fee will push the client's total monthly subscription fees over its allocated budget limit.
+                            Updating this server's subscription fee will push
+                            the client's total monthly subscription fees over
+                            its allocated budget limit.
                         </p>
 
                         <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs space-y-1.5">
                             <div className="flex justify-between">
-                                <span className="text-muted-foreground">Monthly Budget Limit:</span>
+                                <span className="text-muted-foreground">
+                                    Monthly Budget Limit:
+                                </span>
                                 <span className="font-semibold text-foreground">
-                                    ₱{(budgetWarning?.budget ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    ₱
+                                    {(
+                                        budgetWarning?.budget ?? 0
+                                    ).toLocaleString(undefined, {
+                                        minimumFractionDigits: 2,
+                                    })}
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-muted-foreground">New Total Subscription Fees:</span>
+                                <span className="text-muted-foreground">
+                                    New Total Subscription Fees:
+                                </span>
                                 <span className="font-semibold text-amber-500">
-                                    ₱{(budgetWarning?.newTotal ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    ₱
+                                    {(
+                                        budgetWarning?.newTotal ?? 0
+                                    ).toLocaleString(undefined, {
+                                        minimumFractionDigits: 2,
+                                    })}
                                 </span>
                             </div>
                             <div className="flex justify-between border-t border-amber-500/20 pt-1.5">
-                                <span className="text-muted-foreground">Amount Exceeded:</span>
+                                <span className="text-muted-foreground">
+                                    Amount Exceeded:
+                                </span>
                                 <span className="font-bold text-destructive">
-                                    ₱{((budgetWarning?.newTotal ?? 0) - (budgetWarning?.budget ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    ₱
+                                    {(
+                                        (budgetWarning?.newTotal ?? 0) -
+                                        (budgetWarning?.budget ?? 0)
+                                    ).toLocaleString(undefined, {
+                                        minimumFractionDigits: 2,
+                                    })}
                                 </span>
                             </div>
                         </div>
@@ -340,7 +384,8 @@ export function ServerInfoTab() {
                             className="bg-amber-600 hover:bg-amber-700 text-white"
                             onClick={async () => {
                                 if (budgetWarning?.pendingPayload) {
-                                    const payload = budgetWarning.pendingPayload;
+                                    const payload =
+                                        budgetWarning.pendingPayload;
                                     setBudgetWarning(null);
                                     await executeUpdateServer(payload);
                                 }

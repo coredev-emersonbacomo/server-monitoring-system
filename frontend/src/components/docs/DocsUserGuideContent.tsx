@@ -1,10 +1,4 @@
-import {
-    Section,
-    SubSection,
-    CodeBlock,
-    InlineCode,
-    Callout,
-} from "./Section";
+import { Section, SubSection, CodeBlock, InlineCode, Callout } from "./Section";
 
 export function DocsDashboardContent() {
     return (
@@ -12,9 +6,9 @@ export function DocsDashboardContent() {
             <Section title="The Dashboard at a glance">
                 <p>
                     The Dashboard is the landing page after login and the
-                    starting point for monitoring. It refreshes every 60
-                    seconds and receives live updates over WebSockets. It has
-                    four areas:
+                    starting point for monitoring. It refreshes every 60 seconds
+                    and receives live updates over WebSockets. It has four
+                    areas:
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
@@ -70,10 +64,9 @@ export function DocsDashboardContent() {
                 <p>
                     The Usage section plots aggregate CPU, Memory, and Disk
                     usage across all servers. Each server is its own colored
-                    line on the same chart so you can spot outliers at a
-                    glance. The 1H / 1D / 1W selector changes the aggregation
-                    window (minute / hour / day). Charts update live via
-                    WebSocket.
+                    line on the same chart so you can spot outliers at a glance.
+                    The 1H / 1D / 1W selector changes the aggregation window
+                    (minute / hour / day). Charts update live via WebSocket.
                 </p>
             </Section>
         </>
@@ -86,8 +79,8 @@ export function DocsClientsContent() {
             <Section title="What is a client?">
                 <p>
                     A client is a customer or organization that owns servers.
-                    Each client has contact details, an optional banner image,
-                    a list of servers, and a configurable number of assigned
+                    Each client has contact details, an optional banner image, a
+                    list of servers, and a configurable number of assigned
                     SecOps users.
                 </p>
                 <p>
@@ -128,8 +121,7 @@ export function DocsClientsContent() {
                         <strong>Name</strong> (min 2 characters)
                     </li>
                     <li>
-                        <strong>Description</strong> (min 2, max 255
-                        characters)
+                        <strong>Description</strong> (min 2, max 255 characters)
                     </li>
                     <li>
                         <strong>Location</strong> (min 2 characters)
@@ -150,6 +142,11 @@ export function DocsClientsContent() {
                     Submit to create the client. You can edit these fields later
                     from the client page.
                 </p>
+                <img
+                    src="/images/cc1.gif"
+                    alt="Create client walkthrough"
+                    className="mt-4 w-full rounded-lg border border-white/10"
+                />
             </Section>
 
             <Section title="Client details">
@@ -175,15 +172,20 @@ export function DocsClientsContent() {
                         client's alert configuration (see the Settings section).
                     </li>
                 </ul>
+                <img
+                    src="/images/cdetails.gif"
+                    alt="Client details walkthrough"
+                    className="mt-4 w-full rounded-lg border border-white/10"
+                />
             </Section>
 
             <Section title="The Servers section">
                 <p>
                     Below the tabs you'll find the client's servers: a search
-                    box, an Online/Offline filter,{" "}
-                    <strong>View All</strong> (opens the Servers page filtered
-                    to this client), and <strong>Add Server</strong> to create
-                    a new server under this client.
+                    box, an Online/Offline filter, <strong>View All</strong>{" "}
+                    (opens the Servers page filtered to this client), and{" "}
+                    <strong>Add Server</strong> to create a new server under
+                    this client.
                 </p>
             </Section>
 
@@ -191,9 +193,14 @@ export function DocsClientsContent() {
                 <p>
                     Deleting permanently removes the client and all associated
                     data. You must type the client name to confirm. Deletion is
-                    blocked while any associated server still has a live agent
-                    — uninstall the agent on those servers first.
+                    blocked while any associated server still has a live agent —
+                    uninstall the agent on those servers first.
                 </p>
+                <img
+                    src="/images/cdelete1.gif"
+                    alt="Delete client walkthrough"
+                    className="mt-4 w-full rounded-lg border border-white/10"
+                />
             </Section>
         </>
     );
@@ -204,10 +211,10 @@ export function DocsServersContent() {
         <>
             <Section title="What is a server?">
                 <p>
-                    A server is a machine monitored by the system. It belongs
-                    to exactly one client. Monitoring is done by a small Go
-                    agent installed on the machine itself; the server record
-                    tracks the machine's identity, status, and metrics.
+                    A server is a machine monitored by the system. It belongs to
+                    exactly one client. Monitoring is done by a small Go agent
+                    installed on the machine itself; the server record tracks
+                    the machine's identity, status, and metrics.
                 </p>
                 <p>
                     The Servers page is at <InlineCode>/servers</InlineCode>.
@@ -299,13 +306,10 @@ export function DocsServersContent() {
                 <ol className="list-decimal pl-5 space-y-1.5">
                     <li>
                         Click <strong>Generate Installation Command</strong>.
-                        The backend creates a provision token (valid for 1
-                        hour) and produces one-liner commands for the target
-                        OS.
+                        The backend creates a provision token (valid for 1 hour)
+                        and produces one-liner commands for the target OS.
                     </li>
-                    <li>
-                        Run the appropriate command on the machine:
-                    </li>
+                    <li>Run the appropriate command on the machine:</li>
                 </ol>
                 <CodeBlock>{`# Linux
 sudo curl -fsSL {APP_URL}/install/linux | sudo bash -s -- <TOKEN>
@@ -315,17 +319,15 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1'
                 <p>
                     The installer downloads the agent binary, verifies its
                     SHA-256 checksum, writes a bootstrap file, and installs it
-                    as a system service (
-                    <InlineCode>monitor-agent</InlineCode> on Linux,{" "}
-                    <InlineCode>MonitorAgent</InlineCode> on Windows).
+                    as a system service (<InlineCode>monitor-agent</InlineCode>{" "}
+                    on Linux, <InlineCode>MonitorAgent</InlineCode> on Windows).
                 </p>
                 <p>
                     The token has a live countdown and can be{" "}
                     <strong>Regenerated</strong> if it expires. The agent then
                     registers itself with the backend — the server moves to{" "}
-                    <em>waiting for heartbeat</em>, then{" "}
-                    <em>online</em> once the first heartbeat arrives (default
-                    every 5 seconds).
+                    <em>waiting for heartbeat</em>, then <em>online</em> once
+                    the first heartbeat arrives (default every 5 seconds).
                 </p>
                 <Callout>
                     The provision token expires after 1 hour. If it expires
@@ -334,9 +336,7 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1'
             </Section>
 
             <Section title="Server details">
-                <p>
-                    The server detail page has four tabs:
-                </p>
+                <p>The server detail page has four tabs:</p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
                         <strong>Info</strong> — edit the server name and
@@ -391,8 +391,8 @@ export function DocsUsersContent() {
                     a user SecOps.
                 </p>
                 <p>
-                    The Users page is at <InlineCode>/users</InlineCode>{" "}
-                    ("User Management").
+                    The Users page is at <InlineCode>/users</InlineCode> ("User
+                    Management").
                 </p>
             </Section>
 
@@ -416,8 +416,8 @@ export function DocsUsersContent() {
                         WebP)
                     </li>
                     <li>
-                        <strong>First name</strong> and <strong>Last name</strong>{" "}
-                        (required)
+                        <strong>First name</strong> and{" "}
+                        <strong>Last name</strong> (required)
                     </li>
                     <li>
                         <strong>Email Address</strong> (required, valid email)
@@ -432,8 +432,8 @@ export function DocsUsersContent() {
                     </li>
                     <li>
                         <strong>Timezone</strong> (required — used to localize
-                        alert notification timestamps; defaults to the
-                        browser's timezone)
+                        alert notification timestamps; defaults to the browser's
+                        timezone)
                     </li>
                     <li>
                         <strong>Password</strong> (required on create, optional
@@ -541,10 +541,10 @@ export function DocsReportsContent() {
             <Section title="What are reports?">
                 <p>
                     The Reports page (<InlineCode>/report</InlineCode>) compiles
-                    professional PDF reports server-side using the Typst
-                    engine. Reports are great for sharing performance and SLA
-                    summaries with clients. A PDF preview renders inline, and
-                    you can download it from the browser.
+                    professional PDF reports server-side using the Typst engine.
+                    Reports are great for sharing performance and SLA summaries
+                    with clients. A PDF preview renders inline, and you can
+                    download it from the browser.
                 </p>
             </Section>
 
@@ -574,16 +574,15 @@ export function DocsReportsContent() {
                         <strong>Select Servers / Select Clients</strong>.
                     </li>
                     <li>
-                        In the picker, search or use{" "}
-                        <strong>Select all</strong>, then click{" "}
-                        <strong>Generate Report</strong> with the entities
-                        checked.
+                        In the picker, search or use <strong>Select all</strong>
+                        , then click <strong>Generate Report</strong> with the
+                        entities checked.
                     </li>
                     <li>
                         Choose an <strong>orientation</strong> (Landscape /
                         Portrait, default Portrait) and optional status{" "}
-                        <strong>Filter</strong> (Online / Offline / Production
-                        / Staging / Development).
+                        <strong>Filter</strong> (Online / Offline / Production /
+                        Staging / Development).
                     </li>
                     <li>
                         The report compiles automatically and shows as an inline
@@ -592,9 +591,9 @@ export function DocsReportsContent() {
                     </li>
                 </ol>
                 <Callout>
-                    Report compilation requires the Typst CLI to be installed
-                    on the backend server. Metrics windows use the last 24
-                    hours by default (1–168 hours supported).
+                    Report compilation requires the Typst CLI to be installed on
+                    the backend server. Metrics windows use the last 24 hours by
+                    default (1–168 hours supported).
                 </Callout>
             </Section>
 
@@ -610,18 +609,18 @@ export function DocsReportsContent() {
                     <li>
                         <strong>Client</strong> — contact info, KPI summary
                         (servers, online/offline, alerts, avg CPU/memory,
-                        budget, fees), a servers table, SLA uptime bars,
-                        metrics chart, and insights.
+                        budget, fees), a servers table, SLA uptime bars, metrics
+                        chart, and insights.
                     </li>
                     <li>
                         <strong>Server</strong> — hardware info, last-24-hour
-                        metric summary (min/max/avg), SLA uptime percentage,
-                        CPU chart, 7-day trends, and insights.
+                        metric summary (min/max/avg), SLA uptime percentage, CPU
+                        chart, 7-day trends, and insights.
                     </li>
                     <li>
                         <strong>Multi-reports</strong> — the same content, one
-                        page per selected server or client with a page
-                        numbering reset.
+                        page per selected server or client with a page numbering
+                        reset.
                     </li>
                 </ul>
             </Section>
@@ -669,8 +668,8 @@ export function DocsSettingsContent() {
                     <strong>SecOps limit per client</strong> (1–50, default 2).
                     This caps how many SecOps users can be assigned to one
                     client. Lowering the limit does not remove existing
-                    assignments — it only blocks new ones that exceed it.
-                    Saving System Settings is admin-only.
+                    assignments — it only blocks new ones that exceed it. Saving
+                    System Settings is admin-only.
                 </p>
             </Section>
 
@@ -704,8 +703,8 @@ export function DocsSettingsContent() {
 
             <Section title="Alert Configs">
                 <p>
-                    The Alert Configs page is the visual editor for the
-                    alerting engine — see the dedicated{" "}
+                    The Alert Configs page is the visual editor for the alerting
+                    engine — see the dedicated{" "}
                     <strong>Alert Config Editor</strong> section for a full
                     walkthrough of the editor and every node type. This is the
                     most complex part of the system, so take your time there.
@@ -763,9 +762,7 @@ export function DocsAlertConfiguratorContent() {
                     build the graph by dragging nodes onto a canvas and wiring
                     them together.
                 </p>
-                <p>
-                    The same editor is used everywhere a config exists:
-                </p>
+                <p>The same editor is used everywhere a config exists:</p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
                         <strong>Global</strong> — Settings → Alert Configs.
@@ -788,17 +785,18 @@ export function DocsAlertConfiguratorContent() {
                     <li>
                         <strong>Node palette</strong> (left) — node types
                         grouped by category: <strong>Metrics</strong> (blue),{" "}
-                        <strong>Compare</strong> (amber),{" "}
-                        <strong>Logic</strong> (violet), <strong>Time</strong>{" "}
-                        (green), <strong>Actions</strong> (red). Drag items
-                        onto the canvas or click to add.
+                        <strong>Compare</strong> (amber), <strong>Logic</strong>{" "}
+                        (violet), <strong>Time</strong> (green),{" "}
+                        <strong>Actions</strong> (red). Drag items onto the
+                        canvas or click to add.
                     </li>
                     <li>
-                        <strong>Canvas</strong> — dotted background, snap-to-grid,
-                        zoom controls, a minimap, and box-select.{" "}
+                        <strong>Canvas</strong> — dotted background,
+                        snap-to-grid, zoom controls, a minimap, and box-select.{" "}
                         <InlineCode>Ctrl+A</InlineCode> selects everything;{" "}
-                        <InlineCode>Delete</InlineCode>/<InlineCode>Backspace</InlineCode>{" "}
-                        deletes the selection.
+                        <InlineCode>Delete</InlineCode>/
+                        <InlineCode>Backspace</InlineCode> deletes the
+                        selection.
                     </li>
                     <li>
                         <strong>Undo/Redo</strong> — toolbar with an action
@@ -906,8 +904,8 @@ export function DocsAlertConfiguratorContent() {
                         minimum percentage of samples that must violate the
                         threshold within the window (default 100%; set 80 to
                         tolerate brief dips). Sustained nodes have Chain In /
-                        Chain Out handles so you can stack them (e.g. 10s →
-                        20s → 30s).
+                        Chain Out handles so you can stack them (e.g. 10s → 20s
+                        → 30s).
                     </p>
                 </SubSection>
 
@@ -1014,8 +1012,8 @@ export function DocsAlertConfiguratorContent() {
                         OS, status, uptime, and more.
                     </li>
                     <li>
-                        <strong>server.client.*</strong> — client name, location,
-                        email, budget, subscription fee, and more.
+                        <strong>server.client.*</strong> — client name,
+                        location, email, budget, subscription fee, and more.
                     </li>
                     <li>
                         <strong>metric.*</strong> — the triggering sample:
@@ -1033,7 +1031,9 @@ export function DocsAlertConfiguratorContent() {
                     <InlineCode>discord-embed</InlineCode>,{" "}
                     <InlineCode>if-repeat</InlineCode>, and{" "}
                     <InlineCode>discord-footer</InlineCode>. For Discord,{" "}
-                    <InlineCode>{"<t:{runtime.eventTimestampUnix}:f>"}</InlineCode>{" "}
+                    <InlineCode>
+                        {"<t:{runtime.eventTimestampUnix}:f>"}
+                    </InlineCode>{" "}
                     renders the timestamp in each viewer's local timezone.
                 </p>
             </Section>
