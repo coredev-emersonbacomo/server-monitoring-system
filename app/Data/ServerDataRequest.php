@@ -29,6 +29,7 @@ class ServerDataRequest extends Data
         if ($this->fromTime) {
             return Carbon::parse($this->fromTime);
         }
+
         return Carbon::parse($this->timeSubtract ?? '-1 hour');
     }
 
@@ -37,6 +38,7 @@ class ServerDataRequest extends Data
         if ($this->toTime) {
             return Carbon::parse($this->toTime);
         }
+
         return null;
     }
 
@@ -44,10 +46,10 @@ class ServerDataRequest extends Data
     {
         return match ($this->unit) {
             TimeUnits::Minute => 'server_updates_agg_minute',
-            TimeUnits::Hour   => 'server_updates_agg_hour',
-            TimeUnits::Day    => 'server_updates_agg_day',
-            TimeUnits::Week   => 'server_updates_agg_week',
-            TimeUnits::Month  => 'server_updates_agg_month',
+            TimeUnits::Hour => 'server_updates_agg_hour',
+            TimeUnits::Day => 'server_updates_agg_day',
+            TimeUnits::Week => 'server_updates_agg_week',
+            TimeUnits::Month => 'server_updates_agg_month',
         };
     }
 }

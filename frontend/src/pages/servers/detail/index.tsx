@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
@@ -6,7 +6,6 @@ import {
     Info,
     BarChart3,
     Bell,
-    Terminal,
     ArrowLeft,
     Loader2,
     Cpu,
@@ -276,39 +275,6 @@ export default function ServerDetail() {
     const deleteServer = useDeleteServer();
     const isConfirmed = confirmText.trim() === initial?.name;
 
-
-
-    const handleDeletePort = useCallback(
-        async (portId: number) => {
-            if (!initial?.client_uuid) return;
-            try {
-                const { error } = await api.DELETE(
-                    "/v1/clients/{clientUuid}/servers/{serverUuid}/ports/{portId}",
-                    {
-                        params: {
-                            path: {
-                                clientUuid: initial.client_uuid,
-                                serverUuid: uuid!,
-                                portId,
-                            },
-                        },
-                    },
-                );
-                if (error) {
-                    toast.error("Failed to delete port.");
-                } else {
-                    toast.success("Tracked port removed.");
-                    queryClient.invalidateQueries({
-                        queryKey: ["server", uuid],
-                    });
-                }
-            } catch {
-                toast.error("An error occurred.");
-            }
-        },
-        [initial, uuid, queryClient],
-    );
-
     if (isLoading) {
         return (
             <PageLayout>
@@ -380,7 +346,6 @@ export default function ServerDetail() {
         navigate,
         copyToClipboard,
         serverAlertTab,
-        handleDeletePort,
     };
 
     return (

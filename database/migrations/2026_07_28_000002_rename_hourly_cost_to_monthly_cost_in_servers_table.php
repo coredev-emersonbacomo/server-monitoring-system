@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('servers', function (Blueprint $table) {
             // hourly_cost → monthly_rate (via monthly_cost intermediary already done)
-            if (Schema::hasColumn('servers', 'hourly_cost') && !Schema::hasColumn('servers', 'monthly_cost')) {
+            if (Schema::hasColumn('servers', 'hourly_cost') && ! Schema::hasColumn('servers', 'monthly_cost')) {
                 $table->renameColumn('hourly_cost', 'monthly_rate');
             } elseif (Schema::hasColumn('servers', 'hourly_cost')) {
                 $table->renameColumn('hourly_cost', 'monthly_cost');

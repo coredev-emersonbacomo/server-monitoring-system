@@ -10,9 +10,20 @@ use Illuminate\Support\Facades\Log;
 
 class SustainedNode extends BaseNode
 {
-    public function getType(): string { return 'sustained'; }
-    public function getCategory(): string { return 'time'; }
-    public function getLabel(): string { return 'Sustained'; }
+    public function getType(): string
+    {
+        return 'sustained';
+    }
+
+    public function getCategory(): string
+    {
+        return 'time';
+    }
+
+    public function getLabel(): string
+    {
+        return 'Sustained';
+    }
 
     public function getSettingDefinitions(): array
     {
@@ -85,7 +96,7 @@ class SustainedNode extends BaseNode
         $repeatCount = (int) ($state['repeat_count'] ?? 0) + ($isRepeat ? 1 : 0);
 
         // DB re-verification: was the condition actually sustained?
-        if (!$this->checkHistoricalCondition($cfg)) {
+        if (! $this->checkHistoricalCondition($cfg)) {
             return NodeResult::cancelTimers($this->idleState());
         }
 
@@ -105,7 +116,6 @@ class SustainedNode extends BaseNode
         return NodeResult::propagate(true, $this->idleState());
     }
 
-
     // ─────────────────────────────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────────────────────────────
@@ -123,15 +133,15 @@ class SustainedNode extends BaseNode
         $repeatIntervalMs = static::parseDurationToMs($settings['repeat_interval'] ?? '0');
 
         return [
-            'duration_ms'        => $durationMs,
-            'min_match_percent'  => (is_numeric($settings['min_match_percent'] ?? null) && (float) $settings['min_match_percent'] > 0) ? (float) $settings['min_match_percent'] : 100,
+            'duration_ms' => $durationMs,
+            'min_match_percent' => (is_numeric($settings['min_match_percent'] ?? null) && (float) $settings['min_match_percent'] > 0) ? (float) $settings['min_match_percent'] : 100,
             'repeat_interval_ms' => $repeatIntervalMs,
-            'max_repeats'        => (int) ($settings['repeat_max_repeats'] ?? -1),
-            'has_repeat'         => $repeatIntervalMs > 0,
-            'server_id'          => $state['server_id'] ?? null,
-            'metric_type'        => $state['metric_type'] ?? null,
-            'threshold'          => $state['threshold'] ?? null,
-            'operator'           => $state['operator'] ?? 'greater_than',
+            'max_repeats' => (int) ($settings['repeat_max_repeats'] ?? -1),
+            'has_repeat' => $repeatIntervalMs > 0,
+            'server_id' => $state['server_id'] ?? null,
+            'metric_type' => $state['metric_type'] ?? null,
+            'threshold' => $state['threshold'] ?? null,
+            'operator' => $state['operator'] ?? 'greater_than',
         ];
     }
 
@@ -141,10 +151,10 @@ class SustainedNode extends BaseNode
 
     private function checkHistoricalCondition(array $cfg): bool
     {
-        $serverId   = $cfg['server_id'];
+        $serverId = $cfg['server_id'];
         $metricType = $cfg['metric_type'];
 
-        if (!$serverId || !$metricType) {
+        if (! $serverId || ! $metricType) {
             return false;
         }
 
@@ -174,7 +184,7 @@ class SustainedNode extends BaseNode
     {
         $agent = Agent::where('server_id', $serverId)->first();
 
-        if (!$agent || !$agent->last_seen_at) {
+        if (! $agent || ! $agent->last_seen_at) {
             return false;
         }
 
@@ -191,7 +201,7 @@ class SustainedNode extends BaseNode
         }
 
         $agent = Agent::where('server_id', $serverId)->first();
-        if (!$agent) {
+        if (! $agent) {
             return false;
         }
 
@@ -213,55 +223,57 @@ class SustainedNode extends BaseNode
         float $minMatchPercent,
     ): bool {
         $agent = Agent::where('server_id', $serverId)->first();
-        if (!$agent) {
+        if (! $agent) {
             return false;
         }
 
         $metricNameMap = [
-            'cpu_usage'     => 'load1',
-            'memory_usage'  => 'percent',
-            'disk_usage'    => 'percent',
+            'cpu_usage' => 'load1',
+            'memory_usage' => 'percent',
+            'disk_usage' => 'percent',
             'network_usage' => 'rx_bytes',
         ];
 
-        $metricName         = $metricNameMap[$metricType] ?? $metricType;
+        $metricName = $metricNameMap[$metricType] ?? $metricType;
         $metricTypeForQuery = explode('_', $metricType, 2)[0];
-        $since              = now()->subMilliseconds($requiredMs + 2000);
-        $sqlOperator        = $this->toSqlOperator($operator);
+        $since = now()->subMilliseconds($requiredMs + 2000);
+        $sqlOperator = $this->toSqlOperator($operator);
 
         // Single aggregated query instead of two separate count() calls
-        $row = MetricSample::whereHas('batch', fn($q) => $q->where('agent_id', $agent->id))
+        $row = MetricSample::whereHas('batch', fn ($q) => $q->where('agent_id', $agent->id))
             ->where('recorded_at', '>=', $since)
             ->where('metric_type', $metricTypeForQuery)
             ->where('metric_name', $metricName)
             ->selectRaw(
-                'COUNT(*) as total, SUM(CASE WHEN value ' . $sqlOperator . ' ? THEN 1 ELSE 0 END) as violating',
+                'COUNT(*) as total, SUM(CASE WHEN value '.$sqlOperator.' ? THEN 1 ELSE 0 END) as violating',
                 [$threshold],
             )
             ->first();
 
-        if (!$row || (int) $row->total === 0) {
+        if (! $row || (int) $row->total === 0) {
             Log::info('[sustained] checkMetricCondition — no samples in window', [
-                'server_id'  => $serverId,
+                'server_id' => $serverId,
                 'metric_type' => $metricType,
-                'since'      => $since->toDateTimeString(),
+                'since' => $since->toDateTimeString(),
                 'required_ms' => $requiredMs,
             ]);
+
             return false;
         }
 
         $matchPercent = ((int) $row->violating / (int) $row->total) * 100;
         $passes = $matchPercent >= $minMatchPercent;
-        if (!$passes) {
+        if (! $passes) {
             Log::info('[sustained] checkMetricCondition — below min_match_percent', [
-                'server_id'    => $serverId,
-                'metric_type'  => $metricType,
-                'total'        => (int) $row->total,
-                'violating'    => (int) $row->violating,
+                'server_id' => $serverId,
+                'metric_type' => $metricType,
+                'total' => (int) $row->total,
+                'violating' => (int) $row->violating,
                 'match_percent' => $matchPercent,
-                'min_percent'  => $minMatchPercent,
+                'min_percent' => $minMatchPercent,
             ]);
         }
+
         return $passes;
     }
 
@@ -269,10 +281,10 @@ class SustainedNode extends BaseNode
     {
         return match ($operator) {
             'greater_than_equal' => '>=',
-            'less_than'          => '<',
-            'less_than_equal'    => '<=',
-            'equal'              => '=',
-            default              => '>',   // greater_than (and fallback)
+            'less_than' => '<',
+            'less_than_equal' => '<=',
+            'equal' => '=',
+            default => '>',   // greater_than (and fallback)
         };
     }
 }

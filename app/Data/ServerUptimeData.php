@@ -13,6 +13,5 @@ class ServerUptimeData extends Data
         public ?string $last_downtime,
         public float $uptime_hours,
         public int $range_hours,
-    ) {
-    }
+    ) {}
 }

@@ -9,10 +9,10 @@ use App\Services\AuthAuditService;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\DB;
 
 class PasswordResetController extends Controller
 {
@@ -30,7 +30,7 @@ class PasswordResetController extends Controller
         $login = $request->input('email');
         $user = User::where('email', $login)->orWhere('username', $login)->first();
 
-        if (!$user) {
+        if (! $user) {
             $this->auditService->log(
                 AuthEventType::PasswordResetRequested,
                 userId: null,
@@ -90,7 +90,7 @@ class PasswordResetController extends Controller
 
         $user = User::where('email', $login)->orWhere('username', $login)->first();
 
-        if (!$user) {
+        if (! $user) {
             $this->auditService->log(
                 AuthEventType::PasswordResetFailed,
                 userId: null,
@@ -110,7 +110,7 @@ class PasswordResetController extends Controller
             ->where('code_expires_at', '>', now())
             ->first();
 
-        if (!$record) {
+        if (! $record) {
             $this->auditService->log(
                 AuthEventType::PasswordResetFailed,
                 userId: $user->id,
@@ -162,7 +162,7 @@ class PasswordResetController extends Controller
             ->where('reset_token_expires_at', '>', now())
             ->first();
 
-        if (!$record) {
+        if (! $record) {
             $this->auditService->log(
                 AuthEventType::PasswordResetFailed,
                 userId: null,
@@ -178,7 +178,7 @@ class PasswordResetController extends Controller
 
         $user = User::where('email', $record->email)->first();
 
-        if (!$user) {
+        if (! $user) {
             throw ValidationException::withMessages([
                 'reset_token' => ['User not found.'],
             ]);
@@ -208,7 +208,7 @@ class PasswordResetController extends Controller
     {
         $parts = explode('@', $email);
         if (count($parts) !== 2) {
-            return str_repeat('*', strlen($email));
+            return '*****@*****.**';
         }
 
         $name = $parts[0];
@@ -217,17 +217,9 @@ class PasswordResetController extends Controller
         if (strlen($name) <= 2) {
             $maskedName = str_repeat('*', strlen($name));
         } else {
-            $maskedName = $name[0] . str_repeat('*', strlen($name) - 2) . $name[strlen($name) - 1];
+            $maskedName = $name[0].str_repeat('*', strlen($name) - 2).$name[strlen($name) - 1];
         }
 
-        $domainParts = explode('.', $domain);
-        if (count($domainParts) >= 2) {
-            $tld = array_pop($domainParts);
-            $maskedDomain = str_repeat('*', strlen(implode('.', $domainParts))) . '.' . $tld;
-        } else {
-            $maskedDomain = str_repeat('*', strlen($domain));
-        }
-
-        return "{$maskedName}@{$maskedDomain}";
+        return "{$maskedName}@{$domain}";
     }
 }

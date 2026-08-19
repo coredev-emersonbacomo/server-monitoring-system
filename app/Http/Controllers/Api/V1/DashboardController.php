@@ -47,11 +47,13 @@ class DashboardController extends Controller
 
             if ($agentDeleted) {
                 $pendingDeletionCount++;
+
                 continue;
             }
 
             if ($server->status === ServerStatus::WaitingForInstallation->value) {
                 $waitingForInstallationCount++;
+
                 continue;
             }
 
@@ -60,6 +62,7 @@ class DashboardController extends Controller
                 ServerStatus::WaitingForFirstHeartbeat->value,
             ])) {
                 $pendingInstallationCount++;
+
                 continue;
             }
 

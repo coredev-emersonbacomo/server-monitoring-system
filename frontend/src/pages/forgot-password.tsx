@@ -359,19 +359,6 @@ export default function ForgotPassword() {
                             </form>
                         )}
 
-                        <div className="flex justify-center mt-8">
-                            <div className="flex items-center gap-2">
-                                {[1, 2, 3].map((s) => (
-                                    <div
-                                        key={s}
-                                        className={cn(
-                                            "w-2 h-2 rounded-full transition-all",
-                                            s === step ? "bg-primary scale-125" : s < step ? "bg-primary/30" : "bg-muted",
-                                        )}
-                                    />
-                                ))}
-                            </div>
-                        </div>
                     </div>
                 </div>
 

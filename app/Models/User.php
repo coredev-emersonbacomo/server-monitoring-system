@@ -4,23 +4,22 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
-use Spatie\Activitylog\Support\LogOptions;
-use App\Models\CustomActivityLog;
 
 #[Fillable(['first_name', 'last_name', 'email', 'password', 'username', 'phone_number', 'timezone', 'status', 'profile_picture_url', 'profile_picture_public_id', 'profile_picture_storage_key'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasUuids;
+    use HasFactory, HasUuids, Notifiable;
 
-    public function activity(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    public function activity(): MorphMany
     {
         return $this->morphMany(CustomActivityLog::class, 'subject');
     }
@@ -29,6 +28,7 @@ class User extends Authenticatable
     {
         return (string) Str::uuid7();
     }
+
     public function uniqueIds(): array
     {
         return ['uuid'];
@@ -38,6 +38,7 @@ class User extends Authenticatable
     {
         return 'uuid';
     }
+
     protected function casts(): array
     {
         return [

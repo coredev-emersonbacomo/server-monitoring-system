@@ -3,16 +3,19 @@
 namespace App\Services\StorageProviders;
 
 use App\Contracts\StorageProvider;
-use Cloudinary\Configuration\Configuration;
 use Cloudinary\Api\Admin\AdminApi;
 use Cloudinary\Api\Upload\UploadApi;
+use Cloudinary\Configuration\Configuration;
 use Illuminate\Support\Str;
 
 class CloudinaryProvider implements StorageProvider
 {
     private Configuration $config;
+
     private string $cloudName;
+
     private string $apiKey;
+
     private string $apiSecret;
 
     public function __construct(array $providerConfig)
@@ -47,7 +50,7 @@ class CloudinaryProvider implements StorageProvider
         foreach ($params as $key => $value) {
             $queryParts[] = "{$key}={$value}";
         }
-        $signature = sha1(implode('&', $queryParts) . $this->apiSecret);
+        $signature = sha1(implode('&', $queryParts).$this->apiSecret);
 
         $uploadPrefix = config('uploads.providers.cloudinary.upload_prefix');
 
@@ -81,7 +84,7 @@ class CloudinaryProvider implements StorageProvider
     public function transformedUrl(string $storageKey, string $folder, array $transformations): string
     {
         $transforms = collect($transformations)
-            ->map(fn($value, $key) => "{$key}_{$value}")
+            ->map(fn ($value, $key) => "{$key}_{$value}")
             ->implode(',');
 
         $deliveryPrefix = config('uploads.providers.cloudinary.delivery_prefix');
@@ -111,6 +114,7 @@ class CloudinaryProvider implements StorageProvider
         try {
             $admin = new AdminApi($this->config);
             $admin->asset($storageKey);
+
             return true;
         } catch (\Exception) {
             return false;

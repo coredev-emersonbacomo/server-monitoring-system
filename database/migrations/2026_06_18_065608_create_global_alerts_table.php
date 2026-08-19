@@ -10,23 +10,23 @@ return new class extends Migration
     {
         Schema::create('global_alerts', function (Blueprint $table) {
             $table->id();
-        
+
             $table->string('metric');
-        
+
             $table->string('name');
-        
+
             $table->unsignedTinyInteger('threshold');
-        
+
             $table->enum('severity', [
                 'light',
                 'warning',
                 'critical',
             ]);
-        
+
             $table->json('channels');
-        
+
             $table->boolean('enabled')->default(true);
-        
+
             $table->timestamps();
         });
     }

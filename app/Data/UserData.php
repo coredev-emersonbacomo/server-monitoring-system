@@ -3,8 +3,8 @@
 namespace App\Data;
 
 use App\Models\User;
-use Spatie\LaravelData\Data;
 use Illuminate\Support\Carbon;
+use Spatie\LaravelData\Data;
 
 class UserData extends Data
 {
@@ -35,7 +35,7 @@ class UserData extends Data
             last_login: $user->last_login,
             timezone: $user->timezone,
             profile_picture_url: $user->profile_picture_url,
-            record_status: $user->record_status,           
+            record_status: $user->record_status,
             created_at: $user->created_at,
             updated_at: $user->updated_at,
         );

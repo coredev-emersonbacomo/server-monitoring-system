@@ -16,7 +16,7 @@ class ClientFactory extends Factory
             'https://www.allplan.com/fileadmin/_processed_/4/7/csm_w57-image-by-nic-lehoux_original_a82f2b39f2.jpg',
             'https://static.flickr.com/35/100571773_ec21b93bac_o.jpg',
             'https://www.touropia.com/gfx/b/2009/09/burj_al_arab.jpg',
-            'https://amazingarchitecture.com/storage/files/1/Architecture%20firms/Umesh%20Bhosale/Statheros/20-Stretheros-Umesh-Bhosale-Skyscraper.jpg'
+            'https://amazingarchitecture.com/storage/files/1/Architecture%20firms/Umesh%20Bhosale/Statheros/20-Stretheros-Umesh-Bhosale-Skyscraper.jpg',
         ];
 
         return [

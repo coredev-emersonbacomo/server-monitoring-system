@@ -3,19 +3,21 @@
 namespace App\Jobs;
 
 use App\Events\ServerStatsUpdated;
-use App\Models\Server;
 use App\Http\Controllers\Api\V1\ServerController;
+use App\Models\Server;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class BroadcastServerStats implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
+
     public int $timeout = 5;
 
     public function __construct(
@@ -26,7 +28,9 @@ class BroadcastServerStats implements ShouldQueue
     public function handle(): void
     {
         $server = Server::find($this->serverId);
-        if (!$server) return;
+        if (! $server) {
+            return;
+        }
 
         $rows = $server->updates()
             ->orderByDesc('created_at')
@@ -34,9 +38,11 @@ class BroadcastServerStats implements ShouldQueue
             ->get();
 
         $latest = $rows->first();
-        $prev   = $rows->count() > 1 ? $rows->last() : null;
+        $prev = $rows->count() > 1 ? $rows->last() : null;
 
-        if (!$latest) return;
+        if (! $latest) {
+            return;
+        }
 
         $stats = ServerController::computeStatPointPublic($latest, $prev);
 
@@ -52,7 +58,7 @@ class BroadcastServerStats implements ShouldQueue
         try {
             ServerStatsUpdated::dispatchSync($this->serverUuid, $broadcast);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('[broadcast] Failed to push stats update in job', ['error' => $e->getMessage()]);
+            Log::warning('[broadcast] Failed to push stats update in job', ['error' => $e->getMessage()]);
         }
 
         BroadcastDashboardUsage::dispatch();

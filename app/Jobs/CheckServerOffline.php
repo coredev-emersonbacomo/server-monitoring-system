@@ -9,9 +9,7 @@ class CheckServerOffline implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public string $serverUuid)
-    {
-    }
+    public function __construct(public string $serverUuid) {}
 
     public function handle(): void
     {

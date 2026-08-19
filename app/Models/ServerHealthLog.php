@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class ServerHealthLog extends Model
 {
@@ -33,7 +33,7 @@ class ServerHealthLog extends Model
                 $model->type = 'server_health';
             }
             // If action is not set but title is, copy title into action
-            if (empty($model->action) && !empty($model->title)) {
+            if (empty($model->action) && ! empty($model->title)) {
                 $model->action = $model->title;
             }
         });

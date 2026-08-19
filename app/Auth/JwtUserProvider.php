@@ -22,9 +22,7 @@ class JwtUserProvider implements UserProvider
         return null;
     }
 
-    public function updateRememberToken(Authenticatable $user, $token): void
-    {
-    }
+    public function updateRememberToken(Authenticatable $user, $token): void {}
 
     public function retrieveByCredentials(array $credentials): ?Authenticatable
     {
@@ -46,7 +44,7 @@ class JwtUserProvider implements UserProvider
 
     public function rehashPasswordIfRequired(Authenticatable $user, array $credentials, bool $force = false): void
     {
-        if (!isset($credentials['password'])) {
+        if (! isset($credentials['password'])) {
             return;
         }
 
@@ -61,6 +59,7 @@ class JwtUserProvider implements UserProvider
     private function createModel(): User
     {
         $class = $this->model;
+
         return new $class;
     }
 }

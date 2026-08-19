@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class CleanupExpiredUploads extends Command
 {
     protected $signature = 'uploads:cleanup';
+
     protected $description = 'Clean up expired upload intents and their associated storage assets.';
 
     public function handle(): int

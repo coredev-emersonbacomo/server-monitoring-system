@@ -4,9 +4,20 @@ namespace App\NodeConfig\NodeTypes;
 
 class TemplateNode extends BaseNode
 {
-    public function getType(): string { return 'template'; }
-    public function getCategory(): string { return 'condition'; }
-    public function getLabel(): string { return 'Template Input'; }
+    public function getType(): string
+    {
+        return 'template';
+    }
+
+    public function getCategory(): string
+    {
+        return 'condition';
+    }
+
+    public function getLabel(): string
+    {
+        return 'Template Input';
+    }
 
     public function getSettingDefinitions(): array
     {
@@ -46,8 +57,8 @@ class TemplateNode extends BaseNode
     {
         return match ($type) {
             'boolean' => filter_var($value, FILTER_VALIDATE_BOOL),
-            'string'  => (string) $value,
-            default   => is_numeric($value) ? (float) $value : $value,
+            'string' => (string) $value,
+            default => is_numeric($value) ? (float) $value : $value,
         };
     }
 }
