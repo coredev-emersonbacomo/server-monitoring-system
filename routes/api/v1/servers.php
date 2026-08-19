@@ -13,16 +13,15 @@ Route::middleware('auth:jwt')->group(function () {
         Route::get('/servers/{serverUuid}', [ServerController::class, 'show']);
         Route::patch('/servers/{serverUuid}', [ServerController::class, 'update']);
         Route::patch('/servers/{serverUuid}/alert-scope', [ServerController::class, 'updateAlertScope']);
+        Route::patch('/servers/{serverUuid}/monitoring', [ServerController::class, 'updateMonitoringConfig']);
         Route::post('/servers/{serverUuid}/adjust-cost', [ServerController::class, 'adjustCost']);
         Route::get('/servers/{serverUuid}/cost-logs', [ServerController::class, 'costLogs']);
         Route::delete('/servers/{serverUuid}', [ServerController::class, 'destroy']);
     });
 
     Route::get('/servers/{uuid}', [ServerController::class, 'showWithStats']);
-    Route::delete('/ports/{id}', [ServerController::class, 'destroyPort']);
 });
 Route::get('/servers/{server:uuid}/report', [ServerReportController::class, 'show']);
 Route::get('/server/{serverId}/minute', [ServerController::class, 'dailyUsage']);
 Route::get('/server/{serverId}/{date}', [ServerController::class, 'dayAverage'])
     ->where('date', '\d{4}-\d{2}-\d{2}'); // only match YYYY-MM-DD
-

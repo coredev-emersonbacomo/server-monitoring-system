@@ -4,9 +4,20 @@ namespace App\NodeConfig\NodeTypes;
 
 class ServerStatusNode extends BaseNode
 {
-    public function getType(): string { return 'server_status'; }
-    public function getCategory(): string { return 'metric'; }
-    public function getLabel(): string { return 'Server Status'; }
+    public function getType(): string
+    {
+        return 'server_status';
+    }
+
+    public function getCategory(): string
+    {
+        return 'metric';
+    }
+
+    public function getLabel(): string
+    {
+        return 'Server Status';
+    }
 
     public function evaluate(array $inputValues, array $settings, array $state): NodeResult
     {
@@ -21,7 +32,7 @@ class ServerStatusNode extends BaseNode
         return NodeResult::multiOutput(
             [
                 'online' => $isOnline ? true : null,
-                'offline' => !$isOnline ? true : null,
+                'offline' => ! $isOnline ? true : null,
             ],
             $state,
         );

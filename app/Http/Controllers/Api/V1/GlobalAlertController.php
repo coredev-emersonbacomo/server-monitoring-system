@@ -23,17 +23,17 @@ class GlobalAlertController extends Controller
         $validated = $request->validate([
             'metrics' => ['required', 'array'],
         ]);
-    
+
         DB::transaction(function () use ($validated) {
-    
+
             foreach ($validated['metrics'] as $metric => $levels) {
-    
+
                 // Remove all existing levels for this metric
                 GlobalAlert::where('metric', $metric)->delete();
-    
+
                 // Insert the new levels
                 foreach ($levels as $level) {
-    
+
                     GlobalAlert::create([
                         'metric' => $metric,
                         'name' => $level['name'],
@@ -45,7 +45,7 @@ class GlobalAlertController extends Controller
                 }
             }
         });
-    
+
         return response()->json([
             'message' => 'Global alerts updated successfully',
         ]);

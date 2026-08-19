@@ -24,7 +24,6 @@ class GeneralReportData extends Data
         public ?int $sum_client_budget,
         public ?int $sum_server_subscription_fee,
 
-
         /** @var GeneralServerSummaryData[] */
         public array $need_attention_servers,
 

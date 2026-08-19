@@ -26,7 +26,7 @@ class StorageProviderFactory
         $providerName = $providerName ?? config('uploads.default_provider', 'cloudinary');
         $providers = config('uploads.providers', []);
 
-        if (!isset($providers[$providerName])) {
+        if (! isset($providers[$providerName])) {
             throw new InvalidArgumentException("Storage provider [{$providerName}] is not configured.");
         }
 
@@ -43,6 +43,7 @@ class StorageProviderFactory
     {
         if (isset(self::$customProviders[$name])) {
             $class = self::$customProviders[$name];
+
             return new $class($config);
         }
 

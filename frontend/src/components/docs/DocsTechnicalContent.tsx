@@ -1,5 +1,6 @@
 import {
     Section,
+    SubSection,
     InlineCode,
     Callout,
     CodeBlock,
@@ -139,35 +140,149 @@ export function DocsAgentContent() {
                     heartbeats, maintains a WebSocket control channel, and can
                     self-update its binary.
                 </p>
-            </Section>
-            <Section title="Under construction">
-                <Callout type="warning">
-                    The agent flow is being updated and is not ready yet. This
-                    is currently a placeholder.
-                </Callout>
                 <p>
-                    Until the agent settles, rely on:
+                    One agent installation can monitor <strong>multiple</strong>{" "}
+                    servers. Its identity is an installation UUID plus an RSA
+                    keypair stored in the OS keystore (
+                    <InlineCode>MonitorAgentIdentity-&lt;uuid&gt;</InlineCode> on
+                    Windows, a 0600 file on Linux) — never in config files, the
+                    database, or logs. Per-server monitoring settings (port and
+                    process filters) are held in the agent's runtime memory,
+                    with the backend as the source of truth.
+                </p>
+                <ol className="list-decimal pl-5 space-y-1.5">
+                    <li>
+                        <strong>Register</strong> — the installer passes a
+                        one-time provision token; the agent registers its public
+                        key.
+                    </li>
+                    <li>
+                        <strong>Authenticate</strong> — short-lived,
+                        single-use challenge-response; no persistent token.
+                    </li>
+                    <li>
+                        <strong>Heartbeat</strong> — one heartbeat per owned
+                        server (CPU, memory, disk, network, top processes, open
+                        ports), filtered by each server's filter.
+                    </li>
+                    <li>
+                        <strong>Control</strong> — a WebSocket channel per
+                        server receives config and binary updates.
+                    </li>
+                    <li>
+                        <strong>Self-update</strong> — the agent downloads a new
+                        binary, swaps it in, and restarts.
+                    </li>
+                </ol>
+            </Section>
+
+            <Section title="Installation & on-disk layout">
+                <p>
+                    The agent follows the platform convention of separating
+                    immutable binaries from mutable machine state:
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        The <strong>Agent Installation Guide</strong> in the
-                        User Guide (Servers) for installing the agent on a
-                        machine.
+                        <strong>Binary (read-only)</strong> — Windows{" "}
+                        <InlineCode>C:\Program Files\MonitorAgent\&lt;uuid&gt;\MonitorAgent.exe</InlineCode>,
+                        Linux <InlineCode>/opt</InlineCode> or{" "}
+                        <InlineCode>/usr/local/bin</InlineCode>. The agent never
+                        writes here — Program Files is not writable by the
+                        service, and this was the root cause of the historical
+                        "missing config" reports.
                     </li>
                     <li>
-                        The <strong>Agent tab</strong> on a server's detail
-                        page for the installed properties.
-                    </li>
-                    <li>
-                        <strong>Agent Settings</strong> for heartbeat, offline
-                        threshold, and version controls.
+                        <strong>State (service-writable)</strong> — all config
+                        and logs live in{" "}
+                        <InlineCode>C:\ProgramData\MonitorAgent\instances\&lt;uuid&gt;\</InlineCode>{" "}
+                        (Windows) or{" "}
+                        <InlineCode>/var/lib/monitor-agent/instances/&lt;uuid&gt;/</InlineCode>{" "}
+                        (Linux). ProgramData (or /var/lib) is the correct home
+                        for machine-wide, service-writable data; AppData is
+                        per-user and wrong for a LocalSystem agent.
                     </li>
                 </ul>
-                <p>
-                    The agent source lives in{" "}
-                    <InlineCode>resources/agent/go</InlineCode>, and the build
-                    pipeline is <InlineCode>npm run compileagent</InlineCode>.
-                </p>
+                <CodeBlock>{`C:\\Program Files\\MonitorAgent\\<uuid>\\MonitorAgent.exe   # binary (read-only)
+C:\\ProgramData\\MonitorAgent\\
+  startup.log                                        # early-startup log
+  instances\\<uuid>\\
+    config.json                                      # bootstrap config
+    agent.log                                        # runtime log
+    crash.log                                        # last-gasp panic stack
+    uninstall.flag                                   # uninstall marker`}</CodeBlock>
+                <Callout type="warning">
+                    Diagnose the agent in the ProgramData (or /var/lib) instance
+                    directory — <strong>not</strong> the Program Files folder
+                    where the binary lives. A missing{" "}
+                    <InlineCode>config.json</InlineCode> there means the
+                    installer never ran; the agent now self-creates a minimal
+                    default and logs clearly instead of exiting silently.
+                </Callout>
+            </Section>
+
+            <Section title="File contents">
+                <SubSection title="config.json">
+                    <p>
+                        Bootstrap config written by the installer, then
+                        maintained by the agent:
+                    </p>
+                    <CodeBlock>{`{
+  "server_url": "https://...",
+  "agent_version": "2.1",
+  "installation_id": "<uuid>",
+  "provision_token": "..."   // stripped after registration
+}`}</CodeBlock>
+                    <ul className="list-disc pl-5 space-y-1.5">
+                        <li>
+                            The agent fills <InlineCode>installation_id</InlineCode>{" "}
+                            if empty and strips{" "}
+                            <InlineCode>provision_token</InlineCode> after a
+                            successful registration, so the persistent config
+                            never holds a secret.
+                        </li>
+                        <li>
+                            If the file is missing entirely, the agent
+                            self-bootstraps <InlineCode>{"{ installation_id }"}</InlineCode>{" "}
+                            and logs that the installer still needs to supply{" "}
+                            <InlineCode>server_url</InlineCode>.
+                        </li>
+                        <li>
+                            Identity keys are never stored here — they live in
+                            the OS keystore.
+                        </li>
+                    </ul>
+                </SubSection>
+                <SubSection title="agent.log">
+                    <p>
+                        The agent's runtime log. Stdout, stderr, and the{" "}
+                        <InlineCode>log</InlineCode> package output are all
+                        redirected here as soon as the instance directory
+                        exists.
+                    </p>
+                </SubSection>
+                <SubSection title="startup.log">
+                    <p>
+                        One-line early-startup log at the data root (before{" "}
+                        <InlineCode>agent.log</InlineCode> is wired up). It
+                        records "loadConfig failed", "bootstrapDefaultConfig
+                        failed", "agent.log open failed", and "runService
+                        error" — the first place to look when an agent produces
+                        nothing.
+                    </p>
+                </SubSection>
+                <SubSection title="crash.log & uninstall.flag">
+                    <p>
+                        <InlineCode>crash.log</InlineCode> is a last-gasp panic
+                        stack written by the global recovery in{" "}
+                        <InlineCode>main()</InlineCode>.{" "}
+                        <InlineCode>uninstall.flag</InlineCode> drives the
+                        marker-based uninstall: the uninstaller writes{" "}
+                        <InlineCode>pending</InlineCode>, the running service
+                        revokes the agent and deletes its identity key, then
+                        writes <InlineCode>done</InlineCode> so the uninstaller
+                        can confirm and tear down the service.
+                    </p>
+                </SubSection>
             </Section>
         </>
     );

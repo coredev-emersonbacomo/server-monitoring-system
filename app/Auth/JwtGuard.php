@@ -2,19 +2,20 @@
 
 namespace App\Auth;
 
-use App\Models\User;
 use App\Services\JwtService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Contracts\Auth\UserProvider;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class JwtGuard implements Guard
 {
     private ?Authenticatable $user = null;
+
     private ?string $sessionUuid = null;
+
     private ?array $jwtPayload = null;
+
     private bool $validated = false;
 
     public function __construct(
@@ -46,12 +47,12 @@ class JwtGuard implements Guard
         }
 
         $payload = $this->jwtService->validateAccessToken($credentials['token']);
-        if (!$payload) {
+        if (! $payload) {
             return false;
         }
 
         $user = $this->provider->retrieveById($payload->sub);
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -81,18 +82,20 @@ class JwtGuard implements Guard
 
     public function guest(): bool
     {
-        return !$this->check();
+        return ! $this->check();
     }
 
     public function getSessionUuid(): ?string
     {
         $this->user();
+
         return $this->sessionUuid;
     }
 
     public function getJwtPayload(): ?array
     {
         $this->user();
+
         return $this->jwtPayload;
     }
 
@@ -101,17 +104,17 @@ class JwtGuard implements Guard
         $this->validated = true;
 
         $token = $this->extractToken();
-        if (!$token) {
+        if (! $token) {
             return;
         }
 
         $payload = $this->jwtService->validateAccessToken($token);
-        if (!$payload) {
+        if (! $payload) {
             return;
         }
 
         $user = $this->provider->retrieveById($payload->sub);
-        if (!$user) {
+        if (! $user) {
             return;
         }
 

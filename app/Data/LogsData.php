@@ -11,6 +11,6 @@ class LogsData extends Data
         public string $user_firstname,
         public string $user_lastname,
         public string $action,
-            public \DateTimeImmutable $timestamp,
+        public \DateTimeImmutable $timestamp,
     ) {}
 }

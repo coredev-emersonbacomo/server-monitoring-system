@@ -4,8 +4,6 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\CustomActivityLog;
-use App\Models\ServerHealthLog;
-use App\Models\AgentLog;
 
 class ActivityLogController extends Controller
 {
@@ -44,6 +42,7 @@ class ActivityLogController extends Controller
                     // fallback
                 }
             }
+
             return $log;
         });
 

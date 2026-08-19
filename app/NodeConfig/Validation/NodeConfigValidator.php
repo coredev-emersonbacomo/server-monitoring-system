@@ -14,6 +14,7 @@ class NodeConfigValidator
 
         if (empty($nodes)) {
             $this->errors[] = 'Node config must contain at least one node.';
+
             return false;
         }
 
@@ -21,6 +22,7 @@ class NodeConfigValidator
         foreach ($nodes as $index => $node) {
             if (empty($node['id'])) {
                 $this->errors[] = "Node at index $index is missing an id.";
+
                 continue;
             }
             $nodeIds[] = $node['id'];
@@ -34,12 +36,13 @@ class NodeConfigValidator
         foreach ($edges as $index => $edge) {
             if (empty($edge['source']) || empty($edge['target'])) {
                 $this->errors[] = "Edge at index $index is missing source or target.";
+
                 continue;
             }
-            if (!isset($nodeIdSet[$edge['source']])) {
+            if (! isset($nodeIdSet[$edge['source']])) {
                 $this->errors[] = "Edge references unknown source node: {$edge['source']}.";
             }
-            if (!isset($nodeIdSet[$edge['target']])) {
+            if (! isset($nodeIdSet[$edge['target']])) {
                 $this->errors[] = "Edge references unknown target node: {$edge['target']}.";
             }
             if ($edge['source'] === $edge['target']) {
@@ -73,6 +76,7 @@ class NodeConfigValidator
                 $adj[$source][] = $target;
             }
         }
+
         return $adj;
     }
 
@@ -98,13 +102,15 @@ class NodeConfigValidator
 
     private function dfsCycle(string $node, array &$adj, array &$visited, array &$recStack): bool
     {
-        if (!$visited[$node]) {
+        if (! $visited[$node]) {
             $visited[$node] = true;
             $recStack[$node] = true;
 
             foreach ($adj[$node] as $neighbor) {
-                if (!isset($visited[$neighbor])) continue;
-                if (!$visited[$neighbor] && $this->dfsCycle($neighbor, $adj, $visited, $recStack)) {
+                if (! isset($visited[$neighbor])) {
+                    continue;
+                }
+                if (! $visited[$neighbor] && $this->dfsCycle($neighbor, $adj, $visited, $recStack)) {
                     return true;
                 } elseif ($recStack[$neighbor]) {
                     return true;
@@ -113,6 +119,7 @@ class NodeConfigValidator
         }
 
         $recStack[$node] = false;
+
         return false;
     }
 
@@ -140,7 +147,7 @@ class NodeConfigValidator
         }
 
         $sorted = [];
-        while (!empty($queue)) {
+        while (! empty($queue)) {
             $current = array_shift($queue);
             $sorted[] = $current;
 

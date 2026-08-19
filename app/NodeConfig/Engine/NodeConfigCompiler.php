@@ -43,7 +43,7 @@ class NodeConfigCompiler
             ];
         }
 
-        $actionNodes = array_filter($nodes, fn($n) => ($n['type'] ?? '') === 'notification');
+        $actionNodes = array_filter($nodes, fn ($n) => ($n['type'] ?? '') === 'notification');
 
         $flatRules = [];
         foreach ($actionNodes as $actionNode) {
@@ -78,10 +78,12 @@ class NodeConfigCompiler
         $queue = [[$startNode['id'], null]];
         $visited = [$startNode['id'] => true];
 
-        while (!empty($queue)) {
+        while (! empty($queue)) {
             [$currentId, $childId] = array_shift($queue);
             $current = $nodeMap[$currentId] ?? null;
-            if (!$current) continue;
+            if (! $current) {
+                continue;
+            }
 
             $type = $current['type'] ?? '';
 
@@ -114,15 +116,17 @@ class NodeConfigCompiler
             }
 
             foreach ($reverseAdj[$currentId] ?? [] as $parentId) {
-                if (!isset($visited[$parentId])) {
+                if (! isset($visited[$parentId])) {
                     $visited[$parentId] = true;
                     $queue[] = [$parentId, $currentId];
                 }
             }
         }
 
-        $metrics = array_values(array_filter($metrics, fn($m) => $m['metric_type'] !== null));
-        if (empty($metrics)) return [];
+        $metrics = array_values(array_filter($metrics, fn ($m) => $m['metric_type'] !== null));
+        if (empty($metrics)) {
+            return [];
+        }
 
         $action = array_merge(['type' => $startNode['type']], $actionSettings);
 
@@ -172,6 +176,7 @@ class NodeConfigCompiler
                 'value' => $settings['value'] ?? null,
             ];
         }
+
         return $inputs;
     }
 
@@ -185,6 +190,7 @@ class NodeConfigCompiler
                 return $edge['sourceHandle'];
             }
         }
+
         return 'output';
     }
 
@@ -203,6 +209,7 @@ class NodeConfigCompiler
                 ];
             }
         }
+
         return null;
     }
 
@@ -215,9 +222,9 @@ class NodeConfigCompiler
         $branches = [];
 
         foreach ($flatRules as $rule) {
-            $key = $rule['metric_node_id'] . ':' . $rule['metric_source_handle'];
+            $key = $rule['metric_node_id'].':'.$rule['metric_source_handle'];
 
-            if (!isset($branches[$key])) {
+            if (! isset($branches[$key])) {
                 $branches[$key] = [
                     'metric' => $rule['metric'],
                     'metric_node_id' => $rule['metric_node_id'],
@@ -262,42 +269,43 @@ class NodeConfigCompiler
         // Check if any chain connections were detected
         $hasChains = false;
         foreach ($subBranches as $sb) {
-            if (!empty($sb['chain_next'])) {
+            if (! empty($sb['chain_next'])) {
                 $hasChains = true;
                 break;
             }
         }
 
-        if (!$hasChains) {
+        if (! $hasChains) {
             // No chains — just strip the chain fields and leave sub_branches as-is
             foreach ($branch['sub_branches'] as &$sb) {
                 unset($sb['chain_prev'], $sb['chain_next']);
             }
             unset($sb);
+
             return;
         }
 
         $merged = [];
         foreach ($subBranches as $sb) {
             // Skip downstream chain nodes; they are included under their root
-            if (!empty($sb['chain_prev'])) {
+            if (! empty($sb['chain_prev'])) {
                 continue;
             }
 
-            if (!empty($sb['chain_next'])) {
+            if (! empty($sb['chain_next'])) {
                 // Chain root — walk forward and collect all steps
                 $chain = [];
                 $current = $sb;
                 while ($current !== null) {
                     $chain[] = [
-                        'step'           => count($chain),
+                        'step' => count($chain),
                         'timing_node_id' => $current['timing_node_id'],
-                        'timing'         => $current['timing'],
+                        'timing' => $current['timing'],
                         'action_node_id' => $current['action_node_id'],
-                        'action'         => $current['action'],
-                        'post_action'    => $current['post_action'],
+                        'action' => $current['action'],
+                        'post_action' => $current['post_action'],
                     ];
-                    if (!empty($current['chain_next'])) {
+                    if (! empty($current['chain_next'])) {
                         $nextId = $current['chain_next'];
                         $current = null;
                         foreach ($subBranches as $nextSb) {
@@ -312,19 +320,19 @@ class NodeConfigCompiler
                 }
 
                 // Derive a synthetic ID for the compiled chain node from all step IDs
-                $chainNodeId = 'chain:' . implode(':', array_column($chain, 'timing_node_id'));
+                $chainNodeId = 'chain:'.implode(':', array_column($chain, 'timing_node_id'));
 
                 // Max duration = last step's absolute duration_ms — used as single timer delay
                 $maxDurationMs = end($chain)['timing']['duration_ms'] ?? 0;
-                $lastStep      = end($chain);
+                $lastStep = end($chain);
 
                 $merged[] = [
                     'timing_node_id' => $chainNodeId,                        // Synthetic compiled chain node ID
-                    'timing'         => $sb['timing'],                       // first step timing (heartbeat ref)
-                    'action'         => $lastStep['action'] ?? null,         // last step action
+                    'timing' => $sb['timing'],                       // first step timing (heartbeat ref)
+                    'action' => $lastStep['action'] ?? null,         // last step action
                     'action_node_id' => $lastStep['action_node_id'] ?? null,  // last step action node ID
-                    'post_action'    => $lastStep['post_action'] ?? null,    // last step post_action (repeat)
-                    'timing_chain'   => $chain,
+                    'post_action' => $lastStep['post_action'] ?? null,    // last step post_action (repeat)
+                    'timing_chain' => $chain,
                     'max_duration_ms' => $maxDurationMs,                     // ONE timer fires at this delay
                 ];
             } else {
@@ -356,6 +364,7 @@ class NodeConfigCompiler
         usort($subBranches, function ($a, $b) {
             $da = $a['timing']['duration_ms'] ?? PHP_INT_MAX;
             $db = $b['timing']['duration_ms'] ?? PHP_INT_MAX;
+
             return $da <=> $db;
         });
 
@@ -369,7 +378,7 @@ class NodeConfigCompiler
 
         // Detect chain-out → chain-in connections in forwardAdj
         foreach ($subBranches as &$sb) {
-            if (!$sb['timing_node_id']) {
+            if (! $sb['timing_node_id']) {
                 continue;
             }
             foreach ($forwardAdj[$sb['timing_node_id']] ?? [] as $edge) {
@@ -388,6 +397,7 @@ class NodeConfigCompiler
     private function extractCondition(array $node): array
     {
         $settings = $node['settings'] ?? [];
+
         return [
             'operator' => $settings['operator'] ?? 'greater_than',
             'threshold' => $settings['threshold'] ?? null,
@@ -412,7 +422,7 @@ class NodeConfigCompiler
         $strings = [];
         foreach ($reverseAdj[$conditionId] ?? [] as $parentId) {
             $parent = $nodeMap[$parentId] ?? null;
-            if (!$parent || (($parent['type'] ?? '') !== 'template')) {
+            if (! $parent || (($parent['type'] ?? '') !== 'template')) {
                 continue;
             }
 
@@ -458,7 +468,6 @@ class NodeConfigCompiler
             'template_strings' => $strings,
         ];
     }
-
 
     private function extractTiming(array $node): array
     {

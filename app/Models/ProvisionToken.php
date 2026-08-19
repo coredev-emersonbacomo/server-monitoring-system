@@ -35,9 +35,9 @@ class ProvisionToken extends Model
 
     public function isValid(): bool
     {
-        return $this->status === 'active' 
-            && !$this->isExpired() 
-            && is_null($this->used_at) 
+        return $this->status === 'active'
+            && ! $this->isExpired()
+            && is_null($this->used_at)
             && is_null($this->revoked_at);
     }
 }

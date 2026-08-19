@@ -4,9 +4,20 @@ namespace App\NodeConfig\NodeTypes;
 
 class ConditionNode extends BaseNode
 {
-    public function getType(): string { return 'condition'; }
-    public function getCategory(): string { return 'condition'; }
-    public function getLabel(): string { return 'Compare'; }
+    public function getType(): string
+    {
+        return 'condition';
+    }
+
+    public function getCategory(): string
+    {
+        return 'condition';
+    }
+
+    public function getLabel(): string
+    {
+        return 'Compare';
+    }
 
     public function getSettingDefinitions(): array
     {
@@ -43,37 +54,41 @@ class ConditionNode extends BaseNode
 
     private function evaluateGreaterThan(mixed $a, mixed $b, array $settings): NodeResult
     {
-        if ($a === null || !is_numeric($a)) {
+        if ($a === null || ! is_numeric($a)) {
             return NodeResult::propagate(false);
         }
         $b = $b !== null ? (float) $b : (float) ($settings['threshold'] ?? 0);
+
         return NodeResult::propagate((float) $a > $b);
     }
 
     private function evaluateLessThan(mixed $a, mixed $b, array $settings): NodeResult
     {
-        if ($a === null || !is_numeric($a)) {
+        if ($a === null || ! is_numeric($a)) {
             return NodeResult::propagate(false);
         }
         $b = $b !== null ? (float) $b : (float) ($settings['threshold'] ?? 0);
+
         return NodeResult::propagate((float) $a < $b);
     }
 
     private function evaluateGreaterThanEqual(mixed $a, mixed $b, array $settings): NodeResult
     {
-        if ($a === null || !is_numeric($a)) {
+        if ($a === null || ! is_numeric($a)) {
             return NodeResult::propagate(false);
         }
         $b = $b !== null ? (float) $b : (float) ($settings['threshold'] ?? 0);
+
         return NodeResult::propagate((float) $a >= $b);
     }
 
     private function evaluateLessThanEqual(mixed $a, mixed $b, array $settings): NodeResult
     {
-        if ($a === null || !is_numeric($a)) {
+        if ($a === null || ! is_numeric($a)) {
             return NodeResult::propagate(false);
         }
         $b = $b !== null ? (float) $b : (float) ($settings['threshold'] ?? 0);
+
         return NodeResult::propagate((float) $a <= $b);
     }
 
@@ -82,18 +97,20 @@ class ConditionNode extends BaseNode
         if ($b === null) {
             $b = $settings['threshold'] ?? null;
         }
+
         return NodeResult::propagate((string) $a === (string) $b);
     }
 
     private function evaluateBetween(mixed $a, array $inputValues, array $settings): NodeResult
     {
-        if ($a === null || !is_numeric($a)) {
+        if ($a === null || ! is_numeric($a)) {
             return NodeResult::propagate(false);
         }
         $min = $inputValues[1] ?? null;
         $max = $inputValues[2] ?? null;
         $min = $min !== null ? (float) $min : (float) ($settings['min'] ?? 0);
         $max = $max !== null ? (float) $max : (float) ($settings['max'] ?? 0);
+
         return NodeResult::propagate((float) $a >= $min && (float) $a <= $max);
     }
 }

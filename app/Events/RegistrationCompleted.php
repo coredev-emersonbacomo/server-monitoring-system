@@ -2,8 +2,8 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 
@@ -12,6 +12,7 @@ class RegistrationCompleted implements ShouldBroadcastNow
     use Dispatchable, InteractsWithSockets;
 
     public string $server_uuid;
+
     public int $agent_id;
 
     public function __construct(string $server_uuid, int $agent_id)
@@ -23,7 +24,7 @@ class RegistrationCompleted implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('server.' . $this->server_uuid),
+            new PrivateChannel('server.'.$this->server_uuid),
         ];
     }
 

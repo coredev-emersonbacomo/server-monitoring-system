@@ -34,7 +34,6 @@ export type ServerDetailContextValue = {
     navigate: ReturnType<typeof useNavigate>;
     copyToClipboard: (text: string, type: CopyKey) => void;
     serverAlertTab: ReturnType<typeof useServerAlertTab>;
-    handleDeletePort: (id: number) => void;
 };
 
 export const ServerDetailContext = createContext<ServerDetailContextValue | null>(null);

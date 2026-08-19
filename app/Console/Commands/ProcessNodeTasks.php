@@ -14,6 +14,7 @@ class ProcessNodeTasks extends Command
     public function handle(): int
     {
         NodeTaskScheduler::processDueTasks();
+
         return self::SUCCESS;
     }
 }

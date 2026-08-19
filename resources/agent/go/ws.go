@@ -39,7 +39,7 @@ type configUpdatePayload struct {
 // connectControlChannel maintains a persistent WebSocket connection to Reverb.
 // All Reverb config and credentials come from the authenticated session, never
 // from disk.
-func connectControlChannel(client *AgentClient, heartbeatInterval *int, stop <-chan struct{}) {
+func connectControlChannel(client *AgentClient, runtime *AgentRuntime, heartbeatInterval *int, stop <-chan struct{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("[WS] PANIC RECOVERED in control channel: %v", r)
@@ -57,7 +57,7 @@ func connectControlChannel(client *AgentClient, heartbeatInterval *int, stop <-c
 		default:
 		}
 
-		err := runWsSession(client, heartbeatInterval, stop)
+		err := runWsSession(client, runtime, heartbeatInterval, stop)
 		if err != nil {
 			log.Printf("[WS] Session ended with error: %v — retrying in %s", err, backoff)
 		} else {
@@ -81,15 +81,20 @@ func connectControlChannel(client *AgentClient, heartbeatInterval *int, stop <-c
 // runWsSession opens one WebSocket session and handles the full Pusher handshake:
 //  1. Connect -> receive pusher:connection_established (get real socket_id)
 //  2. Call HTTP auth endpoint with real socket_id -> get signed auth token
-//  3. Send pusher:subscribe with auth token
+//  3. Send pusher:subscribe with auth token — once per monitored server channel
 //  4. Listen for events; send pusher:ping every 30s
-func runWsSession(client *AgentClient, heartbeatInterval *int, stop <-chan struct{}) error {
+func runWsSession(client *AgentClient, runtime *AgentRuntime, heartbeatInterval *int, stop <-chan struct{}) error {
 	sess, err := client.ensureSession()
 	if err != nil {
 		return fmt.Errorf("session: %w", err)
 	}
 	if sess.ReverbHost == "" || sess.ReverbAppKey == "" {
 		return fmt.Errorf("reverb config not available")
+	}
+
+	serverUUIDs := runtime.ServerUUIDs()
+	if len(serverUUIDs) == 0 {
+		return fmt.Errorf("no servers to monitor")
 	}
 
 	scheme := "ws"
@@ -127,16 +132,16 @@ func runWsSession(client *AgentClient, heartbeatInterval *int, stop <-chan struc
 	}
 	log.Printf("[WS] Got socket_id: %s", socketID)
 
-	// --- Step 2: Authenticate the private channel using the real socket_id ---
-	channelName := "private-agent." + sess.ServerUUID
-	authToken, err := requestChannelAuth(client, channelName, socketID)
-	if err != nil {
-		return fmt.Errorf("channel auth: %w", err)
-	}
-
-	// --- Step 3: Subscribe to the private channel ---
-	if err := subscribeToPusherChannel(ctx, conn, channelName, authToken); err != nil {
-		return fmt.Errorf("subscribe: %w", err)
+	// --- Steps 2 & 3: Authenticate and subscribe one channel per server ---
+	for _, uuid := range serverUUIDs {
+		channelName := "private-agent." + uuid
+		authToken, err := requestChannelAuth(client, channelName, socketID)
+		if err != nil {
+			return fmt.Errorf("channel auth: %w", err)
+		}
+		if err := subscribeToPusherChannel(ctx, conn, channelName, authToken); err != nil {
+			return fmt.Errorf("subscribe: %w", err)
+		}
 	}
 
 	// --- Step 4: Read loop ---

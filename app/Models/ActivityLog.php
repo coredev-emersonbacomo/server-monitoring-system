@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class ActivityLog extends Model
 {
     protected $table = 'activity_logs';
 
-    public function activity(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    public function activity(): MorphMany
     {
-        return $this->morphMany(\App\Models\CustomActivityLog::class, 'subject');
+        return $this->morphMany(CustomActivityLog::class, 'subject');
     }
 }

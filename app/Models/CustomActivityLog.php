@@ -3,15 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class CustomActivityLog extends Model
 {
     protected $table = 'activity_logs';
+
     protected $casts = [
         'details' => 'array',
     ];
+
     protected $fillable = [
         'type',
         'logable_type',

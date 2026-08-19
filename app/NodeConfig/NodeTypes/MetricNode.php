@@ -4,9 +4,20 @@ namespace App\NodeConfig\NodeTypes;
 
 class MetricNode extends BaseNode
 {
-    public function getType(): string { return 'metric'; }
-    public function getCategory(): string { return 'metric'; }
-    public function getLabel(): string { return 'Metric'; }
+    public function getType(): string
+    {
+        return 'metric';
+    }
+
+    public function getCategory(): string
+    {
+        return 'metric';
+    }
+
+    public function getLabel(): string
+    {
+        return 'Metric';
+    }
 
     public function getSettingDefinitions(): array
     {
@@ -34,14 +45,16 @@ class MetricNode extends BaseNode
 
         if ($metricType === 'server_status') {
             $isOnline = $value === 'online' || $value === true || $value === 1;
+
             return NodeResult::multiOutput([
                 'online' => $isOnline ? true : null,
-                'offline' => !$isOnline ? true : null,
+                'offline' => ! $isOnline ? true : null,
             ], $state);
         }
 
         if ($metricType === 'ports_ping') {
             $isOffline = $value === 'offline' || $value === false || $value === 0 || $value === '0' || $value === null;
+
             return NodeResult::multiOutput([
                 'timing' => $isOffline ? null : (float) $value,
                 'offline' => $isOffline ? true : null,

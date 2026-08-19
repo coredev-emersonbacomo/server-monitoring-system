@@ -2,17 +2,19 @@
 
 namespace App\Console\Commands;
 
+use App\Events\ServerStatsUpdated;
+use App\Models\Server;
+use App\Models\ServerUpdate;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Pool;
 use GuzzleHttp\Psr7\Request;
 use Illuminate\Console\Command;
-use App\Models\Server;
-use App\Models\ServerUpdate;
-use App\Events\ServerStatsUpdated;
 
 class SimulateMetricsUpdate extends Command
 {
     protected $signature = 'server:update-metrics {--daemon}';
+
     protected $description = 'Simulates incoming daemon metric updates and hardware profiles for all servers';
 
     private const CONCURRENCY = 20;
@@ -21,6 +23,7 @@ class SimulateMetricsUpdate extends Command
     {
         if ($this->option('daemon')) {
             $this->runDaemon();
+
             return 0;
         }
 
@@ -36,12 +39,13 @@ class SimulateMetricsUpdate extends Command
             mt_srand($seed);
             $spread = mt_rand(10, 25);
             $ranges[$server->id] = [
-                'cpu'    => [mt_rand(0, 80), $spread],
+                'cpu' => [mt_rand(0, 80), $spread],
                 'memory' => [mt_rand(5, 80), $spread],
-                'disk'   => [mt_rand(0, 80), $spread],
+                'disk' => [mt_rand(0, 80), $spread],
             ];
             mt_srand();
         }
+
         return $ranges;
     }
 
@@ -56,6 +60,7 @@ class SimulateMetricsUpdate extends Command
 
         if ($servers->isEmpty()) {
             $this->warn('No servers found in database.');
+
             return;
         }
 
@@ -105,7 +110,7 @@ class SimulateMetricsUpdate extends Command
 
                     dump($reason);
 
-                    if ($reason instanceof \GuzzleHttp\Exception\RequestException) {
+                    if ($reason instanceof RequestException) {
                         dump($reason->getMessage());
 
                         if ($reason->hasResponse()) {
@@ -131,12 +136,13 @@ class SimulateMetricsUpdate extends Command
 
         if ($servers->isEmpty()) {
             $this->warn('No servers found in database.');
+
             return;
         }
 
         $ranges = $this->buildRanges($servers);
 
-        $this->info('Found ' . $servers->count() . ' servers.');
+        $this->info('Found '.$servers->count().' servers.');
 
         $statuses = ['online', 'offline'];
         $operatingSystems = ['Ubuntu 22.04 LTS', 'Debian 12', 'CentOS Stream 9', 'Windows Server 2022'];
@@ -148,6 +154,7 @@ class SimulateMetricsUpdate extends Command
 
             if ($randomStatus === 'offline') {
                 $server->update(['record_status' => 'offline']);
+
                 continue;
             }
 
@@ -191,7 +198,7 @@ class SimulateMetricsUpdate extends Command
                     $this->line("  [{$server->name}] Skipped broadcast (values unchanged)");
                 }
             } catch (\Throwable $e) {
-                $this->error("  [{$server->name}] Error: " . $e->getMessage());
+                $this->error("  [{$server->name}] Error: ".$e->getMessage());
             }
         }
     }

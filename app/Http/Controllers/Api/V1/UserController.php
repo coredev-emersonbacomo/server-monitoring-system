@@ -2,19 +2,23 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Data\UpdateUserData;
+use App\Data\AddClientData;
+use App\Data\ClientData;
 use App\Data\CreateUserData;
+use App\Data\UpdateUserData;
+use App\Data\UserData;
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Jobs\DeleteStorageAsset;
+use App\Models\Client;
+use App\Models\CustomActivityLog;
+use App\Models\Setting;
+use App\Models\User;
 use App\Services\MediaUrlService;
 use App\Services\UploadIntentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
-use App\Data\UserData;
-use App\Models\CustomActivityLog;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Spatie\LaravelData\Optional;
 
 class UserController extends Controller
 {
@@ -27,18 +31,18 @@ class UserController extends Controller
     {
         $users = User::orderBy('created_at', 'desc')->get();
 
-        return $users->map(fn(User $u) => UserData::fromModel($u));
+        return $users->map(fn (User $u) => UserData::fromModel($u));
     }
 
     public function store(CreateUserData $data)
     {
         $payload = [
             'first_name' => $data->first_name,
-            'last_name'  => $data->last_name,
-            'email'      => $data->email,
+            'last_name' => $data->last_name,
+            'email' => $data->email,
             'phone_number' => $data->phone_number,
-            'username'   => $data->username,
-            'password'   => Hash::make($data->password),
+            'username' => $data->username,
+            'password' => Hash::make($data->password),
         ];
 
         if ($data->timezone !== null) {
@@ -91,29 +95,29 @@ class UserController extends Controller
     {
         $payload = [];
 
-        if (!($data->first_name instanceof \Spatie\LaravelData\Optional)) {
+        if (! ($data->first_name instanceof Optional)) {
             $payload['first_name'] = $data->first_name;
         }
-        if (!($data->last_name instanceof \Spatie\LaravelData\Optional)) {
+        if (! ($data->last_name instanceof Optional)) {
             $payload['last_name'] = $data->last_name;
         }
-        if (!($data->email instanceof \Spatie\LaravelData\Optional)) {
+        if (! ($data->email instanceof Optional)) {
             $payload['email'] = $data->email;
         }
-        if (!($data->phone_number instanceof \Spatie\LaravelData\Optional)) {
+        if (! ($data->phone_number instanceof Optional)) {
             $payload['phone_number'] = $data->phone_number;
         }
-        if (!($data->username instanceof \Spatie\LaravelData\Optional)) {
+        if (! ($data->username instanceof Optional)) {
             $payload['username'] = $data->username;
         }
-        if (!($data->timezone instanceof \Spatie\LaravelData\Optional)) {
+        if (! ($data->timezone instanceof Optional)) {
             $payload['timezone'] = $data->timezone;
         }
-        if (!($data->password instanceof \Spatie\LaravelData\Optional) && $data->password !== null) {
+        if (! ($data->password instanceof Optional) && $data->password !== null) {
             $payload['password'] = Hash::make($data->password);
         }
 
-        if (!($data->upload_intent_id instanceof \Spatie\LaravelData\Optional) && $data->upload_intent_id !== null) {
+        if (! ($data->upload_intent_id instanceof Optional) && $data->upload_intent_id !== null) {
             $oldStorageKey = $user->profile_picture_storage_key;
             $oldFolder = config('uploads.purposes.profile_picture.folder');
 
@@ -156,6 +160,7 @@ class UserController extends Controller
                 if ($field === 'profile_picture') {
                     $oldValues['profile_picture'] = $user['profile_picture_storage_key'] ? 'has_picture' : 'none';
                     $newValues['profile_picture'] = 'updated';
+
                     continue;
                 }
 
@@ -218,36 +223,36 @@ class UserController extends Controller
         return response()->json(null, 204);
     }
 
-    /** @return \App\Data\ClientData[] */
+    /** @return ClientData[] */
     public function clients(string $userUuid): array
     {
         $user = User::where('uuid', $userUuid)->firstOrFail();
         $clients = $user->clients()->withCount('servers')->get();
 
-        return \App\Data\ClientData::collect($clients->map(fn(\App\Models\Client $client) => \App\Data\ClientData::fromModel($client)))->toArray();
+        return ClientData::collect($clients->map(fn (Client $client) => ClientData::fromModel($client)))->toArray();
     }
 
-    public function addClient(\App\Data\AddClientData $data, string $userUuid): JsonResponse
+    public function addClient(AddClientData $data, string $userUuid): JsonResponse
     {
         $user = User::where('uuid', $userUuid)->firstOrFail();
-        $client = \App\Models\Client::where('uuid', $data->client_uuid)->firstOrFail();
+        $client = Client::where('uuid', $data->client_uuid)->firstOrFail();
 
         if ($user->clients()->where('client_id', $client->id)->exists()) {
             return response()->json(['error' => 'Client already assigned to this user'], 409);
         }
 
-        $limit = (int) \App\Models\Setting::get('secop_limit_per_client', 2);
+        $limit = (int) Setting::get('secop_limit_per_client', 2);
         if ($client->secopclients()->count() >= $limit) {
             return response()->json([
                 'message' => "The client has reached the maximum limit of {$limit} SecOps.",
                 'errors' => [
-                    'client_uuid' => ["The client has reached the maximum limit of {$limit} SecOps."]
-                ]
+                    'client_uuid' => ["The client has reached the maximum limit of {$limit} SecOps."],
+                ],
             ], 422);
         }
 
         $user->clients()->attach($client->id, [
-            'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+            'uuid' => Str::uuid()->toString(),
             'record_status' => 'active',
         ]);
 
@@ -273,9 +278,9 @@ class UserController extends Controller
     public function removeClient(string $userUuid, string $clientUuid): JsonResponse
     {
         $user = User::where('uuid', $userUuid)->firstOrFail();
-        $client = \App\Models\Client::where('uuid', $clientUuid)->firstOrFail();
+        $client = Client::where('uuid', $clientUuid)->firstOrFail();
 
-        if (!$user->clients()->where('client_id', $client->id)->exists()) {
+        if (! $user->clients()->where('client_id', $client->id)->exists()) {
             return response()->json(['error' => 'Client not assigned to this user'], 404);
         }
 

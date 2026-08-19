@@ -18,7 +18,7 @@ class RequestLogger
         $method = str_pad($request->method(), 4, ' ');
 
         error_log(sprintf(
-            "[php]   %s %s /%s %s ~ %.2fms",
+            '[php]   %s %s /%s %s ~ %.2fms',
             now()->format('Y-m-d H:i:s'),
             $method,
             $request->path(),

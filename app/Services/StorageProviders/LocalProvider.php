@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 class LocalProvider implements StorageProvider
 {
     private string $basePath;
+
     private string $deliveryUrl;
 
     public function __construct(array $providerConfig)
@@ -20,7 +21,7 @@ class LocalProvider implements StorageProvider
     {
         return [
             'provider' => 'local',
-            'upload_url' => url("/api/uploads/local/store"),
+            'upload_url' => url('/api/uploads/local/store'),
             'upload_params' => [
                 'storage_key' => $storageKey,
                 'folder' => $folder,
@@ -59,6 +60,7 @@ class LocalProvider implements StorageProvider
     public function exists(string $storageKey, string $folder): bool
     {
         $path = "{$this->basePath}/{$folder}/{$storageKey}";
+
         return Storage::disk('local')->exists($path);
     }
 }

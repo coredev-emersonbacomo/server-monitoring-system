@@ -41,7 +41,7 @@ class ActionItemData extends Data
                 ? $action->assignedUser->uuid
                 : null,
             assigned_to_name: $action->relationLoaded('assignedUser') && $action->assignedUser
-                ? $action->assignedUser->first_name . ' ' . $action->assignedUser->last_name
+                ? $action->assignedUser->first_name.' '.$action->assignedUser->last_name
                 : null,
             status: $action->status->value,
             created_at: $action->created_at?->toISOString(),

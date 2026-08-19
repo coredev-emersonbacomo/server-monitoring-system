@@ -19,7 +19,7 @@ enum Severity: string
 
     public static function values(): array
     {
-        return array_map(fn(self $case) => $case->value, self::cases());
+        return array_map(fn (self $case) => $case->value, self::cases());
     }
 
     public static function options(): array
@@ -28,6 +28,7 @@ enum Severity: string
         foreach (self::cases() as $case) {
             $opts[$case->value] = $case->label();
         }
+
         return $opts;
     }
 }

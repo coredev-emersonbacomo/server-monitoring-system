@@ -2,14 +2,15 @@
 
 namespace App\Services;
 
-use App\Models\UserSession;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 
 class JwtService
 {
     private string $secret;
+
     private string $algo;
+
     private int $accessTtl;
 
     public function __construct()
@@ -54,12 +55,12 @@ class JwtService
             hash_hmac('sha256', "$header.$payload", $this->secret, true)
         );
 
-        if (!hash_equals($expectedSignature, $signature)) {
+        if (! hash_equals($expectedSignature, $signature)) {
             return null;
         }
 
         $data = json_decode($this->base64urlDecode($payload));
-        if (!$data || !isset($data->exp) || !isset($data->sub) || !isset($data->sid)) {
+        if (! $data || ! isset($data->exp) || ! isset($data->sub) || ! isset($data->sid)) {
             return null;
         }
 

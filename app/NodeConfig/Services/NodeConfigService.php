@@ -9,7 +9,7 @@ class NodeConfigService
 {
     public function copyGlobalConfigIfNeeded(string $scopeType, string $targetSlug): void
     {
-        if (!in_array($scopeType, ['client', 'server'])) {
+        if (! in_array($scopeType, ['client', 'server'])) {
             return;
         }
 
@@ -29,12 +29,12 @@ class NodeConfigService
         );
 
         $nodes = $targetConfig->config['nodes'] ?? [];
-        if (!empty($nodes)) {
+        if (! empty($nodes)) {
             return;
         }
 
         $globalConfig = NodeConfig::where('scope_type', 'global')->first();
-        if (!$globalConfig || empty($globalConfig->config['nodes'] ?? [])) {
+        if (! $globalConfig || empty($globalConfig->config['nodes'] ?? [])) {
             return;
         }
 

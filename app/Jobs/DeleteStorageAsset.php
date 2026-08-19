@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Contracts\StorageProvider;
+use App\Services\StorageProviderFactory;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -18,7 +18,7 @@ class DeleteStorageAsset implements ShouldQueue
         private readonly ?string $providerName = null,
     ) {}
 
-    public function handle(\App\Services\StorageProviderFactory $factory): void
+    public function handle(StorageProviderFactory $factory): void
     {
         if (empty($this->storageKey)) {
             return;

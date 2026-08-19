@@ -5,7 +5,9 @@ import Pusher from "pusher-js";
 import type { ChannelAuthorizationCallback } from "pusher-js";
 // Derive the authorization data shape from the callback type — ChannelAuthorizationData
 // is not a named export in all pusher-js versions, so we extract it from the callback.
-type ChannelAuthorizationData = NonNullable<Parameters<ChannelAuthorizationCallback>[1]>;
+type ChannelAuthorizationData = NonNullable<
+    Parameters<ChannelAuthorizationCallback>[1]
+>;
 import { getAccessToken } from "@/api/tokenManager";
 import { globalMetrics } from "@/lib/metricsBuffer";
 import type { StatPoint } from "@/types/stats";
@@ -48,7 +50,10 @@ function getEcho(): Echo<"reverb"> {
         authorizer: (channel: { name: string }) => ({
             authorize: (
                 socketId: string,
-                callback: (error: Error | null, data: ChannelAuthorizationData | null) => void,
+                callback: (
+                    error: Error | null,
+                    data: ChannelAuthorizationData | null,
+                ) => void,
             ) => {
                 fetch("/api/broadcasting/auth", {
                     method: "POST",
@@ -62,8 +67,15 @@ function getEcho(): Echo<"reverb"> {
                     }),
                 })
                     .then((res) => res.json())
-                    .then((data: ChannelAuthorizationData) => callback(null, data))
-                    .catch((err) => callback(err instanceof Error ? err : new Error(String(err)), null));
+                    .then((data: ChannelAuthorizationData) =>
+                        callback(null, data),
+                    )
+                    .catch((err) =>
+                        callback(
+                            err instanceof Error ? err : new Error(String(err)),
+                            null,
+                        ),
+                    );
             },
         }),
     });
@@ -124,19 +136,24 @@ export function useServerSocket(
                     // queryClient.invalidateQueries({ queryKey: ["servers"] });
                 },
             )
-            .listen(
-                ".ServerStatusUpdated",
-                () => {
-                    queryClient.invalidateQueries({ queryKey: ["server", serverUuid] });
-                    queryClient.invalidateQueries({ queryKey: ["servers"] });
-                },
-            )
+            .listen(".ServerStatusUpdated", () => {
+                queryClient.invalidateQueries({
+                    queryKey: ["server", serverUuid],
+                });
+                queryClient.invalidateQueries({ queryKey: ["servers"] });
+            })
             .listen(".ProvisionTokenGenerated", () => {
                 // Handled by the caller's queryClient.invalidateQueries(...) instead —
                 // no full reload needed.
             })
             .listen(".RegistrationCompleted", () => {
-                window.location.reload();
+                // Agent registered — the server just flipped to
+                // waiting_for_first_heartbeat. Refetch in place instead of a
+                // full page reload so the install→heartbeat transition is smooth.
+                queryClient.invalidateQueries({
+                    queryKey: ["server", serverUuid],
+                });
+                queryClient.invalidateQueries({ queryKey: ["servers"] });
             })
             .listen(".AgentUninstalled", () => {
                 if (onAgentUninstalledRef.current) {
@@ -152,7 +169,7 @@ export function useServerSocket(
             );
             echo.leaveChannel(channelName);
         };
-    }, [serverUuid]);
+    }, [queryClient, serverUuid]);
 }
 
 export function useLiveStats(serverUuid: string): StatPoint | null {

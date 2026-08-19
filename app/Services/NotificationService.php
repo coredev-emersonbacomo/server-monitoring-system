@@ -15,8 +15,8 @@ class NotificationService
         $cleaned = $message;
 
         if (preg_match('/<discord-button(?:\s+(?:href|url|detailsUrl)="([^"]*)")?\s*>([^<]*)<\/discord-button>/', $message, $matches)) {
-            $buttonUrl = !empty($matches[1]) ? $matches[1] : null;
-            $buttonLabel = !empty($matches[2]) ? $matches[2] : 'Button';
+            $buttonUrl = ! empty($matches[1]) ? $matches[1] : null;
+            $buttonLabel = ! empty($matches[2]) ? $matches[2] : 'Button';
             $cleaned = trim(str_replace($matches[0], '', $message));
         }
 
@@ -29,7 +29,7 @@ class NotificationService
         $cleaned = $message;
 
         if (preg_match('/<discord-footer>([^<]*)<\/discord-footer>/', $message, $matches)) {
-            $footer = !empty($matches[1]) ? $matches[1] : null;
+            $footer = ! empty($matches[1]) ? $matches[1] : null;
             $cleaned = trim(str_replace($matches[0], '', $message));
         }
 
@@ -69,8 +69,8 @@ class NotificationService
         $cleaned = $message;
 
         if (preg_match('/<email-button(?:\s+(?:href|url|detailsUrl)="([^"]*)")?\s*>([^<]*)<\/email-button>/', $message, $matches)) {
-            $buttonUrl = !empty($matches[1]) ? $matches[1] : null;
-            $buttonLabel = !empty($matches[2]) ? $matches[2] : 'View Server Details';
+            $buttonUrl = ! empty($matches[1]) ? $matches[1] : null;
+            $buttonLabel = ! empty($matches[2]) ? $matches[2] : 'View Server Details';
             $cleaned = trim(str_replace($matches[0], '', $message));
         }
 
@@ -80,11 +80,11 @@ class NotificationService
     /**
      * Send an alert to a Discord text channel using an embed card with link buttons.
      *
-     * @param string $tokenId The Bot Token
-     * @param string $roleId The Discord Role ID to mention
-     * @param string $message The message content
-     * @param string $channelId The Channel ID to send the message to
-     * @param string $color Hex color for the embed sidebar (default: red)
+     * @param  string  $tokenId  The Bot Token
+     * @param  string  $roleId  The Discord Role ID to mention
+     * @param  string  $message  The message content
+     * @param  string  $channelId  The Channel ID to send the message to
+     * @param  string  $color  Hex color for the embed sidebar (default: red)
      */
     public function sendDiscordAlert(
         string $tokenId,
@@ -113,7 +113,7 @@ class NotificationService
 
         $payload = [];
         if ($content !== '') {
-            $payload['content'] = "\u{200B}\n" . $content;
+            $payload['content'] = "\u{200B}\n".$content;
         }
         if ($roleId) {
             $payload['allowed_mentions'] = ['roles' => [$roleId]];
@@ -121,12 +121,12 @@ class NotificationService
 
         if ($description !== '' || $embedTitle !== '') {
             $embed = [
-                'color'     => hexdec(ltrim($color, '#')),
+                'color' => hexdec(ltrim($color, '#')),
                 'timestamp' => now()->toIso8601String(),
-                'footer'    => ['text' => $footerText],
+                'footer' => ['text' => $footerText],
             ];
             if ($description !== '') {
-                $embed['description'] = "\u{200B}\n" . $description . "\n\u{200B}";
+                $embed['description'] = "\u{200B}\n".$description."\n\u{200B}";
             }
             if ($embedTitle !== '') {
                 $embed['title'] = $embedTitle;
@@ -137,12 +137,12 @@ class NotificationService
         $components = [];
         if ($buttonUrl) {
             $components[] = [
-                'type'       => 1,
+                'type' => 1,
                 'components' => [[
-                    'type'  => 2,
+                    'type' => 2,
                     'style' => 5,
                     'label' => $buttonLabel,
-                    'url'   => $buttonUrl,
+                    'url' => $buttonUrl,
                 ]],
             ];
         }
@@ -150,17 +150,18 @@ class NotificationService
 
         $response = Http::timeout(15)
             ->withHeaders([
-                'Authorization' => 'Bot ' . $tokenId,
-                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bot '.$tokenId,
+                'Content-Type' => 'application/json',
             ])
             ->post("https://discord.com/api/v10/channels/{$channelId}/messages", $payload);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::error('[discord] Failed to send message', [
                 'channel_id' => $channelId,
-                'status'     => $response->status(),
-                'error'      => $response->body(),
+                'status' => $response->status(),
+                'error' => $response->body(),
             ]);
+
             return false;
         }
 
@@ -170,10 +171,10 @@ class NotificationService
     /**
      * Send an email alert with HTML card styling.
      *
-     * @param array|string $receivers The email address(es) to send to.
-     * @param string $message The message content.
-     * @param string $subject The email subject.
-     * @param string|null $url Optional URL link to include in the email.
+     * @param  array|string  $receivers  The email address(es) to send to.
+     * @param  string  $message  The message content.
+     * @param  string  $subject  The email subject.
+     * @param  string|null  $url  Optional URL link to include in the email.
      */
     public function sendEmailAlert(
         array|string $receivers,
@@ -249,7 +250,7 @@ class NotificationService
 
         Mail::html($html, function ($mail) use ($receivers, $subject) {
             $mail->to($receivers)
-                 ->subject($subject);
+                ->subject($subject);
         });
     }
 }
