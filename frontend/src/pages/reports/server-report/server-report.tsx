@@ -22,7 +22,16 @@ export default function ServerReportPage({ uuidOverride }: { uuidOverride?: stri
     });
 
     if (isLoading) return <div className="p-8">Loading report...</div>;
-    if (error || !report) return <div className="p-8">Failed to load report.</div>;
+    if (error || !report) {
+        const is404 = error && 'status' in error && (error as { status: number }).status === 404;
+        return (
+            <div className="p-8">
+                {is404
+                    ? "Server not found. It may have been deleted."
+                    : "Failed to load report."}
+            </div>
+        );
+    }
 
     const chartData = report.metrics.map((m) => ({
         time: new Date(m.timestamp).toLocaleTimeString([], {
