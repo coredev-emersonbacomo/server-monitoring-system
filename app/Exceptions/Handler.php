@@ -2,16 +2,15 @@
 
 namespace App\Exceptions;
 
-use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Database\QueryException;
-use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Log\LogLevel;
 use Throwable;
 
 class Handler extends ExceptionHandler
 {
     protected $levels = [
-        QueryException::class => \Illuminate\Log\LogLevel::ERROR,
+        QueryException::class => LogLevel::ERROR,
     ];
 
     protected $dontReport = [

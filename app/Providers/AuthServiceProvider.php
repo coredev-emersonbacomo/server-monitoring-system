@@ -4,10 +4,9 @@ namespace App\Providers;
 
 use App\Auth\JwtGuard;
 use App\Auth\JwtUserProvider;
-use App\Models\User;
-use App\Services\JwtService;
 use App\Models\UploadIntent;
 use App\Policies\UploadIntentPolicy;
+use App\Services\JwtService;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Auth;
 
@@ -25,6 +24,7 @@ class AuthServiceProvider extends ServiceProvider
 
         Auth::extend('jwt', function ($app, $name, array $config) {
             $provider = Auth::createUserProvider($config['provider'] ?? 'jwt');
+
             return new JwtGuard(
                 $provider,
                 $app->make(JwtService::class),

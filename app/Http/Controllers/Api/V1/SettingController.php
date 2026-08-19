@@ -2,7 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\AgentConfigUpdated;
 use App\Http\Controllers\Controller;
+use App\Models\Activity;
+use App\Models\Agent;
+use App\Models\AgentVersion;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 
@@ -14,8 +18,9 @@ class SettingController extends Controller
     public function index(): JsonResponse
     {
         $settings = Setting::all()->pluck('value', 'key')->toArray();
-        $latestVersion = \App\Models\AgentVersion::orderBy('id', 'desc')->first();
+        $latestVersion = AgentVersion::orderBy('id', 'desc')->first();
         $settings['agent_version'] = $latestVersion ? $latestVersion->version : '2.0';
+
         return response()->json($settings);
     }
 
@@ -26,16 +31,16 @@ class SettingController extends Controller
     {
         $user = request()->user();
         $isAdmin = $user && ($user->username === 'admin' || $user->email === 'admin@example.com' || str_contains($user->email, 'admin'));
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
         $data = request()->validate([
             'secop_limit_per_client' => ['sometimes', 'integer', 'min:1', 'max:50'],
-            'heartbeat_interval'     => ['sometimes', 'integer', 'min:1', 'max:60'],
-            'offline_threshold'      => ['sometimes', 'integer', 'min:1', 'max:60'],
-            'port_ping_interval'     => ['sometimes', 'integer', 'min:1', 'max:3600'],
-            'agent_version'          => ['sometimes', 'string'],
+            'heartbeat_interval' => ['sometimes', 'integer', 'min:1', 'max:60'],
+            'offline_threshold' => ['sometimes', 'integer', 'min:1', 'max:60'],
+            'port_ping_interval' => ['sometimes', 'integer', 'min:1', 'max:3600'],
+            'agent_version' => ['sometimes', 'string'],
         ]);
 
         if (isset($data['heartbeat_interval']) && isset($data['offline_threshold'])) {
@@ -47,18 +52,17 @@ class SettingController extends Controller
         }
 
         if (isset($data['agent_version'])) {
-            $latest = \App\Models\AgentVersion::orderBy('id', 'desc')->first();
-            if (!$latest || $latest->version !== $data['agent_version']) {
-                \App\Models\AgentVersion::create([
+            $latest = AgentVersion::orderBy('id', 'desc')->first();
+            if (! $latest || $latest->version !== $data['agent_version']) {
+                AgentVersion::create([
                     'version' => $data['agent_version'],
                     'binary_url' => url('/MonitorAgent.exe'),
-                    'description' => 'Agent binary updated to version ' . $data['agent_version'],
+                    'description' => 'Agent binary updated to version '.$data['agent_version'],
                 ]);
             }
         }
 
         // No longer creating AgentVersion records for simple heartbeat_interval updates to prevent update-loop bugs.
-
 
         unset($data['agent_version']);
 
@@ -71,17 +75,17 @@ class SettingController extends Controller
 
         // Push config update to all active agents via WebSocket control channel
         if ($newHeartbeatInterval !== null) {
-            $agents = \App\Models\Agent::where('status', '!=', 'archived')
+            $agents = Agent::where('status', '!=', 'archived')
                 ->with('server')
                 ->get();
             foreach ($agents as $agent) {
                 if ($agent->server) {
-                    event(new \App\Events\AgentConfigUpdated(
+                    event(new AgentConfigUpdated(
                         $agent->server->uuid,
                         (int) $newHeartbeatInterval
                     ));
 
-                    \App\Models\Activity::create([
+                    Activity::create([
                         'server_id' => $agent->server->id,
                         'agent_id' => $agent->id,
                         'type' => 'config_updated',
@@ -92,8 +96,9 @@ class SettingController extends Controller
         }
 
         $settings = Setting::all()->pluck('value', 'key')->toArray();
-        $latestVersion = \App\Models\AgentVersion::orderBy('id', 'desc')->first();
+        $latestVersion = AgentVersion::orderBy('id', 'desc')->first();
         $settings['agent_version'] = $latestVersion ? $latestVersion->version : '2.0';
+
         return response()->json($settings);
     }
 }

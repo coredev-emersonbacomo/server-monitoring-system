@@ -15,7 +15,7 @@ class RefreshTokenRotationService
     public function validateAndRotate(string $refreshToken, string $ip, ?string $userAgent): array
     {
         $parsed = $this->jwtService->parseRefreshToken($refreshToken);
-        if (!$parsed) {
+        if (! $parsed) {
             return ['error' => true, 'message' => 'Invalid refresh token format', 'status' => 401];
         }
 
@@ -24,18 +24,19 @@ class RefreshTokenRotationService
 
         $session = $this->sessionManager->findSessionByRefreshTokenId($tokenId);
 
-        if (!$session) {
+        if (! $session) {
             $session = $this->sessionManager->findSessionByPreviousRefreshTokenId($tokenId);
 
             if ($session) {
                 $this->handleReuseDetection($session, $ip, $userAgent);
+
                 return ['error' => true, 'message' => 'Refresh token reuse detected. Session compromised.', 'status' => 401];
             }
 
             return ['error' => true, 'message' => 'Invalid refresh token', 'status' => 401];
         }
 
-        if (!$this->jwtService->constantTimeCompare(
+        if (! $this->jwtService->constantTimeCompare(
             $session->refresh_token_hash,
             $this->jwtService->hashSecret($tokenSecret)
         )) {
@@ -43,6 +44,7 @@ class RefreshTokenRotationService
                 'reason' => 'token_secret_mismatch',
                 'refresh_token_id' => $tokenId,
             ]);
+
             return ['error' => true, 'message' => 'Invalid refresh token', 'status' => 401];
         }
 
@@ -56,6 +58,7 @@ class RefreshTokenRotationService
 
         if ($session->isExpired()) {
             $this->auditService->log('session_expired', $session->user_id, $session->session_uuid, $ip, $userAgent);
+
             return ['error' => true, 'message' => 'Session expired.', 'status' => 401];
         }
 

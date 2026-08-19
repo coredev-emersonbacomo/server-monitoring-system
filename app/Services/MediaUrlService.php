@@ -76,7 +76,7 @@ class MediaUrlService
         $purposeConfig = app(UploadIntentService::class)->getPurposeConfig($purpose);
         $folder = $purposeConfig['folder'];
 
-        if (!isset($providerConfig[$folder][$name])) {
+        if (! isset($providerConfig[$folder][$name])) {
             return [];
         }
 

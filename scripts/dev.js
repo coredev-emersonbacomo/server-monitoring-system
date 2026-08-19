@@ -34,12 +34,14 @@ if (unknownArgs.length > 0) {
   process.exit(1);
 }
 
+const waitRedis = 'node scripts/wait-for-redis.js';
+
 const commands = [
   { command: 'redis-server || C:\\redis\\redis-server.exe', name: 'redis', prefixColor: 'yellow' },
   { command: 'npm run dev -w frontend', name: 'dev', prefixColor: 'green' },
-  { command: 'php artisan reverb:start', name: 'ws', prefixColor: 'cyan' },
-  { command: 'php artisan queue:work -q', name: 'queue', prefixColor: 'magenta' },
-  { command: 'php artisan schedule:work', name: 'schedule', prefixColor: 'blue' },
+  { command: `${waitRedis} && php artisan reverb:start`, name: 'ws', prefixColor: 'cyan' },
+  { command: `${waitRedis} && php artisan queue:work -q`, name: 'queue', prefixColor: 'magenta' },
+  { command: `${waitRedis} && php artisan schedule:work`, name: 'schedule', prefixColor: 'blue' },
 ];
 
 const { result } = concurrently(commands);

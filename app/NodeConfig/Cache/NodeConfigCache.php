@@ -9,11 +9,17 @@ use Illuminate\Support\Facades\Log;
 class NodeConfigCache
 {
     private const PREFIX = 'node_config:';
-    private const SCOPE_PREFIX = self::PREFIX . 'scope:';
-    private const ID_PREFIX = self::PREFIX . 'id:';
-    private const SLUG_PREFIX = self::PREFIX . 'slug:';
-    private const COMPILED_PREFIX = self::PREFIX . 'compiled:';
-    private const INDEX_KEY = self::PREFIX . 'index';
+
+    private const SCOPE_PREFIX = self::PREFIX.'scope:';
+
+    private const ID_PREFIX = self::PREFIX.'id:';
+
+    private const SLUG_PREFIX = self::PREFIX.'slug:';
+
+    private const COMPILED_PREFIX = self::PREFIX.'compiled:';
+
+    private const INDEX_KEY = self::PREFIX.'index';
+
     private const TTL = 3600;
 
     private static function store()
@@ -32,7 +38,7 @@ class NodeConfigCache
 
             // Log::debug('[node-config-cache] Warmed cache with ' . $configs->count() . ' configs');
         } catch (\Throwable $e) {
-            Log::warning('[node-config-cache] Failed to warm cache: ' . $e->getMessage());
+            Log::warning('[node-config-cache] Failed to warm cache: '.$e->getMessage());
         }
     }
 
@@ -41,7 +47,7 @@ class NodeConfigCache
         try {
             self::storeConfig($config);
         } catch (\Throwable $e) {
-            Log::warning("[node-config-cache] Failed to refresh config {$config->id}: " . $e->getMessage());
+            Log::warning("[node-config-cache] Failed to refresh config {$config->id}: ".$e->getMessage());
         }
     }
 
@@ -50,19 +56,19 @@ class NodeConfigCache
         try {
             $store = self::store();
 
-            $scopeKey = self::SCOPE_PREFIX . $config->scope_type;
+            $scopeKey = self::SCOPE_PREFIX.$config->scope_type;
             if ($config->scope_id) {
-                $scopeKey .= ':' . $config->scope_id;
+                $scopeKey .= ':'.$config->scope_id;
             }
 
             $store->forget($scopeKey);
-            $store->forget(self::ID_PREFIX . $config->id);
-            $store->forget(self::SLUG_PREFIX . $config->slug);
-            $store->forget(self::COMPILED_PREFIX . $config->id);
+            $store->forget(self::ID_PREFIX.$config->id);
+            $store->forget(self::SLUG_PREFIX.$config->slug);
+            $store->forget(self::COMPILED_PREFIX.$config->id);
 
             self::rebuildIndex();
         } catch (\Throwable $e) {
-            Log::warning("[node-config-cache] Failed to invalidate config {$config->id}: " . $e->getMessage());
+            Log::warning("[node-config-cache] Failed to invalidate config {$config->id}: ".$e->getMessage());
         }
     }
 
@@ -73,7 +79,7 @@ class NodeConfigCache
     {
         try {
             $store = self::store();
-            $key = self::COMPILED_PREFIX . $configId;
+            $key = self::COMPILED_PREFIX.$configId;
             $cached = $store->get($key);
 
             if ($cached !== null) {
@@ -83,12 +89,14 @@ class NodeConfigCache
             $config = NodeConfig::find($configId);
             if ($config && $config->compiled_config) {
                 $store->put($key, $config->compiled_config, self::TTL);
+
                 return $config->compiled_config;
             }
 
             return null;
         } catch (\Throwable $e) {
-            Log::warning("[node-config-cache] Failed to get compiled config {$configId}: " . $e->getMessage());
+            Log::warning("[node-config-cache] Failed to get compiled config {$configId}: ".$e->getMessage());
+
             return NodeConfig::find($configId)?->compiled_config;
         }
     }
@@ -98,7 +106,7 @@ class NodeConfigCache
         try {
             $store = self::store();
 
-            $serverKey = self::SCOPE_PREFIX . 'server:' . $serverUuid;
+            $serverKey = self::SCOPE_PREFIX.'server:'.$serverUuid;
             $cached = $store->get($serverKey);
             if ($cached) {
                 return self::hydrate($cached);
@@ -107,12 +115,14 @@ class NodeConfigCache
             $config = NodeConfig::resolveForServerFromDb($serverUuid);
             if ($config) {
                 self::storeConfig($config);
+
                 return $config;
             }
 
             return null;
         } catch (\Throwable $e) {
-            Log::warning("[node-config-cache] Failed to resolve for server {$serverUuid}, falling back to DB: " . $e->getMessage());
+            Log::warning("[node-config-cache] Failed to resolve for server {$serverUuid}, falling back to DB: ".$e->getMessage());
+
             return NodeConfig::resolveForServerFromDb($serverUuid);
         }
     }
@@ -121,10 +131,10 @@ class NodeConfigCache
     {
         try {
             $store = self::store();
-            $configId = $store->get(self::SLUG_PREFIX . $slug);
+            $configId = $store->get(self::SLUG_PREFIX.$slug);
 
             if ($configId) {
-                $cached = $store->get(self::ID_PREFIX . $configId);
+                $cached = $store->get(self::ID_PREFIX.$configId);
                 if ($cached) {
                     return self::hydrate($cached);
                 }
@@ -133,12 +143,14 @@ class NodeConfigCache
             $config = NodeConfig::where('slug', $slug)->first();
             if ($config) {
                 self::storeConfig($config);
+
                 return $config;
             }
 
             return null;
         } catch (\Throwable $e) {
-            Log::warning("[node-config-cache] Failed to find by slug {$slug}, falling back to DB: " . $e->getMessage());
+            Log::warning("[node-config-cache] Failed to find by slug {$slug}, falling back to DB: ".$e->getMessage());
+
             return NodeConfig::where('slug', $slug)->first();
         }
     }
@@ -147,7 +159,7 @@ class NodeConfigCache
     {
         try {
             $store = self::store();
-            $cached = $store->get(self::ID_PREFIX . $id);
+            $cached = $store->get(self::ID_PREFIX.$id);
 
             if ($cached) {
                 return self::hydrate($cached);
@@ -156,12 +168,14 @@ class NodeConfigCache
             $config = NodeConfig::find($id);
             if ($config) {
                 self::storeConfig($config);
+
                 return $config;
             }
 
             return null;
         } catch (\Throwable $e) {
-            Log::warning("[node-config-cache] Failed to find by id {$id}, falling back to DB: " . $e->getMessage());
+            Log::warning("[node-config-cache] Failed to find by id {$id}, falling back to DB: ".$e->getMessage());
+
             return NodeConfig::find($id);
         }
     }
@@ -170,6 +184,7 @@ class NodeConfigCache
     {
         $model = new NodeConfig($data);
         $model->exists = true;
+
         return $model;
     }
 
@@ -178,21 +193,21 @@ class NodeConfigCache
         $store = self::store();
         $data = $config->toArray();
 
-        $scopeKey = self::SCOPE_PREFIX . $config->scope_type;
+        $scopeKey = self::SCOPE_PREFIX.$config->scope_type;
         if ($config->scope_id) {
-            $scopeKey .= ':' . $config->scope_id;
+            $scopeKey .= ':'.$config->scope_id;
         }
 
         $store->put($scopeKey, $data, self::TTL);
-        $store->put(self::ID_PREFIX . $config->id, $data, self::TTL);
+        $store->put(self::ID_PREFIX.$config->id, $data, self::TTL);
 
         if ($config->slug) {
-            $store->put(self::SLUG_PREFIX . $config->slug, $config->id, self::TTL);
+            $store->put(self::SLUG_PREFIX.$config->slug, $config->id, self::TTL);
         }
 
         // Cache compiled_config separately for fast engine fetch
         if ($config->compiled_config) {
-            $store->put(self::COMPILED_PREFIX . $config->id, $config->compiled_config, self::TTL);
+            $store->put(self::COMPILED_PREFIX.$config->id, $config->compiled_config, self::TTL);
         }
 
         self::rebuildIndex();
@@ -223,9 +238,9 @@ class NodeConfigCache
 
             $index = [];
             foreach ($configs as $c) {
-                $scopeKey = self::SCOPE_PREFIX . $c->scope_type;
+                $scopeKey = self::SCOPE_PREFIX.$c->scope_type;
                 if ($c->scope_id) {
-                    $scopeKey .= ':' . $c->scope_id;
+                    $scopeKey .= ':'.$c->scope_id;
                 }
                 $index[$c->id] = [
                     'scope_key' => $scopeKey,

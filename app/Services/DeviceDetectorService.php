@@ -50,7 +50,7 @@ class DeviceDetectorService
 
     public function detectBrowser(?string $userAgent): ?string
     {
-        if (!$userAgent) {
+        if (! $userAgent) {
             return null;
         }
 
@@ -65,7 +65,7 @@ class DeviceDetectorService
 
     public function detectOperatingSystem(?string $userAgent): ?string
     {
-        if (!$userAgent) {
+        if (! $userAgent) {
             return null;
         }
 
@@ -80,7 +80,7 @@ class DeviceDetectorService
 
     public function detectDeviceType(?string $userAgent): DeviceType
     {
-        if (!$userAgent) {
+        if (! $userAgent) {
             return DeviceType::Unknown;
         }
 
@@ -101,7 +101,7 @@ class DeviceDetectorService
 
     public function detectDeviceName(?string $userAgent): ?string
     {
-        if (!$userAgent) {
+        if (! $userAgent) {
             return null;
         }
 

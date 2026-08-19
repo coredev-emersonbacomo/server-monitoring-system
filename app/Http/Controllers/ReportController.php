@@ -14,10 +14,12 @@ use App\Models\ActionItem;
 use App\Models\Client;
 use App\Models\LocalAlert;
 use App\Models\Server;
+use App\Models\Setting;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
 class ReportController extends Controller
@@ -39,22 +41,22 @@ class ReportController extends Controller
     public function compile(Request $request)
     {
         $request->validate([
-            'template'    => 'required|in:client,server,general,multi-client,multi-server',
-            'data'        => 'nullable|array',
-            'uuid'        => 'nullable|string',
-            'uuids'       => 'nullable|array',
-            'uuids.*'     => 'string',
-            'paper'       => 'nullable|in:a4,letter,legal',
+            'template' => 'required|in:client,server,general,multi-client,multi-server',
+            'data' => 'nullable|array',
+            'uuid' => 'nullable|string',
+            'uuids' => 'nullable|array',
+            'uuids.*' => 'string',
+            'paper' => 'nullable|in:a4,letter,legal',
             'orientation' => 'nullable|in:landscape,portrait',
-            'hours'       => 'nullable|integer|min:1|max:672',
-            'refresh'     => 'nullable|boolean',
+            'hours' => 'nullable|integer|min:1|max:672',
+            'refresh' => 'nullable|boolean',
         ]);
 
-        $template    = $request->input('template');
-        $paper       = $request->input('paper', 'a4');
+        $template = $request->input('template');
+        $paper = $request->input('paper', 'a4');
         $orientation = $request->input('orientation', 'portrait');
-        $hours       = $request->integer('hours', 24);
-        $refresh     = $request->boolean('refresh');
+        $hours = $request->integer('hours', 24);
+        $refresh = $request->boolean('refresh');
 
         // Auto-fetch data from DB when uuid / uuids are provided
         if ($request->filled('uuids') && is_array($request->input('uuids'))) {
@@ -64,7 +66,7 @@ class ReportController extends Controller
                 $items[] = match ($template) {
                     'multi-server' => $this->buildServerData($uuid, $hours)->toArray(),
                     'multi-client' => $this->buildClientData($uuid)->toArray(),
-                    default        => [],
+                    default => [],
                 };
             }
             $data = ['items' => $items];
@@ -73,7 +75,7 @@ class ReportController extends Controller
             $data = match ($template) {
                 'server' => $this->buildServerData($uuid, $hours)->toArray(),
                 'client' => $this->buildClientData($uuid)->toArray(),
-                default  => [],
+                default => [],
             };
         } elseif ($template === 'general') {
             // General report always fetches its own data
@@ -84,45 +86,45 @@ class ReportController extends Controller
 
         // Add timestamp and layout settings
         $data['generated_at'] = now()->format('F j, Y H:i');
-        $data['orientation']  = $orientation;
-        $data['paper']        = $paper;
-        $data['hours']        = $hours;
+        $data['orientation'] = $orientation;
+        $data['paper'] = $paper;
+        $data['hours'] = $hours;
 
         // Stable entity reference — determines which DB records feed the report
         $entityRef = match (true) {
-            $template === 'general'   => 'general',
+            $template === 'general' => 'general',
             $request->filled('uuids') => ['uuids' => $this->sortUuids($request->input('uuids'))],
-            $request->filled('uuid')  => ['uuid' => $request->input('uuid')],
-            default                   => ['data' => sha1(json_encode($this->filterNulls($request->input('data', []))))],
+            $request->filled('uuid') => ['uuid' => $request->input('uuid')],
+            default => ['data' => sha1(json_encode($this->filterNulls($request->input('data', []))))],
         };
 
         // Daily cache — the same report requested any time today reuses today's file
         $cacheKey = sha1(json_encode([
-            'template'    => $template,
-            'entity'      => $entityRef,
-            'paper'       => $paper,
+            'template' => $template,
+            'entity' => $entityRef,
+            'paper' => $paper,
             'orientation' => $orientation,
-            'hours'       => $hours,
-            'date'        => now()->toDateString(),
-            'tpl_hash'    => md5_file(resource_path("typst/{$template}-report.typ")),
-            'base_hash'   => md5_file(resource_path('typst/base.typ')),
+            'hours' => $hours,
+            'date' => now()->toDateString(),
+            'tpl_hash' => md5_file(resource_path("typst/{$template}-report.typ")),
+            'base_hash' => md5_file(resource_path('typst/base.typ')),
         ]));
 
-        $cacheDir   = storage_path("app/typst/cache/{$cacheKey}");
-        $cachedPdf  = "{$cacheDir}/output.pdf";
+        $cacheDir = storage_path("app/typst/cache/{$cacheKey}");
+        $cachedPdf = "{$cacheDir}/output.pdf";
 
         $this->pruneCache();
 
-        if (!$refresh && File::exists($cachedPdf)) {
+        if (! $refresh && File::exists($cachedPdf)) {
             return response(file_get_contents($cachedPdf), 200, [
-                'Content-Type'        => 'application/pdf',
+                'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="report.pdf"',
-                'X-Generated-At'      => gmdate('c', filemtime($cachedPdf)),
+                'X-Generated-At' => gmdate('c', filemtime($cachedPdf)),
             ]);
         }
 
         // Create temp working directory
-        $workDir = storage_path("app/typst/work/" . Str::uuid());
+        $workDir = storage_path('app/typst/work/'.Str::uuid());
         File::makeDirectory($workDir, 0755, true);
 
         try {
@@ -132,7 +134,7 @@ class ReportController extends Controller
 
             // Copy template file
             $templateFile = resource_path("typst/{$template}-report.typ");
-            if (!File::exists($templateFile)) {
+            if (! File::exists($templateFile)) {
                 return response()->json(['error' => "Template '{$template}' not found"], 404);
             }
             File::copy($templateFile, "{$workDir}/{$template}-report.typ");
@@ -148,25 +150,25 @@ class ReportController extends Controller
             }
 
             // Run Typst compile
-            $outputPdf    = "{$workDir}/output.pdf";
+            $outputPdf = "{$workDir}/output.pdf";
             $templateFile = "{$workDir}/{$template}-report.typ";
             $cmd = 'typst compile '
-                . escapeshellarg($templateFile) . ' '
-                . escapeshellarg($outputPdf)
-                . ' 2>&1';
+                .escapeshellarg($templateFile).' '
+                .escapeshellarg($outputPdf)
+                .' 2>&1';
 
-            $output   = [];
+            $output = [];
             $exitCode = 0;
             exec($cmd, $output, $exitCode);
 
             if ($exitCode !== 0) {
                 return response()->json([
-                    'error'   => 'Typst compilation failed',
+                    'error' => 'Typst compilation failed',
                     'details' => implode("\n", $output),
                 ], 500);
             }
 
-            if (!File::exists($outputPdf)) {
+            if (! File::exists($outputPdf)) {
                 return response()->json(['error' => 'PDF was not generated'], 500);
             }
 
@@ -177,13 +179,13 @@ class ReportController extends Controller
             $pdfBytes = file_get_contents($outputPdf);
 
             return response($pdfBytes, 200, [
-                'Content-Type'        => 'application/pdf',
+                'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="report.pdf"',
-                'X-Generated-At'      => now()->toIso8601String(),
+                'X-Generated-At' => now()->toIso8601String(),
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'error'   => 'Report generation failed',
+                'error' => 'Report generation failed',
                 'details' => $e->getMessage(),
             ], 500);
         } finally {
@@ -220,14 +222,14 @@ class ReportController extends Controller
     {
         $server = Server::with('client', 'agent')->where('uuid', $uuid)->firstOrFail();
 
-        $offlineThresholdSec = (int) \App\Models\Setting::get('offline_threshold', '15');
+        $offlineThresholdSec = (int) Setting::get('offline_threshold', '15');
         if ($offlineThresholdSec >= 1000) {
             $offlineThresholdSec = intdiv($offlineThresholdSec, 1000);
         }
 
         $lastSeenAt = $server->agent?->last_seen_at;
-        $health     = Server::computeHealth($lastSeenAt, $offlineThresholdSec);
-        $status     = $health === ServerHealth::Online ? 'online' : 'offline';
+        $health = Server::computeHealth($lastSeenAt, $offlineThresholdSec);
+        $status = $health === ServerHealth::Online ? 'online' : 'offline';
 
         // Fetch server_updates for the requested window
         $updates = $server->updates()
@@ -235,11 +237,11 @@ class ReportController extends Controller
             ->orderBy('created_at')
             ->get();
 
-        $metrics = $updates->map(fn($u) => ServerMetricPointData::from([
-            'timestamp'      => $u->created_at->toIso8601String(),
-            'cpu_usage'      => (float) $u->cpu_usage,
-            'memory_usage'   => (float) $u->memory_usage,
-            'disk_usage'     => (float) $u->disk_usage,
+        $metrics = $updates->map(fn ($u) => ServerMetricPointData::from([
+            'timestamp' => $u->created_at->toIso8601String(),
+            'cpu_usage' => (float) $u->cpu_usage,
+            'memory_usage' => (float) $u->memory_usage,
+            'disk_usage' => (float) $u->disk_usage,
             'network_rbytes' => (int) ($u->network_rbytes ?? 0),
             'network_tbytes' => (int) ($u->network_tbytes ?? 0),
         ]));
@@ -277,30 +279,30 @@ class ReportController extends Controller
             $cpu7d[] = round((float) $row->cpu, 1);
             $memory7d[] = round((float) $row->memory, 1);
             $disk7d[] = round((float) $row->disk, 1);
-            $dt = \Carbon\Carbon::parse((string) $row->timestamp);
+            $dt = Carbon::parse((string) $row->timestamp);
             $trendX[] = [$dt->year, $dt->month, $dt->day, $dt->hour, $dt->minute, (int) $dt->second];
         }
 
         return ServerReportData::from([
-            'uuid'             => $server->uuid,
-            'name'             => $server->name,
-            'description'      => $server->description,
-            'client_name'      => $server->client?->name,
-            'host_name'        => $server->host_name,
-            'cpu_model'        => $server->cpu_model,
-            'cpu_cores'        => $server->cpu_cores,
-            'ram'              => $server->ram,
-            'disk'             => $server->disk,
+            'uuid' => $server->uuid,
+            'name' => $server->name,
+            'description' => $server->description,
+            'client_name' => $server->client?->name,
+            'host_name' => $server->host_name,
+            'cpu_model' => $server->cpu_model,
+            'cpu_cores' => $server->cpu_cores,
+            'ram' => $server->ram,
+            'disk' => $server->disk,
             'operating_system' => $server->operating_system,
-            'status'           => $status,
-            'last_seen'        => $lastSeenAt?->toIso8601String(),
-            'metrics'          => $metrics,
-            'uptime'           => $this->calcUptime($server, $updates, $hours),
-            'cpu_7d'           => $cpu7d,
-            'memory_7d'        => $memory7d,
-            'disk_7d'          => $disk7d,
+            'status' => $status,
+            'last_seen' => $lastSeenAt?->toIso8601String(),
+            'metrics' => $metrics,
+            'uptime' => $this->calcUptime($server, $updates, $hours),
+            'cpu_7d' => $cpu7d,
+            'memory_7d' => $memory7d,
+            'disk_7d' => $disk7d,
             'subscription_fee' => $server->subscription_fee,
-            'trend_x'          => $trendX,
+            'trend_x' => $trendX,
         ]);
     }
 
@@ -311,23 +313,23 @@ class ReportController extends Controller
     {
         $client = Client::with(['servers.agent', 'servers.latestUpdate'])->where('uuid', $uuid)->firstOrFail();
 
-        $offlineThresholdSec = (int) \App\Models\Setting::get('offline_threshold', '15');
+        $offlineThresholdSec = (int) Setting::get('offline_threshold', '15');
         if ($offlineThresholdSec >= 1000) {
             $offlineThresholdSec = intdiv($offlineThresholdSec, 1000);
         }
 
-        $onlineCount  = 0;
+        $onlineCount = 0;
         $offlineCount = 0;
-        $cpuSum       = 0.0;
-        $memSum       = 0.0;
-        $cpuCount     = 0;
-        $servers      = [];
+        $cpuSum = 0.0;
+        $memSum = 0.0;
+        $cpuCount = 0;
+        $servers = [];
         $totalSubscriptionFee = 0;
 
         foreach ($client->servers as $server) {
             $lastSeenAt = $server->agent?->last_seen_at;
-            $health     = Server::computeHealth($lastSeenAt, $offlineThresholdSec);
-            $isOnline   = $health === ServerHealth::Online;
+            $health = Server::computeHealth($lastSeenAt, $offlineThresholdSec);
+            $isOnline = $health === ServerHealth::Online;
 
             if ($isOnline) {
                 $onlineCount++;
@@ -335,9 +337,9 @@ class ReportController extends Controller
                 $offlineCount++;
             }
 
-            $cpu  = $server->latestUpdate ? (float) $server->latestUpdate->cpu_usage    : null;
-            $mem  = $server->latestUpdate ? (float) $server->latestUpdate->memory_usage  : null;
-            $disk = $server->latestUpdate ? (float) $server->latestUpdate->disk_usage    : null;
+            $cpu = $server->latestUpdate ? (float) $server->latestUpdate->cpu_usage : null;
+            $mem = $server->latestUpdate ? (float) $server->latestUpdate->memory_usage : null;
+            $disk = $server->latestUpdate ? (float) $server->latestUpdate->disk_usage : null;
 
             if ($cpu !== null) {
                 $cpuSum += $cpu;
@@ -354,7 +356,7 @@ class ReportController extends Controller
             }
 
             // Per-server uptime: quick gap analysis over last 24h
-            $updates    = $server->updates()
+            $updates = $server->updates()
                 ->where('created_at', '>=', now()->subHours(24))
                 ->orderBy('created_at')
                 ->get();
@@ -384,7 +386,7 @@ class ReportController extends Controller
             );
         }
 
-        $serverIds   = $client->servers->pluck('id');
+        $serverIds = $client->servers->pluck('id');
         $totalAlerts = $serverIds->isNotEmpty()
             ? LocalAlert::whereIn('server_id', $serverIds)->count()
             : 0;
@@ -412,39 +414,39 @@ class ReportController extends Controller
      */
     private function buildGeneralData(): GeneralReportData
     {
-        $offlineThresholdSec = (int) \App\Models\Setting::get('offline_threshold', '15');
+        $offlineThresholdSec = (int) Setting::get('offline_threshold', '15');
         if ($offlineThresholdSec >= 1000) {
             $offlineThresholdSec = intdiv($offlineThresholdSec, 1000);
         }
 
         // Direct database aggregations
         $totalClients = Client::count();
-        $totalUsers   = User::count();
+        $totalUsers = User::count();
         $sumClientBudget = (float) Client::sum('budget');
 
         // Load servers with eager-loaded latest relation and pre-filtered updates for the last 24h (prevents N+1)
         $since24h = now()->subHours(24);
-        $servers  = Server::with([
+        $servers = Server::with([
             'client:id,name',
             'agent:id,server_id,last_seen_at',
             'latestUpdate',
-            'updates' => fn($q) => $q->where('created_at', '>=', $since24h)->orderBy('created_at'),
+            'updates' => fn ($q) => $q->where('created_at', '>=', $since24h)->orderBy('created_at'),
         ])->get();
 
-        $totalServers             = $servers->count();
+        $totalServers = $servers->count();
         $sumServerSubscriptionFee = (float) $servers->sum('subscription_fee');
 
-        $onlineCount     = 0;
-        $offlineCount    = 0;
-        $cpuVals         = [];
-        $memVals         = [];
-        $diskVals        = [];
+        $onlineCount = 0;
+        $offlineCount = 0;
+        $cpuVals = [];
+        $memVals = [];
+        $diskVals = [];
         $serverSummaries = [];
 
         foreach ($servers as $server) {
             $lastSeenAt = $server->agent?->last_seen_at;
-            $health     = Server::computeHealth($lastSeenAt, $offlineThresholdSec);
-            $isOnline   = $health === ServerHealth::Online;
+            $health = Server::computeHealth($lastSeenAt, $offlineThresholdSec);
+            $isOnline = $health === ServerHealth::Online;
 
             if ($isOnline) {
                 $onlineCount++;
@@ -452,13 +454,13 @@ class ReportController extends Controller
                 $offlineCount++;
             }
 
-            $cpu  = $server->latestUpdate ? (float) $server->latestUpdate->cpu_usage   : null;
-            $mem  = $server->latestUpdate ? (float) $server->latestUpdate->memory_usage : null;
-            $disk = $server->latestUpdate ? (float) $server->latestUpdate->disk_usage   : null;
+            $cpu = $server->latestUpdate ? (float) $server->latestUpdate->cpu_usage : null;
+            $mem = $server->latestUpdate ? (float) $server->latestUpdate->memory_usage : null;
+            $disk = $server->latestUpdate ? (float) $server->latestUpdate->disk_usage : null;
 
             if ($cpu !== null) {
-                $cpuVals[]  = $cpu;
-                $memVals[]  = $mem  ?? 0;
+                $cpuVals[] = $cpu;
+                $memVals[] = $mem ?? 0;
                 $diskVals[] = $disk ?? 0;
             }
 
@@ -480,19 +482,19 @@ class ReportController extends Controller
 
         // Sort servers needing attention by highest CPU usage (descending)
         $needAttention = $serverSummaries;
-        usort($needAttention, fn($a, $b) => $b->cpu_usage <=> $a->cpu_usage);
+        usort($needAttention, fn ($a, $b) => $b->cpu_usage <=> $a->cpu_usage);
         $needAttention = array_values(array_slice($needAttention, 0, 5));
 
         // SLA servers: sorted by uptime_percentage desc, top 10
         $slaSorted = $serverSummaries;
-        usort($slaSorted, fn($a, $b) => $b->uptime_percentage <=> $a->uptime_percentage);
+        usort($slaSorted, fn ($a, $b) => $b->uptime_percentage <=> $a->uptime_percentage);
         $slaServers = array_values(array_slice($slaSorted, 0, 10));
 
         // Active alert counts per client
         $clientAlertCounts = LocalAlert::selectRaw('server_id')
             ->with('server:id,client_id')
             ->get()
-            ->groupBy(fn($a) => $a->server?->client_id);
+            ->groupBy(fn ($a) => $a->server?->client_id);
 
         $clients = Client::withCount('servers')->get();
         $serversPerClient = $clients->map(function ($client) use ($clientAlertCounts) {
@@ -501,8 +503,8 @@ class ReportController extends Controller
                 : 0;
 
             return [
-                'client_name'   => $client->name,
-                'server_count'  => $client->servers_count,
+                'client_name' => $client->name,
+                'server_count' => $client->servers_count,
                 'active_alerts' => $alerts,
             ];
         })->values()->all();
@@ -512,10 +514,10 @@ class ReportController extends Controller
         $recentClients = Client::where('created_at', '>=', $thirtyDaysAgo)
             ->latest()
             ->get()
-            ->map(fn($c) => [
-                'name'       => $c->name,
-                'email'      => $c->email,
-                'phone'      => $c->contact_number ?? '—',
+            ->map(fn ($c) => [
+                'name' => $c->name,
+                'email' => $c->email,
+                'phone' => $c->contact_number ?? '—',
                 'created_at' => $c->created_at->toIso8601String(),
             ])
             ->values()
@@ -525,11 +527,11 @@ class ReportController extends Controller
             ->where('created_at', '>=', $thirtyDaysAgo)
             ->latest()
             ->get()
-            ->map(fn($s) => [
-                'name'            => $s->name,
+            ->map(fn ($s) => [
+                'name' => $s->name,
                 'assigned_client' => $s->client?->name ?? '—',
-                'hostname'        => $s->host_name,
-                'created_at'      => $s->created_at->toIso8601String(),
+                'hostname' => $s->host_name,
+                'created_at' => $s->created_at->toIso8601String(),
             ])
             ->values()
             ->all();
@@ -543,16 +545,16 @@ class ReportController extends Controller
         ")
             ->first();
 
-        $totalAlerts    = (int) ($alertMetrics->total ?? 0);
+        $totalAlerts = (int) ($alertMetrics->total ?? 0);
         $criticalAlerts = (int) ($alertMetrics->critical ?? 0);
-        $warningAlerts  = (int) ($alertMetrics->warning ?? 0);
+        $warningAlerts = (int) ($alertMetrics->warning ?? 0);
 
-        $avgCpu  = count($cpuVals)  > 0 ? round(array_sum($cpuVals)  / count($cpuVals),  1) : 0;
-        $avgMem  = count($memVals)  > 0 ? round(array_sum($memVals)  / count($memVals),  1) : 0;
+        $avgCpu = count($cpuVals) > 0 ? round(array_sum($cpuVals) / count($cpuVals), 1) : 0;
+        $avgMem = count($memVals) > 0 ? round(array_sum($memVals) / count($memVals), 1) : 0;
         $avgDisk = count($diskVals) > 0 ? round(array_sum($diskVals) / count($diskVals), 1) : 0;
 
-        $uptimeVals = array_map(fn($s) => $s->uptime_percentage, $serverSummaries);
-        $avgUptime  = count($uptimeVals) > 0 ? round(array_sum($uptimeVals) / count($uptimeVals), 1) : 0;
+        $uptimeVals = array_map(fn ($s) => $s->uptime_percentage, $serverSummaries);
+        $avgUptime = count($uptimeVals) > 0 ? round(array_sum($uptimeVals) / count($uptimeVals), 1) : 0;
 
         return new GeneralReportData(
             report_title: 'Global Report',
@@ -585,32 +587,32 @@ class ReportController extends Controller
     private function calcUptime(Server $server, $updates, int $rangeHours): ServerUptimeData
     {
         $heartbeatIntervalMinutes = 5;
-        $gapMultiplier            = 3;
-        $gapThreshold             = $heartbeatIntervalMinutes * $gapMultiplier;
+        $gapMultiplier = 3;
+        $gapThreshold = $heartbeatIntervalMinutes * $gapMultiplier;
 
-        $now        = now();
+        $now = now();
         $rangeStart = $now->copy()->subHours($rangeHours);
 
         // Handle total absence of updates in the range
         if ($updates->isEmpty()) {
             return ServerUptimeData::from([
-                'uptime_seconds'    => $server->uptime_seconds ?? 0,
+                'uptime_seconds' => $server->uptime_seconds ?? 0,
                 'uptime_percentage' => 0.0,
-                'outage_count'      => 1,
-                'last_downtime'     => $rangeStart->toIso8601String(),
-                'uptime_hours'      => 0.0,
-                'range_hours'       => $rangeHours,
+                'outage_count' => 1,
+                'last_downtime' => $rangeStart->toIso8601String(),
+                'uptime_hours' => 0.0,
+                'range_hours' => $rangeHours,
             ]);
         }
 
         $outageMinutes = 0;
-        $outageCount   = 0;
-        $lastDowntime  = null;
+        $outageCount = 0;
+        $lastDowntime = null;
 
         // Sort updates chronologically just in case
         $sortedUpdates = $updates->sortBy('created_at');
 
-        //Check initial gap (Range Start -> First Update)
+        // Check initial gap (Range Start -> First Update)
         $firstUpdateAt = $sortedUpdates->first()->created_at;
         $initialGap = abs($rangeStart->diffInMinutes($firstUpdateAt, false));
         if ($initialGap > $gapThreshold) {
@@ -619,7 +621,7 @@ class ReportController extends Controller
             $lastDowntime = $firstUpdateAt->toIso8601String();
         }
 
-        //Check gaps between consecutive updates
+        // Check gaps between consecutive updates
         $prev = $firstUpdateAt;
         foreach ($sortedUpdates->skip(1) as $update) {
             $gap = abs($prev->diffInMinutes($update->created_at));
@@ -651,12 +653,12 @@ class ReportController extends Controller
             : 0;
 
         return ServerUptimeData::from([
-            'uptime_seconds'    => $server->uptime_seconds ?? 0,
+            'uptime_seconds' => $server->uptime_seconds ?? 0,
             'uptime_percentage' => max(0, min(100, $uptimePercentage)),
-            'outage_count'      => $outageCount,
-            'last_downtime'     => $lastDowntime,
-            'uptime_hours'      => round(($totalMinutes - $effectiveOutageMinutes) / 60, 2),
-            'range_hours'       => $rangeHours,
+            'outage_count' => $outageCount,
+            'last_downtime' => $lastDowntime,
+            'uptime_hours' => round(($totalMinutes - $effectiveOutageMinutes) / 60, 2),
+            'range_hours' => $rangeHours,
         ]);
     }
 
@@ -672,13 +674,14 @@ class ReportController extends Controller
                 continue;
             } elseif (is_array($value)) {
                 $filtered = $this->filterNulls($value);
-                if (!empty($filtered)) {
+                if (! empty($filtered)) {
                     $result[$key] = $filtered;
                 }
             } else {
                 $result[$key] = $value;
             }
         }
+
         return $result;
     }
 
@@ -689,6 +692,7 @@ class ReportController extends Controller
     {
         $uuids = array_values(array_filter(array_map('trim', $uuids)));
         sort($uuids);
+
         return $uuids;
     }
 
@@ -698,7 +702,7 @@ class ReportController extends Controller
     private function pruneCache(int $maxAgeHours = 24): void
     {
         $root = storage_path('app/typst/cache');
-        if (!File::isDirectory($root)) {
+        if (! File::isDirectory($root)) {
             return;
         }
 

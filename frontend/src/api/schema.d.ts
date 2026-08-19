@@ -234,7 +234,7 @@ export interface paths {
         put?: never;
         /**
          * Step 1 of challenge-response authentication. The agent identifies itself
-         *     by its public key fingerprint; the backend answers with a random,
+         *     by its immutable installation UUID; the backend answers with a random,
          *     short-lived, single-use challenge bound to that agent
          */
         post: operations["v1.agent.challenge_0"];
@@ -290,6 +290,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /**
+         * Uninstall is invoked BY THE AGENT ITSELF (the running service, acting
+         *     under the service account). The agent authenticates with its JWT session,
+         *     proving it still holds the identity key, then the backend revokes the
+         *     agent and archives the server. The agent deletes its keystore key locally
+         */
         post: operations["v1.agent.uninstall_0"];
         delete?: never;
         options?: never;
@@ -388,7 +394,7 @@ export interface paths {
         put?: never;
         /**
          * Step 1 of challenge-response authentication. The agent identifies itself
-         *     by its public key fingerprint; the backend answers with a random,
+         *     by its immutable installation UUID; the backend answers with a random,
          *     short-lived, single-use challenge bound to that agent
          */
         post: operations["v1.agent.challenge_0"];
@@ -444,6 +450,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /**
+         * Uninstall is invoked BY THE AGENT ITSELF (the running service, acting
+         *     under the service account). The agent authenticates with its JWT session,
+         *     proving it still holds the identity key, then the backend revokes the
+         *     agent and archives the server. The agent deletes its keystore key locally
+         */
         post: operations["v1.agent.uninstall_0"];
         delete?: never;
         options?: never;
@@ -1551,6 +1563,28 @@ export interface paths {
         patch: operations["v1.server.updateAlertScope_0"];
         trace?: never;
     };
+    "/v1/clients/{clientUuid}/servers/{serverUuid}/monitoring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Save the SecOps monitoring filter for a server. A null filter means
+         *     "monitor everything the agent's built-in noise filter allows"; a list is
+         *     the exact set of ports/processes that matter for this server. The agent
+         *     picks this up on its next auth/heartbeat and applies it in memory
+         */
+        patch: operations["v1.server.updateMonitoringConfig_0"];
+        trace?: never;
+    };
     "/v1/clients/{clientUuid}/servers/{serverUuid}/adjust-cost": {
         parameters: {
             query?: never;
@@ -1578,22 +1612,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/ports/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["v1.server.destroyPort_0"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1647,6 +1665,28 @@ export interface paths {
         patch: operations["v1.server.updateAlertScope_0"];
         trace?: never;
     };
+    "/clients/{clientUuid}/servers/{serverUuid}/monitoring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Save the SecOps monitoring filter for a server. A null filter means
+         *     "monitor everything the agent's built-in noise filter allows"; a list is
+         *     the exact set of ports/processes that matter for this server. The agent
+         *     picks this up on its next auth/heartbeat and applies it in memory
+         */
+        patch: operations["v1.server.updateMonitoringConfig_0"];
+        trace?: never;
+    };
     "/clients/{clientUuid}/servers/{serverUuid}/adjust-cost": {
         parameters: {
             query?: never;
@@ -1674,22 +1714,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/ports/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["v1.server.destroyPort_0"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2586,6 +2610,7 @@ export interface operations {
             content: {
                 "application/json": {
                     token: string;
+                    installation_id: string;
                     public_key: string;
                     public_key_hash: string;
                     agent_version?: string | null;
@@ -2628,7 +2653,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    public_key_hash: string;
+                    installation_uuid: string;
                 };
             };
         };
@@ -2684,7 +2709,16 @@ export interface operations {
                         access_token: string;
                         expires_in: number;
                         websocket_expires_in: number;
-                        server_uuid: string;
+                        /**
+                         * @description Legacy single-server field (first/primary owned server) kept for
+                         *     backward compatibility; new agents use the servers list.
+                         */
+                        server_uuid: string | "";
+                        servers: {
+                            server_uuid: string;
+                            port_filter: unknown[] | null;
+                            process_filter: unknown[] | null;
+                        }[];
                         config: {
                             heartbeat_interval: number;
                             realtime: {
@@ -2721,6 +2755,9 @@ export interface operations {
                         message: "Signature verification failed.";
                     } | {
                         /** @constant */
+                        message: "Server has been decommissioned.";
+                    } | {
+                        /** @constant */
                         message: "Agent is revoked or disabled.";
                     };
                 };
@@ -2746,7 +2783,17 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description The agent now monitors many servers: each heartbeat targets exactly
+                     *      one server by uuid, and the backend verifies ownership + lifecycle.
+                     */
+                    server_uuid?: string;
+                };
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -2762,6 +2809,12 @@ export interface operations {
                          *     even if bootstrap.json on disk is missing these fields (e.g. due to permissions)
                          */
                         server_uuid: string;
+                        /**
+                         * @description Per-server monitoring filter. null = monitor everything the
+                         *     agent's built-in noise filter allows; a list = only those.
+                         */
+                        port_filter: unknown[] | null;
+                        process_filter: unknown[] | null;
                         reverb_host: unknown;
                         reverb_port: number;
                         reverb_scheme: unknown;
@@ -2769,7 +2822,7 @@ export interface operations {
                         pending_update: {
                             version: string;
                             heartbeat_interval: null;
-                            binary_url: string | null;
+                            binary_url: string;
                         };
                         configuration: unknown[];
                         pending_commands: {
@@ -2791,6 +2844,45 @@ export interface operations {
                     };
                 };
             };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Server has been decommissioned.";
+                    } | {
+                        /** @constant */
+                        message: "Agent does not own this server.";
+                    } | {
+                        /** @constant */
+                        message: "Agent has been decommissioned.";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unknown server.";
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "server_uuid is required.";
+                    };
+                };
+            };
         };
     };
     "v1.agent.uninstall_0": {
@@ -2800,11 +2892,10 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": {
-                    token: string;
-                    platform?: string | null;
+                    reason?: string | null;
                 };
             };
         };
@@ -2818,7 +2909,18 @@ export interface operations {
                         /** @constant */
                         status: "success";
                         /** @constant */
-                        message: "Agent uninstalled and flag updated successfully.";
+                        message: "Agent revoked and all monitored servers archived successfully.";
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
                     };
                 };
             };
@@ -2830,9 +2932,6 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Server not found.";
-                    } | {
-                        /** @constant */
-                        message: "Invalid provision token.";
                     };
                 };
             };
@@ -2851,6 +2950,7 @@ export interface operations {
                 "application/json": {
                     error: string;
                     stack_trace?: string | null;
+                    server_uuid?: string | null;
                 };
             };
         };
@@ -2874,6 +2974,17 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Unauthenticated.";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "No server associated with agent.";
                     };
                 };
             };
@@ -3037,6 +3148,7 @@ export interface operations {
             content: {
                 "application/json": {
                     token: string;
+                    installation_id: string;
                     public_key: string;
                     public_key_hash: string;
                     agent_version?: string | null;
@@ -3079,7 +3191,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    public_key_hash: string;
+                    installation_uuid: string;
                 };
             };
         };
@@ -3135,7 +3247,16 @@ export interface operations {
                         access_token: string;
                         expires_in: number;
                         websocket_expires_in: number;
-                        server_uuid: string;
+                        /**
+                         * @description Legacy single-server field (first/primary owned server) kept for
+                         *     backward compatibility; new agents use the servers list.
+                         */
+                        server_uuid: string | "";
+                        servers: {
+                            server_uuid: string;
+                            port_filter: unknown[] | null;
+                            process_filter: unknown[] | null;
+                        }[];
                         config: {
                             heartbeat_interval: number;
                             realtime: {
@@ -3170,6 +3291,9 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Signature verification failed.";
+                    } | {
+                        /** @constant */
+                        message: "Server has been decommissioned.";
                     } | {
                         /** @constant */
                         message: "Agent is revoked or disabled.";
@@ -3213,6 +3337,12 @@ export interface operations {
                          *     even if bootstrap.json on disk is missing these fields (e.g. due to permissions)
                          */
                         server_uuid: string;
+                        /**
+                         * @description Per-server monitoring filter. null = monitor everything the
+                         *     agent's built-in noise filter allows; a list = only those.
+                         */
+                        port_filter: unknown[] | null;
+                        process_filter: unknown[] | null;
                         reverb_host: unknown;
                         reverb_port: number;
                         reverb_scheme: unknown;
@@ -3220,7 +3350,7 @@ export interface operations {
                         pending_update: {
                             version: string;
                             heartbeat_interval: null;
-                            binary_url: string | null;
+                            binary_url: string;
                         };
                         configuration: unknown[];
                         pending_commands: {
@@ -3242,6 +3372,45 @@ export interface operations {
                     };
                 };
             };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Server has been decommissioned.";
+                    } | {
+                        /** @constant */
+                        message: "Agent does not own this server.";
+                    } | {
+                        /** @constant */
+                        message: "Agent has been decommissioned.";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unknown server.";
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "server_uuid is required.";
+                    };
+                };
+            };
         };
     };
     "v1.agent.uninstall_0": {
@@ -3251,11 +3420,10 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": {
-                    token: string;
-                    platform?: string | null;
+                    reason?: string | null;
                 };
             };
         };
@@ -3269,7 +3437,18 @@ export interface operations {
                         /** @constant */
                         status: "success";
                         /** @constant */
-                        message: "Agent uninstalled and flag updated successfully.";
+                        message: "Agent revoked and all monitored servers archived successfully.";
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
                     };
                 };
             };
@@ -3281,9 +3460,6 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Server not found.";
-                    } | {
-                        /** @constant */
-                        message: "Invalid provision token.";
                     };
                 };
             };
@@ -3302,6 +3478,7 @@ export interface operations {
                 "application/json": {
                     error: string;
                     stack_trace?: string | null;
+                    server_uuid?: string | null;
                 };
             };
         };
@@ -3325,6 +3502,17 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Unauthenticated.";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "No server associated with agent.";
                     };
                 };
             };
@@ -3506,7 +3694,7 @@ export interface operations {
                     /** @description Must be unique in `clients`. */
                     email: string;
                     contact_number: string;
-                    description: string | null;
+                    description?: string | null;
                     banner_image?: Record<string, never> | null;
                     upload_intent_id?: string | null;
                     banner_image_storage_key?: string | null;
@@ -3863,7 +4051,7 @@ export interface operations {
                     /** @description Must be unique in `clients`. */
                     email: string;
                     contact_number: string;
-                    description: string | null;
+                    description?: string | null;
                     banner_image?: Record<string, never> | null;
                     upload_intent_id?: string | null;
                     banner_image_storage_key?: string | null;
@@ -5999,6 +6187,38 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "v1.server.updateMonitoringConfig_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    port_filter?: number[] | null;
+                    process_filter?: string[] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `ServerData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": ServerData;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "v1.server.adjustCost_0": {
         parameters: {
             query?: never;
@@ -6059,31 +6279,6 @@ export interface operations {
             };
             401: components["responses"]["AuthenticationException"];
             404: components["responses"]["ModelNotFoundException"];
-        };
-    };
-    "v1.server.destroyPort_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        status: "success";
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
         };
     };
     "v1.server.listAll_0": {
@@ -6229,6 +6424,38 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "v1.server.updateMonitoringConfig_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    port_filter?: number[] | null;
+                    process_filter?: string[] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `ServerData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": ServerData;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "v1.server.adjustCost_0": {
         parameters: {
             query?: never;
@@ -6289,31 +6516,6 @@ export interface operations {
             };
             401: components["responses"]["AuthenticationException"];
             404: components["responses"]["ModelNotFoundException"];
-        };
-    };
-    "v1.server.destroyPort_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        status: "success";
-                    };
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
         };
     };
     "v1.serverReport.show_0": {

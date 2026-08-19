@@ -1,11 +1,11 @@
 <?php
 
-use App\Models\User;
-use App\Models\Client;
-use App\Models\Server;
-use App\Models\ProvisionToken;
-use App\Models\Agent;
 use App\Enums\ServerStatus;
+use App\Models\Agent;
+use App\Models\Client;
+use App\Models\ProvisionToken;
+use App\Models\Server;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -57,7 +57,7 @@ PEM;
 
 function agentKeyPair(): array
 {
-    $lines = array_filter(array_map('trim', explode("\n", AGENT_TEST_PUBLIC_KEY_PEM)), fn ($l) => $l !== '' && !str_starts_with($l, '---'));
+    $lines = array_filter(array_map('trim', explode("\n", AGENT_TEST_PUBLIC_KEY_PEM)), fn ($l) => $l !== '' && ! str_starts_with($l, '---'));
     $der = base64_decode(implode('', $lines));
 
     return [
@@ -71,6 +71,7 @@ function signChallenge(string $privateKeyPem, string $challenge): string
 {
     $key = openssl_pkey_get_private($privateKeyPem);
     openssl_sign($challenge, $signature, $key, OPENSSL_ALGO_SHA256);
+
     return base64_encode($signature);
 }
 
@@ -180,6 +181,7 @@ test('end-to-end agent provisioning, key registration, challenge-response auth, 
             'access_token',
             'expires_in',
             'server_uuid',
+            'servers',
             'config' => [
                 'heartbeat_interval',
                 'realtime' => ['host', 'port', 'scheme', 'app_key'],
@@ -188,10 +190,19 @@ test('end-to-end agent provisioning, key registration, challenge-response auth, 
 
     $accessToken = $verifyResponse->json('access_token');
 
+    // The servers list carries the server the agent monitors, with null
+    // filters meaning "report everything noise-filtered".
+    $servers = $verifyResponse->json('servers');
+    expect($servers)->toHaveCount(1)
+        ->and($servers[0]['server_uuid'])->toBe($server->uuid)
+        ->and($servers[0]['port_filter'])->toBeNull()
+        ->and($servers[0]['process_filter'])->toBeNull();
+
     // 6. Act: Agent heartbeat with the short-lived access token (first heartbeat → Online)
     $heartbeatResponse = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $accessToken,
+        'Authorization' => 'Bearer '.$accessToken,
     ])->postJson('/api/v1/agent/heartbeat', [
+        'server_uuid' => $server->uuid,
         'agent_version' => '3.0',
         'configuration_version' => 1,
         'timestamp' => now()->timestamp,
@@ -211,6 +222,10 @@ test('end-to-end agent provisioning, key registration, challenge-response auth, 
             'total' => 100000000000,
         ],
         'uptime' => 3600,
+        'open_db_ports' => [
+            ['port' => 3306, 'protocol' => 'tcp', 'process' => 'mysqld'],
+            ['port' => 8080, 'protocol' => 'tcp', 'process' => 'nginx'],
+        ],
     ]);
 
     $heartbeatResponse->assertStatus(200)
@@ -218,6 +233,12 @@ test('end-to-end agent provisioning, key registration, challenge-response auth, 
             'heartbeat_interval',
             'current_time',
             'pending_commands',
+            'server_uuid',
+        ])
+        ->assertJson([
+            'server_uuid' => $server->uuid,
+            'port_filter' => null,
+            'process_filter' => null,
         ]);
 
     expect($server->fresh()->status)->toBe(ServerStatus::Online->value);
@@ -272,7 +293,7 @@ test('a revoked agent cannot heartbeat even with a prior token', function () {
     // Revoke the agent, then heartbeat → rejected.
     $server->fresh()->agent->update(['status' => 'revoked', 'revoked_at' => now()]);
 
-    $this->withHeaders(['Authorization' => 'Bearer ' . $accessToken])
+    $this->withHeaders(['Authorization' => 'Bearer '.$accessToken])
         ->postJson('/api/v1/agent/heartbeat', ['timestamp' => now()->timestamp])
         ->assertStatus(401);
 });
@@ -289,7 +310,7 @@ function setupRegisteredAgent(): array
     ]);
 
     $token = $server->provisionTokens()->create([
-        'token' => 'test_provision_' . str()->random(32),
+        'token' => 'test_provision_'.str()->random(32),
         'status' => 'active',
         'expires_at' => now()->addHour(),
     ])->token;
@@ -310,7 +331,7 @@ function setupRegisteredAgent(): array
 function createProvisionToken(Server $server): string
 {
     return $server->provisionTokens()->create([
-        'token' => 'test_provision_' . str()->random(32),
+        'token' => 'test_provision_'.str()->random(32),
         'status' => 'active',
         'expires_at' => now()->addHour(),
     ])->token;
@@ -347,12 +368,12 @@ test('a second installation on the same server revokes the first — only one ac
     ])->assertStatus(403);
 });
 
-test('the same installation UUID cannot register to a different server', function () {
+test('one installation monitors multiple servers (multi-server)', function () {
     [$user, $client, $server] = setupRegisteredAgent();
 
     $installationId = testInstallationId('001');
 
-    // A brand-new server attempts to claim the SAME installation UUID.
+    // The SAME installation UUID registers a second, brand-new server.
     $otherServer = Server::create([
         'client_id' => $client->id,
         'name' => 'Other Server',
@@ -368,7 +389,97 @@ test('the same installation UUID cannot register to a different server', functio
         'public_key' => $keys['public_key'],
         'public_key_hash' => $keys['public_key_hash'],
         'agent_version' => '3.0',
-    ])->assertStatus(409);
+    ])->assertStatus(200)->assertJson(['registered' => true]);
+
+    // One agent, now owning both servers.
+    $agent = Agent::where('installation_uuid', $installationId)->where('status', 'active')->first();
+    expect($agent->monitoredServers->pluck('id')->all())->toContain($server->id, $otherServer->id);
+
+    // A challenge from that installation yields BOTH servers in the session.
+    $challengeResponse = $this->postJson('/api/v1/agent/auth/challenge', [
+        'installation_uuid' => $installationId,
+    ]);
+    $verifyResponse = $this->postJson('/api/v1/agent/auth/verify', [
+        'challenge_id' => $challengeResponse->json('challenge_id'),
+        'signature' => signChallenge($keys['private_key'], $challengeResponse->json('challenge')),
+    ])->assertStatus(200);
+
+    $uuids = collect($verifyResponse->json('servers'))->pluck('server_uuid');
+    expect($uuids)->toContain($server->uuid, $otherServer->uuid);
+});
+
+test('per-server filter config is delivered to the agent and updated via the monitoring endpoint', function () {
+    [$user, $client, $server, $keys, $installationId] = setupRegisteredAgent();
+
+    // SecOps curates the filter on the server detail page.
+    $this->actingAs($user, 'jwt')
+        ->patchJson("/api/v1/clients/{$client->uuid}/servers/{$server->uuid}/monitoring", [
+            'port_filter' => [3306, 5432],
+            'process_filter' => ['mysqld', 'postgres'],
+        ])->assertStatus(200)
+        ->assertJson([
+            'port_filter' => [3306, 5432],
+            'process_filter' => ['mysqld', 'postgres'],
+        ]);
+
+    // The next session carries the curated lists to the agent.
+    $challengeResponse = $this->postJson('/api/v1/agent/auth/challenge', [
+        'installation_uuid' => $installationId,
+    ]);
+    $servers = $this->postJson('/api/v1/agent/auth/verify', [
+        'challenge_id' => $challengeResponse->json('challenge_id'),
+        'signature' => signChallenge($keys['private_key'], $challengeResponse->json('challenge')),
+    ])->assertStatus(200)->json('servers');
+
+    $thisServer = collect($servers)->firstWhere('server_uuid', $server->uuid);
+    expect($thisServer['port_filter'])->toBe([3306, 5432])
+        ->and($thisServer['process_filter'])->toBe(['mysqld', 'postgres']);
+
+    // Resetting with explicit null restores "monitor everything".
+    $this->actingAs($user, 'jwt')
+        ->patchJson("/api/v1/clients/{$client->uuid}/servers/{$server->uuid}/monitoring", [
+            'port_filter' => null,
+            'process_filter' => null,
+        ])->assertStatus(200)
+        ->assertJson([
+            'port_filter' => null,
+            'process_filter' => null,
+        ]);
+});
+
+test('an agent cannot heartbeat a server it does not own', function () {
+    [$user, $client, $server, $keys, $installationId] = setupRegisteredAgent();
+
+    // A second server belongs to a different agent installation.
+    $otherServer = Server::create([
+        'client_id' => $client->id,
+        'name' => 'Other Server',
+        'host_name' => 'other',
+        'status' => ServerStatus::PendingInstallation->value,
+    ]);
+    $keys2 = agentKeyPair();
+    $this->postJson('/api/v1/register', [
+        'token' => createProvisionToken($otherServer),
+        'installation_id' => testInstallationId('002'),
+        'public_key' => $keys2['public_key'],
+        'public_key_hash' => $keys2['public_key_hash'],
+        'agent_version' => '3.0',
+    ])->assertStatus(200);
+
+    $challengeResponse = $this->postJson('/api/v1/agent/auth/challenge', [
+        'installation_uuid' => $installationId,
+    ]);
+    $accessToken = $this->postJson('/api/v1/agent/auth/verify', [
+        'challenge_id' => $challengeResponse->json('challenge_id'),
+        'signature' => signChallenge($keys['private_key'], $challengeResponse->json('challenge')),
+    ])->json('access_token');
+
+    // Agent 001 must not be able to report on a server owned by agent 002.
+    $this->withHeaders(['Authorization' => 'Bearer '.$accessToken])
+        ->postJson('/api/v1/agent/heartbeat', [
+            'server_uuid' => $otherServer->uuid,
+            'timestamp' => now()->timestamp,
+        ])->assertStatus(403);
 });
 
 test('uninstall revokes the agent and archives the server — no resurrection', function () {
@@ -385,7 +496,7 @@ test('uninstall revokes the agent and archives the server — no resurrection', 
     $accessToken = $verifyResponse->json('access_token');
 
     // The agent calls the uninstall endpoint with its own session token.
-    $this->withHeaders(['Authorization' => 'Bearer ' . $accessToken])
+    $this->withHeaders(['Authorization' => 'Bearer '.$accessToken])
         ->postJson('/api/v1/agent/uninstall', ['reason' => 'test'])
         ->assertStatus(200);
 
@@ -407,7 +518,7 @@ test('uninstall revokes the agent and archives the server — no resurrection', 
 
     // A revoked agent's old session token is now rejected outright (401), so
     // it can never push the decommissioned server back Online.
-    $this->withHeaders(['Authorization' => 'Bearer ' . $accessToken])
+    $this->withHeaders(['Authorization' => 'Bearer '.$accessToken])
         ->postJson('/api/v1/agent/heartbeat', ['timestamp' => now()->timestamp])
         ->assertStatus(401);
 });
@@ -423,7 +534,7 @@ test('reinstall with the same installation UUID after uninstall reactivates in p
         'challenge_id' => $challengeResponse->json('challenge_id'),
         'signature' => signChallenge($keys['private_key'], $challengeResponse->json('challenge')),
     ])->json('access_token');
-    $this->withHeaders(['Authorization' => 'Bearer ' . $accessToken])
+    $this->withHeaders(['Authorization' => 'Bearer '.$accessToken])
         ->postJson('/api/v1/agent/uninstall')->assertStatus(200);
 
     $revokedId = Agent::where('installation_uuid', $installationId)->first()->id;

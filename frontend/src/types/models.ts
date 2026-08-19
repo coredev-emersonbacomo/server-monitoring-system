@@ -97,6 +97,7 @@ export interface DashboardStatsData {
             online_count: number;
             offline_count: number;
             pending_installation_count: number;
+            waiting_for_installation_count: number;
             pending_deletion_count: number;
             top_usage_cpu: {
                 server_uuid: string;
@@ -246,6 +247,8 @@ export interface ServerData {
             uninstall_linux_command?: string | null;
             uninstall_windows_command?: string | null;
             agent_deleted?: boolean;
+            port_filter?: number[] | null;
+            process_filter?: string[] | null;
             activities?: {
                 type: string;
                 description: string;

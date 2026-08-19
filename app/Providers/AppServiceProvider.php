@@ -2,23 +2,23 @@
 
 namespace App\Providers;
 
-use App\Contracts\StorageProvider;
-use App\Services\MediaUrlService;
-use App\Services\StorageProviderFactory;
-use App\Services\UploadIntentService;
 use App\NodeConfig\Engine\NodeRegistry;
-use App\NodeConfig\NodeTypes\ConditionNode;
 use App\NodeConfig\NodeTypes\CheckAfterNode;
+use App\NodeConfig\NodeTypes\ConditionNode;
 use App\NodeConfig\NodeTypes\LogicNode;
 use App\NodeConfig\NodeTypes\MetricNode;
 use App\NodeConfig\NodeTypes\NotificationNode;
-use App\NodeConfig\NodeTypes\TemplateNode;
 use App\NodeConfig\NodeTypes\SeverityNode;
 use App\NodeConfig\NodeTypes\SustainedNode;
-use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Broadcast;
+use App\NodeConfig\NodeTypes\TemplateNode;
+use App\Services\MediaUrlService;
+use App\Services\StorageProviderFactory;
+use App\Services\UploadIntentService;
 use Illuminate\Broadcasting\Broadcasters\PusherBroadcaster;
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\ServiceProvider;
 use Pusher\Pusher;
 
 class AppServiceProvider extends ServiceProvider
@@ -51,7 +51,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(StorageProviderFactory::class, function () {
-            return new StorageProviderFactory();
+            return new StorageProviderFactory;
         });
 
         $this->app->singleton(UploadIntentService::class, function ($app) {
@@ -67,8 +67,9 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(NodeRegistry::class, function () {
-            $registry = new NodeRegistry();
+            $registry = new NodeRegistry;
             $this->registerNodeConfigNodes($registry);
+
             return $registry;
         });
     }
@@ -92,13 +93,14 @@ class AppServiceProvider extends ServiceProvider
                 $options
             );
 
-            return new class($pusher) extends PusherBroadcaster {
+            return new class($pusher) extends PusherBroadcaster
+            {
                 public function broadcast(array $channels, $event, array $payload = [])
                 {
                     try {
                         parent::broadcast($channels, $event, $payload);
                     } catch (\Throwable $e) {
-                        \Illuminate\Support\Facades\Log::warning('[broadcaster] Broadcast failed: ' . $e->getMessage());
+                        Log::warning('[broadcaster] Broadcast failed: '.$e->getMessage());
                     }
                 }
             };

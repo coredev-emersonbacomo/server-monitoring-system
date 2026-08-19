@@ -6,9 +6,20 @@ use App\Enums\Severity;
 
 class SeverityNode extends BaseNode
 {
-    public function getType(): string { return 'severity'; }
-    public function getCategory(): string { return 'condition'; }
-    public function getLabel(): string { return 'Severity'; }
+    public function getType(): string
+    {
+        return 'severity';
+    }
+
+    public function getCategory(): string
+    {
+        return 'condition';
+    }
+
+    public function getLabel(): string
+    {
+        return 'Severity';
+    }
 
     public function getSettingDefinitions(): array
     {
@@ -21,7 +32,7 @@ class SeverityNode extends BaseNode
     {
         $input = $inputValues[0] ?? null;
 
-        if ($input === null || !$input) {
+        if ($input === null || ! $input) {
             return NodeResult::noPropagate(null, []);
         }
 

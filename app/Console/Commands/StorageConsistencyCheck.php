@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Contracts\StorageProvider;
 use App\Enums\UploadIntentStatus;
 use App\Models\Client;
 use App\Models\UploadIntent;
@@ -15,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 class StorageConsistencyCheck extends Command
 {
     protected $signature = 'uploads:consistency-check';
+
     protected $description = 'Validate storage consistency between upload intents, entities, and storage assets.';
 
     public function handle(StorageProviderFactory $factory, UploadIntentService $intentService): int
@@ -29,7 +29,7 @@ class StorageConsistencyCheck extends Command
         if (empty($issues)) {
             $this->info('No consistency issues detected.');
         } else {
-            $this->warn('Found ' . count($issues) . ' consistency issue(s):');
+            $this->warn('Found '.count($issues).' consistency issue(s):');
             foreach ($issues as $issue) {
                 $this->line("  - [{$issue['type']}] {$issue['description']}");
                 Log::warning('Storage consistency issue', $issue);
@@ -50,7 +50,7 @@ class StorageConsistencyCheck extends Command
                 $purposeConfig = $intentService->getPurposeConfig($intent->purpose);
                 $folder = $purposeConfig['folder'];
 
-                if (!$provider->exists($intent->storage_key, $folder)) {
+                if (! $provider->exists($intent->storage_key, $folder)) {
                     $issues[] = [
                         'type' => 'missing_file',
                         'intent_id' => $intent->id,
@@ -83,7 +83,7 @@ class StorageConsistencyCheck extends Command
                 foreach ($users as $user) {
                     $folder = config('uploads.purposes.profile_picture.folder');
                     $exists = $provider->exists($user->profile_picture_storage_key, $folder);
-                    if (!$exists) {
+                    if (! $exists) {
                         $issues[] = [
                             'type' => 'entity_missing_file',
                             'entity' => 'user',
@@ -100,7 +100,7 @@ class StorageConsistencyCheck extends Command
                 foreach ($clients as $client) {
                     $folder = config('uploads.purposes.client_banner.folder');
                     $exists = $provider->exists($client->banner_image_storage_key, $folder);
-                    if (!$exists) {
+                    if (! $exists) {
                         $issues[] = [
                             'type' => 'entity_missing_file',
                             'entity' => 'client',

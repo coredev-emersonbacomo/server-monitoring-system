@@ -4,9 +4,20 @@ namespace App\NodeConfig\NodeTypes;
 
 class CheckAfterNode extends BaseNode
 {
-    public function getType(): string { return 'check_after'; }
-    public function getCategory(): string { return 'time'; }
-    public function getLabel(): string { return 'Check After'; }
+    public function getType(): string
+    {
+        return 'check_after';
+    }
+
+    public function getCategory(): string
+    {
+        return 'time';
+    }
+
+    public function getLabel(): string
+    {
+        return 'Check After';
+    }
 
     public function getSettingDefinitions(): array
     {
@@ -55,7 +66,7 @@ class CheckAfterNode extends BaseNode
         $repeatCount = (int) ($state['repeat_count'] ?? 0) + ($isRepeat ? 1 : 0);
         $pendingInput = $state['pending_input'] ?? null;
 
-        if (!$pendingInput) {
+        if (! $pendingInput) {
             return NodeResult::propagate(false, $this->idleState());
         }
 
@@ -83,10 +94,10 @@ class CheckAfterNode extends BaseNode
         $repeatIntervalMs = static::parseDurationToMs($settings['repeat_interval'] ?? '0');
 
         return [
-            'duration_ms'        => $durationMs,
+            'duration_ms' => $durationMs,
             'repeat_interval_ms' => $repeatIntervalMs,
-            'max_repeats'        => (int) ($settings['repeat_max_repeats'] ?? -1),
-            'has_repeat'         => $repeatIntervalMs > 0,
+            'max_repeats' => (int) ($settings['repeat_max_repeats'] ?? -1),
+            'has_repeat' => $repeatIntervalMs > 0,
         ];
     }
 }

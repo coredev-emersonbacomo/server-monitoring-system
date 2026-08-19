@@ -76,7 +76,7 @@ export default function Login() {
                         <h1 className="text-4xl font-semibold mb-12">Sign In</h1>
 
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* User Name */}
+                            {/* Email or Username */}
                             <div>
                                 <FloatingInput
                                     id="email"
@@ -84,7 +84,7 @@ export default function Login() {
                                     label={
                                         <span className="flex items-center gap-2">
                                             <Mail className="w-4 h-4 text-primary" />
-                                            User Name
+                                            Email or Username
                                         </span>
                                     }
                                     type="text"

@@ -73,7 +73,7 @@ class UploadIntentService
             throw new InvalidArgumentException('Upload intent does not belong to this user.');
         }
 
-        if (!$intent->isPending()) {
+        if (! $intent->isPending()) {
             throw new InvalidArgumentException('Upload intent is not in a pending state.');
         }
 
@@ -99,7 +99,7 @@ class UploadIntentService
     {
         $purposes = config('uploads.purposes', []);
 
-        if (!isset($purposes[$purpose->value])) {
+        if (! isset($purposes[$purpose->value])) {
             throw new InvalidArgumentException("No configuration found for upload purpose: {$purpose->value}");
         }
 

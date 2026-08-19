@@ -2,27 +2,24 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Enums\RecordStatus;
+use App\Enums\ServerHealth;
+use App\Enums\ServerStatus;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
-use Illuminate\Database\Eloquent\Casts\Attribute;
-use Carbon\Carbon;
-use App\Enums\RecordStatus;
-use App\Enums\ServerHealth;
-use App\Enums\ServerStatus;
-use App\Models\Setting;
-use App\Models\Activity;
-
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Server extends Model
 {
-    use HasFactory, Notifiable, HasUuids, SoftDeletes;
+    use HasFactory, HasUuids, Notifiable, SoftDeletes;
 
     public function newUniqueId(): string
     {
@@ -41,11 +38,13 @@ class Server extends Model
     protected function casts(): array
     {
         return [
-            'record_status'        => RecordStatus::class,
-            'archived_at'          => 'datetime',
-            'online_seconds'       => 'integer',
-            'went_offline_at'      => 'datetime',
-            'subscription_fee'     => 'decimal:2',
+            'record_status' => RecordStatus::class,
+            'archived_at' => 'datetime',
+            'online_seconds' => 'integer',
+            'went_offline_at' => 'datetime',
+            'subscription_fee' => 'decimal:2',
+            'port_filter' => 'array',
+            'process_filter' => 'array',
         ];
     }
 
@@ -54,13 +53,13 @@ class Server extends Model
         return $this->belongsTo(Client::class, 'client_id', 'id');
     }
 
-    public function agent(): HasOne
+    public function agent(): BelongsTo
     {
         // Only the ACTIVE agent counts as "the" agent of a server. Historical
         // (revoked/archived) agents exist for audit but must never be resolved
         // through this relation — that is what stops resurrected agents from
         // reactivating a decommissioned server.
-        return $this->hasOne(Agent::class)->where('status', 'active');
+        return $this->belongsTo(Agent::class, 'agent_id', 'id')->where('status', 'active');
     }
 
     public function agents(): HasMany
@@ -121,6 +120,7 @@ class Server extends Model
             $lastSeen = $this->agent?->last_seen_at;
             $raw = (int) Setting::get('offline_threshold', '15');
             $thresholdSec = $raw >= 1000 ? intdiv($raw, 1000) : $raw;
+
             return self::computeHealth($lastSeen, $thresholdSec);
         });
     }
@@ -129,7 +129,7 @@ class Server extends Model
     {
         if ($this->status === ServerStatus::WaitingForInstallation->value) {
             $activeToken = $this->activeProvisionToken;
-            if (!$activeToken || $activeToken->isExpired()) {
+            if (! $activeToken || $activeToken->isExpired()) {
                 $this->update(['status' => ServerStatus::PendingInstallation->value]);
 
                 if ($activeToken) {

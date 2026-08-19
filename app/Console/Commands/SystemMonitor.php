@@ -2,10 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Events\SystemTelemetryEvent;
 use App\Jobs\MonitorServer;
 use App\Models\ActionItem;
 use App\Models\Client;
+use App\Models\Server;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 
 class SystemMonitor extends Command
 {
@@ -15,7 +18,7 @@ class SystemMonitor extends Command
 
     public function handle(): int
     {
-        $servers = \App\Models\Server::whereHas('agent')->get();
+        $servers = Server::whereHas('agent')->get();
         foreach ($servers as $server) {
             $server->checkTokenExpiration();
             MonitorServer::dispatchSync($server->uuid);
@@ -24,21 +27,22 @@ class SystemMonitor extends Command
         $this->syncNoSecOpsClients();
 
         $sweepAt = microtime(true);
-        \Illuminate\Support\Facades\Cache::put('last_monitor_sweep_at', $sweepAt, now()->addMinutes(10));
+        Cache::put('last_monitor_sweep_at', $sweepAt, now()->addMinutes(10));
 
-        $offlineServers = \App\Models\Server::where('servers.status', 'offline')
+        $offlineServers = Server::where('servers.status', 'offline')
             ->select('servers.uuid', 'servers.name', 'clients.name as client_name', 'servers.went_offline_at')
             ->join('clients', 'clients.id', '=', 'servers.client_id')
             ->get()
             ->toArray();
 
-        \App\Events\SystemTelemetryEvent::emit('system_monitor_sweep', [
-            'server_count'    => $servers->count(),
-            'swept_at'        => $sweepAt,
+        SystemTelemetryEvent::emit('system_monitor_sweep', [
+            'server_count' => $servers->count(),
+            'swept_at' => $sweepAt,
             'offline_servers' => $offlineServers,
         ]);
 
-        $this->info("Dispatched " . $servers->count() . " server monitor jobs.");
+        $this->info('Dispatched '.$servers->count().' server monitor jobs.');
+
         return self::SUCCESS;
     }
 
@@ -51,7 +55,7 @@ class SystemMonitor extends Command
         $seenKeys = [];
 
         foreach ($clientsWithoutSecOps as $client) {
-            $key = 'no_secops-null-' . $client->id;
+            $key = 'no_secops-null-'.$client->id;
             $seenKeys[$key] = true;
 
             ActionItem::updateOrCreate(
@@ -73,8 +77,8 @@ class SystemMonitor extends Command
             ->where('action_type', 'no_secops')
             ->chunk(100, function ($actions) use ($seenKeys) {
                 foreach ($actions as $action) {
-                    $key = $action->action_type . '-null-' . $action->client_id;
-                    if (!isset($seenKeys[$key])) {
+                    $key = $action->action_type.'-null-'.$action->client_id;
+                    if (! isset($seenKeys[$key])) {
                         $action->update([
                             'status' => 'completed',
                             'completed_at' => now(),

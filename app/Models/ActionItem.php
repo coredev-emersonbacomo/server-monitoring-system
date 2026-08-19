@@ -4,8 +4,10 @@ namespace App\Models;
 
 use App\Enums\ActionItemSeverity;
 use App\Enums\ActionItemStatus;
+use App\Events\ActionItemsUpdated;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Log;
 
 class ActionItem extends Model
 {
@@ -15,7 +17,7 @@ class ActionItem extends Model
     {
         return [
             'severity' => ActionItemSeverity::class,
-            'status'   => ActionItemStatus::class,
+            'status' => ActionItemStatus::class,
         ];
     }
 
@@ -23,17 +25,17 @@ class ActionItem extends Model
     {
         static::saved(function ($actionItem) {
             try {
-                event(new \App\Events\ActionItemsUpdated());
+                event(new ActionItemsUpdated);
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('[action-items] Broadcast failed', ['error' => $e->getMessage()]);
+                Log::warning('[action-items] Broadcast failed', ['error' => $e->getMessage()]);
             }
         });
 
         static::deleted(function ($actionItem) {
             try {
-                event(new \App\Events\ActionItemsUpdated());
+                event(new ActionItemsUpdated);
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('[action-items] Broadcast failed', ['error' => $e->getMessage()]);
+                Log::warning('[action-items] Broadcast failed', ['error' => $e->getMessage()]);
             }
         });
     }

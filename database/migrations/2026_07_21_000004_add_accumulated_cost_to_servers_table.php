@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('servers', function (Blueprint $table) {
-            if (!Schema::hasColumn('servers', 'accumulated_cost')) {
+            if (! Schema::hasColumn('servers', 'accumulated_cost')) {
                 $table->decimal('accumulated_cost', 12, 2)->default(0.00)->after('historical_cost');
             }
         });

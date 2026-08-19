@@ -2,9 +2,9 @@
 
 namespace App\NodeConfig\Data;
 
-use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Attributes\Validation\Required;
 use Spatie\LaravelData\Attributes\Validation\StringType;
+use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Optional;
 
 class NodeConfigRequestData extends Data

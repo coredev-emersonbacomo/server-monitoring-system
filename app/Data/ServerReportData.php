@@ -2,8 +2,8 @@
 
 namespace App\Data;
 
-use Spatie\LaravelData\Data;
 use Illuminate\Support\Collection;
+use Spatie\LaravelData\Data;
 
 class ServerReportData extends Data
 {
@@ -45,6 +45,5 @@ class ServerReportData extends Data
 
         /** @var float[] elapsed hours per trend row (oldest first) */
         public array $trend_x = [],
-    ) {
-    }
+    ) {}
 }

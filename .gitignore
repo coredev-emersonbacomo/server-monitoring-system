@@ -16,6 +16,7 @@ frontend/src/api/api.json
 /.vscode
 /.zed
 /auth.json
+/database/schema/*.sql
 /node_modules
 /public/build
 /public/fonts-manifest.dev.json
@@ -38,6 +39,8 @@ dump.rdb
 
 scripts/git/*
 personal-todo.txt
+.opencode
+TODO/
 
 # .NET build outputs
 **/bin/

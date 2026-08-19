@@ -30,7 +30,7 @@ class NodeConfig extends Model
     {
         static::saving(function (NodeConfig $config) {
             $graph = $config->config ?? ['nodes' => [], 'edges' => []];
-            $compiler = new NodeConfigCompiler();
+            $compiler = new NodeConfigCompiler;
             $config->compiled_config = $compiler->compile($graph);
         });
 
@@ -51,7 +51,7 @@ class NodeConfig extends Model
     public function compileAndStore(): void
     {
         $graph = $this->config ?? ['nodes' => [], 'edges' => []];
-        $compiler = new NodeConfigCompiler();
+        $compiler = new NodeConfigCompiler;
         $compiled = $compiler->compile($graph);
 
         $this->updateQuietly(['compiled_config' => $compiled]);
@@ -101,17 +101,23 @@ class NodeConfig extends Model
     public static function resolveForServerFromDb(string $serverUuid): ?self
     {
         $server = Server::with('client')->where('uuid', $serverUuid)->first();
-        if (!$server) return null;
+        if (! $server) {
+            return null;
+        }
 
         $scope = $server->alert_scope ?? 'global';
 
         if ($scope === 'server') {
             $config = static::forServer($server->uuid)->first();
-            if ($config && static::hasNodes($config)) return $config;
+            if ($config && static::hasNodes($config)) {
+                return $config;
+            }
 
             if ($server->client) {
                 $config = static::forClient($server->client->uuid)->first();
-                if ($config && static::hasNodes($config)) return $config;
+                if ($config && static::hasNodes($config)) {
+                    return $config;
+                }
             }
 
             return static::forGlobal()->first();
@@ -119,7 +125,9 @@ class NodeConfig extends Model
 
         if ($scope === 'client' && $server->client) {
             $config = static::forClient($server->client->uuid)->first();
-            if ($config && static::hasNodes($config)) return $config;
+            if ($config && static::hasNodes($config)) {
+                return $config;
+            }
         }
 
         return static::forGlobal()->first();
@@ -127,7 +135,7 @@ class NodeConfig extends Model
 
     private static function hasNodes(self $config): bool
     {
-        return !empty($config->config['nodes'] ?? []);
+        return ! empty($config->config['nodes'] ?? []);
     }
 
     public static function cancelTasksForScope(self $config): void
@@ -138,6 +146,7 @@ class NodeConfig extends Model
 
             if ($scopeType === 'global') {
                 NodeTaskScheduler::cancelAll();
+
                 return;
             }
 
@@ -148,6 +157,7 @@ class NodeConfig extends Model
                 if ($server) {
                     NodeTaskScheduler::cancelByServer($server->id);
                 }
+
                 return;
             }
 
@@ -162,10 +172,11 @@ class NodeConfig extends Model
                         NodeTaskScheduler::cancelByServer($serverId);
                     }
                 }
+
                 return;
             }
         } catch (\Throwable $e) {
-            Log::warning("[node-config] Failed to cancel tasks for scope: " . $e->getMessage());
+            Log::warning('[node-config] Failed to cancel tasks for scope: '.$e->getMessage());
         }
     }
 }

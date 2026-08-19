@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -24,7 +24,7 @@ return new class extends Migration
             $table->timestamps();
         });
         // Ensure type column exists on activity_logs table
-        if (Schema::hasTable('activity_logs') && !Schema::hasColumn('activity_logs', 'type')) {
+        if (Schema::hasTable('activity_logs') && ! Schema::hasColumn('activity_logs', 'type')) {
             Schema::table('activity_logs', function (Blueprint $table) {
                 $table->string('type')->default('activity')->index()->after('id');
             });
@@ -35,15 +35,15 @@ return new class extends Migration
             $healthLogs = DB::table('server_health_logs')->get();
             foreach ($healthLogs as $log) {
                 DB::table('activity_logs')->insert([
-                    'type'         => 'server_health',
+                    'type' => 'server_health',
                     'logable_type' => $log->logable_type,
-                    'logable_id'   => $log->logable_id,
-                    'user_id'      => $log->user_id,
-                    'user'         => $log->user,
-                    'action'       => $log->action,
-                    'details'      => $log->details,
-                    'created_at'   => $log->created_at,
-                    'updated_at'   => $log->updated_at,
+                    'logable_id' => $log->logable_id,
+                    'user_id' => $log->user_id,
+                    'user' => $log->user,
+                    'action' => $log->action,
+                    'details' => $log->details,
+                    'created_at' => $log->created_at,
+                    'updated_at' => $log->updated_at,
                 ]);
             }
             Schema::dropIfExists('server_health_logs');
@@ -53,15 +53,15 @@ return new class extends Migration
             $agentLogs = DB::table('agent_logs')->get();
             foreach ($agentLogs as $log) {
                 DB::table('activity_logs')->insert([
-                    'type'         => 'agent',
+                    'type' => 'agent',
                     'logable_type' => $log->logable_type,
-                    'logable_id'   => $log->logable_id,
-                    'user_id'      => $log->user_id,
-                    'user'         => $log->user,
-                    'action'       => $log->action,
-                    'details'      => $log->details,
-                    'created_at'   => $log->created_at,
-                    'updated_at'   => $log->updated_at,
+                    'logable_id' => $log->logable_id,
+                    'user_id' => $log->user_id,
+                    'user' => $log->user,
+                    'action' => $log->action,
+                    'details' => $log->details,
+                    'created_at' => $log->created_at,
+                    'updated_at' => $log->updated_at,
                 ]);
             }
             Schema::dropIfExists('agent_logs');
@@ -78,7 +78,7 @@ return new class extends Migration
                     $type = 'billing';
                 } elseif (str_contains($actionLower, 'online') || str_contains($actionLower, 'offline') || str_contains($actionLower, 'health')) {
                     $type = 'server_health';
-                } elseif (str_contains($actionLower, 'agent') && !str_contains($actionLower, 'offline') && !str_contains($actionLower, 'online')) {
+                } elseif (str_contains($actionLower, 'agent') && ! str_contains($actionLower, 'offline') && ! str_contains($actionLower, 'online')) {
                     $type = 'agent';
                 }
 

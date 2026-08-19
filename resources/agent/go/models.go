@@ -55,11 +55,21 @@ type ChallengeResponse struct {
 // AuthResponse is the short-lived session credential payload issued after a
 // successful challenge-response verification.
 type AuthResponse struct {
-	AccessToken         string `json:"access_token"`
-	ExpiresIn           int    `json:"expires_in"`
-	WebsocketExpiresIn  int    `json:"websocket_expires_in"`
-	ServerUUID          string `json:"server_uuid"`
-	Config              AuthConfig `json:"config"`
+	AccessToken         string             `json:"access_token"`
+	ExpiresIn           int                `json:"expires_in"`
+	WebsocketExpiresIn  int                `json:"websocket_expires_in"`
+	ServerUUID          string             `json:"server_uuid"` // legacy: first/primary server
+	Servers             []ServerAssignment `json:"servers"`
+	Config              AuthConfig         `json:"config"`
+}
+
+// ServerAssignment is one server an installation monitors, with the SecOps
+// filter the agent mirrors in memory. nil filter = monitor everything
+// that passes the built-in noise filter; a list = only those ports/processes.
+type ServerAssignment struct {
+	ServerUUID      string   `json:"server_uuid"`
+	PortFilter      []int    `json:"port_filter"`
+	ProcessFilter   []string `json:"process_filter"`
 }
 
 type AuthConfig struct {
@@ -75,6 +85,7 @@ type RealtimeConfig struct {
 }
 
 type HeartbeatRequest struct {
+	ServerUUID          string             `json:"server_uuid"`
 	AgentVersion         string             `json:"agent_version"`
 	ConfigurationVersion int                `json:"configuration_version"`
 	Timestamp            int64              `json:"timestamp"`
@@ -144,7 +155,9 @@ type HeartbeatResponse struct {
 	PendingCommands   []AgentCommand         `json:"pending_commands,omitempty"`
 	Configuration     map[string]interface{} `json:"configuration,omitempty"`
 	PendingUpdate     *AgentUpdateInfo       `json:"pending_update,omitempty"`
-	ServerUUID        string                 `json:"server_uuid"`
+	ServerUUID       string                 `json:"server_uuid"`
+	PortFilter       []int                  `json:"port_filter"`
+	ProcessFilter    []string               `json:"process_filter"`
 }
 
 type AgentUpdateInfo struct {

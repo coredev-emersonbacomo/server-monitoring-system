@@ -8,6 +8,7 @@ use App\Data\LoginResponseData;
 use App\Data\RefreshResponseData;
 use App\Enums\AuthEventType;
 use App\Http\Controllers\Controller;
+use App\Models\CustomActivityLog;
 use App\Models\User;
 use App\Models\UserSession;
 use App\Services\AuthAuditService;
@@ -18,6 +19,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Cookie;
 
 class JwtAuthController extends Controller
 {
@@ -35,7 +37,7 @@ class JwtAuthController extends Controller
         $login = $data->email;
         $user = User::where('email', $login)->orWhere('username', $login)->first();
 
-        if (!$user || !password_verify($data->password, $user->password)) {
+        if (! $user || ! password_verify($data->password, $user->password)) {
             RateLimiter::hit($this->throttleKey($request));
 
             $this->auditService->log(
@@ -76,7 +78,7 @@ class JwtAuthController extends Controller
             $request->userAgent(),
         );
 
-        \App\Models\CustomActivityLog::create([
+        CustomActivityLog::create([
             'logable_type' => User::class,
             'logable_id' => (string) $user->uuid,
             'user_id' => $user->id,
@@ -114,7 +116,7 @@ class JwtAuthController extends Controller
     {
         $refreshToken = $request->cookie(config('jwt.cookie', 'refresh_token'));
 
-        if (!$refreshToken) {
+        if (! $refreshToken) {
             $this->auditService->log(
                 AuthEventType::RefreshFailed,
                 ipAddress: $request->ip(),
@@ -163,7 +165,7 @@ class JwtAuthController extends Controller
                 $user = $session->user;
 
                 if ($user) {
-                    \App\Models\CustomActivityLog::create([
+                    CustomActivityLog::create([
                         'logable_type' => User::class,
                         'logable_id' => (string) $user->uuid,
                         'user_id' => $user->id,
@@ -223,7 +225,7 @@ class JwtAuthController extends Controller
 
     private function ensureIsNotRateLimited(Request $request): void
     {
-        if (!RateLimiter::tooManyAttempts($this->throttleKey($request), 5)) {
+        if (! RateLimiter::tooManyAttempts($this->throttleKey($request), 5)) {
             return;
         }
 
@@ -231,7 +233,7 @@ class JwtAuthController extends Controller
 
         throw ValidationException::withMessages([
             'email' => [
-                'message' => 'Too many login attempts. Please try again in ' . $seconds . ' seconds.',
+                'message' => 'Too many login attempts. Please try again in '.$seconds.' seconds.',
                 'retry_after_seconds' => $seconds,
                 'available_at' => now()->addSeconds($seconds)->timestamp,
             ],
@@ -241,10 +243,11 @@ class JwtAuthController extends Controller
     private function throttleKey(Request $request): string
     {
         $login = $request->input('email') ?? $request->input('username') ?? '';
-        return strtolower($login) . '|' . $request->ip();
+
+        return strtolower($login).'|'.$request->ip();
     }
 
-    private function buildRefreshTokenCookie(string $refreshToken, bool $rememberMe): \Symfony\Component\HttpFoundation\Cookie
+    private function buildRefreshTokenCookie(string $refreshToken, bool $rememberMe): Cookie
     {
         $minutes = $rememberMe ? 60 * 24 * 30 : 0;
 

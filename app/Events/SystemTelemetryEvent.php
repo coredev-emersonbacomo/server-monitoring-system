@@ -2,16 +2,18 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Support\Facades\Log;
 
 class SystemTelemetryEvent implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets;
 
     public string $type;
+
     public array $payload;
 
     public function __construct(string $type, array $payload)
@@ -37,7 +39,7 @@ class SystemTelemetryEvent implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'type'    => $this->type,
+            'type' => $this->type,
             'payload' => $this->payload,
         ];
     }
@@ -47,7 +49,7 @@ class SystemTelemetryEvent implements ShouldBroadcastNow
         try {
             broadcast(new self($type, $payload));
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('[telemetry] Broadcast failed', ['error' => $e->getMessage()]);
+            Log::warning('[telemetry] Broadcast failed', ['error' => $e->getMessage()]);
         }
     }
 }
