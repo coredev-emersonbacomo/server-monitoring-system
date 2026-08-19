@@ -83,8 +83,11 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                         )}
                     />
                 </button>
-                <label className="font-brand text-2xl font-extrabold tracking-tight translate-x-[0.4rem]">
-                    Name
+                <label className="text-xl font-extrabold tracking-tight translate-x-[0.4rem]">
+                    <div className="flex items-center justify-center gap-3">
+                        <img src="/images/coreDevlogo.png" alt="CoreDev Logo" className="w-10 h-10 object-contain" />
+                        <span className="font-bold text-xl tracking-wide">Server Monitoring</span>
+                    </div>
                 </label>
                 <Menu className="size-sidebar-icon opacity-0" />
             </div>
