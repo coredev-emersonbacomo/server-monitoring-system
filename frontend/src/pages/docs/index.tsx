@@ -519,21 +519,31 @@ export default function Docs() {
         <div className="flex h-full flex-col w-full bg-background text-foreground">
             {/* Top Navigation Bar */}
             <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <div className="flex h-14 items-center justify-between px-4 sm:px-6">
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                            <BookOpen className="size-5 text-foreground" />
-                            <span className="font-semibold text-base tracking-tight">Documentation</span>
-                        </div>
+                <div className="relative flex h-14 items-center px-4 sm:px-6">
+                    <div className="absolute left-4 sm:left-6">
+                        <button
+                            type="button"
+                            onClick={() => navigate("/")}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-all hover:bg-muted/50 hover:border-border cursor-pointer"
+                        >
+                            <ChevronLeft className="size-4" />
+                            <span>Back</span>
+                        </button>
                     </div>
-                    <button
-                        type="button"
-                        aria-label="Toggle docs navigation"
-                        onClick={() => setMobileOpen((v) => !v)}
-                        className="lg:hidden flex size-9 items-center justify-center rounded-lg border border-border/60 text-muted-foreground hover:bg-muted transition cursor-pointer"
-                    >
-                        <Menu className="size-4.5" />
-                    </button>
+                    <div className="flex flex-1 items-center justify-center gap-2">
+                        <BookOpen className="size-5 text-foreground" />
+                        <span className="font-semibold text-base tracking-tight">Server Monitoring Documentation</span>
+                    </div>
+                    <div className="absolute right-4 sm:right-6">
+                        <button
+                            type="button"
+                            aria-label="Toggle docs navigation"
+                            onClick={() => setMobileOpen((v) => !v)}
+                            className="lg:hidden flex size-9 items-center justify-center rounded-lg border border-border/60 text-muted-foreground hover:bg-muted transition cursor-pointer"
+                        >
+                            <Menu className="size-4.5" />
+                        </button>
+                    </div>
                 </div>
             </header>
 
