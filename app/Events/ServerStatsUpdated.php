@@ -2,17 +2,19 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class ServerStatsUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets;
 
     public string $server_uuid;
+
     public array $stats;
 
     public function __construct(string $server_uuid, array $stats)
@@ -24,7 +26,7 @@ class ServerStatsUpdated implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('server.' . $this->server_uuid),
+            new PrivateChannel('server.'.$this->server_uuid),
         ];
     }
 
@@ -51,7 +53,7 @@ class ServerStatsUpdated implements ShouldBroadcastNow
                     break;
                 }
             }
-            if (!$changed) {
+            if (! $changed) {
                 return null;
             }
         }
@@ -62,7 +64,7 @@ class ServerStatsUpdated implements ShouldBroadcastNow
         try {
             broadcast($event);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('[broadcast] ServerStatsUpdated broadcast failed', ['error' => $e->getMessage()]);
+            Log::warning('[broadcast] ServerStatsUpdated broadcast failed', ['error' => $e->getMessage()]);
         }
 
         return $event;

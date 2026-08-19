@@ -36,6 +36,8 @@ const LABELS: Record<TemplateVariableKey, { label: string; group: TemplateVariab
     'server.uninstall_linux_command': { label: 'Uninstall Linux Command', group: 'server', description: 'Uninstall Linux Command (ServerData)' },
     'server.uninstall_windows_command': { label: 'Uninstall Windows Command', group: 'server', description: 'Uninstall Windows Command (ServerData)' },
     'server.agent_deleted'          : { label: 'Agent Deleted', group: 'server', description: 'Agent Deleted (ServerData)' },
+    'server.port_filter'            : { label: 'Port Filter', group: 'server', description: 'Port Filter (ServerData)' },
+    'server.process_filter'         : { label: 'Process Filter', group: 'server', description: 'Process Filter (ServerData)' },
     'server.activities'             : { label: 'Activities', group: 'server', description: 'Activities (ServerData)' },
     'server.agent'                  : { label: 'Agent', group: 'server', description: 'Agent (ServerData)' },
     'server.alert_scope'            : { label: 'Alert Scope', group: 'server', description: 'Alert Scope (ServerData)' },

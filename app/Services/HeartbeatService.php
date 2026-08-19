@@ -2,36 +2,44 @@
 
 namespace App\Services;
 
+use App\Enums\ServerStatus;
+use App\Events\ServerStatsUpdated;
+use App\Events\ServerStatusUpdated;
+use App\Events\SystemTelemetryEvent;
+use App\Jobs\CheckServerOffline;
+use App\Jobs\PingServerPorts;
+use App\Models\ActionItem;
+use App\Models\Activity;
 use App\Models\Agent;
-use App\Models\Server;
+use App\Models\AgentCommand;
+use App\Models\AgentVersion;
+use App\Models\CommandResult;
+use App\Models\CustomActivityLog;
 use App\Models\Heartbeat;
 use App\Models\MetricBatch;
 use App\Models\MetricSample;
-use App\Models\Service;
 use App\Models\Port;
 use App\Models\Process;
-use App\Models\AgentCommand;
-use App\Models\CommandResult;
-use App\Models\Activity;
-use App\Events\ServerStatsUpdated;
-use App\Events\ServerStatusUpdated;
-use App\Enums\ServerStatus;
+use App\Models\Server;
+use App\Models\ServerUpdate;
+use App\Models\Service;
+use App\Models\Setting;
 use App\NodeConfig\Jobs\EvaluateNodeConfig;
 use App\NodeConfig\Models\NodeConfig;
-use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class HeartbeatService
 {
-    public function process(Agent $agent, array $payload): array
+    public function process(Agent $agent, Server $server, array $payload): array
     {
-        $server = $agent->server;
         $oldStatus = $server->status;
 
         // Accumulate monitored online time OUTSIDE the transaction so it always persists.
         // ONLY accumulate time if the server was ALREADY in Online status prior to this heartbeat.
         // If it was offline, this first heartbeat transitions it back to online, so we do NOT add the offline gap to online_seconds.
-        $rawOffline = (int) \App\Models\Setting::get('offline_threshold', '15');
+        $rawOffline = (int) Setting::get('offline_threshold', '15');
         $offlineThresholdSeconds = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
         if ($oldStatus === ServerStatus::Online->value && $agent->last_seen_at) {
             $elapsedSeconds = (int) $agent->last_seen_at->diffInSeconds(now());
@@ -60,14 +68,14 @@ class HeartbeatService
                 'version' => $newVersion,
             ]);
 
-            \App\Jobs\CheckServerOffline::dispatch($server->uuid)
+            CheckServerOffline::dispatch($server->uuid)
                 ->delay(now()->addSeconds($offlineThresholdSeconds + 2));
 
             // Transition server to online if needed
             $oldStatus = $server->status;
             if ($oldStatus !== ServerStatus::Online->value) {
                 $server->update(['status' => ServerStatus::Online->value]);
-                
+
                 Activity::create([
                     'server_id' => $server->id,
                     'agent_id' => $agent->id,
@@ -75,21 +83,21 @@ class HeartbeatService
                     'description' => 'Server transitioned to Online state.',
                 ]);
 
-                \App\Models\CustomActivityLog::create([
-                    'type'         => 'server_health',
+                CustomActivityLog::create([
+                    'type' => 'server_health',
                     'logable_type' => get_class($server),
-                    'logable_id'   => $server->id,
-                    'user_id'      => null,
-                    'user'         => 'System',
-                    'action'       => 'Agent Online',
-                    'details'      => json_encode([
-                        'message'     => "Agent came online for server: {$server->name}",
+                    'logable_id' => $server->id,
+                    'user_id' => null,
+                    'user' => 'System',
+                    'action' => 'Agent Online',
+                    'details' => json_encode([
+                        'message' => "Agent came online for server: {$server->name}",
                         'server_name' => $server->name,
                     ]),
                 ]);
 
                 // Resolve server offline problems on the Action Board
-                \App\Models\ActionItem::where('action_type', 'server_offline')
+                ActionItem::where('action_type', 'server_offline')
                     ->where('server_id', $server->id)
                     ->where('status', 'open')
                     ->update(['status' => 'completed', 'completed_at' => now()]);
@@ -99,14 +107,14 @@ class HeartbeatService
                     ServerStatusUpdated::dispatch($server->uuid, ServerStatus::Online->value, $server->name);
                     ServerStatsUpdated::dispatchSync($server->uuid, [
                         'timestamp' => now()->timestamp,
-                        'c'         => 0.0,
-                        'm'         => 0.0,
-                        'd'         => 0.0,
-                        'netIn'     => 0.0,
-                        'netOut'    => 0.0,
+                        'c' => 0.0,
+                        'm' => 0.0,
+                        'd' => 0.0,
+                        'netIn' => 0.0,
+                        'netOut' => 0.0,
                     ]);
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning('[broadcast] Failed to push online update', ['error' => $e->getMessage()]);
+                    Log::warning('[broadcast] Failed to push online update', ['error' => $e->getMessage()]);
                 }
             }
 
@@ -119,19 +127,18 @@ class HeartbeatService
                 'received_at' => now(),
             ]);
 
-            \App\Events\SystemTelemetryEvent::emit('agent_heartbeat', [
-                'server_id'   => $server->id,
+            SystemTelemetryEvent::emit('agent_heartbeat', [
+                'server_id' => $server->id,
                 'server_name' => $server->name,
                 'server_uuid' => $server->uuid,
-                'latency_ms'  => $payload['latency_ms'] ?? 0,
-                'cpu'         => $payload['cpu']['load1'] ?? ($payload['cpu'] ?? 0),
-                'memory'      => $payload['memory']['percent'] ?? ($payload['memory'] ?? 0),
-                'disk'        => $payload['disk']['percent'] ?? ($payload['disk'] ?? 0),
+                'latency_ms' => $payload['latency_ms'] ?? 0,
+                'cpu' => $payload['cpu']['load1'] ?? ($payload['cpu'] ?? 0),
+                'memory' => $payload['memory']['percent'] ?? ($payload['memory'] ?? 0),
+                'disk' => $payload['disk']['percent'] ?? ($payload['disk'] ?? 0),
             ]);
 
             // Ingest Metrics
-            $this->ingestMetrics($heartbeat, $agent, $payload);
-
+            $this->ingestMetrics($heartbeat, $agent, $server, $payload);
 
             // Trigger node config evaluation: numeric metrics + online status
             $this->evaluateMetricsForNodeConfig($server, $agent, $payload);
@@ -148,14 +155,14 @@ class HeartbeatService
             }
 
             // Ping exposed TCP ports on an interval (drives PingServerPorts + ports_ping node config alerts)
-            $rawPing = (int) \App\Models\Setting::get('port_ping_interval', '60');
+            $rawPing = (int) Setting::get('port_ping_interval', '60');
             $pingInterval = $rawPing >= 1000 ? intdiv($rawPing, 1000) : ($rawPing ?: 60);
-            if ($pingInterval > 0 && $agent->ports()->where('protocol', 'tcp')->exists()) {
-                $cacheKey = 'port_ping_last:' . $server->uuid;
+            if ($pingInterval > 0 && ! PingServerPorts::pingablePorts($server, $agent)->isEmpty()) {
+                $cacheKey = 'port_ping_last:'.$server->uuid;
                 $lastPing = (int) cache()->get($cacheKey, 0);
                 if (now()->timestamp - $lastPing >= $pingInterval) {
                     cache()->put($cacheKey, now()->timestamp, $pingInterval * 2);
-                    \App\Jobs\PingServerPorts::dispatch($server);
+                    PingServerPorts::dispatch($server);
                 }
             }
 
@@ -178,7 +185,7 @@ class HeartbeatService
                     if (isset($agentCfg['heartbeat_interval']) && $agentCfg['heartbeat_interval'] > 0) {
                         $cfgUpdates['heartbeat_interval'] = (int) $agentCfg['heartbeat_interval'];
                     }
-                    if (!empty($cfgUpdates)) {
+                    if (! empty($cfgUpdates)) {
                         $currentConfig->update($cfgUpdates);
                     }
                 }
@@ -189,22 +196,26 @@ class HeartbeatService
             $configVersion = $currentConfig ? $currentConfig->version : 1;
             $agentConfigVersion = (int) ($payload['configuration_version'] ?? 0);
 
-            $rawInterval = (int) \App\Models\Setting::get('heartbeat_interval', '5');
+            $rawInterval = (int) Setting::get('heartbeat_interval', '5');
             $globalInterval = $rawInterval >= 1000 ? intdiv($rawInterval, 1000) : ($rawInterval ?: 5);
             $response = [
                 'heartbeat_interval' => $globalInterval ?: ($currentConfig ? $currentConfig->heartbeat_interval : 5),
-                'current_time'       => now()->timestamp,
-                'feature_flags'      => [],
+                'current_time' => now()->timestamp,
+                'feature_flags' => [],
                 // Always include Reverb credentials so the agent can connect the WS control channel
                 // even if bootstrap.json on disk is missing these fields (e.g. due to permissions)
-                'server_uuid'        => $server->uuid,
-                'reverb_host'        => env('REVERB_HOST', '127.0.0.1'),
-                'reverb_port'        => (int) env('REVERB_PORT', 8080),
-                'reverb_scheme'      => env('REVERB_SCHEME', 'http'),
-                'reverb_app_key'     => env('REVERB_APP_KEY'),
+                'server_uuid' => $server->uuid,
+                // Per-server monitoring filter. null = monitor everything the
+                // agent's built-in noise filter allows; a list = only those.
+                'port_filter' => $server->port_filter,
+                'process_filter' => $server->process_filter,
+                'reverb_host' => env('REVERB_HOST', '127.0.0.1'),
+                'reverb_port' => (int) env('REVERB_PORT', 8080),
+                'reverb_scheme' => env('REVERB_SCHEME', 'http'),
+                'reverb_app_key' => env('REVERB_APP_KEY'),
             ];
 
-            $latestBinaryUpdate = \App\Models\AgentVersion::orderBy('id', 'desc')
+            $latestBinaryUpdate = AgentVersion::orderBy('id', 'desc')
                 ->first();
             $agentVersion = $agent->version;
             if ($latestBinaryUpdate && $agentVersion !== $latestBinaryUpdate->version) {
@@ -213,9 +224,9 @@ class HeartbeatService
                 $os = strtolower($server->operating_system ?? '');
                 $binaryUrl = str_contains($os, 'windows') ? url('/MonitorAgent.exe') : url('/agent');
                 $response['pending_update'] = [
-                    'version'            => $latestBinaryUpdate->version,
+                    'version' => $latestBinaryUpdate->version,
                     'heartbeat_interval' => null,
-                    'binary_url'         => $binaryUrl,
+                    'binary_url' => $binaryUrl,
                 ];
             }
 
@@ -240,7 +251,7 @@ class HeartbeatService
             foreach ($pendingCommands as $cmd) {
                 $cmd->update([
                     'status' => 'sent',
-                    'sent_at' => now()
+                    'sent_at' => now(),
                 ]);
 
                 $commandsPayload[] = [
@@ -256,7 +267,7 @@ class HeartbeatService
         });
     }
 
-    private function ingestMetrics(Heartbeat $heartbeat, Agent $agent, array $payload): void
+    private function ingestMetrics(Heartbeat $heartbeat, Agent $agent, Server $server, array $payload): void
     {
         $batch = MetricBatch::create([
             'heartbeat_id' => $heartbeat->id,
@@ -272,16 +283,16 @@ class HeartbeatService
             $cpu = $payload['cpu'];
             if (is_array($cpu)) {
                 if (isset($cpu['load1'])) {
-                    $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load1', 'value' => (double) $cpu['load1'], 'unit' => 'load'];
+                    $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load1', 'value' => (float) $cpu['load1'], 'unit' => 'load'];
                 }
                 if (isset($cpu['load5'])) {
-                    $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load5', 'value' => (double) $cpu['load5'], 'unit' => 'load'];
+                    $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load5', 'value' => (float) $cpu['load5'], 'unit' => 'load'];
                 }
                 if (isset($cpu['load15'])) {
-                    $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load15', 'value' => (double) $cpu['load15'], 'unit' => 'load'];
+                    $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load15', 'value' => (float) $cpu['load15'], 'unit' => 'load'];
                 }
-            } else if (is_numeric($cpu)) {
-                $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load1', 'value' => (double) $cpu, 'unit' => 'load'];
+            } elseif (is_numeric($cpu)) {
+                $samples[] = ['metric_type' => 'cpu', 'metric_name' => 'load1', 'value' => (float) $cpu, 'unit' => 'load'];
             }
         }
 
@@ -290,16 +301,16 @@ class HeartbeatService
             $mem = $payload['memory'];
             if (is_array($mem)) {
                 if (isset($mem['percent'])) {
-                    $samples[] = ['metric_type' => 'memory', 'metric_name' => 'percent', 'value' => (double) $mem['percent'], 'unit' => '%'];
+                    $samples[] = ['metric_type' => 'memory', 'metric_name' => 'percent', 'value' => (float) $mem['percent'], 'unit' => '%'];
                 }
                 if (isset($mem['used_kb'])) {
-                    $samples[] = ['metric_type' => 'memory', 'metric_name' => 'used', 'value' => (double) ($mem['used_kb'] / 1024), 'unit' => 'MB'];
+                    $samples[] = ['metric_type' => 'memory', 'metric_name' => 'used', 'value' => (float) ($mem['used_kb'] / 1024), 'unit' => 'MB'];
                 }
                 if (isset($mem['total_kb'])) {
-                    $samples[] = ['metric_type' => 'memory', 'metric_name' => 'total', 'value' => (double) ($mem['total_kb'] / 1024), 'unit' => 'MB'];
+                    $samples[] = ['metric_type' => 'memory', 'metric_name' => 'total', 'value' => (float) ($mem['total_kb'] / 1024), 'unit' => 'MB'];
                 }
-            } else if (is_numeric($mem)) {
-                $samples[] = ['metric_type' => 'memory', 'metric_name' => 'percent', 'value' => (double) $mem, 'unit' => '%'];
+            } elseif (is_numeric($mem)) {
+                $samples[] = ['metric_type' => 'memory', 'metric_name' => 'percent', 'value' => (float) $mem, 'unit' => '%'];
             }
         }
 
@@ -308,28 +319,28 @@ class HeartbeatService
             $disk = $payload['disk'];
             if (is_array($disk)) {
                 if (isset($disk['percent'])) {
-                    $samples[] = ['metric_type' => 'disk', 'metric_name' => 'percent', 'value' => (double) $disk['percent'], 'unit' => '%'];
+                    $samples[] = ['metric_type' => 'disk', 'metric_name' => 'percent', 'value' => (float) $disk['percent'], 'unit' => '%'];
                 }
                 if (isset($disk['used'])) {
-                    $samples[] = ['metric_type' => 'disk', 'metric_name' => 'used', 'value' => (double) ($disk['used'] / (1024**3)), 'unit' => 'GB'];
+                    $samples[] = ['metric_type' => 'disk', 'metric_name' => 'used', 'value' => (float) ($disk['used'] / (1024 ** 3)), 'unit' => 'GB'];
                 }
                 if (isset($disk['total'])) {
-                    $samples[] = ['metric_type' => 'disk', 'metric_name' => 'total', 'value' => (double) ($disk['total'] / (1024**3)), 'unit' => 'GB'];
+                    $samples[] = ['metric_type' => 'disk', 'metric_name' => 'total', 'value' => (float) ($disk['total'] / (1024 ** 3)), 'unit' => 'GB'];
                 }
-            } else if (is_numeric($disk)) {
-                $samples[] = ['metric_type' => 'disk', 'metric_name' => 'percent', 'value' => (double) $disk, 'unit' => '%'];
+            } elseif (is_numeric($disk)) {
+                $samples[] = ['metric_type' => 'disk', 'metric_name' => 'percent', 'value' => (float) $disk, 'unit' => '%'];
             }
         }
 
         // Parse Uptime
         if (isset($payload['uptime'])) {
-            $samples[] = ['metric_type' => 'uptime', 'metric_name' => 'uptime', 'value' => (double) $payload['uptime'], 'unit' => 'seconds'];
+            $samples[] = ['metric_type' => 'uptime', 'metric_name' => 'uptime', 'value' => (float) $payload['uptime'], 'unit' => 'seconds'];
         }
 
         foreach ($samples as $sample) {
             MetricSample::create(array_merge($sample, [
                 'batch_id' => $batch->id,
-                'recorded_at' => $recordedAt
+                'recorded_at' => $recordedAt,
             ]));
         }
 
@@ -344,11 +355,11 @@ class HeartbeatService
         }
 
         // Populate server_updates table for compatibility with dashboard/historical charts
-        \App\Models\ServerUpdate::create([
-            'server_id' => $agent->server->id,
-            'cpu_usage' => (double) ($payload['cpu']['load1'] ?? 0.0),
-            'memory_usage' => (double) ($payload['memory']['percent'] ?? 0.0),
-            'storage' => (double) ($payload['disk']['percent'] ?? 0.0),
+        ServerUpdate::create([
+            'server_id' => $server->id,
+            'cpu_usage' => (float) ($payload['cpu']['load1'] ?? 0.0),
+            'memory_usage' => (float) ($payload['memory']['percent'] ?? 0.0),
+            'storage' => (float) ($payload['disk']['percent'] ?? 0.0),
             'uptime' => (int) ($payload['uptime'] ?? 0),
             'network_rbytes' => $networkRx,
             'network_tbytes' => $networkTx,
@@ -358,18 +369,18 @@ class HeartbeatService
         // Broadcast stats for UI compatibility (similar to existing server/stats ingest)
         $uiStats = [
             'timestamp' => now()->timestamp,
-            'c' => (double) ($payload['cpu']['load1'] ?? 0.0),
-            'm' => (double) ($payload['memory']['percent'] ?? 0.0),
-            'd' => (double) ($payload['disk']['percent'] ?? 0.0),
+            'c' => (float) ($payload['cpu']['load1'] ?? 0.0),
+            'm' => (float) ($payload['memory']['percent'] ?? 0.0),
+            'd' => (float) ($payload['disk']['percent'] ?? 0.0),
             'netIn' => 0.0,
             'netOut' => 0.0,
         ];
 
         // Trigger real-time stats update broadcast (failsafe if Reverb is offline)
         try {
-            ServerStatsUpdated::dispatchSync($agent->server->uuid, $uiStats);
+            ServerStatsUpdated::dispatchSync($server->uuid, $uiStats);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('[broadcast] Failed to push stats update', ['error' => $e->getMessage()]);
+            Log::warning('[broadcast] Failed to push stats update', ['error' => $e->getMessage()]);
         }
     }
 
@@ -378,7 +389,9 @@ class HeartbeatService
         $identifiers = [];
         foreach ($services as $srv) {
             $identifier = $srv['identifier'] ?? $srv['name'] ?? null;
-            if (!$identifier) continue;
+            if (! $identifier) {
+                continue;
+            }
 
             $identifiers[] = $identifier;
 
@@ -388,7 +401,7 @@ class HeartbeatService
                     'name' => $srv['name'] ?? $identifier,
                     'state' => $srv['state'] ?? 'unknown',
                     'status' => $srv['status'] ?? null,
-                    'last_seen' => now()
+                    'last_seen' => now(),
                 ]
             );
         }
@@ -401,36 +414,16 @@ class HeartbeatService
 
     private function updatePorts(Agent $agent, array $ports): void
     {
+        // No duplicate noise filtering here: the agent already filters out
+        // loopback/system/ephemeral ports and applies the server's filter,
+        // so a filtered-in port must never be silently dropped.
         $portsList = [];
-        $ignoredPorts = [
-            135, 137, 138, 139, 445, 500, 4500, 5353, 5355, 7680, 5985, 5986
-        ];
-        $ignoredProcessPatterns = [
-            'svchost', 'lsass', 'services', 'system', 'spoolsv', 'smss', 'csrss', 'wininit', 'alg', 'dashost',
-            'systemd', 'rpcbind', 'avahi', 'dbus'
-        ];
 
         foreach ($ports as $port) {
-            $portNum = isset($port['port']) ? (int)$port['port'] : null;
+            $portNum = isset($port['port']) ? (int) $port['port'] : null;
             $proto = $port['protocol'] ?? 'tcp';
-            if (is_null($portNum)) continue;
-
-            // Reject noise ports and ephemeral RPC ports (>= 49152)
-            if (in_array($portNum, $ignoredPorts, true) || $portNum >= 49152) {
+            if (is_null($portNum)) {
                 continue;
-            }
-
-            // Reject OS internal process noise
-            $procName = strtolower($port['process'] ?? '');
-            if ($procName !== '') {
-                $isNoise = false;
-                foreach ($ignoredProcessPatterns as $pattern) {
-                    if (str_contains($procName, $pattern)) {
-                        $isNoise = true;
-                        break;
-                    }
-                }
-                if ($isNoise) continue;
             }
 
             $portsList[] = ['port' => $portNum, 'proto' => $proto];
@@ -440,7 +433,7 @@ class HeartbeatService
                 [
                     'state' => $port['state'] ?? 'listening',
                     'process_name' => $port['process'] ?? null,
-                    'last_seen' => now()
+                    'last_seen' => now(),
                 ]
             );
         }
@@ -454,7 +447,7 @@ class HeartbeatService
         $allPorts = Port::where('agent_id', $agent->id)->get();
         foreach ($allPorts as $dbPort) {
             $key = "{$dbPort->protocol}:{$dbPort->port}";
-            if (!in_array($key, $activeKeys)) {
+            if (! in_array($key, $activeKeys)) {
                 $dbPort->update(['state' => 'closed']);
             }
         }
@@ -462,32 +455,37 @@ class HeartbeatService
 
     private function updateProcesses(Agent $agent, array $processes): void
     {
-        // Delete old processes first, since it is "current state only"
-        Process::where('agent_id', $agent->id)->delete();
-
+        // Keep rows as history (the SecOps filter needs every process seen),
+        // upserting by PID and refreshing last_seen.
         foreach ($processes as $line) {
             if (is_array($line)) {
-                Process::create([
-                    'agent_id' => $agent->id,
-                    'pid' => $line['pid'] ?? 0,
-                    'name' => $line['name'] ?? 'unknown',
-                    'cpu' => $line['cpu'] ?? 0.0,
-                    'memory' => $line['memory'] ?? 0.0,
-                    'command_line' => $line['command_line'] ?? null,
-                    'last_seen' => now()
-                ]);
+                $pid = $line['pid'] ?? 0;
+                if ($pid <= 0) {
+                    continue;
+                }
+                Process::updateOrCreate(
+                    ['agent_id' => $agent->id, 'pid' => $pid],
+                    [
+                        'name' => $line['name'] ?? 'unknown',
+                        'cpu' => $line['cpu'] ?? 0.0,
+                        'memory' => $line['memory'] ?? 0.0,
+                        'command_line' => $line['command_line'] ?? null,
+                        'last_seen' => now(),
+                    ]
+                );
             } else {
                 // Parse line: PID COMM %CPU %MEM
                 $parts = preg_split('/\s+/', trim($line));
                 if (count($parts) >= 4 && is_numeric($parts[0])) {
-                    Process::create([
-                        'agent_id' => $agent->id,
-                        'pid' => (int) $parts[0],
-                        'name' => $parts[1],
-                        'cpu' => (double) $parts[2],
-                        'memory' => (double) $parts[3],
-                        'last_seen' => now()
-                    ]);
+                    Process::updateOrCreate(
+                        ['agent_id' => $agent->id, 'pid' => (int) $parts[0]],
+                        [
+                            'name' => $parts[1],
+                            'cpu' => (float) $parts[2],
+                            'memory' => (float) $parts[3],
+                            'last_seen' => now(),
+                        ]
+                    );
                 }
             }
         }
@@ -497,10 +495,14 @@ class HeartbeatService
     {
         foreach ($completedCommands as $ack) {
             $cmdId = $ack['command_id'] ?? null;
-            if (!$cmdId) continue;
+            if (! $cmdId) {
+                continue;
+            }
 
             $command = AgentCommand::find($cmdId);
-            if (!$command) continue;
+            if (! $command) {
+                continue;
+            }
 
             $status = $ack['status'] ?? 'completed';
             $command->update([
@@ -529,23 +531,29 @@ class HeartbeatService
     private function evaluateMetricsForNodeConfig(Server $server, Agent $agent, array $payload): void
     {
         $config = NodeConfig::resolveForServer($server->uuid);
-        if (!$config) return;
+        if (! $config) {
+            return;
+        }
 
         $metricMap = [
-            'cpu_usage'    => ['sample_type' => 'cpu',    'sample_name' => 'load1',  'payload_path' => ['cpu', 'load1']],
+            'cpu_usage' => ['sample_type' => 'cpu',    'sample_name' => 'load1',  'payload_path' => ['cpu', 'load1']],
             'memory_usage' => ['sample_type' => 'memory', 'sample_name' => 'percent', 'payload_path' => ['memory', 'percent']],
-            'disk_usage'   => ['sample_type' => 'disk',   'sample_name' => 'percent', 'payload_path' => ['disk', 'percent']],
+            'disk_usage' => ['sample_type' => 'disk',   'sample_name' => 'percent', 'payload_path' => ['disk', 'percent']],
         ];
 
         foreach ($metricMap as $metricType => $info) {
             $sourceNodeId = $this->findMetricNode($config, $metricType);
-            if (!$sourceNodeId) continue;
+            if (! $sourceNodeId) {
+                continue;
+            }
 
             $value = $this->resolvePayloadValue($payload, $info['payload_path']);
-            if ($value === null) continue;
+            if ($value === null) {
+                continue;
+            }
 
             EvaluateNodeConfig::dispatch($config->id, $sourceNodeId, $value, [
-                'server_id'   => $server->id,
+                'server_id' => $server->id,
                 'server_name' => $server->name,
                 'client_name' => $server->client->name ?? 'Unknown',
                 'metric_type' => $metricType,
@@ -556,13 +564,17 @@ class HeartbeatService
     private function triggerOnlineStatusEvaluation(Server $server): void
     {
         $config = NodeConfig::resolveForServer($server->uuid);
-        if (!$config) return;
+        if (! $config) {
+            return;
+        }
 
         $sourceNodeId = $this->findMetricNode($config, 'server_status');
-        if (!$sourceNodeId) return;
+        if (! $sourceNodeId) {
+            return;
+        }
 
         EvaluateNodeConfig::dispatch($config->id, $sourceNodeId, 'online', [
-            'server_id'   => $server->id,
+            'server_id' => $server->id,
             'server_name' => $server->name,
             'client_name' => $server->client->name ?? 'Unknown',
             'metric_type' => 'server_status',

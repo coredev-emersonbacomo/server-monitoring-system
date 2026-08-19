@@ -2,37 +2,39 @@
 
 namespace App\Services;
 
-use App\Models\Server;
-use App\Models\User;
-use App\Models\ProvisionToken;
-use App\Models\AgentInstallation;
-use App\Models\Agent;
-use App\Models\AgentConfiguration;
-use App\Models\Activity;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+use App\Enums\ServerStatus;
 use App\Events\ProvisionTokenGenerated;
 use App\Events\RegistrationCompleted;
-use App\Enums\ServerStatus;
-use Carbon\Carbon;
+use App\Events\ServerStatusUpdated;
+use App\Models\Activity;
+use App\Models\Agent;
+use App\Models\AgentConfiguration;
+use App\Models\AgentInstallation;
+use App\Models\AgentVersion;
+use App\Models\CustomActivityLog;
+use App\Models\ProvisionToken;
+use App\Models\Server;
+use App\Models\Setting;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class ProvisioningService
 {
     public function generateToken(Server $server, ?User $user = null): array
     {
         if ($server->status === ServerStatus::Archived->value) {
-            throw new \InvalidArgumentException("Cannot generate provision token for archived servers.");
+            throw new \InvalidArgumentException('Cannot generate provision token for archived servers.');
         }
 
         // Check if there is already an active agent
         if ($server->agent()->exists()) {
-            throw new \InvalidArgumentException("Server already has an active agent installed.");
+            throw new \InvalidArgumentException('Server already has an active agent installed.');
         }
 
         // Check for active token
         $activeToken = $server->activeProvisionToken;
-        if ($activeToken && !$activeToken->isExpired()) {
+        if ($activeToken && ! $activeToken->isExpired()) {
             return [
                 'conflict' => true,
                 'expires_at' => $activeToken->expires_at->copy()->utc()->toIso8601String(),
@@ -75,16 +77,16 @@ class ProvisioningService
             'performed_by' => $user?->id,
         ]);
 
-        \App\Models\CustomActivityLog::create([
-            'type'         => 'agent',
+        CustomActivityLog::create([
+            'type' => 'agent',
             'logable_type' => Server::class,
-            'logable_id'   => (string) $server->uuid,
-            'user_id'      => $user?->id,
-            'user'         => $user ? "{$user->first_name} {$user->last_name}" : 'System',
-            'action'       => 'Generate Installation Command',
-            'details'      => json_encode([
-                'message'          => "Generated installation command for server: {$server->name}",
-                'server_name'      => $server->name,
+            'logable_id' => (string) $server->uuid,
+            'user_id' => $user?->id,
+            'user' => $user ? "{$user->first_name} {$user->last_name}" : 'System',
+            'action' => 'Generate Installation Command',
+            'details' => json_encode([
+                'message' => "Generated installation command for server: {$server->name}",
+                'server_name' => $server->name,
                 'token_expires_at' => $expiresAt->toIso8601String(),
             ]),
         ]);
@@ -96,8 +98,8 @@ class ProvisioningService
             'conflict' => false,
             'token' => $rawToken,
             'expires_at' => $expiresAt->toIso8601String(),
-            'linux_command' => 'sudo curl -fsSL ' . url('/install/linux') . ' | sudo bash -s -- ' . $rawToken,
-            'windows_command' => \App\Services\WindowsCommand::make('/install/windows.ps1', $rawToken, rtrim(url('/'), '/')),
+            'linux_command' => 'sudo curl -fsSL '.url('/install/linux').' | sudo bash -s -- '.$rawToken,
+            'windows_command' => WindowsCommand::make('/install/windows.ps1', $rawToken, rtrim(url('/'), '/')),
             'token_expires_in' => $expiresAt->timestamp,
         ];
     }
@@ -126,7 +128,7 @@ class ProvisioningService
     {
         $token = ProvisionToken::where('token', $rawToken)->first();
 
-        if (!$token || !$token->isValid()) {
+        if (! $token || ! $token->isValid()) {
             abort(410, 'Provision token is invalid, expired, or has already been used.');
         }
 
@@ -161,7 +163,7 @@ class ProvisioningService
         }
 
         $sha256 = file_exists($agentPath) ? hash_file('sha256', $agentPath) : '';
-        $latestAgentVersion = \App\Models\AgentVersion::orderBy('id', 'desc')->first();
+        $latestAgentVersion = AgentVersion::orderBy('id', 'desc')->first();
         $agentVersion = $latestAgentVersion ? $latestAgentVersion->version : '2.0';
 
         return [
@@ -176,7 +178,7 @@ class ProvisioningService
     {
         $token = ProvisionToken::where('token', $rawToken)->first();
 
-        if (!$token || $token->status !== 'active') {
+        if (! $token || $token->status !== 'active') {
             abort(410, 'Provision token is invalid or has already been used.');
         }
 
@@ -186,7 +188,7 @@ class ProvisioningService
         // It is the binding between the agent process, its keystore identity and
         // the backend agent row.
         $installationId = $metadata['installation_id'] ?? null;
-        if (!$installationId || strlen($installationId) > 36) {
+        if (! $installationId || strlen($installationId) > 36) {
             abort(422, 'A valid installation_id is required for registration.');
         }
 
@@ -194,7 +196,7 @@ class ProvisioningService
         // key; it registers only the matching public key with the backend.
         $publicKey = $metadata['public_key'] ?? null;
         $publicKeyHash = $metadata['public_key_hash'] ?? null;
-        if (!$publicKey || !$publicKeyHash || strlen($publicKeyHash) !== 64) {
+        if (! $publicKey || ! $publicKeyHash || strlen($publicKeyHash) !== 64) {
             abort(422, 'A valid public key and public key hash are required for registration.');
         }
 
@@ -218,22 +220,40 @@ class ProvisioningService
                 'disk' => $metadata['disk'] ?? $server->disk,
             ]);
 
-            // The same physical installation can only ever be bound to one
-            // server. An installation UUID that already belongs to another
-            // server is rejected outright.
-            $bound = Agent::where('installation_uuid', $installationId)->first();
-            if ($bound && $bound->server_id !== $server->id) {
-                abort(409, 'This installation is already registered to another server.');
+            // The same physical installation (installation_uuid) can serve many
+            // servers. Registration is find-or-create by installation UUID:
+            // the agent row is the installation, and servers point at it via
+            // servers.agent_id.
+            $agent = Agent::where('installation_uuid', $installationId)->first();
+
+            // If this server is currently owned by a DIFFERENT installation,
+            // that agent loses this server. It is revoked only once it no
+            // longer owns any server — a multi-server agent must not be killed
+            // when one of its servers is reassigned.
+            if ($server->agent_id && (! $agent || $server->agent_id !== $agent->id)) {
+                $oldOwner = Agent::find($server->agent_id);
+                if ($oldOwner) {
+                    if ($oldOwner->server_id === $server->id) {
+                        $oldOwner->server_id = null;
+                    }
+                    $stillOwns = Server::where('agent_id', $oldOwner->id)
+                        ->where('id', '!=', $server->id)
+                        ->exists();
+                    if (! $stillOwns) {
+                        $oldOwner->update([
+                            'status' => 'revoked',
+                            'revoked_at' => now(),
+                            'last_seen_at' => null,
+                        ]);
+                    } else {
+                        $oldOwner->save();
+                    }
+                }
             }
 
-            $active = $server->agent;
-            $isSameInstallation = $active && $active->installation_uuid === $installationId;
-
-            if ($active && $isSameInstallation) {
-                // Re-registration of the same installation: the agent retries
-                // with a stale token, or reclaims its own row after an
-                // uninstall. Update in place — never create a second row.
-                $agent = $active;
+            if ($agent) {
+                // Same installation (re-registering after a stale token or an
+                // uninstall, or attaching an additional server): update in place.
                 $agent->update([
                     'public_key' => $publicKey,
                     'public_key_hash' => $publicKeyHash,
@@ -242,66 +262,51 @@ class ProvisioningService
                     'revoked_at' => null,
                     'last_seen_at' => null,
                 ]);
+
+                // Legacy primary/last-server pointer — never point it at the
+                // wrong server, but adopt it if unset.
+                if (! $agent->server_id) {
+                    $agent->update(['server_id' => $server->id]);
+                }
             } else {
-                // A different installation is taking over this server, or this
-                // is the first registration. If an active agent already exists
-                // it must be revoked first (the partial unique index only ever
-                // allows ONE active agent per server).
-                if ($active) {
-                    $active->update([
-                        'status' => 'revoked',
-                        'revoked_at' => now(),
-                        'last_seen_at' => null,
-                    ]);
-                }
+                $agent = Agent::create([
+                    'server_id' => $server->id,
+                    'installation_uuid' => $installationId,
+                    'version' => $metadata['agent_version'] ?? '1.0',
+                    'protocol_version' => '1.0',
+                    'public_key' => $publicKey,
+                    'public_key_hash' => $publicKeyHash,
+                    'status' => 'active',
+                    'registered_at' => now(),
+                ]);
 
-                if ($bound) {
-                    // Reinstall with the same installation UUID after its own
-                    // uninstall: reactivate the historical row in place.
-                    $agent = $bound;
-                    $agent->update([
-                        'public_key' => $publicKey,
-                        'public_key_hash' => $publicKeyHash,
-                        'version' => $metadata['agent_version'] ?? $agent->version,
-                        'status' => 'active',
-                        'revoked_at' => null,
-                        'last_seen_at' => null,
-                    ]);
-                } else {
-                    $agent = Agent::create([
-                        'server_id' => $server->id,
-                        'installation_uuid' => $installationId,
-                        'version' => $metadata['agent_version'] ?? '1.0',
-                        'protocol_version' => '1.0',
-                        'public_key' => $publicKey,
-                        'public_key_hash' => $publicKeyHash,
-                        'status' => 'active',
-                        'registered_at' => now(),
-                    ]);
+                $heartbeatInterval = (int) (Setting::get('heartbeat_interval') ?: 5);
 
-                    $heartbeatInterval = (int) (\App\Models\Setting::get('heartbeat_interval') ?: 5);
+                $configJson = [
+                    'heartbeat_interval' => $heartbeatInterval,
+                    'metrics_interval' => 5,
+                    'port_scan_interval' => 60,
+                    'service_scan_interval' => 60,
+                    'process_scan_interval' => 60,
+                ];
 
-                    $configJson = [
-                        'heartbeat_interval' => $heartbeatInterval,
-                        'metrics_interval' => 5,
-                        'port_scan_interval' => 60,
-                        'service_scan_interval' => 60,
-                        'process_scan_interval' => 60,
-                    ];
+                AgentConfiguration::create([
+                    'agent_id' => $agent->id,
+                    'version' => 1,
+                    'heartbeat_interval' => $heartbeatInterval,
+                    'metrics_interval' => 5,
+                    'port_scan_interval' => 60,
+                    'service_scan_interval' => 60,
+                    'process_scan_interval' => 60,
+                    'update_channel' => 'stable',
+                    'auto_update' => true,
+                    'configuration_json' => $configJson,
+                ]);
+            }
 
-                    AgentConfiguration::create([
-                        'agent_id' => $agent->id,
-                        'version' => 1,
-                        'heartbeat_interval' => $heartbeatInterval,
-                        'metrics_interval' => 5,
-                        'port_scan_interval' => 60,
-                        'service_scan_interval' => 60,
-                        'process_scan_interval' => 60,
-                        'update_channel' => 'stable',
-                        'auto_update' => true,
-                        'configuration_json' => $configJson,
-                    ]);
-                }
+            // Attach the server to the agent (idempotent).
+            if ($server->agent_id !== $agent->id) {
+                $server->update(['agent_id' => $agent->id]);
             }
 
             // Update installation record
@@ -322,16 +327,16 @@ class ProvisioningService
                 'description' => 'Agent registration completed successfully.',
             ]);
 
-            \App\Models\CustomActivityLog::create([
-                'type'         => 'agent',
+            CustomActivityLog::create([
+                'type' => 'agent',
                 'logable_type' => get_class($server),
-                'logable_id'   => $server->id,
-                'user_id'      => null,
-                'user'         => 'System',
-                'action'       => 'Agent Installed',
-                'details'      => json_encode([
-                    'message'       => "Agent installed successfully on server: {$server->name}",
-                    'server_name'   => $server->name,
+                'logable_id' => $server->id,
+                'user_id' => null,
+                'user' => 'System',
+                'action' => 'Agent Installed',
+                'details' => json_encode([
+                    'message' => "Agent installed successfully on server: {$server->name}",
+                    'server_name' => $server->name,
                     'agent_version' => $metadata['agent_version'] ?? '1.0',
                 ]),
             ]);
@@ -339,13 +344,14 @@ class ProvisioningService
             // Broadcast event
             event(new RegistrationCompleted($server->uuid, $agent->id));
             try {
-                \App\Events\ServerStatusUpdated::dispatch($server->uuid, \App\Enums\ServerStatus::WaitingForFirstHeartbeat->value, $server->name);
-            } catch (\Throwable $e) {}
+                ServerStatusUpdated::dispatch($server->uuid, ServerStatus::WaitingForFirstHeartbeat->value, $server->name);
+            } catch (\Throwable $e) {
+            }
 
             return [
-                'registered'    => true,
-                'agent_id'      => $agent->id,
-                'server_uuid'   => $server->uuid,
+                'registered' => true,
+                'agent_id' => $agent->id,
+                'server_uuid' => $server->uuid,
             ];
         });
     }

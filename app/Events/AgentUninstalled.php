@@ -2,8 +2,9 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\PrivateChannel;
+use App\Enums\ServerStatus;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 
@@ -21,7 +22,7 @@ class AgentUninstalled implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('server.' . $this->server_uuid),
+            new PrivateChannel('server.'.$this->server_uuid),
         ];
     }
 
@@ -35,7 +36,7 @@ class AgentUninstalled implements ShouldBroadcastNow
         return [
             'server_uuid' => $this->server_uuid,
             'agent_deleted' => true,
-            'status' => \App\Enums\ServerStatus::Archived->value,
+            'status' => ServerStatus::Archived->value,
         ];
     }
 }

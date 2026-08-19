@@ -2,12 +2,12 @@
 
 namespace App\Data;
 
-use Spatie\LaravelData\Data;
+use Illuminate\Http\UploadedFile;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Min;
 use Spatie\LaravelData\Attributes\Validation\Required;
 use Spatie\LaravelData\Attributes\Validation\Unique;
-use Illuminate\Http\UploadedFile;
+use Spatie\LaravelData\Data;
 
 class CreateClientData extends Data
 {

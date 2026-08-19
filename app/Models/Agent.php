@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ServerStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,7 +28,20 @@ class Agent extends Model
 
     public function server(): BelongsTo
     {
+        // Legacy "primary/last server" pointer. New code should use servers().
         return $this->belongsTo(Server::class);
+    }
+
+    public function servers(): HasMany
+    {
+        return $this->hasMany(Server::class, 'agent_id');
+    }
+
+    public function monitoredServers(): HasMany
+    {
+        return $this->hasMany(Server::class, 'agent_id')
+            ->where('agent_deleted', false)
+            ->where('status', '!=', ServerStatus::Archived->value);
     }
 
     public function identities(): HasMany

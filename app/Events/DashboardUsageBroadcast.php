@@ -2,11 +2,12 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class DashboardUsageBroadcast implements ShouldBroadcastNow
 {
@@ -51,7 +52,7 @@ class DashboardUsageBroadcast implements ShouldBroadcastNow
         try {
             broadcast($event);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('[broadcast] DashboardUsageBroadcast broadcast failed', ['error' => $e->getMessage()]);
+            Log::warning('[broadcast] DashboardUsageBroadcast broadcast failed', ['error' => $e->getMessage()]);
         }
 
         return $event;

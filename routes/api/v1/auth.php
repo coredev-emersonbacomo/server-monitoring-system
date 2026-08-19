@@ -5,7 +5,7 @@ use App\Http\Controllers\Api\V1\PasswordResetController;
 use App\Http\Controllers\Api\V1\SessionController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/login', [JwtAuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/login', [JwtAuthController::class, 'login']);
 Route::post('/refresh', [JwtAuthController::class, 'refresh']);
 
 Route::post('/forgot-password', [PasswordResetController::class, 'forgotPassword'])->middleware('throttle:3,1');

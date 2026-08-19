@@ -6,9 +6,20 @@ use App\Enums\Severity;
 
 class NotificationNode extends BaseNode
 {
-    public function getType(): string { return 'notification'; }
-    public function getCategory(): string { return 'action'; }
-    public function getLabel(): string { return 'Notification'; }
+    public function getType(): string
+    {
+        return 'notification';
+    }
+
+    public function getCategory(): string
+    {
+        return 'action';
+    }
+
+    public function getLabel(): string
+    {
+        return 'Notification';
+    }
 
     public function getSettingDefinitions(): array
     {
@@ -36,7 +47,7 @@ class NotificationNode extends BaseNode
     {
         $input = $inputValues[0] ?? null;
 
-        if ($input === null || !$input) {
+        if ($input === null || ! $input) {
             return NodeResult::noPropagate(null, []);
         }
 

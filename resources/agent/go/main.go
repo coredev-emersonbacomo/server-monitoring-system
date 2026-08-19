@@ -258,7 +258,21 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 	if err != nil {
 		writeStartupLog("loadConfig failed: %v", err)
 		log.Printf("Failed to load config: %v", err)
-		return
+
+		// Root cause of "config.json never produced": the agent never created
+		// it — only the external installer did, so a bare/moved installation
+		// exited silently. Self-bootstrap a minimal default so the file always
+		// exists at the canonical location and the failure stays visible.
+		if cfg, path, cerr := bootstrapDefaultConfig(dir, instance); cerr == nil {
+			config, configPath = cfg, path
+			writeStartupLog("Created default config at %s — installer must supply server_url", path)
+			log.Printf("Created default config at %s — the installer will fill in server_url.", path)
+			return
+		} else {
+			writeStartupLog("bootstrapDefaultConfig failed: %v", cerr)
+			log.Printf("Failed to create default config: %v", cerr)
+			return
+		}
 	}
 
 	// The -instance argument is the source of truth for the installation UUID.
@@ -342,6 +356,12 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 	}
 	log.Println("Authenticated with server.")
 
+	// Rebuild the per-server runtime config from the auth response. The agent
+	// monitors one or more servers, each with its own filter, all held in
+	// memory (the backend remains the source of truth).
+	runtime := NewAgentRuntime(sess)
+	log.Printf("Monitoring %d server(s).", len(runtime.ServerUUIDs()))
+
 	// A successful auth also proves registration — drop any stale provision token.
 	if config.ProvisionToken != "" {
 		config.ProvisionToken = ""
@@ -359,10 +379,10 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 	defer ticker.Stop()
 
 	// Run once initially to register the first heartbeat
-	sendHeartbeatStep(config, configPath, client, metrics, &heartbeatInterval)
+	sendHeartbeatStep(config, configPath, client, metrics, runtime, &heartbeatInterval)
 
 	// Start the WebSocket control channel goroutine
-	go connectControlChannel(client, &heartbeatInterval, stopChan)
+	go connectControlChannel(client, runtime, &heartbeatInterval, stopChan)
 
 	for {
 		select {
@@ -378,84 +398,110 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 			if handleUninstallMarker(instance, dir, keyName, keystore, client) {
 				return
 			}
-			sendHeartbeatStep(config, configPath, client, metrics, &heartbeatInterval)
+			sendHeartbeatStep(config, configPath, client, metrics, runtime, &heartbeatInterval)
 			ticker.Reset(time.Duration(heartbeatInterval) * time.Second)
 		}
 	}
 }
 
-func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *AgentClient, metrics *metricsCollector, heartbeatInterval *int) {
-	payload := &HeartbeatRequest{
-		AgentVersion:         config.AgentVersion,
-		ConfigurationVersion: config.confVersion,
-		Timestamp:            time.Now().Unix(),
-		Hostname:             metrics.GetHostname(),
-		Cpu:                  metrics.GetCPUUsage(),
-		Memory:               metrics.GetMemoryUsage(),
-		Disk:                 metrics.GetDiskUsage(),
-		Uptime:               metrics.GetUptime(),
-		Network:              metrics.GetNetworkStats(),
-		TopProcesses:         metrics.GetTopProcesses(),
-		OpenDbPorts:          metrics.GetOpenDatabasePorts(),
-		AgentConfig: &AgentConfigReport{
-			HeartbeatInterval: *heartbeatInterval,
-			AgentVersion:      config.AgentVersion,
-		},
-	}
-
-	response, err := client.sendHeartbeat(payload)
-	if err != nil {
-		log.Printf("Heartbeat failed: %v", err)
-		return
-	}
-
-	if response.HeartbeatInterval > 0 && *heartbeatInterval != response.HeartbeatInterval {
-		*heartbeatInterval = response.HeartbeatInterval
-		log.Printf("Heartbeat interval updated to %ds", *heartbeatInterval)
-	}
-
-	if v, ok := response.Configuration["version"].(float64); ok {
-		config.confVersion = int(v)
-		log.Printf("Configuration updated to version %d", config.confVersion)
-	}
-
-	if response.PendingUpdate != nil {
-		log.Printf("Received agent update notification to version %s", response.PendingUpdate.Version)
-
-		if response.PendingUpdate.HeartbeatInterval > 0 {
-			*heartbeatInterval = response.PendingUpdate.HeartbeatInterval
+func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *AgentClient, metrics *metricsCollector, runtime *AgentRuntime, heartbeatInterval *int) {
+	for _, serverUUID := range runtime.ServerUUIDs() {
+		if !runtime.HasServer(serverUUID) {
+			continue
 		}
 
-		config.AgentVersion = response.PendingUpdate.Version
-		_ = writeConfig(configPath, config)
+		payload := &HeartbeatRequest{
+			ServerUUID:           serverUUID,
+			AgentVersion:         config.AgentVersion,
+			ConfigurationVersion: config.confVersion,
+			Timestamp:            time.Now().Unix(),
+			Hostname:             metrics.GetHostname(),
+			Cpu:                  metrics.GetCPUUsage(),
+			Memory:               metrics.GetMemoryUsage(),
+			Disk:                 metrics.GetDiskUsage(),
+			Uptime:               metrics.GetUptime(),
+			Network:              metrics.GetNetworkStats(),
+			TopProcesses:         metrics.GetTopProcesses(),
+			OpenDbPorts:          metrics.GetOpenDatabasePorts(),
+			AgentConfig: &AgentConfigReport{
+				HeartbeatInterval: *heartbeatInterval,
+				AgentVersion:      config.AgentVersion,
+			},
+		}
 
-		if response.PendingUpdate.BinaryURL != "" {
-			log.Printf("Updating agent binary from %s...", response.PendingUpdate.BinaryURL)
-			if err := updateBinary(response.PendingUpdate.BinaryURL); err != nil {
-				log.Printf("Binary update failed: %v", err)
+		// Apply this server's SecOps filter: only the important ports and
+		// processes are reported, independently per server.
+		payload.OpenDbPorts = runtime.FilterPorts(serverUUID, payload.OpenDbPorts)
+		payload.TopProcesses = runtime.FilterProcesses(serverUUID, payload.TopProcesses)
+
+		response, err := client.sendHeartbeat(payload)
+		if err != nil {
+			// A decommissioned / reassigned server must stop being monitored,
+			// not flap. Remove it from the runtime until it is assigned again.
+			var hse *httpStatusError
+			if errors.As(err, &hse) && (hse.Status == 403 || hse.Status == 404 || hse.Status == 410) {
+				log.Printf("Server %s rejected by backend (%d) — removing from monitored set.", serverUUID, hse.Status)
+				runtime.Remove(serverUUID)
 			} else {
-				log.Println("Binary updated successfully! Exiting to allow restart.")
-				restartAgent()
-				os.Exit(0)
+				log.Printf("Heartbeat failed for %s: %v", serverUUID, err)
 			}
+			continue
 		}
-	}
 
-	if len(response.PendingCommands) > 0 {
-		var completed []CommandResult
-		for _, cmd := range response.PendingCommands {
-			log.Printf("Executing command: %s (id: %d)", cmd.Type, cmd.Id)
-			result := executeCommand(cmd)
-			completed = append(completed, result)
+		// Refresh this server's filter from the authoritative response.
+		if response.ServerUUID != "" {
+			runtime.Upsert(response.ServerUUID, response.PortFilter, response.ProcessFilter)
 		}
-		if len(completed) > 0 {
-			ackPayload := &HeartbeatRequest{
-				ConfigurationVersion: config.confVersion,
-				Timestamp:            time.Now().Unix(),
-				Hostname:             metrics.GetHostname(),
-				CompletedCommands:    completed,
+
+		if response.HeartbeatInterval > 0 && *heartbeatInterval != response.HeartbeatInterval {
+			*heartbeatInterval = response.HeartbeatInterval
+			log.Printf("Heartbeat interval updated to %ds", *heartbeatInterval)
+		}
+
+		if v, ok := response.Configuration["version"].(float64); ok {
+			config.confVersion = int(v)
+			log.Printf("Configuration updated to version %d", config.confVersion)
+		}
+
+		if response.PendingUpdate != nil {
+			log.Printf("Received agent update notification to version %s", response.PendingUpdate.Version)
+
+			if response.PendingUpdate.HeartbeatInterval > 0 {
+				*heartbeatInterval = response.PendingUpdate.HeartbeatInterval
 			}
-			client.sendHeartbeat(ackPayload)
+
+			config.AgentVersion = response.PendingUpdate.Version
+			_ = writeConfig(configPath, config)
+
+			if response.PendingUpdate.BinaryURL != "" {
+				log.Printf("Updating agent binary from %s...", response.PendingUpdate.BinaryURL)
+				if err := updateBinary(response.PendingUpdate.BinaryURL); err != nil {
+					log.Printf("Binary update failed: %v", err)
+				} else {
+					log.Println("Binary updated successfully! Exiting to allow restart.")
+					restartAgent()
+					os.Exit(0)
+				}
+			}
+		}
+
+		if len(response.PendingCommands) > 0 {
+			var completed []CommandResult
+			for _, cmd := range response.PendingCommands {
+				log.Printf("Executing command: %s (id: %d)", cmd.Type, cmd.Id)
+				result := executeCommand(cmd)
+				completed = append(completed, result)
+			}
+			if len(completed) > 0 {
+				ackPayload := &HeartbeatRequest{
+					ServerUUID:           serverUUID,
+					ConfigurationVersion: config.confVersion,
+					Timestamp:            time.Now().Unix(),
+					Hostname:             metrics.GetHostname(),
+					CompletedCommands:    completed,
+				}
+				client.sendHeartbeat(ackPayload)
+			}
 		}
 	}
 }

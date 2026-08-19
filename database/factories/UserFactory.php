@@ -19,7 +19,7 @@ class UserFactory extends Factory
             'https://res.cloudinary.com/dwpiboxib/image/upload/profile_pictures/user_1/feb8262d-f9a0-4a82-9d7b-0d5f7494c3e4',
             'https://res.cloudinary.com/dwpiboxib/image/upload/profile_pictures/user_1/da4ae1eb-9547-4905-972d-e087692456f9',
             'https://res.cloudinary.com/dwpiboxib/image/upload/profile_pictures/user_1/ac73a7ab-ab87-4413-8f24-2ecb5ace70ee',
-            'https://res.cloudinary.com/dwpiboxib/image/upload/profile_pictures/user_1/13eb8bc2-d6df-404b-932a-f3e6e378a647'
+            'https://res.cloudinary.com/dwpiboxib/image/upload/profile_pictures/user_1/13eb8bc2-d6df-404b-932a-f3e6e378a647',
         ];
 
         return [

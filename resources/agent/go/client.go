@@ -66,6 +66,7 @@ type AgentSession struct {
 	AccessToken       string
 	ExpiresAt         time.Time
 	ServerUUID        string
+	Servers           []ServerAssignment
 	HeartbeatInterval int
 	ReverbHost        string
 	ReverbPort        int
@@ -126,6 +127,7 @@ func (c *AgentClient) authenticate() (*AgentSession, error) {
 		AccessToken:       authResp.AccessToken,
 		ExpiresAt:         time.Now().Add(time.Duration(authResp.ExpiresIn) * time.Second),
 		ServerUUID:        authResp.ServerUUID,
+		Servers:           authResp.Servers,
 		HeartbeatInterval: authResp.Config.HeartbeatInterval,
 		ReverbHost:        authResp.Config.Realtime.Host,
 		ReverbPort:        authResp.Config.Realtime.Port,
@@ -182,6 +184,23 @@ func parseAuthResponse(result map[string]interface{}) (*AuthResponse, error) {
 	if uuid, ok := result["server_uuid"].(string); ok {
 		resp.ServerUUID = uuid
 	}
+	if servers, ok := result["servers"].([]interface{}); ok {
+		for _, item := range servers {
+			m, ok := item.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			assignment := ServerAssignment{}
+			if u, ok := m["server_uuid"].(string); ok {
+				assignment.ServerUUID = u
+			}
+			assignment.PortFilter = parseIntList(m["port_filter"])
+			assignment.ProcessFilter = parseStringList(m["process_filter"])
+			if assignment.ServerUUID != "" {
+				resp.Servers = append(resp.Servers, assignment)
+			}
+		}
+	}
 	if cfg, ok := result["config"].(map[string]interface{}); ok {
 		if hb, ok := cfg["heartbeat_interval"].(float64); ok {
 			resp.Config.HeartbeatInterval = int(hb)
@@ -205,6 +224,39 @@ func parseAuthResponse(result map[string]interface{}) (*AuthResponse, error) {
 		return nil, fmt.Errorf("auth response missing access_token")
 	}
 	return resp, nil
+}
+
+// parseIntList converts a JSON filter value into []int. A JSON null /
+// absent value yields nil (meaning "no filter"); an empty array yields an
+// empty non-nil slice (meaning "filter to nothing").
+func parseIntList(v interface{}) []int {
+	list, ok := v.([]interface{})
+	if !ok || list == nil {
+		return nil
+	}
+	out := make([]int, 0, len(list))
+	for _, item := range list {
+		if n, ok := item.(float64); ok {
+			out = append(out, int(n))
+		}
+	}
+	return out
+}
+
+// parseStringList converts a JSON string filter value into []string with
+// the same null vs empty semantics as parseIntList.
+func parseStringList(v interface{}) []string {
+	list, ok := v.([]interface{})
+	if !ok || list == nil {
+		return nil
+	}
+	out := make([]string, 0, len(list))
+	for _, item := range list {
+		if s, ok := item.(string); ok {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // ---- HTTP helpers ----------------------------------------------------------
@@ -365,6 +417,8 @@ func (c *AgentClient) sendHeartbeat(payload *HeartbeatRequest) (*HeartbeatRespon
 		if uuid, ok := result["server_uuid"].(string); ok {
 			resp.ServerUUID = uuid
 		}
+		resp.PortFilter = parseIntList(result["port_filter"])
+		resp.ProcessFilter = parseStringList(result["process_filter"])
 		return resp, nil
 	}
 

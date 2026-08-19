@@ -2,12 +2,14 @@
 
 namespace App\Jobs;
 
+use App\Models\Agent;
 use App\Models\Port;
 use App\Models\Server;
 use App\NodeConfig\Jobs\EvaluateNodeConfig;
 use App\NodeConfig\Models\NodeConfig;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class PingServerPorts implements ShouldQueue
@@ -30,16 +32,16 @@ class PingServerPorts implements ShouldQueue
     public function handle(): void
     {
         $agent = $this->server->agent;
-        if (!$agent) {
+        if (! $agent) {
             return;
         }
 
         $host = $this->server->host_name;
-        if (!$host) {
+        if (! $host) {
             return;
         }
 
-        $ports = $agent->ports->filter(fn($p) => $p->protocol === 'tcp');
+        $ports = static::pingablePorts($this->server, $agent);
         if ($ports->isEmpty()) {
             return;
         }
@@ -73,31 +75,50 @@ class PingServerPorts implements ShouldQueue
     }
 
     /**
+     * The TCP ports the ping job is allowed to probe for this server. A null
+     * filter means probe every TCP port the agent reports; a non-null list
+     * restricts pinging to exactly the SecOps-checked ports (empty = ping
+     * nothing). Shared by the dispatch gate and the job itself so both agree.
+     */
+    public static function pingablePorts(Server $server, Agent $agent): Collection
+    {
+        $ports = $agent->ports->filter(fn ($p) => $p->protocol === 'tcp');
+
+        $filter = $server->port_filter;
+        if (is_array($filter)) {
+            $allowed = array_map('intval', $filter);
+            $ports = $ports->whereIn('port', $allowed);
+        }
+
+        return $ports;
+    }
+
+    /**
      * Feed the ping result into the ports_ping metric node (if the resolved
      * config defines one). Numeric timing values go to the timing socket,
      * 'offline' routes to the offline socket.
      */
-    private function evaluateNodeConfig(Port $port, \App\Models\Agent $agent, mixed $value): void
+    private function evaluateNodeConfig(Port $port, Agent $agent, mixed $value): void
     {
         try {
             $config = NodeConfig::resolveForServer($this->server->uuid);
-            if (!$config) {
+            if (! $config) {
                 return;
             }
 
             $sourceNodeId = $this->findPortsPingNode($config);
-            if (!$sourceNodeId) {
+            if (! $sourceNodeId) {
                 return;
             }
 
             EvaluateNodeConfig::dispatch($config->id, $sourceNodeId, $value, [
-                'server_id'   => $this->server->id,
+                'server_id' => $this->server->id,
                 'server_name' => $this->server->name,
-                'client_name'   => $this->server->client->name ?? 'Unknown',
-                'metric_type'   => 'ports_ping',
-                'port'  => $port->port,
+                'client_name' => $this->server->client->name ?? 'Unknown',
+                'metric_type' => 'ports_ping',
+                'port' => $port->port,
                 'port_name' => $port->process_name,
-                'protocol'  => $port->protocol,
+                'protocol' => $port->protocol,
                 // built-in template param leaf ids resolvable by the alert system:
                 'ping' => is_numeric($value) ? (float) $value : null,
                 'name' => $port->process_name,
@@ -105,8 +126,8 @@ class PingServerPorts implements ShouldQueue
         } catch (\Throwable $e) {
             Log::warning('[ports-ping] Failed to dispatch node config evaluation', [
                 'server_id' => $this->server->id,
-                'port'      => $port->port,
-                'error'     => $e->getMessage(),
+                'port' => $port->port,
+                'error' => $e->getMessage(),
             ]);
         }
     }

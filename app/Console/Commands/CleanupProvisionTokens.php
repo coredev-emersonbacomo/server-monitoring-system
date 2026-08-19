@@ -2,8 +2,8 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\ProvisionToken;
+use Illuminate\Console\Command;
 
 class CleanupProvisionTokens extends Command
 {

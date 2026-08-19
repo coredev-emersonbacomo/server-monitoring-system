@@ -3,10 +3,9 @@
 namespace App\NodeConfig\Jobs;
 
 use App\NodeConfig\Cache\NodeConfigCache;
-use App\NodeConfig\Engine\NodeRegistry;
 use App\NodeConfig\Engine\NodeConfigEngine;
+use App\NodeConfig\Engine\NodeRegistry;
 use App\NodeConfig\Engine\NodeTaskScheduler;
-use App\NodeConfig\Models\NodeConfig;
 use App\NodeConfig\Services\NodeConfigNotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,6 +18,7 @@ class EvaluateNodeConfig implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
+
     public int $timeout = 30;
 
     public function __construct(
@@ -31,7 +31,7 @@ class EvaluateNodeConfig implements ShouldQueue
     public function handle(NodeRegistry $registry, NodeConfigNotificationService $notifications): void
     {
         $config = NodeConfigCache::findById($this->configId);
-        if (!$config) {
+        if (! $config) {
             return;
         }
 
@@ -40,7 +40,7 @@ class EvaluateNodeConfig implements ShouldQueue
         $engine = new NodeConfigEngine($registry);
         $result = $engine->trigger($config, $this->sourceNodeId, $this->value, $this->extraState, $serverId);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return;
         }
 

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema as LaravelSchema;
 use Tpetry\PostgresqlEnhanced\Schema\Blueprint;
 use Tpetry\PostgresqlEnhanced\Schema\Timescale\Actions\CreateColumnstorePolicy;
 use Tpetry\PostgresqlEnhanced\Schema\Timescale\Actions\CreateHypertable;
@@ -10,8 +11,6 @@ use Tpetry\PostgresqlEnhanced\Schema\Timescale\Actions\CreateRetentionPolicy;
 use Tpetry\PostgresqlEnhanced\Schema\Timescale\Actions\EnableColumnstore;
 use Tpetry\PostgresqlEnhanced\Schema\Timescale\CaggBlueprint;
 use Tpetry\PostgresqlEnhanced\Support\Facades\Schema;
-use Illuminate\Support\Facades\Schema as LaravelSchema;
-use Illuminate\Database\Schema\Blueprint as LaravelBlueprint;
 
 return new class extends Migration
 {
@@ -70,7 +69,7 @@ return new class extends Migration
             $table->timescale(
                 // run every minute, look back 1 hour, don't touch the last minute (still filling)
                 new CreateRefreshPolicy('1 minute', '1 hour', '1 minute'),
-                new EnableColumnstore(),
+                new EnableColumnstore,
                 new CreateColumnstorePolicy('1 day'),
                 // minute-level detail is rarely useful past a month, keep the cagg small
                 new CreateRetentionPolicy('30 days'),
@@ -98,7 +97,7 @@ return new class extends Migration
             $table->timescale(
                 // run every minute, look back 1 hour, don't touch the last minute (still filling)
                 new CreateRefreshPolicy('1 hour', '24 hour', '1 hour'),
-                new EnableColumnstore(),
+                new EnableColumnstore,
                 new CreateColumnstorePolicy('1 day'),
                 // minute-level detail is rrely useful past a month, keep the cagg small
                 new CreateRetentionPolicy('2 month'),
@@ -126,7 +125,7 @@ return new class extends Migration
             $table->timescale(
                 // run hourly, look back 7 days, leave the current day open until it's done
                 new CreateRefreshPolicy('1 hour', '7 days', '1 day'),
-                new EnableColumnstore(),
+                new EnableColumnstore,
                 new CreateColumnstorePolicy('7 days'),
             );
         });
@@ -151,7 +150,7 @@ return new class extends Migration
             $table->timescale(
                 // run every 6 hours, look back 2 months, leave the current week open
                 new CreateRefreshPolicy('6 hours', '2 months', '1 week'),
-                new EnableColumnstore(),
+                new EnableColumnstore,
                 new CreateColumnstorePolicy('1 month'),
             );
         });
@@ -176,7 +175,7 @@ return new class extends Migration
             $table->timescale(
                 // run daily, look back 6 months, leave the current month open
                 new CreateRefreshPolicy('1 day', '6 months', '1 month'),
-                new EnableColumnstore(),
+                new EnableColumnstore,
                 new CreateColumnstorePolicy('3 months'),
             );
         });

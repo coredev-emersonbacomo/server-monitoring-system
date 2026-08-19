@@ -2,9 +2,9 @@
 
 namespace App\NodeConfig\Jobs;
 
-use App\Models\Server;
-use App\Models\ServerHealthLog;
+use App\Events\SystemTelemetryEvent;
 use App\Models\CustomActivityLog;
+use App\Models\Server;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
@@ -19,6 +19,7 @@ class SendNotification implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
+
     public int $timeout = 30;
 
     public function __construct(
@@ -32,7 +33,7 @@ class SendNotification implements ShouldQueue
 
         // Make {server.url} resolvable from templates
         if ($server) {
-            $server->url = rtrim((string) config('app.frontend_url'), '/') . '/servers/' . $server->uuid;
+            $server->url = rtrim((string) config('app.frontend_url'), '/').'/servers/'.$server->uuid;
         }
 
         $settings = $this->action['settings'];
@@ -68,7 +69,7 @@ class SendNotification implements ShouldQueue
                 'offlineDuration' => $server?->went_offline_at
                     ? $server->went_offline_at->diffForHumans(now(), true)
                     : ($server?->agent?->last_seen_at
-                        ? now()->diffForHumans($server->agent->last_seen_at, true) . ' ago'
+                        ? now()->diffForHumans($server->agent->last_seen_at, true).' ago'
                         : 'unknown'),
                 'port' => $context['port'] ?? null,
                 'portName' => $context['port_name'] ?? null,
@@ -81,7 +82,7 @@ class SendNotification implements ShouldQueue
                     'max' => (int) ($context['repeat_max'] ?? -1) === -1 ? 'inf' : (int) ($context['repeat_max'] ?? -1),
                 ],
                 'discordRoleCallout' => $channel === 'discord'
-                    ? (!empty($settings['role_id']) ? "<@&{$settings['role_id']}>" : '')
+                    ? (! empty($settings['role_id']) ? "<@&{$settings['role_id']}>" : '')
                     : '',
             ],
         ];
@@ -96,7 +97,7 @@ class SendNotification implements ShouldQueue
         $subject = $this->resolveTemplates($settings['subject'] ?? 'Alert triggered', $templateData);
         $message = $this->resolveTemplates($settings['message'] ?? '', $templateData);
 
-        if (!$isRepeat) {
+        if (! $isRepeat) {
             $message = preg_replace('/<if-repeat>.*?<\/if-repeat>/s', '', $message);
         } else {
             $message = preg_replace('/<\/?if-repeat>/', '', $message);
@@ -115,7 +116,7 @@ class SendNotification implements ShouldQueue
             return;
         }
 
-        $serverUrl = $server ? url('/servers/' . $server->uuid) : null;
+        $serverUrl = $server ? url('/servers/'.$server->uuid) : null;
 
         if (filter_var(env('MUTE_NOTIFICATION', false), FILTER_VALIDATE_BOOL)) {
             Log::info('[server-events] Notifications muted (MUTE_NOTIFICATION) — would send', [
@@ -124,6 +125,7 @@ class SendNotification implements ShouldQueue
                 'subject' => $subject,
                 'message' => $message,
             ]);
+
             return;
         }
 
@@ -135,7 +137,7 @@ class SendNotification implements ShouldQueue
             };
 
             if ($sent) {
-                Log::info("[server-events] Notification dispatched" . ($isRepeat ? ' (repeat)' : ''), [
+                Log::info('[server-events] Notification dispatched'.($isRepeat ? ' (repeat)' : ''), [
                     'server_id' => $this->serverId,
                     'server' => $server?->name,
                     'channel' => $channel,
@@ -145,42 +147,42 @@ class SendNotification implements ShouldQueue
                     'severity' => $severity,
                 ]);
 
-                \App\Events\SystemTelemetryEvent::emit('notification_dispatched', [
-                    'server_id'   => $this->serverId,
+                SystemTelemetryEvent::emit('notification_dispatched', [
+                    'server_id' => $this->serverId,
                     'server_name' => $server?->name,
-                    'channel'     => $channel,
-                    'subject'     => $subject,
-                    'node_id'     => $this->action['node_id'] ?? null,
-                    'repeat'      => $isRepeat,
-                    'severity'    => $severity,
+                    'channel' => $channel,
+                    'subject' => $subject,
+                    'node_id' => $this->action['node_id'] ?? null,
+                    'repeat' => $isRepeat,
+                    'severity' => $severity,
                 ]);
 
                 try {
                     CustomActivityLog::create([
-                        'type'         => 'server_health',
+                        'type' => 'server_health',
                         'logable_type' => 'server',
-                        'logable_id'   => $this->serverId,
-                        'user'         => 'system',
-                        'action'       => $title,
-                        'title'        => $title,
-                        'details'      => [
-                            'channel'  => $channel,
-                            'subject'  => $subject,
-                            'message'  => $message,
+                        'logable_id' => $this->serverId,
+                        'user' => 'system',
+                        'action' => $title,
+                        'title' => $title,
+                        'details' => [
+                            'channel' => $channel,
+                            'subject' => $subject,
+                            'message' => $message,
                             'severity' => $severity,
-                            'repeat'   => $isRepeat,
-                            'node_id'  => $this->action['node_id'] ?? null,
+                            'repeat' => $isRepeat,
+                            'node_id' => $this->action['node_id'] ?? null,
                         ],
-                        'severity'     => $severity,
+                        'severity' => $severity,
                     ]);
                 } catch (\Throwable $e) {
-                    Log::warning("[server-events] Failed to log notification in server_health_logs", [
+                    Log::warning('[server-events] Failed to log notification in server_health_logs', [
                         'error' => $e->getMessage(),
                     ]);
                 }
             }
         } catch (\Throwable $e) {
-            Log::error("[server-events] Notification failed", [
+            Log::error('[server-events] Notification failed', [
                 'server_id' => $this->serverId,
                 'server' => $server?->name,
                 'channel' => $channel,
@@ -207,7 +209,7 @@ class SendNotification implements ShouldQueue
             $sentAny = true;
         }
 
-        if (!$sentAny) {
+        if (! $sentAny) {
             Log::warning('[server-events] Email notification skipped: no recipients found', [
                 'server_id' => $server?->id,
             ]);
@@ -229,11 +231,12 @@ class SendNotification implements ShouldQueue
         $channelId = $settings['channel_id'] ?? null;
         $roleId = $settings['role_id'] ?? null;
 
-        if (!$botToken || !$channelId) {
+        if (! $botToken || ! $channelId) {
             Log::warning('[server-events] Discord notification skipped: missing bot_token or channel_id', [
-                'bot_token_configured' => !empty($botToken),
-                'channel_id_configured' => !empty($channelId),
+                'bot_token_configured' => ! empty($botToken),
+                'channel_id_configured' => ! empty($channelId),
             ]);
+
             return false;
         }
 
@@ -251,18 +254,18 @@ class SendNotification implements ShouldQueue
     {
         $allowedPrefixes = ['server', 'runtime'];
 
-        if ($path === '' || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*$/', $path)) {
-            return '{' . $path . '}';
+        if ($path === '' || ! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*$/', $path)) {
+            return '{'.$path.'}';
         }
 
         $firstSegment = strtolower(explode('.', $path)[0]);
 
-        if (!in_array($firstSegment, $allowedPrefixes, true)) {
-            return '{' . $path . '}';
+        if (! in_array($firstSegment, $allowedPrefixes, true)) {
+            return '{'.$path.'}';
         }
 
         $result = data_get($data, $path);
 
-        return $result !== null ? (string) $result : '{' . $path . '}';
+        return $result !== null ? (string) $result : '{'.$path.'}';
     }
 }

@@ -106,6 +106,25 @@ func writeConfig(path string, cfg *BootstrapConfig) error {
 	return os.WriteFile(path, data, 0644)
 }
 
+// bootstrapDefaultConfig creates a minimal config.json when one is missing, so
+// the file is always produced at the canonical instance location. It contains
+// no secrets and no server_url — the external installer fills those in. The
+// agent logs clearly and exits; the file existing (rather than a silent
+// missing-config exit) is what makes the failure diagnosable.
+func bootstrapDefaultConfig(dir, instance string) (*BootstrapConfig, string, error) {
+	cfgPath := filepath.Join(dir, configFileName)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, "", fmt.Errorf("mkdir: %w", err)
+	}
+	cfg := &BootstrapConfig{
+		InstallationID: instance,
+	}
+	if err := writeConfig(cfgPath, cfg); err != nil {
+		return nil, "", fmt.Errorf("write config: %w", err)
+	}
+	return cfg, cfgPath, nil
+}
+
 func downloadFile(urlStr string, destPath string) error {
 	resp, err := http.Get(urlStr)
 	if err != nil {

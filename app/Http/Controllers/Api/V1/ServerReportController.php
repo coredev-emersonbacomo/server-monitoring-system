@@ -5,13 +5,14 @@ namespace App\Http\Controllers\Api\V1;
 use App\Data\ServerMetricPointData;
 use App\Data\ServerReportData;
 use App\Data\ServerUptimeData;
+use App\Http\Controllers\Controller;
 use App\Models\Server;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
 
 class ServerReportController extends Controller
 {
     private const HEARTBEAT_INTERVAL_MINUTES = 5;
+
     private const GAP_MULTIPLIER = 3; // gap > 3x interval = treated as an outage
 
     public function show(Request $request, Server $server)
@@ -23,7 +24,7 @@ class ServerReportController extends Controller
             ->orderBy('created_at')
             ->get();
 
-        $metrics = $updates->map(fn($u) => ServerMetricPointData::from([
+        $metrics = $updates->map(fn ($u) => ServerMetricPointData::from([
             'timestamp' => $u->created_at->toIso8601String(),
             'cpu_usage' => $u->cpu_usage,
             'memory_usage' => $u->memory_usage,
@@ -38,7 +39,7 @@ class ServerReportController extends Controller
             ->orderBy('created_at', 'desc')
             ->limit(50)
             ->get()
-            ->map(fn($a) => [
+            ->map(fn ($a) => [
                 'type' => $a->type,
                 'description' => $a->description,
                 'created_at' => $a->created_at->toIso8601String(),
@@ -61,8 +62,8 @@ class ServerReportController extends Controller
             'last_seen' => $server->agent?->last_seen_at?->toIso8601String(),
             'metrics' => $metrics,
             'uptime' => $uptime,
-            'running_balance'  => (float) ($server->running_balance ?? 0.0),
-            'net_cost'         => (float) ($server->net_cost ?? 0.0),
+            'running_balance' => (float) ($server->running_balance ?? 0.0),
+            'net_cost' => (float) ($server->net_cost ?? 0.0),
             'accumulated_cost' => (float) ($server->accumulated_cost ?? 0.0),
             'billing_date' => $server->billing_date?->toIso8601String(),
             'activities' => $activities,

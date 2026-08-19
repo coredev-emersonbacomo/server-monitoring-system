@@ -4,9 +4,20 @@ namespace App\NodeConfig\NodeTypes;
 
 class CpuUsageNode extends BaseNode
 {
-    public function getType(): string { return 'cpu_usage'; }
-    public function getCategory(): string { return 'metric'; }
-    public function getLabel(): string { return 'CPU Usage'; }
+    public function getType(): string
+    {
+        return 'cpu_usage';
+    }
+
+    public function getCategory(): string
+    {
+        return 'metric';
+    }
+
+    public function getLabel(): string
+    {
+        return 'CPU Usage';
+    }
 
     public function evaluate(array $inputValues, array $settings, array $state): NodeResult
     {

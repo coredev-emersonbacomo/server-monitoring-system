@@ -36,6 +36,7 @@ class NodeRegistry
                 'settings' => $type->getSettingDefinitions(),
             ];
         }
+
         return $definitions;
     }
 }

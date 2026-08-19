@@ -13,11 +13,11 @@ class JwtAuthenticate
     {
         $guard = auth('jwt');
 
-        if (!$guard instanceof JwtGuard) {
+        if (! $guard instanceof JwtGuard) {
             throw new AuthenticationException('Invalid authentication guard');
         }
 
-        if (!$guard->check()) {
+        if (! $guard->check()) {
             throw new AuthenticationException('Unauthenticated', guards: ['jwt']);
         }
 

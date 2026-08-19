@@ -12,7 +12,6 @@ use App\Services\AuthAuditService;
 use App\Services\SessionManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Spatie\LaravelData\DataCollection;
 
 class SessionController extends Controller
 {
@@ -28,7 +27,7 @@ class SessionController extends Controller
         $currentSessionUuid = auth('jwt')->getSessionUuid();
 
         return [
-            'data' => array_map(fn(UserSession $s) => SessionData::fromModel($s, $currentSessionUuid), $sessions),
+            'data' => array_map(fn (UserSession $s) => SessionData::fromModel($s, $currentSessionUuid), $sessions),
         ];
     }
 
@@ -119,7 +118,7 @@ class SessionController extends Controller
             ->get();
 
         return [
-            'data' => $logs->map(fn(AuthAuditLog $log) => SecurityActivityData::fromModel($log)),
+            'data' => $logs->map(fn (AuthAuditLog $log) => SecurityActivityData::fromModel($log)),
         ];
     }
 

@@ -2,17 +2,23 @@
 
 namespace App\NodeConfig\Engine;
 
+use App\Models\Agent;
+use App\Models\MetricSample;
+use App\Models\Port;
+use App\Models\Setting;
 use App\NodeConfig\Models\NodeConfig;
 use App\NodeConfig\Models\NodeConfigState;
 use App\NodeConfig\NodeTypes\BaseNode;
 use App\NodeConfig\NodeTypes\NodeResult;
-use App\NodeConfig\NodeTypes\NodeTimer;
 use App\NodeConfig\Validation\NodeConfigValidator;
+use Carbon\Carbon;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Log;
 
 class NodeConfigEngine
 {
     private NodeRegistry $registry;
+
     private NodeConfigValidator $validator;
 
     private const METRIC_NAMES = [
@@ -28,7 +34,7 @@ class NodeConfigEngine
     public function __construct(NodeRegistry $registry)
     {
         $this->registry = $registry;
-        $this->validator = new NodeConfigValidator();
+        $this->validator = new NodeConfigValidator;
     }
 
     public function getValidator(): NodeConfigValidator
@@ -46,7 +52,7 @@ class NodeConfigEngine
 
         $matchingBranches = array_values(array_filter(
             $branches,
-            fn(array $branch) => $branch['metric_node_id'] === $sourceNodeId,
+            fn (array $branch) => $branch['metric_node_id'] === $sourceNodeId,
         ));
 
         if (empty($matchingBranches)) {
@@ -58,7 +64,7 @@ class NodeConfigEngine
         $allOutputs = [];
 
         foreach ($matchingBranches as $branch) {
-            if (!$this->matchesSourceHandle($branch, $value)) {
+            if (! $this->matchesSourceHandle($branch, $value)) {
                 continue;
             }
 
@@ -82,10 +88,13 @@ class NodeConfigEngine
     private function matchesSourceHandle(array $branch, mixed $value): bool
     {
         $handle = $branch['metric_source_handle'] ?? 'output';
-        if ($handle === 'output')
+        if ($handle === 'output') {
             return true;
-        if ($value === $handle)
+        }
+        if ($value === $handle) {
             return true;
+        }
+
         // ports_ping 'timing' socket carries a numeric ping time (ms)
         return is_numeric($value) && $handle === 'timing';
     }
@@ -114,7 +123,7 @@ class NodeConfigEngine
         $metricResult = $metricHandler->evaluate([], $metricSettings, $metricState);
         $this->saveState($config->id, $serverId, $metricNodeId, $metricResult);
 
-        if (!empty($metricResult->outputs)) {
+        if (! empty($metricResult->outputs)) {
             $outputs[$metricNodeId] = $metricResult->outputs;
         } elseif ($metricResult->shouldPropagate) {
             $outputs[$metricNodeId] = ['output' => $metricResult->value];
@@ -158,7 +167,7 @@ class NodeConfigEngine
                     $conditionPassed = $conditionResult->shouldPropagate && $conditionResult->value === true;
                 }
 
-                if (!empty($conditionResult->outputs)) {
+                if (! empty($conditionResult->outputs)) {
                     $outputs[$branch['condition_node_id']] = $conditionResult->outputs;
                 } elseif ($conditionResult->shouldPropagate) {
                     $outputs[$branch['condition_node_id']] = ['output' => $conditionResult->value];
@@ -180,7 +189,7 @@ class NodeConfigEngine
         $latched = $this->loadBranchLatch($config->id, $serverId, $branchKey);
 
         if ($latched) {
-            if (!$conditionPassed && !$this->branchHasActiveEvaluation($config, $branch, $serverId)) {
+            if (! $conditionPassed && ! $this->branchHasActiveEvaluation($config, $branch, $serverId)) {
                 $this->saveBranchLatch($config->id, $serverId, $branchKey, false);
             }
 
@@ -220,7 +229,7 @@ class NodeConfigEngine
         $outputs = [];
 
         // ── Chain sub_branch: route to dedicated chain handler ──────
-        if (!empty($subBranch['timing_chain'])) {
+        if (! empty($subBranch['timing_chain'])) {
             return $this->evaluateChainSubBranch(
                 $config, $subBranch, $branch, $conditionPassed, $extraState, $serverId, $nodeMap
             );
@@ -232,7 +241,7 @@ class NodeConfigEngine
             $timingNode = $nodeMap[$subBranch['timing_node_id']] ?? null;
             $timingType = $subBranch['timing']['type'];
             $timingHandler = $this->registry->get($timingType);
-            if (!$timingHandler) {
+            if (! $timingHandler) {
                 return ['timers' => $timers, 'actions' => $actions, 'outputs' => $outputs];
             }
 
@@ -272,7 +281,7 @@ class NodeConfigEngine
 
             $timingPropagated = $timingResult->shouldPropagate && $timingResult->value === true;
 
-            if (!empty($timingResult->outputs)) {
+            if (! empty($timingResult->outputs)) {
                 $outputs[$subBranch['timing_node_id']] = $timingResult->outputs;
             } elseif ($timingResult->shouldPropagate) {
                 $outputs[$subBranch['timing_node_id']] = ['output' => $timingResult->value];
@@ -338,7 +347,7 @@ class NodeConfigEngine
 
         $postType = $postAction['type'];
         $postHandler = $this->registry->get($postType);
-        if (!$postHandler) {
+        if (! $postHandler) {
             return ['timers' => $timers];
         }
 
@@ -385,9 +394,10 @@ class NodeConfigEngine
             foreach ($branch['sub_branches'] as $subBranch) {
                 if ($subBranch['timing_node_id'] === $nodeId) {
                     $result = $this->fireTimerForSubBranch($config, $branch, $subBranch, $context, $serverId);
+
                     return [
                         'success' => true,
-                        'propagated' => !empty($result['actions']),
+                        'propagated' => ! empty($result['actions']),
                         'outputs' => [],
                         'timers' => $result['timers'],
                         'actions' => $result['actions'],
@@ -396,9 +406,10 @@ class NodeConfigEngine
 
                 if ($subBranch['post_action'] && $subBranch['post_action']['node_id'] === $nodeId) {
                     $result = $this->firePostActionTimer($config, $branch, $subBranch, $context, $serverId);
+
                     return [
                         'success' => true,
-                        'propagated' => !empty($result['actions']),
+                        'propagated' => ! empty($result['actions']),
                         'outputs' => [],
                         'timers' => $result['timers'],
                         'actions' => $result['actions'],
@@ -424,7 +435,7 @@ class NodeConfigEngine
         $actions = [];
 
         // ── Chain sub_branch: route to dedicated chain handler ──────
-        if (!empty($subBranch['timing_chain'])) {
+        if (! empty($subBranch['timing_chain'])) {
             return $this->fireTimerForChain($config, $branch, $subBranch, $context, $serverId);
         }
 
@@ -432,14 +443,14 @@ class NodeConfigEngine
 
         $timingType = $subBranch['timing']['type'];
         $timingHandler = $this->registry->get($timingType);
-        if (!$timingHandler) {
+        if (! $timingHandler) {
             return ['timers' => [], 'actions' => []];
         }
 
         // ── Re-verify live condition at timer-fire time ───────
         // If the upstream condition is no longer met (e.g. server came back online),
         // cancel this timer and all sibling timers for this node/metric/server.
-        if (!$this->liveConditionStillHolds($branch, $serverId)) {
+        if (! $this->liveConditionStillHolds($branch, $serverId)) {
             NodeTaskScheduler::cancelByNode($subBranch['timing_node_id'], $branch['metric'], $serverId);
             $this->saveState(
                 $config->id,
@@ -448,6 +459,7 @@ class NodeConfigEngine
                 new NodeResult(false, false, null, ['phase' => 'idle', 'repeat_count' => 0], [], true),
                 $branch['metric'],
             );
+
             return ['timers' => [], 'actions' => []];
         }
 
@@ -475,7 +487,7 @@ class NodeConfigEngine
             NodeTaskScheduler::cancelByNode($subBranch['timing_node_id'], $branch['metric'], $serverId);
         }
 
-        if (!$timingResult->shouldPropagate && empty($timingResult->outputs)) {
+        if (! $timingResult->shouldPropagate && empty($timingResult->outputs)) {
             return ['timers' => [], 'actions' => []];
         }
 
@@ -506,7 +518,7 @@ class NodeConfigEngine
                 $upstreamContext = $this->buildUpstreamContext($branch, $subBranch, null);
                 $upstreamContext = array_merge($upstreamContext, $context);
                 if (isset($upstreamContext['first_trigger_timestamp'])) {
-                    $firstTrigger = \Carbon\Carbon::parse($upstreamContext['first_trigger_timestamp']);
+                    $firstTrigger = Carbon::parse($upstreamContext['first_trigger_timestamp']);
                     $elapsedMs = $firstTrigger->diffInMilliseconds(now());
                     $upstreamContext['sustain_value'] = $this->formatDuration($elapsedMs);
                 }
@@ -559,23 +571,23 @@ class NodeConfigEngine
         ?int $serverId,
         array $nodeMap,
     ): array {
-        $timers          = [];
+        $timers = [];
         $chainRootNodeId = $subBranch['timing_node_id'];
 
         $persistedStates = $this->loadStates($config->id, $serverId, $branch['metric']);
-        $chainRootState  = $persistedStates[$chainRootNodeId] ?? [];
-        $phase           = $chainRootState['phase'] ?? 'idle';
+        $chainRootState = $persistedStates[$chainRootNodeId] ?? [];
+        $phase = $chainRootState['phase'] ?? 'idle';
 
         // Use step 0's node settings for SustainedNode's heartbeat state machine.
-        $step0           = $subBranch['timing_chain'][0];
+        $step0 = $subBranch['timing_chain'][0];
         $step0TimingNode = $nodeMap[$step0['timing_node_id']] ?? null;
-        $step0Settings   = $step0TimingNode['settings'] ?? [];
-        $timingHandler   = $this->registry->get('sustained');
+        $step0Settings = $step0TimingNode['settings'] ?? [];
+        $timingHandler = $this->registry->get('sustained');
 
         $timingState = array_merge($chainRootState, $extraState);
         if ($branch['condition']) {
-            $timingState['threshold']   = $branch['condition']['threshold'];
-            $timingState['operator']    = $branch['condition']['operator'];
+            $timingState['threshold'] = $branch['condition']['threshold'];
+            $timingState['operator'] = $branch['condition']['operator'];
             $timingState['metric_type'] = $branch['metric'];
             if ($serverId !== null) {
                 $timingState['server_id'] = $serverId;
@@ -584,7 +596,7 @@ class NodeConfigEngine
 
         // Always evaluate through SustainedNode so it can cancel active chains
         // when the live condition drops below threshold.
-        $timingInput  = $conditionPassed ? [$conditionPassed] : [null];
+        $timingInput = $conditionPassed ? [$conditionPassed] : [null];
         $timingResult = $timingHandler->evaluate($timingInput, $step0Settings, $timingState);
         $this->saveState($config->id, $serverId, $chainRootNodeId, $timingResult, $branch['metric']);
 
@@ -597,16 +609,16 @@ class NodeConfigEngine
         // task was lost due to a cache flush or process restart), reset to idle so
         // the next heartbeat can re-arm the chain instead of being permanently stuck.
         if (in_array($phase, ['pending', 'firing', 'repeating'])) {
-            $hasActiveTask = !empty(NodeTaskScheduler::getActiveTasks($config->id, $serverId));
+            $hasActiveTask = ! empty(NodeTaskScheduler::getActiveTasks($config->id, $serverId));
             if ($hasActiveTask) {
                 return ['timers' => [], 'actions' => [], 'outputs' => []];
             }
             // No live task — phase is stale; fall through to re-arm below.
             Log::info('[chain] Phase was stale (no active task), resetting to idle', [
-                'chain'     => $chainRootNodeId,
-                'metric'    => $branch['metric'],
+                'chain' => $chainRootNodeId,
+                'metric' => $branch['metric'],
                 'server_id' => $serverId,
-                'phase'     => $phase,
+                'phase' => $phase,
             ]);
             $this->saveState(
                 $config->id, $serverId, $chainRootNodeId,
@@ -616,31 +628,31 @@ class NodeConfigEngine
         }
 
         // If condition not met and chain is idle, nothing to start.
-        if (!$conditionPassed) {
+        if (! $conditionPassed) {
             return ['timers' => [], 'actions' => [], 'outputs' => []];
         }
 
         // Condition met and chain is idle — start the chain.
         if ($timingResult->timer !== null) {
-            $chainStepsMeta = array_map(fn($s) => [
+            $chainStepsMeta = array_map(fn ($s) => [
                 'timing_node_id' => $s['timing_node_id'],
-                'duration_ms'    => $s['timing']['duration_ms'] ?? 0,
+                'duration_ms' => $s['timing']['duration_ms'] ?? 0,
             ], $subBranch['timing_chain']);
 
             $firstStepMeta = $chainStepsMeta[0] ?? [];
             $firstTriggerTimestamp = now()->toISOString();
             $timers[] = [
                 'node_config_id' => $config->id,
-                'node_id'        => $chainRootNodeId,
-                'delay_ms'       => $firstStepMeta['duration_ms'] ?? 0,
-                'context'        => array_merge(
+                'node_id' => $chainRootNodeId,
+                'delay_ms' => $firstStepMeta['duration_ms'] ?? 0,
+                'context' => array_merge(
                     $extraState,
                     $timingState,
                     $timingResult->timer->context,
                     [
-                        'chain_steps_meta'          => $chainStepsMeta,
-                        'first_trigger_timestamp'   => $firstTriggerTimestamp,
-                        'chain_step_index'          => 0,
+                        'chain_steps_meta' => $chainStepsMeta,
+                        'first_trigger_timestamp' => $firstTriggerTimestamp,
+                        'chain_step_index' => 0,
                     ],
                 ),
             ];
@@ -661,16 +673,17 @@ class NodeConfigEngine
         array $context,
         ?int $serverId,
     ): array {
-        $nodeMap         = $this->buildNodeMap($config->getParsedConfig()['nodes'] ?? []);
+        $nodeMap = $this->buildNodeMap($config->getParsedConfig()['nodes'] ?? []);
         $chainRootNodeId = $subBranch['timing_node_id'];
 
         // ── Guard: live condition must still hold ────────────────
-        if (!$this->liveConditionStillHolds($branch, $serverId)) {
-            Log::info("[chain-fire] Live condition FAILED — resetting chain", [
+        if (! $this->liveConditionStillHolds($branch, $serverId)) {
+            Log::info('[chain-fire] Live condition FAILED — resetting chain', [
                 'server_id' => $serverId,
-                'chain'     => $chainRootNodeId,
+                'chain' => $chainRootNodeId,
             ]);
             $this->resetChain($config, $branch, $serverId, $chainRootNodeId, true);
+
             return ['timers' => [], 'actions' => []];
         }
 
@@ -692,10 +705,10 @@ class NodeConfigEngine
         ?int $serverId,
         array $nodeMap,
     ): array {
-        $chain           = $subBranch['timing_chain'];
+        $chain = $subBranch['timing_chain'];
         $chainRootNodeId = $subBranch['timing_node_id'];
-        $lastStepIdx     = count($chain) - 1;
-        $stepIdx         = (int) ($context['chain_step_index'] ?? 0);
+        $lastStepIdx = count($chain) - 1;
+        $stepIdx = (int) ($context['chain_step_index'] ?? 0);
 
         if ($stepIdx > $lastStepIdx) {
             return ['timers' => [], 'actions' => []];
@@ -708,12 +721,14 @@ class NodeConfigEngine
 
         if ($timingResult === null) {
             $this->resetChain($config, $branch, $serverId, $chainRootNodeId, false);
+
             return ['timers' => [], 'actions' => []];
         }
 
         // ── Last step reached → final action + repeat handling ──
         if ($stepIdx === $lastStepIdx) {
             $this->saveState($config->id, $serverId, $chainRootNodeId, $timingResult, $branch['metric']);
+
             return $this->fireLastStepAction(
                 $config, $branch, $subBranch, $chain[$lastStepIdx],
                 $context, $serverId, $nodeMap, $persistedStates, $timingResult,
@@ -723,20 +738,20 @@ class NodeConfigEngine
         // ── Intermediate step: fire this step's action, then cascade ──
         $actions = [];
         $step = $chain[$stepIdx];
-        if (!empty($step['action_node_id'])) {
+        if (! empty($step['action_node_id'])) {
             $actions = $this->fireStepAction($config, $branch, $subBranch, $step, $context, $serverId, $nodeMap, $persistedStates);
         }
 
         $chainStepsMeta = $context['chain_steps_meta'] ?? [];
-        $currentMeta    = $chainStepsMeta[$stepIdx] ?? [];
-        $nextMeta       = $chainStepsMeta[$stepIdx + 1] ?? [];
-        $nextDelay      = ($nextMeta['duration_ms'] ?? 0) - ($currentMeta['duration_ms'] ?? 0);
+        $currentMeta = $chainStepsMeta[$stepIdx] ?? [];
+        $nextMeta = $chainStepsMeta[$stepIdx + 1] ?? [];
+        $nextDelay = ($nextMeta['duration_ms'] ?? 0) - ($currentMeta['duration_ms'] ?? 0);
 
         $timers[] = [
             'node_config_id' => $config->id,
-            'node_id'        => $chainRootNodeId,
-            'delay_ms'       => max(0, $nextDelay),
-            'context'        => array_merge($context, [
+            'node_id' => $chainRootNodeId,
+            'delay_ms' => max(0, $nextDelay),
+            'context' => array_merge($context, [
                 'chain_step_index' => $stepIdx + 1,
             ]),
         ];
@@ -755,10 +770,10 @@ class NodeConfigEngine
         ?int $serverId,
         array $nodeMap,
     ): array {
-        $chain           = $subBranch['timing_chain'];
+        $chain = $subBranch['timing_chain'];
         $chainRootNodeId = $subBranch['timing_node_id'];
-        $lastStepIdx     = count($chain) - 1;
-        $lastStep        = $chain[$lastStepIdx];
+        $lastStepIdx = count($chain) - 1;
+        $lastStep = $chain[$lastStepIdx];
 
         $persistedStates = $this->loadStates($config->id, $serverId, $branch['metric']);
         $timingResult = $this->evaluateChainStepTiming(
@@ -767,6 +782,7 @@ class NodeConfigEngine
 
         if ($timingResult === null) {
             $this->resetChain($config, $branch, $serverId, $chainRootNodeId, false);
+
             return ['timers' => [], 'actions' => []];
         }
 
@@ -804,8 +820,8 @@ class NodeConfigEngine
         $baseTimingState = array_merge($baseTimingState, $context);
 
         if ($branch['condition']) {
-            $baseTimingState['threshold']   = $branch['condition']['threshold'];
-            $baseTimingState['operator']    = $branch['condition']['operator'];
+            $baseTimingState['threshold'] = $branch['condition']['threshold'];
+            $baseTimingState['operator'] = $branch['condition']['operator'];
             $baseTimingState['metric_type'] = $branch['metric'];
             if ($serverId !== null) {
                 $baseTimingState['server_id'] = $serverId;
@@ -813,16 +829,17 @@ class NodeConfigEngine
         }
 
         $stepTimingNode = $nodeMap[$step['timing_node_id']] ?? null;
-        $stepSettings   = $stepTimingNode['settings'] ?? [];
+        $stepSettings = $stepTimingNode['settings'] ?? [];
 
         $timingResult = $timingHandler->evaluate([], $stepSettings, $baseTimingState);
         $this->saveState($config->id, $serverId, $step['timing_node_id'], $timingResult, $branch['metric']);
 
-        if (!$timingResult->shouldPropagate || $timingResult->value !== true) {
+        if (! $timingResult->shouldPropagate || $timingResult->value !== true) {
             Log::info("[chain-fire] Step {$stepIdx} ({$step['timing_node_id']}) DB check FAILED — resetting chain", [
                 'chain_root' => $chainRootNodeId,
-                'server_id'  => $serverId,
+                'server_id' => $serverId,
             ]);
+
             return null;
         }
 
@@ -844,9 +861,9 @@ class NodeConfigEngine
     ): array {
         $actions = [];
 
-        $actionNode     = $nodeMap[$step['action_node_id']] ?? null;
-        $actionType     = $actionNode['type'] ?? ($step['action']['type'] ?? 'notification');
-        $actionHandler  = $this->registry->get($actionType) ?? $this->registry->get('notification');
+        $actionNode = $nodeMap[$step['action_node_id']] ?? null;
+        $actionType = $actionNode['type'] ?? ($step['action']['type'] ?? 'notification');
+        $actionHandler = $this->registry->get($actionType) ?? $this->registry->get('notification');
         $actionSettings = $actionNode['settings'] ?? ($step['action'] ?? []);
 
         $actionState = $persistedStates[$step['action_node_id']] ?? [];
@@ -862,10 +879,10 @@ class NodeConfigEngine
                 'sustain_value' => $this->formatDuration($step['timing']['duration_ms'] ?? 0),
             ]);
             $actions[] = [
-                'node_id'          => $step['action_node_id'],
-                'type'             => $actionType,
-                'settings'         => $actionSettings,
-                'value'            => true,
+                'node_id' => $step['action_node_id'],
+                'type' => $actionType,
+                'settings' => $actionSettings,
+                'value' => true,
                 'upstream_context' => $upstreamContext,
             ];
         }
@@ -888,14 +905,14 @@ class NodeConfigEngine
         array $persistedStates,
         NodeResult $lastResult,
     ): array {
-        $timers  = [];
+        $timers = [];
         $actions = [];
         $chainRootNodeId = $subBranch['timing_node_id'];
 
         if ($lastStep['action_node_id']) {
-            $actionNode     = $nodeMap[$lastStep['action_node_id']] ?? null;
-            $actionType     = $actionNode['type'] ?? ($lastStep['action']['type'] ?? 'notification');
-            $actionHandler  = $this->registry->get($actionType) ?? $this->registry->get('notification');
+            $actionNode = $nodeMap[$lastStep['action_node_id']] ?? null;
+            $actionType = $actionNode['type'] ?? ($lastStep['action']['type'] ?? 'notification');
+            $actionHandler = $this->registry->get($actionType) ?? $this->registry->get('notification');
             $actionSettings = $actionNode['settings'] ?? ($lastStep['action'] ?? []);
             $lastStepNodeSettings = ($nodeMap[$lastStep['timing_node_id']] ?? [])['settings'] ?? [];
 
@@ -913,7 +930,7 @@ class NodeConfigEngine
                 $upstreamContext = $this->buildUpstreamContext($branch, $contextSubBranch, null);
                 $upstreamContext = array_merge($upstreamContext, $context);
                 if (isset($upstreamContext['first_trigger_timestamp'])) {
-                    $firstTrigger = \Carbon\Carbon::parse($upstreamContext['first_trigger_timestamp']);
+                    $firstTrigger = Carbon::parse($upstreamContext['first_trigger_timestamp']);
                     $elapsedMs = $firstTrigger->diffInMilliseconds(now());
                     $upstreamContext['sustain_value'] = $this->formatDuration($elapsedMs);
                 }
@@ -925,10 +942,10 @@ class NodeConfigEngine
                 $upstreamContext['repeat_max'] = (int) ($lastStepNodeSettings['repeat_max_repeats'] ?? -1);
 
                 $actions[] = [
-                    'node_id'          => $lastStep['action_node_id'],
-                    'type'             => $actionType,
-                    'settings'         => $actionSettings,
-                    'value'            => true,
+                    'node_id' => $lastStep['action_node_id'],
+                    'type' => $actionType,
+                    'settings' => $actionSettings,
+                    'value' => true,
                     'upstream_context' => $upstreamContext,
                 ];
 
@@ -936,35 +953,35 @@ class NodeConfigEngine
                 if ($lastResult->timer !== null) {
                     $timers[] = [
                         'node_config_id' => $config->id,
-                        'node_id'        => $chainRootNodeId,
-                        'delay_ms'       => $lastResult->timer->delayMs,
-                        'context'        => array_merge($lastResult->timer->context, $context, [
-                            'chain_steps_meta'          => $context['chain_steps_meta'] ?? null,
-                            'first_trigger_timestamp'   => $context['first_trigger_timestamp'] ?? now()->toISOString(),
-                            'repeat_fire'               => true,
+                        'node_id' => $chainRootNodeId,
+                        'delay_ms' => $lastResult->timer->delayMs,
+                        'context' => array_merge($lastResult->timer->context, $context, [
+                            'chain_steps_meta' => $context['chain_steps_meta'] ?? null,
+                            'first_trigger_timestamp' => $context['first_trigger_timestamp'] ?? now()->toISOString(),
+                            'repeat_fire' => true,
                         ]),
                     ];
                 }
 
-                if (!empty($lastStep['post_action'])) {
-                    $postAction  = $lastStep['post_action'];
-                    $postType    = $postAction['type'] ?? 'repeat';
+                if (! empty($lastStep['post_action'])) {
+                    $postAction = $lastStep['post_action'];
+                    $postType = $postAction['type'] ?? 'repeat';
                     $postHandler = $this->registry->get($postType);
                     if ($postHandler) {
-                        $postNodeId   = $postAction['node_id'];
+                        $postNodeId = $postAction['node_id'];
                         $postSettings = $postAction['settings'] ?? [];
-                        $postState    = $persistedStates[$postNodeId] ?? [];
-                        $postResult   = $postHandler->evaluate([true], $postSettings, $postState);
+                        $postState = $persistedStates[$postNodeId] ?? [];
+                        $postResult = $postHandler->evaluate([true], $postSettings, $postState);
                         $this->saveState($config->id, $serverId, $postNodeId, $postResult);
 
                         if ($postResult->timer !== null) {
                             $timers[] = [
                                 'node_config_id' => $config->id,
-                                'node_id'        => $postNodeId,
-                                'delay_ms'       => $postResult->timer->delayMs,
-                                'context'        => array_merge($postResult->timer->context, $context, [
+                                'node_id' => $postNodeId,
+                                'delay_ms' => $postResult->timer->delayMs,
+                                'context' => array_merge($postResult->timer->context, $context, [
                                     'chain_steps_meta' => $context['chain_steps_meta'] ?? null,
-                                    'metric_type'      => $branch['metric'],
+                                    'metric_type' => $branch['metric'],
                                 ]),
                             ];
                         }
@@ -999,7 +1016,6 @@ class NodeConfigEngine
         );
     }
 
-
     /**
      * Fire a timer for a post-action node (repeat after notification).
      */
@@ -1014,7 +1030,7 @@ class NodeConfigEngine
         $actions = [];
 
         // ── Re-verify live condition at timer-fire time ───────
-        if (!$this->liveConditionStillHolds($branch, $serverId)) {
+        if (! $this->liveConditionStillHolds($branch, $serverId)) {
             $postAction = $subBranch['post_action'];
             if ($postAction) {
                 NodeTaskScheduler::cancelByNode($postAction['node_id'], $branch['metric'], $serverId);
@@ -1026,6 +1042,7 @@ class NodeConfigEngine
                     $branch['metric'],
                 );
             }
+
             return ['timers' => [], 'actions' => []];
         }
 
@@ -1034,7 +1051,7 @@ class NodeConfigEngine
 
         $postType = $postAction['type'];
         $postHandler = $this->registry->get($postType);
-        if (!$postHandler) {
+        if (! $postHandler) {
             return ['timers' => [], 'actions' => []];
         }
 
@@ -1049,7 +1066,7 @@ class NodeConfigEngine
         $postResult = $postHandler->evaluate([], $postSettings, $postState);
         $this->saveState($config->id, $serverId, $postNodeId, $postResult);
 
-        if (!$postResult->shouldPropagate && empty($postResult->outputs)) {
+        if (! $postResult->shouldPropagate && empty($postResult->outputs)) {
             return ['timers' => [], 'actions' => []];
         }
 
@@ -1069,9 +1086,9 @@ class NodeConfigEngine
         $postPropagated = $postResult->shouldPropagate && $postResult->value === true;
 
         if ($postPropagated && $subBranch['action'] && $subBranch['action_node_id']) {
-            $actionNode     = $nodeMap[$subBranch['action_node_id']] ?? null;
-            $actionType     = $actionNode['type'] ?? ($subBranch['action']['type'] ?? 'notification');
-            $actionHandler  = $this->registry->get($actionType) ?? $this->registry->get('notification');
+            $actionNode = $nodeMap[$subBranch['action_node_id']] ?? null;
+            $actionType = $actionNode['type'] ?? ($subBranch['action']['type'] ?? 'notification');
+            $actionHandler = $this->registry->get($actionType) ?? $this->registry->get('notification');
             $actionSettings = $actionNode['settings'] ?? $subBranch['action'];
 
             $actionState = $persistedStates[$subBranch['action_node_id']] ?? [];
@@ -1084,10 +1101,10 @@ class NodeConfigEngine
                 $upstreamContext = $this->buildUpstreamContext($branch, $subBranch, null);
                 $upstreamContext = array_merge($upstreamContext, $context);
                 $actions[] = [
-                    'node_id'          => $subBranch['action_node_id'],
-                    'type'             => $actionType,
-                    'settings'         => $actionSettings,
-                    'value'            => true,
+                    'node_id' => $subBranch['action_node_id'],
+                    'type' => $actionType,
+                    'settings' => $actionSettings,
+                    'value' => true,
                     'upstream_context' => $upstreamContext,
                 ];
             }
@@ -1114,7 +1131,8 @@ class NodeConfigEngine
 
     private function compileConfig(NodeConfig $config): array
     {
-        $compiler = new NodeConfigCompiler();
+        $compiler = new NodeConfigCompiler;
+
         return $compiler->compile($config->getParsedConfig());
     }
 
@@ -1124,6 +1142,7 @@ class NodeConfigEngine
         foreach ($nodes as $node) {
             $map[$node['id']] = $node;
         }
+
         return $map;
     }
 
@@ -1165,7 +1184,7 @@ class NodeConfigEngine
         $scopedNodeId = ($metricType !== null) ? "{$nodeId}:{$metricType}" : $nodeId;
 
         $context = $result->state;
-        if ($metricType !== null && !isset($context['metric_type'])) {
+        if ($metricType !== null && ! isset($context['metric_type'])) {
             $context['metric_type'] = $metricType;
         }
 
@@ -1181,7 +1200,7 @@ class NodeConfigEngine
 
         try {
             NodeConfigState::updateOrCreate($attributes, $values);
-        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+        } catch (UniqueConstraintViolationException $e) {
             // Race condition: another concurrent job just inserted this row.
             // Do a blind UPDATE to set our values without re-checking existence.
             NodeConfigState::where(
@@ -1193,18 +1212,19 @@ class NodeConfigEngine
     private function loadBranchLatch(int $configId, ?int $serverId, string $branchKey): bool
     {
         $query = NodeConfigState::where('node_config_id', $configId)
-            ->where('node_id', 'branch:' . $branchKey);
+            ->where('node_id', 'branch:'.$branchKey);
         if ($serverId !== null) {
             $query->where('server_id', $serverId);
         }
 
         $state = $query->first();
+
         return (bool) ($state->context['armed'] ?? false);
     }
 
     private function saveBranchLatch(int $configId, ?int $serverId, string $branchKey, bool $armed): void
     {
-        $attributes = ['node_config_id' => $configId, 'node_id' => 'branch:' . $branchKey];
+        $attributes = ['node_config_id' => $configId, 'node_id' => 'branch:'.$branchKey];
         if ($serverId !== null) {
             $attributes['server_id'] = $serverId;
         }
@@ -1213,10 +1233,10 @@ class NodeConfigEngine
 
         try {
             NodeConfigState::updateOrCreate($attributes, $values);
-        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+        } catch (UniqueConstraintViolationException $e) {
             // Race condition: another concurrent job just inserted this row.
             NodeConfigState::where(
-                ['node_config_id' => $configId, 'node_id' => 'branch:' . $branchKey]
+                ['node_config_id' => $configId, 'node_id' => 'branch:'.$branchKey]
             )->update($values);
         }
     }
@@ -1229,14 +1249,14 @@ class NodeConfigEngine
     {
         $taskNodeIds = [];
         foreach ($branch['sub_branches'] as $subBranch) {
-            if (!empty($subBranch['timing_node_id'])) {
+            if (! empty($subBranch['timing_node_id'])) {
                 $taskNodeIds[$subBranch['timing_node_id']] = true;
             }
-            if (!empty($subBranch['post_action']['node_id'])) {
+            if (! empty($subBranch['post_action']['node_id'])) {
                 $taskNodeIds[$subBranch['post_action']['node_id']] = true;
             }
             foreach ($subBranch['timing_chain'] ?? [] as $step) {
-                if (!empty($step['timing_node_id'])) {
+                if (! empty($step['timing_node_id'])) {
                     $taskNodeIds[$step['timing_node_id']] = true;
                 }
             }
@@ -1269,7 +1289,7 @@ class NodeConfigEngine
         // Multi-output metrics (server_status, ports_ping): feed the condition the
         // value emitted on this branch's source socket rather than metric result value.
         $handle = $branch['metric_source_handle'] ?? 'output';
-        if ($handle !== 'output' && !empty($metricResult->outputs)) {
+        if ($handle !== 'output' && ! empty($metricResult->outputs)) {
             return [$metricResult->outputs[$handle] ?? null];
         }
 
@@ -1301,8 +1321,8 @@ class NodeConfigEngine
 
             $settings[$setting] = match ($ref['data_type'] ?? 'number') {
                 'boolean' => filter_var($value, FILTER_VALIDATE_BOOL),
-                'string'  => (string) $value,
-                default   => is_numeric($value) ? (float) $value : $value,
+                'string' => (string) $value,
+                default => is_numeric($value) ? (float) $value : $value,
             };
         }
 
@@ -1333,23 +1353,33 @@ class NodeConfigEngine
     {
         $totalSeconds = intdiv($ms, 1000);
 
-        $weeks    = intdiv($totalSeconds, 604800);
-        $remain   = $totalSeconds % 604800;
-        $days     = intdiv($remain, 86400);
-        $remain   = $remain % 86400;
-        $hours    = intdiv($remain, 3600);
-        $remain   = $remain % 3600;
-        $minutes  = intdiv($remain, 60);
-        $seconds  = $remain % 60;
+        $weeks = intdiv($totalSeconds, 604800);
+        $remain = $totalSeconds % 604800;
+        $days = intdiv($remain, 86400);
+        $remain = $remain % 86400;
+        $hours = intdiv($remain, 3600);
+        $remain = $remain % 3600;
+        $minutes = intdiv($remain, 60);
+        $seconds = $remain % 60;
 
         $parts = [];
-        if ($weeks > 0)  $parts[] = "{$weeks}w";
-        if ($days > 0)   $parts[] = "{$days}d";
-        if ($hours > 0)  $parts[] = "{$hours}h";
-        if ($minutes > 0) $parts[] = "{$minutes}m";
-        if ($seconds > 0) $parts[] = "{$seconds}s";
+        if ($weeks > 0) {
+            $parts[] = "{$weeks}w";
+        }
+        if ($days > 0) {
+            $parts[] = "{$days}d";
+        }
+        if ($hours > 0) {
+            $parts[] = "{$hours}h";
+        }
+        if ($minutes > 0) {
+            $parts[] = "{$minutes}m";
+        }
+        if ($seconds > 0) {
+            $parts[] = "{$seconds}s";
+        }
 
-        return !empty($parts) ? implode('', $parts) : '0s';
+        return ! empty($parts) ? implode('', $parts) : '0s';
     }
 
     /**
@@ -1371,36 +1401,36 @@ class NodeConfigEngine
 
         // ── server_status: check whether the agent is still offline ──────
         if ($metricType === 'server_status') {
-            $agent = \App\Models\Agent::where('server_id', $serverId)->first();
+            $agent = Agent::where('server_id', $serverId)->first();
 
-            if (!$agent) {
+            if (! $agent) {
                 // No agent record at all → definitively offline
                 return $sourceHandle === 'offline';
             }
 
-            $rawOffline = (int) \App\Models\Setting::get('offline_threshold', '15');
+            $rawOffline = (int) Setting::get('offline_threshold', '15');
             $offlineSec = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
-            $isOffline = !$agent->last_seen_at ||
+            $isOffline = ! $agent->last_seen_at ||
                 $agent->last_seen_at->lt(now()->subSeconds($offlineSec));
 
             Log::debug('[node-config-engine] live condition check (server_status)', [
                 'server_id' => $serverId,
                 'is_offline' => $isOffline,
                 'source_handle' => $sourceHandle,
-                'holds' => $sourceHandle === 'offline' ? $isOffline : !$isOffline,
+                'holds' => $sourceHandle === 'offline' ? $isOffline : ! $isOffline,
             ]);
 
-            return $sourceHandle === 'offline' ? $isOffline : !$isOffline;
+            return $sourceHandle === 'offline' ? $isOffline : ! $isOffline;
         }
 
         // ── ports_ping: check whether a tracked port still matches the socket ──
         if ($metricType === 'ports_ping') {
-            $agent = \App\Models\Agent::where('server_id', $serverId)->first();
-            if (!$agent) {
+            $agent = Agent::where('server_id', $serverId)->first();
+            if (! $agent) {
                 return true; // fail open
             }
 
-            $ports = \App\Models\Port::where('agent_id', $agent->id);
+            $ports = Port::where('agent_id', $agent->id);
 
             if ($sourceHandle === 'offline') {
                 $holds = (clone $ports)->where('ping_status', 'offline')->exists();
@@ -1409,10 +1439,10 @@ class NodeConfigEngine
                 $threshold = (float) ($branch['condition']['threshold'] ?? 0);
                 $sqlOp = match ($operator) {
                     'greater_than_equal' => '>=',
-                    'less_than'          => '<',
-                    'less_than_equal'    => '<=',
-                    'equal'              => '=',
-                    default              => '>',
+                    'less_than' => '<',
+                    'less_than_equal' => '<=',
+                    'equal' => '=',
+                    default => '>',
                 };
                 $holds = (clone $ports)
                     ->where('ping_status', 'online')
@@ -1432,8 +1462,8 @@ class NodeConfigEngine
         // ── metric conditions: re-check most recent sample vs threshold ──
         $condition = $branch['condition'] ?? null;
         if ($condition && isset($condition['threshold'], $condition['operator'])) {
-            $agent = \App\Models\Agent::where('server_id', $serverId)->first();
-            if (!$agent) {
+            $agent = Agent::where('server_id', $serverId)->first();
+            if (! $agent) {
                 return true; // fail open
             }
 
@@ -1446,9 +1476,9 @@ class NodeConfigEngine
             $metricName = $metricNameMap[$metricType] ?? $metricType;
             $metricTypeForDb = explode('_', $metricType, 2)[0];
 
-            $latest = \App\Models\MetricSample::whereHas(
+            $latest = MetricSample::whereHas(
                 'batch',
-                fn($q) => $q->where('agent_id', $agent->id)
+                fn ($q) => $q->where('agent_id', $agent->id)
             )
                 ->where('metric_type', $metricTypeForDb)
                 ->where('metric_name', $metricName)
@@ -1488,4 +1518,3 @@ class NodeConfigEngine
         return true; // Fail open for unknown branch shapes
     }
 }
-

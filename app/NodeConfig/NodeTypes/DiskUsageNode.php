@@ -4,9 +4,20 @@ namespace App\NodeConfig\NodeTypes;
 
 class DiskUsageNode extends BaseNode
 {
-    public function getType(): string { return 'disk_usage'; }
-    public function getCategory(): string { return 'metric'; }
-    public function getLabel(): string { return 'Disk Usage'; }
+    public function getType(): string
+    {
+        return 'disk_usage';
+    }
+
+    public function getCategory(): string
+    {
+        return 'metric';
+    }
+
+    public function getLabel(): string
+    {
+        return 'Disk Usage';
+    }
 
     public function evaluate(array $inputValues, array $settings, array $state): NodeResult
     {

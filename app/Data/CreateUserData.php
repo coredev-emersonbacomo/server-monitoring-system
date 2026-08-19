@@ -43,7 +43,7 @@ class CreateUserData extends Data
         public ?string $timezone = null,
     ) {}
 
-    public static function rules(ValidationContext|null $context = null): array
+    public static function rules(?ValidationContext $context = null): array
     {
         return [
             'timezone' => ['nullable', 'string', 'max:255', 'timezone'],

@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ServerStatus;
+use App\Events\AgentUninstalled;
 use App\Http\Controllers\Controller;
-use App\Models\Server;
+use App\Models\Activity;
 use App\Models\Agent;
 use App\Models\AgentChallenge;
-use App\Models\Activity;
+use App\Models\CustomActivityLog;
+use App\Models\Server;
 use App\Services\AgentAuthService;
-use App\Services\ProvisioningService;
 use App\Services\HeartbeatService;
-use Illuminate\Http\Request;
+use App\Services\ProvisioningService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 
@@ -29,9 +32,10 @@ class AgentController extends Controller
 
         try {
             $result = $this->provisioningService->generateToken($server, $user);
-            if (!empty($result['conflict'])) {
+            if (! empty($result['conflict'])) {
                 return response()->json($result, 409);
             }
+
             return response()->json($result, 201);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -45,6 +49,7 @@ class AgentController extends Controller
 
         try {
             $result = $this->provisioningService->regenerateToken($server, $user);
+
             return response()->json($result, 201);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -69,6 +74,7 @@ class AgentController extends Controller
         ];
 
         $result = $this->provisioningService->bootstrap($validated['token'], $metadata);
+
         return response()->json($result, 200);
     }
 
@@ -112,6 +118,7 @@ class AgentController extends Controller
                 'public_key_hash' => $validated['public_key_hash'],
             ]
         );
+
         return response()->json($result, 200);
     }
 
@@ -130,7 +137,7 @@ class AgentController extends Controller
             ->where('status', 'active')
             ->first();
 
-        if (!$agent) {
+        if (! $agent) {
             return response()->json(['message' => 'Unknown or inactive agent.'], 403);
         }
 
@@ -161,7 +168,7 @@ class AgentController extends Controller
         ]);
 
         $challenge = AgentChallenge::with('agent.server')->find($validated['challenge_id']);
-        if (!$challenge || $challenge->status !== 'pending' || $challenge->expires_at->isPast()) {
+        if (! $challenge || $challenge->status !== 'pending' || $challenge->expires_at->isPast()) {
             return response()->json(['message' => 'Challenge is invalid or expired.'], 401);
         }
 
@@ -169,26 +176,26 @@ class AgentController extends Controller
         $claimed = AgentChallenge::where('id', $challenge->id)
             ->where('status', 'pending')
             ->update(['status' => 'used', 'used_at' => now()]);
-        if (!$claimed) {
+        if (! $claimed) {
             return response()->json(['message' => 'Challenge already used.'], 401);
         }
 
         $agent = $challenge->agent;
-        if (!$agent || $agent->status !== 'active' || $agent->revoked_at || !$agent->public_key) {
+        if (! $agent || $agent->status !== 'active' || $agent->revoked_at || ! $agent->public_key) {
             return response()->json(['message' => 'Agent is revoked or disabled.'], 403);
         }
 
         // A decommissioned server must never accept a session, even from a
         // still-active agent row — the no-resurrection guarantee.
         $server = $agent->server;
-        if ($server && ($server->agent_deleted || $server->status === \App\Enums\ServerStatus::Archived->value)) {
+        if ($server && ($server->agent_deleted || $server->status === ServerStatus::Archived->value)) {
             return response()->json(['message' => 'Server has been decommissioned.'], 403);
         }
 
         $der = base64_decode($agent->public_key);
-        $publicKeyPem = "-----BEGIN PUBLIC KEY-----\n" . chunk_split(base64_encode($der), 64, "\n") . "-----END PUBLIC KEY-----\n";
+        $publicKeyPem = "-----BEGIN PUBLIC KEY-----\n".chunk_split(base64_encode($der), 64, "\n")."-----END PUBLIC KEY-----\n";
         $publicKey = openssl_pkey_get_public($publicKeyPem);
-        if (!$publicKey) {
+        if (! $publicKey) {
             return response()->json(['message' => 'Invalid registered public key.'], 500);
         }
 
@@ -204,65 +211,99 @@ class AgentController extends Controller
     public function heartbeat(Request $request, HeartbeatService $heartbeatService): JsonResponse
     {
         $agent = $this->agentAuthService->authenticate($request);
-        if (!$agent) {
+        if (! $agent) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
         // No-resurrection guard: a revoked agent or a decommissioned server must
         // never be flipped back to Online, no matter what the client sends.
-        $server = $agent->server;
-        if ($agent->revoked_at || !$server || $server->agent_deleted || $server->status === \App\Enums\ServerStatus::Archived->value) {
-            return response()->json(['message' => 'Agent or server has been decommissioned.'], 403);
+        if ($agent->revoked_at) {
+            return response()->json(['message' => 'Agent has been decommissioned.'], 403);
         }
 
-        $response = $heartbeatService->process($agent, $request->all());
+        // The agent now monitors many servers: each heartbeat targets exactly
+        // one server by uuid, and the backend verifies ownership + lifecycle.
+        $serverUuid = $request->input('server_uuid');
+        if (! $serverUuid) {
+            return response()->json(['message' => 'server_uuid is required.'], 422);
+        }
+
+        $server = Server::where('uuid', $serverUuid)->first();
+        if (! $server) {
+            return response()->json(['message' => 'Unknown server.'], 404);
+        }
+
+        if ($server->agent_id !== $agent->id) {
+            return response()->json(['message' => 'Agent does not own this server.'], 403);
+        }
+
+        if ($server->agent_deleted || $server->status === ServerStatus::Archived->value) {
+            return response()->json(['message' => 'Server has been decommissioned.'], 403);
+        }
+
+        $response = $heartbeatService->process($agent, $server, $request->all());
+
         return response()->json($response, 200);
     }
 
     public function agentError(Request $request): JsonResponse
-     {
-         $agent = $this->agentAuthService->authenticate($request);
-         if (!$agent) {
-             return response()->json(['message' => 'Unauthenticated.'], 401);
-         }
+    {
+        $agent = $this->agentAuthService->authenticate($request);
+        if (! $agent) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
 
-         $validated = $request->validate([
-             'error' => ['required', 'string'],
-             'stack_trace' => ['nullable', 'string'],
-         ]);
+        $validated = $request->validate([
+            'error' => ['required', 'string'],
+            'stack_trace' => ['nullable', 'string'],
+            'server_uuid' => ['nullable', 'string'],
+        ]);
 
-         $server = $agent->server;
+        // Multi-server agent: report against the given server, falling back to the
+        // legacy primary server for older agents.
+        $server = null;
+        if ($validated['server_uuid'] ?? null) {
+            $server = Server::where('uuid', $validated['server_uuid'])
+                ->where('agent_id', $agent->id)
+                ->first();
+        }
+        $server ??= $agent->server ?? $agent->servers()->first();
 
-         Activity::create([
-             'server_id'   => $server->id,
-             'agent_id'    => $agent->id,
-             'type'        => 'agent_error',
-             'description' => "Agent encountered error: " . substr($validated['error'], 0, 150),
-         ]);
+        if (! $server) {
+            return response()->json(['message' => 'No server associated with agent.'], 404);
+        }
 
-         \App\Models\CustomActivityLog::create([
-             'type'         => 'agent',
-             'logable_type' => Server::class,
-             'logable_id'   => (string) $server->uuid,
-             'user_id'      => null,
-             'user'         => 'System',
-             'action'       => 'Agent Error',
-             'details'      => json_encode([
-                 'message'     => "Agent encountered error on server: {$server->name}",
-                 'server_name' => $server->name,
-                 'error'       => $validated['error'],
-                 'stack_trace' => $validated['stack_trace'] ?? '',
-             ]),
-         ]);
+        Activity::create([
+            'server_id' => $server->id,
+            'agent_id' => $agent->id,
+            'type' => 'agent_error',
+            'description' => 'Agent encountered error: '.substr($validated['error'], 0, 150),
+        ]);
 
-         return response()->json(['status' => 'ok']);
-     }
+        CustomActivityLog::create([
+            'type' => 'agent',
+            'logable_type' => Server::class,
+            'logable_id' => (string) $server->uuid,
+            'user_id' => null,
+            'user' => 'System',
+            'action' => 'Agent Error',
+            'details' => json_encode([
+                'message' => "Agent encountered error on server: {$server->name}",
+                'server_name' => $server->name,
+                'error' => $validated['error'],
+                'stack_trace' => $validated['stack_trace'] ?? '',
+            ]),
+        ]);
+
+        return response()->json(['status' => 'ok']);
+    }
 
     public function installLinux(): Response
     {
         $scriptPath = public_path('install.sh');
         $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
         $script = str_replace('{{APP_URL}}', url('/'), $script);
+
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }
 
@@ -271,6 +312,7 @@ class AgentController extends Controller
         $scriptPath = public_path('install.ps1');
         $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
         $script = str_replace('{{APP_URL}}', url('/'), $script);
+
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }
 
@@ -283,7 +325,7 @@ class AgentController extends Controller
     public function uninstall(Request $request): JsonResponse
     {
         $agent = $this->agentAuthService->authenticate($request);
-        if (!$agent) {
+        if (! $agent) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
@@ -291,12 +333,14 @@ class AgentController extends Controller
             'reason' => 'nullable|string',
         ]);
 
-        $server = $agent->server;
-        if (!$server) {
+        $agent->loadMissing('monitoredServers');
+        $servers = $agent->monitoredServers;
+
+        if ($servers->isEmpty()) {
             return response()->json(['message' => 'Server not found.'], 404);
         }
 
-        DB::transaction(function () use ($agent, $server, $validated) {
+        DB::transaction(function () use ($agent, $servers) {
             // Revoke the agent so its identity can never authenticate again.
             $agent->update([
                 'status' => 'revoked',
@@ -304,36 +348,43 @@ class AgentController extends Controller
                 'last_seen_at' => null,
             ]);
 
-            $server->update([
-                'agent_deleted' => true,
-                'status' => \App\Enums\ServerStatus::Archived->value,
-            ]);
+            // Every server this installation monitored follows the existing
+            // lifecycle: it is decommissioned and detached from the agent.
+            foreach ($servers as $server) {
+                $server->update([
+                    'agent_deleted' => true,
+                    'status' => ServerStatus::Archived->value,
+                    'agent_id' => null,
+                ]);
+            }
         });
 
-        event(new \App\Events\AgentUninstalled($server->uuid));
+        foreach ($servers as $server) {
+            event(new AgentUninstalled($server->uuid));
+        }
 
-        \App\Models\Activity::create([
-            'server_id' => $server->id,
+        Activity::create([
+            'server_id' => $servers->first()->id,
             'agent_id' => $agent->id,
             'type' => 'agent_uninstalled',
             'description' => 'Agent service has been uninstalled from the host.'
-                . (($validated['reason'] ?? null) ? ' Reason: ' . $validated['reason'] : ''),
+                .(($validated['reason'] ?? null) ? ' Reason: '.$validated['reason'] : ''),
         ]);
 
-        \App\Models\CustomActivityLog::create([
-            'type'         => 'agent',
+        CustomActivityLog::create([
+            'type' => 'agent',
             'logable_type' => Server::class,
-            'logable_id'   => (string) $server->uuid,
-            'user_id'      => null,
-            'user'         => 'Agent System',
-            'action'       => 'Agent Uninstalled',
-            'details'      => [
-                'message'     => "Agent uninstalled on host: {$server->name}",
-                'server_name' => $server->name,
+            'logable_id' => (string) $servers->first()->uuid,
+            'user_id' => null,
+            'user' => 'Agent System',
+            'action' => 'Agent Uninstalled',
+            'details' => [
+                'message' => "Agent uninstalled on host: {$servers->first()->name}",
+                'server_name' => $servers->first()->name,
             ],
         ]);
 
-        return response()->json(['status' => 'success', 'message' => 'Agent revoked and server archived successfully.']);
+        return response()->json(['status' => 'success', 'message' => 'Agent revoked and all monitored servers archived successfully.']);
     }
 
     public function uninstallLinux(): Response
@@ -341,6 +392,7 @@ class AgentController extends Controller
         $scriptPath = public_path('uninstall.sh');
         $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
         $script = str_replace('{{APP_URL}}', url('/'), $script);
+
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }
 
@@ -349,6 +401,7 @@ class AgentController extends Controller
         $scriptPath = public_path('uninstall.ps1');
         $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
         $script = str_replace('{{APP_URL}}', url('/'), $script);
+
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }
 }

@@ -12,14 +12,20 @@ use App\Data\UpdateClientData;
 use App\Http\Controllers\Controller;
 use App\Jobs\DeleteStorageAsset;
 use App\Models\Client;
+use App\Models\CustomActivityLog;
 use App\Models\Server;
+use App\Models\Setting;
 use App\Models\User;
+use App\NodeConfig\Engine\NodeTaskScheduler;
+use App\NodeConfig\Models\NodeConfigState;
+use App\NodeConfig\Services\NodeConfigService;
 use App\Services\MediaUrlService;
 use App\Services\UploadIntentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
-use \App\Models\Setting;
+use Spatie\LaravelData\Optional;
 
 class ClientController extends Controller
 {
@@ -32,10 +38,10 @@ class ClientController extends Controller
     public function index(ClientsIndexData $data): array
     {
         $query = Client::withCount([
-                'servers',
-                'secopclients',
-                'servers as servers_online_count' => fn ($q) => $q->where('status', 'online'),
-            ]);
+            'servers',
+            'secopclients',
+            'servers as servers_online_count' => fn ($q) => $q->where('status', 'online'),
+        ]);
 
         if ($data->user_uuid) {
             $query->whereHas('secopclients', function ($q) use ($data) {
@@ -65,19 +71,19 @@ class ClientController extends Controller
     public function store(CreateClientData $clientdata): ClientData
     {
         $payload = [
-            'name'           => $clientdata->name,
-            'description'    => $clientdata->description ?? '',
-            'location'       => $clientdata->location,
-            'email'          => $clientdata->email,
+            'name' => $clientdata->name,
+            'description' => $clientdata->description ?? '',
+            'location' => $clientdata->location,
+            'email' => $clientdata->email,
             'contact_number' => $clientdata->contact_number,
-            'budget'         => (float) ($clientdata->budget ?? 0.00),
+            'budget' => (float) ($clientdata->budget ?? 0.00),
         ];
 
         if ($clientdata->upload_intent_id !== null && $clientdata->banner_image_storage_key !== null) {
             $intent = $this->uploadIntentService->attach(
                 $clientdata->upload_intent_id,
                 request()->user(),
-                $client = new Client(),
+                $client = new Client,
                 'client',
             );
 
@@ -96,7 +102,7 @@ class ClientController extends Controller
 
         $actor = request()->user();
 
-        \App\Models\CustomActivityLog::create([
+        CustomActivityLog::create([
             'logable_type' => Client::class,
             'logable_id' => (string) $client->uuid,
             'user_id' => $actor ? $actor->id : null,
@@ -118,11 +124,12 @@ class ClientController extends Controller
     {
         $client = Client::withCount([
             'servers',
-            'servers as servers_online_count' => fn($q) => $q->where('status', 'online'),
+            'servers as servers_online_count' => fn ($q) => $q->where('status', 'online'),
         ])->where('uuid', $clientUuid)->firstOrFail();
 
         return ClientData::fromModel($client);
     }
+
     public function updateAlertScope(Request $request, string $clientUuid)
     {
         $request->validate([
@@ -133,20 +140,20 @@ class ClientController extends Controller
         $newScope = $request->input('alert_scope');
 
         if ($newScope !== 'global') {
-            app(\App\NodeConfig\Services\NodeConfigService::class)
+            app(NodeConfigService::class)
                 ->copyGlobalConfigIfNeeded('client', "client_{$client->uuid}");
         }
 
         $client->update(['alert_scope' => $newScope]);
 
-        $store = \Illuminate\Support\Facades\Cache::store(config('cache.default', 'file'));
-        $store->forget('node_config:scope:client:' . $client->uuid);
+        $store = Cache::store(config('cache.default', 'file'));
+        $store->forget('node_config:scope:client:'.$client->uuid);
 
         $affectedServers = Server::where('client_id', $client->id)->get(['id', 'uuid']);
         foreach ($affectedServers as $server) {
-            $store->forget('node_config:scope:server:' . $server->uuid);
-            \App\NodeConfig\Engine\NodeTaskScheduler::cancelByServer($server->id);
-            \App\NodeConfig\Models\NodeConfigState::where('server_id', $server->id)->delete();
+            $store->forget('node_config:scope:server:'.$server->uuid);
+            NodeTaskScheduler::cancelByServer($server->id);
+            NodeConfigState::where('server_id', $server->id)->delete();
         }
     }
 
@@ -155,19 +162,19 @@ class ClientController extends Controller
         $client = Client::where('uuid', $clientUuid)->firstOrFail();
 
         $updatePayload = [
-            'name'           => $data->name,
-            'description'    => $data->description instanceof \Spatie\LaravelData\Optional ? ($client->description ?? '') : $data->description,
-            'location'       => $data->location,
-            'email'          => $data->email,
+            'name' => $data->name,
+            'description' => $data->description instanceof Optional ? ($client->description ?? '') : $data->description,
+            'location' => $data->location,
+            'email' => $data->email,
             'contact_number' => $data->contact_number,
-            'budget'         => (float) (($data->budget instanceof \Spatie\LaravelData\Optional || $data->budget === null) ? ($client->budget ?? 0.00) : $data->budget),
+            'budget' => (float) (($data->budget instanceof Optional || $data->budget === null) ? ($client->budget ?? 0.00) : $data->budget),
         ];
 
-        if (!($data->alert_scope instanceof \Spatie\LaravelData\Optional)) {
+        if (! ($data->alert_scope instanceof Optional)) {
             $updatePayload['alert_scope'] = $data->alert_scope ?? 'global';
         }
 
-        if (!($data->upload_intent_id instanceof \Spatie\LaravelData\Optional) && $data->upload_intent_id !== null) {
+        if (! ($data->upload_intent_id instanceof Optional) && $data->upload_intent_id !== null) {
             $oldStorageKey = $client->banner_image_storage_key;
             $oldFolder = config('uploads.purposes.client_banner.folder');
 
@@ -210,6 +217,7 @@ class ClientController extends Controller
                 if ($field === 'banner_image') {
                     $oldValues['banner_image'] = $originalAttributes['banner_image_storage_key'] ? 'has_banner' : 'none';
                     $newValues['banner_image'] = 'updated';
+
                     continue;
                 }
 
@@ -232,7 +240,7 @@ class ClientController extends Controller
 
         $actor = request()->user();
 
-        \App\Models\CustomActivityLog::create([
+        CustomActivityLog::create([
             'logable_type' => Client::class,
             'logable_id' => (string) $client->uuid,
             'user_id' => $actor ? $actor->id : null,
@@ -241,10 +249,10 @@ class ClientController extends Controller
             'details' => $details,
         ]);
 
-            $client->loadCount([
-                'servers',
-                'servers as servers_online_count' => fn ($q) => $q->where('status', 'online'),
-            ]);
+        $client->loadCount([
+            'servers',
+            'servers as servers_online_count' => fn ($q) => $q->where('status', 'online'),
+        ]);
 
         return ClientData::fromModel($client);
     }
@@ -255,7 +263,7 @@ class ClientController extends Controller
         $client = Client::where('uuid', $clientUuid)->firstOrFail();
         $servers = $client->servers()->withTrashed()->get();
 
-        return ServerData::collect($servers->map(fn(Server $s) => ServerData::fromModel($s)))->toArray();
+        return ServerData::collect($servers->map(fn (Server $s) => ServerData::fromModel($s)))->toArray();
     }
 
     public function destroy(string $clientUuid): JsonResponse
@@ -273,7 +281,7 @@ class ClientController extends Controller
 
         if ($runningAgentServer) {
             return response()->json([
-                'message' => "Cannot delete client while server '{$runningAgentServer->name}' still has an active agent running. Please uninstall all server agents first."
+                'message' => "Cannot delete client while server '{$runningAgentServer->name}' still has an active agent running. Please uninstall all server agents first.",
             ], 422);
         }
 
@@ -284,7 +292,7 @@ class ClientController extends Controller
 
         $actor = request()->user();
 
-        \App\Models\CustomActivityLog::create([
+        CustomActivityLog::create([
             'logable_type' => Client::class,
             'logable_id' => (string) $client->uuid,
             'user_id' => $actor ? $actor->id : null,
@@ -325,8 +333,8 @@ class ClientController extends Controller
             return response()->json([
                 'message' => "The client has reached the maximum limit of {$limit} SecOps.",
                 'errors' => [
-                    'user_uuid' => ["The client has reached the maximum limit of {$limit} SecOps."]
-                ]
+                    'user_uuid' => ["The client has reached the maximum limit of {$limit} SecOps."],
+                ],
             ], 422);
         }
 
@@ -337,7 +345,7 @@ class ClientController extends Controller
 
         $actor = request()->user();
 
-        \App\Models\CustomActivityLog::create([
+        CustomActivityLog::create([
             'logable_type' => Client::class,
             'logable_id' => (string) $client->uuid,
             'user_id' => $actor ? $actor->id : null,
@@ -360,13 +368,13 @@ class ClientController extends Controller
 
         $user = User::where('uuid', $userUuid)->firstOrFail();
 
-        if (!$client->secopclients()->where('user_id', $user->id)->exists()) {
+        if (! $client->secopclients()->where('user_id', $user->id)->exists()) {
             return response()->json(['error' => 'User not assigned to this client'], 404);
         }
 
         $actor = request()->user();
 
-        \App\Models\CustomActivityLog::create([
+        CustomActivityLog::create([
             'logable_type' => Client::class,
             'logable_id' => (string) $client->uuid,
             'user_id' => $actor ? $actor->id : null,

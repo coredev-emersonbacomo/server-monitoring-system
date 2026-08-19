@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Enums\DeviceType;
 use App\Models\User;
 use App\Models\UserSession;
 use Illuminate\Http\Request;

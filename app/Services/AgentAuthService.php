@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Agent;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Config;
 class AgentAuthService
 {
     private string $secret;
+
     private int $accessTtl;
 
     public function __construct()
@@ -37,26 +39,34 @@ class AgentAuthService
      */
     public function issueSession(Agent $agent): array
     {
-        $agent->loadMissing('server');
-        $server = $agent->server;
+        $agent->loadMissing(['server', 'monitoredServers']);
+        $servers = $agent->monitoredServers;
+        $primary = $agent->server ?: $servers->first();
 
         $heartbeatInterval = (int) $agent->currentConfiguration?->heartbeat_interval;
         if ($heartbeatInterval <= 0) {
-            $heartbeatInterval = (int) (\App\Models\Setting::get('heartbeat_interval') ?: 5);
+            $heartbeatInterval = (int) (Setting::get('heartbeat_interval') ?: 5);
         }
 
         return [
-            'access_token'           => $this->issueToken($agent->id, $server->uuid),
-            'expires_in'             => $this->accessTtl,
-            'websocket_expires_in'   => $this->accessTtl,
-            'server_uuid'            => $server->uuid,
+            'access_token' => $this->issueToken($agent->id, $primary?->uuid ?? ''),
+            'expires_in' => $this->accessTtl,
+            'websocket_expires_in' => $this->accessTtl,
+            // Legacy single-server field (first/primary owned server) kept for
+            // backward compatibility; new agents use the servers list.
+            'server_uuid' => $primary?->uuid ?? '',
+            'servers' => $servers->map(fn ($server) => [
+                'server_uuid' => $server->uuid,
+                'port_filter' => $server->port_filter ?? null,
+                'process_filter' => $server->process_filter ?? null,
+            ])->values(),
             'config' => [
                 'heartbeat_interval' => $heartbeatInterval,
                 'realtime' => [
-                    'host'     => env('REVERB_HOST', '127.0.0.1'),
-                    'port'     => (int) env('REVERB_PORT', 8080),
-                    'scheme'   => env('REVERB_SCHEME', 'http'),
-                    'app_key'  => env('REVERB_APP_KEY'),
+                    'host' => env('REVERB_HOST', '127.0.0.1'),
+                    'port' => (int) env('REVERB_PORT', 8080),
+                    'scheme' => env('REVERB_SCHEME', 'http'),
+                    'app_key' => env('REVERB_APP_KEY'),
                 ],
             ],
         ];
@@ -65,13 +75,13 @@ class AgentAuthService
     public function issueToken(int $agentId, string $serverUuid): string
     {
         $now = now()->timestamp;
-        $header  = $this->b64url(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
+        $header = $this->b64url(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
         $payload = $this->b64url(json_encode([
-            'sub'  => $agentId,
+            'sub' => $agentId,
             'kind' => 'agent',
-            'svr'  => $serverUuid,
-            'iat'  => $now,
-            'exp'  => $now + $this->accessTtl,
+            'svr' => $serverUuid,
+            'iat' => $now,
+            'exp' => $now + $this->accessTtl,
         ]));
         $signature = $this->b64url(hash_hmac('sha256', "$header.$payload", $this->secret, true));
 
@@ -84,17 +94,17 @@ class AgentAuthService
     public function authenticate(Request $request): ?Agent
     {
         $authHeader = $request->header('Authorization');
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+        if (! $authHeader || ! str_starts_with($authHeader, 'Bearer ')) {
             return null;
         }
 
         $data = $this->validateToken(substr($authHeader, 7));
-        if (!$data || ($data->kind ?? '') !== 'agent' || !isset($data->sub)) {
+        if (! $data || ($data->kind ?? '') !== 'agent' || ! isset($data->sub)) {
             return null;
         }
 
         $agent = Agent::with('server')->find($data->sub);
-        if (!$agent || $agent->status !== 'active') {
+        if (! $agent || $agent->status !== 'active') {
             return null;
         }
 
@@ -110,12 +120,12 @@ class AgentAuthService
         [$header, $payload, $signature] = $parts;
 
         $expected = $this->b64url(hash_hmac('sha256', "$header.$payload", $this->secret, true));
-        if (!hash_equals($expected, $signature)) {
+        if (! hash_equals($expected, $signature)) {
             return null;
         }
 
         $data = json_decode($this->b64urlDecode($payload));
-        if (!$data || !isset($data->exp) || (int) $data->exp < now()->timestamp) {
+        if (! $data || ! isset($data->exp) || (int) $data->exp < now()->timestamp) {
             return null;
         }
 

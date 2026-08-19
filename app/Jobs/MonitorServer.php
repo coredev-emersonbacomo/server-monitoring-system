@@ -4,21 +4,18 @@ namespace App\Jobs;
 
 use App\Enums\ServerHealth;
 use App\Enums\ServerStatus;
-use App\Models\Activity;
+use App\Events\ServerStatsUpdated;
+use App\Events\ServerStatusUpdated;
 use App\Models\ActionItem;
+use App\Models\Activity;
 use App\Models\CustomActivityLog;
-use App\Models\ServerHealthLog;
 use App\Models\Server;
-use App\Models\Setting;
-use App\NodeConfig\Cache\NodeConfigCache;
 use App\NodeConfig\Engine\NodeConfigEngine;
 use App\NodeConfig\Engine\NodeRegistry;
 use App\NodeConfig\Engine\NodeTaskScheduler;
 use App\NodeConfig\Models\NodeConfig;
 use App\NodeConfig\Models\NodeConfigState;
 use App\NodeConfig\Services\NodeConfigNotificationService;
-use App\Events\ServerStatsUpdated;
-use App\Events\ServerStatusUpdated;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -31,6 +28,7 @@ class MonitorServer implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
+
     public int $timeout = 30;
 
     public function __construct(
@@ -40,13 +38,19 @@ class MonitorServer implements ShouldQueue
     public function handle(NodeRegistry $registry, NodeConfigNotificationService $notifications): void
     {
         $server = Server::with(['client.secopclients', 'agent'])->where('uuid', $this->serverUuid)->first();
-        if (!$server) return;
+        if (! $server) {
+            return;
+        }
 
         // Decommissioned servers are out of the lifecycle: no offline flips, no
         // online recovery, no alerts. Only an explicit re-provision revives one.
-        if ($server->agent_deleted || $server->status === ServerStatus::Archived->value) return;
+        if ($server->agent_deleted || $server->status === ServerStatus::Archived->value) {
+            return;
+        }
 
-        if (!$server->agent) return;
+        if (! $server->agent) {
+            return;
+        }
 
         $config = NodeConfig::resolveForServer($this->serverUuid);
         $engine = $config ? new NodeConfigEngine($registry) : null;
@@ -77,21 +81,21 @@ class MonitorServer implements ShouldQueue
             ]);
 
             Activity::create([
-                'server_id'   => $server->id,
-                'agent_id'    => $server->agent?->id,
-                'type'        => 'server_offline',
+                'server_id' => $server->id,
+                'agent_id' => $server->agent?->id,
+                'type' => 'server_offline',
                 'description' => 'Server transitioned to Offline state.',
             ]);
 
             CustomActivityLog::create([
-                'type'         => 'server_health',
+                'type' => 'server_health',
                 'logable_type' => get_class($server),
-                'logable_id'   => $server->id,
-                'user_id'      => null,
-                'user'         => 'System',
-                'action'       => 'Agent Offline',
-                'details'      => json_encode([
-                    'message'     => "Agent went offline for server: {$server->name}",
+                'logable_id' => $server->id,
+                'user_id' => null,
+                'user' => 'System',
+                'action' => 'Agent Offline',
+                'details' => json_encode([
+                    'message' => "Agent went offline for server: {$server->name}",
                     'server_name' => $server->name,
                 ]),
             ]);
@@ -100,11 +104,11 @@ class MonitorServer implements ShouldQueue
                 ServerStatusUpdated::dispatch($server->uuid, ServerStatus::Offline->value, $server->name);
                 ServerStatsUpdated::dispatchSync($server->uuid, [
                     'timestamp' => now()->timestamp,
-                    'c'         => 0.0,
-                    'm'         => 0.0,
-                    'd'         => 0.0,
-                    'netIn'     => 0.0,
-                    'netOut'    => 0.0,
+                    'c' => 0.0,
+                    'm' => 0.0,
+                    'd' => 0.0,
+                    'netIn' => 0.0,
+                    'netOut' => 0.0,
                 ]);
             } catch (\Throwable $e) {
                 Log::warning('[broadcast] Failed to push offline update', ['error' => $e->getMessage()]);
@@ -118,12 +122,12 @@ class MonitorServer implements ShouldQueue
         ActionItem::updateOrCreate(
             [
                 'action_type' => 'server_offline',
-                'server_id'   => $server->id,
-                'client_id'   => $server->client_id,
+                'server_id' => $server->id,
+                'client_id' => $server->client_id,
             ],
             [
-                'message'     => "{$server->name} is offline",
-                'severity'    => 'critical',
+                'message' => "{$server->name} is offline",
+                'severity' => 'critical',
                 'client_name' => $server->client?->name ?? 'Unknown',
                 'server_name' => $server->name,
             ]
@@ -139,21 +143,21 @@ class MonitorServer implements ShouldQueue
             ]);
 
             Activity::create([
-                'server_id'   => $server->id,
-                'agent_id'    => $server->agent?->id,
-                'type'        => 'server_online',
+                'server_id' => $server->id,
+                'agent_id' => $server->agent?->id,
+                'type' => 'server_online',
                 'description' => 'Server transitioned to Online state.',
             ]);
 
             CustomActivityLog::create([
-                'type'         => 'server_health',
+                'type' => 'server_health',
                 'logable_type' => get_class($server),
-                'logable_id'   => $server->id,
-                'user_id'      => null,
-                'user'         => 'System',
-                'action'       => 'Agent Online',
-                'details'      => json_encode([
-                    'message'     => "Agent came back online for server: {$server->name}",
+                'logable_id' => $server->id,
+                'user_id' => null,
+                'user' => 'System',
+                'action' => 'Agent Online',
+                'details' => json_encode([
+                    'message' => "Agent came back online for server: {$server->name}",
                     'server_name' => $server->name,
                 ]),
             ]);
@@ -167,9 +171,9 @@ class MonitorServer implements ShouldQueue
                 Log::warning('[broadcast] Failed to push online update', ['error' => $e->getMessage()]);
             }
 
-            Log::info("[server-events] Server recovered", [
+            Log::info('[server-events] Server recovered', [
                 'server_id' => $server->id,
-                'server'    => $server->name,
+                'server' => $server->name,
             ]);
         }
 
@@ -182,13 +186,15 @@ class MonitorServer implements ShouldQueue
     private function resetGraphStates(Server $server): void
     {
         $config = NodeConfig::resolveForServer($server->uuid);
-        if (!$config) return;
+        if (! $config) {
+            return;
+        }
 
         NodeConfigState::where('node_config_id', $config->id)
             ->where('server_id', $server->id)
             ->delete();
 
-        \App\NodeConfig\Engine\NodeTaskScheduler::cancelByServer($server->id);
+        NodeTaskScheduler::cancelByServer($server->id);
     }
 
     private function evaluateServerAlerts(
@@ -198,13 +204,17 @@ class MonitorServer implements ShouldQueue
         NodeConfigNotificationService $notifications,
     ): void {
         $agent = $server->agent;
-        if (!$agent) return;
+        if (! $agent) {
+            return;
+        }
 
         $sourceNodeId = $engine->findMetricNode($config, 'server_status');
-        if (!$sourceNodeId) return;
+        if (! $sourceNodeId) {
+            return;
+        }
 
         $extraState = [
-            'server_id'   => $server->id,
+            'server_id' => $server->id,
             'server_name' => $server->name,
             'client_name' => $server->client?->name ?? 'Unknown',
             'metric_type' => 'server_status',
@@ -212,7 +222,9 @@ class MonitorServer implements ShouldQueue
         ];
 
         $result = $engine->trigger($config, $sourceNodeId, 'offline', $extraState, $server->id);
-        if (!$result['success']) return;
+        if (! $result['success']) {
+            return;
+        }
 
         foreach ($result['timers'] as $timer) {
             NodeTaskScheduler::schedule(
@@ -225,10 +237,10 @@ class MonitorServer implements ShouldQueue
         }
 
         foreach ($result['actions'] as $action) {
-            Log::info("[server-events] Offline alert triggered", [
+            Log::info('[server-events] Offline alert triggered', [
                 'server_id' => $server->id,
-                'server'    => $server->name,
-                'node'      => $action['node_id'],
+                'server' => $server->name,
+                'node' => $action['node_id'],
             ]);
             $notifications->dispatchAction($action);
         }

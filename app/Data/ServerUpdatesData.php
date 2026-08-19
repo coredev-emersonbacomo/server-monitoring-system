@@ -2,11 +2,9 @@
 
 namespace App\Data;
 
-use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Attributes\MapInputName;
 use Spatie\LaravelData\Attributes\Validation\Required;
-use Spatie\LaravelData\Attributes\Validation\MaxDigits;
-use Spatie\LaravelData\Attributes\Validation\MinDigits;
+use Spatie\LaravelData\Data;
 
 class ServerUpdatesData extends Data
 {

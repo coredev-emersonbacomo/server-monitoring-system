@@ -4,9 +4,20 @@ namespace App\NodeConfig\NodeTypes;
 
 class RepeatNode extends BaseNode
 {
-    public function getType(): string { return 'repeat'; }
-    public function getCategory(): string { return 'time'; }
-    public function getLabel(): string { return 'Repeat'; }
+    public function getType(): string
+    {
+        return 'repeat';
+    }
+
+    public function getCategory(): string
+    {
+        return 'time';
+    }
+
+    public function getLabel(): string
+    {
+        return 'Repeat';
+    }
 
     public function getSettingDefinitions(): array
     {
@@ -30,7 +41,7 @@ class RepeatNode extends BaseNode
         $phase = $state['phase'] ?? 'idle';
         $isTruthy = $input === true || (is_numeric($input) && (float) $input > 0);
 
-        if (!$isTruthy) {
+        if (! $isTruthy) {
             return NodeResult::cancelTimers($this->idleState());
         }
 
@@ -54,7 +65,7 @@ class RepeatNode extends BaseNode
         $lastInput = $state['last_input'] ?? null;
         $isStillTruthy = $lastInput === true || (is_numeric($lastInput) && (float) $lastInput > 0);
 
-        if (!$isStillTruthy) {
+        if (! $isStillTruthy) {
             return NodeResult::propagate(false, $this->idleState());
         }
 

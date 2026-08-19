@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\CustomActivityLog;
 use Spatie\Activitylog\Actions\CleanActivityLogAction;
 use Spatie\Activitylog\Actions\LogActivityAction;
 
@@ -9,7 +10,7 @@ return [
      * It should implement the Spatie\Activitylog\Contracts\Activity interface
      * and extend Illuminate\Database\Eloquent\Model.
      */
-    'activity_model' => App\Models\CustomActivityLog::class,
+    'activity_model' => CustomActivityLog::class,
 
     /*
      * If set to false, no activities will be saved to the database.
