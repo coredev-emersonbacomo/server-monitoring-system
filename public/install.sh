@@ -72,6 +72,7 @@ fi
 # ─── Per-installation program folder (never shared with other agents) ──
 mkdir -p "$APP_DIR"
 chmod 750 "$APP_DIR"
+chown root:monitor "$APP_DIR"
 
 NEED_DOWNLOAD=true
 if [[ -f "$AGENT_FILE" && -n "$EXPECTED_SHA256" ]]; then
@@ -98,6 +99,7 @@ if [[ "$NEED_DOWNLOAD" == true ]]; then
 
     mv "$AGENT_FILE.tmp" "$AGENT_FILE"
     chmod 750 "$AGENT_FILE"
+    chown root:monitor "$AGENT_FILE"
     log "Agent downloaded successfully."
 fi
 
