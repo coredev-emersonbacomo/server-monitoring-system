@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useMatch, useLocation, Outlet } from "react-router-dom";
+import { useNavigate, useMatch, Outlet } from "react-router-dom";
 import { FileBarChart, RefreshCw } from "lucide-react";
 import IndexHeader from "@/components/IndexHeader";
 import { EntityPickerModal } from "../pages/reports/EntityPickerModal";
@@ -17,6 +17,8 @@ export interface ReportOutletContext {
     /** Increment to force a fresh compile of the currently visible report. */
     refreshToken: number;
     requestRefresh: () => void;
+    /** Selected entity UUIDs for the current view (clients or servers). */
+    selectedIds: string[];
 }
 
 const VIEWS: { key: ReportView; label: string }[] = [
@@ -78,7 +80,6 @@ export function ReportsLayout() {
     });
     const [hours, setHoursState] = useState<number>(loadSavedHours());
     const navigate = useNavigate();
-    const location = useLocation();
 
     const detailMatch = useMatch("/report/:type/:uuid");
     const multiMatch = useMatch("/report/:type");
@@ -101,22 +102,7 @@ export function ReportsLayout() {
 
     const setHours = (h: number) => setHoursState(h);
 
-    // Capture the selection whenever the user is on a clients/servers list route
-    useEffect(() => {
-        if (location.pathname !== "/report/clients" && location.pathname !== "/report/servers") {
-            return;
-        }
-        const type: EntityType = location.pathname.endsWith("clients") ? "clients" : "servers";
-        const ids = (new URLSearchParams(location.search).get("ids") ?? "")
-            .split(",")
-            .map((id) => id.trim())
-            .filter(Boolean);
-        setSavedIds((prev) =>
-            JSON.stringify(prev[type]) === JSON.stringify(ids)
-                ? prev
-                : { ...prev, [type]: ids },
-        );
-    }, [location.pathname, location.search]);
+    const selectedIds = savedIds[view === "servers" ? "servers" : "clients"] ?? [];
 
     const handleSelect = (uuids: string[]) => {
         setPickerOpen(false);
@@ -124,7 +110,7 @@ export function ReportsLayout() {
 
         const type: EntityType = view === "servers" ? "servers" : "clients";
         setSavedIds((prev) => ({ ...prev, [type]: uuids }));
-        navigate(`/report/${type}?ids=${uuids.join(",")}`);
+        navigate(`/report/${type}`);
     };
 
     const handleTabClick = (key: ReportView) => {
@@ -138,8 +124,7 @@ export function ReportsLayout() {
 
         const type = key as EntityType;
         setView(type);
-        const saved = savedIds[type];
-        navigate(saved.length ? `/report/${type}?ids=${saved.join(",")}` : `/report/${type}`);
+        navigate(`/report/${type}`);
     };
 
     return (
@@ -216,6 +201,7 @@ export function ReportsLayout() {
                     setHours,
                     refreshToken,
                     requestRefresh: () => setRefreshToken((t) => t + 1),
+                    selectedIds,
                 }}
             />
 
