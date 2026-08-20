@@ -2895,7 +2895,7 @@ export interface operations {
                         /** @constant */
                         status: "success";
                         /** @constant */
-                        message: "Agent revoked and all monitored servers archived successfully.";
+                        message: "Agent revoked and all monitored servers marked as agent uninstalled successfully.";
                     };
                 };
             };
@@ -3409,7 +3409,7 @@ export interface operations {
                         /** @constant */
                         status: "success";
                         /** @constant */
-                        message: "Agent revoked and all monitored servers archived successfully.";
+                        message: "Agent revoked and all monitored servers marked as agent uninstalled successfully.";
                     };
                 };
             };

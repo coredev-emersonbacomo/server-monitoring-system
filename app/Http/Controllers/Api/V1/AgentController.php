@@ -353,7 +353,7 @@ class AgentController extends Controller
             foreach ($servers as $server) {
                 $server->update([
                     'agent_deleted' => true,
-                    'status' => ServerStatus::Archived->value,
+                    'status' => ServerStatus::AgentUninstalled->value,
                     'agent_id' => null,
                 ]);
             }
@@ -384,7 +384,7 @@ class AgentController extends Controller
             ],
         ]);
 
-        return response()->json(['status' => 'success', 'message' => 'Agent revoked and all monitored servers archived successfully.']);
+        return response()->json(['status' => 'success', 'message' => 'Agent revoked and all monitored servers marked as agent uninstalled successfully.']);
     }
 
     public function uninstallLinux(): Response

@@ -488,7 +488,7 @@ test('an agent cannot heartbeat a server it does not own', function () {
         ])->assertStatus(403);
 });
 
-test('uninstall revokes the agent and archives the server — no resurrection', function () {
+test('uninstall revokes the agent and marks the server agent_uninstalled — no resurrection', function () {
     [$user, $client, $server, $keys, $installationId] = setupRegisteredAgent();
 
     // Obtain a valid session token.
@@ -515,7 +515,7 @@ test('uninstall revokes the agent and archives the server — no resurrection', 
 
     $server = $server->fresh();
     expect($server->agent_deleted)->toBeTrue()
-        ->and($server->status)->toBe(ServerStatus::Archived->value);
+        ->and($server->status)->toBe(ServerStatus::AgentUninstalled->value);
 
     // The revoked identity cannot challenge again.
     $this->postJson('/api/v1/agent/auth/challenge', [
@@ -532,7 +532,7 @@ test('uninstall revokes the agent and archives the server — no resurrection', 
 test('reinstall with the same installation UUID after uninstall reactivates in place', function () {
     [$user, $client, $server, $keys, $installationId] = setupRegisteredAgent();
 
-    // Uninstall → agent revoked, server archived.
+    // Uninstall → agent revoked, server marked agent_uninstalled.
     $challengeResponse = $this->postJson('/api/v1/agent/auth/challenge', [
         'installation_uuid' => $installationId,
     ]);

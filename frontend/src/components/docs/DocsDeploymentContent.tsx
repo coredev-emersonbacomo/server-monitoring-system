@@ -5,6 +5,7 @@ import {
     InlineCode,
     Callout,
 } from "./Section";
+import RedisDownloadLink from "./RedisDownloadLink";
 import { DocsGmailSmtpContent } from "./DocsGmailSmtpContent";
 
 export function DocsOverviewContent() {
@@ -236,7 +237,7 @@ npm run build`}</CodeBlock>
                 </p>
             </Section>
 
-            <Section title="(Optional) Rebuild the agent">
+             <Section title="(Optional) Rebuild the agent">
                 <p>
                     Pre-built agent binaries are committed to the repo (
                     <InlineCode>public/agent</InlineCode> and{" "}
@@ -250,6 +251,82 @@ npm run build`}</CodeBlock>
                     binaries change, and broadcasts an update to connected
                     agents.
                 </p>
+            </Section>
+
+            <Section title="Redis">
+                <p>
+                    Redis is used for application caching. It runs on{" "}
+                    <InlineCode>127.0.0.1:6379</InlineCode> by default and is
+                    read from <InlineCode>.env.development</InlineCode>{" "}
+                    (<InlineCode>REDIS_HOST</InlineCode>,{" "}
+                    <InlineCode>REDIS_PORT</InlineCode>). During development,
+                    <InlineCode>npm run dev</InlineCode> auto-starts Redis from{" "}
+                    <InlineCode>PATH</InlineCode>, falling back to{" "}
+                    <InlineCode>C:\redis\redis-server.exe</InlineCode> on Windows.
+                </p>
+                <SubSection title="Install via npm">
+                    <p>
+                        One command downloads and installs Redis for your
+                        platform:
+                    </p>
+                    <CodeBlock>{`npm run install-redis:windows   # Windows: extracts to C:\\redis
+npm run install-redis:linux     # Linux: package manager or source build`}</CodeBlock>
+                    <p>
+                        The Windows script downloads the non-Service ZIP
+                        release to <InlineCode>C:\redis\</InlineCode> and
+                        verifies <InlineCode>redis-server.exe</InlineCode>. The
+                        Linux script uses the system package manager (apt, dnf,
+                        yum, or pacman), falling back to a source build, then
+                        starts Redis as a daemon and verifies it responds to
+                        PING.
+                    </p>
+                    <Callout>
+                        The Windows build ships its MSYS2 runtime DLLs next to
+                        the executable — keep them in <InlineCode>C:\redis\</InlineCode>{" "}
+                        and do{" "}
+                        <strong>not</strong> move <InlineCode>redis-server.exe</InlineCode>
+                        without the DLLs.
+                    </Callout>
+                </SubSection>
+                <SubSection title="Manual: Windows">
+                    <ol className="list-decimal pl-5 space-y-1.5">
+                        <li>
+                            Click{" "}
+                            <RedisDownloadLink fallbackLabel="Download latest release" />{" "}
+                            to download the latest non-Service (MSYS2) ZIP.
+                            Skip the <InlineCode>-service</InlineCode> and{" "}
+                            <InlineCode>.msi</InlineCode> variants.
+                        </li>
+                        <li>
+                            Right-click the downloaded ZIP and choose{" "}
+                            <strong>Extract All…</strong>, then browse to{" "}
+                            <InlineCode>C:\redis\</InlineCode> and extract.
+                        </li>
+                        <li>
+                            Open <InlineCode>C:\redis\</InlineCode> in File
+                            Explorer and confirm{" "}
+                            <InlineCode>redis-server.exe</InlineCode> is there.
+                        </li>
+                    </ol>
+                </SubSection>
+                <SubSection title="Manual: Linux">
+                    <p>
+                        Install via your package manager or build from source,
+                        then start as a daemon:
+                    </p>
+                    <CodeBlock>{`# apt / Debian
+sudo apt-get install -y redis-server
+# dnf / Fedora
+sudo dnf install -y redis
+# pacman / Arch
+sudo pacman -Sy --noconfirm redis
+# build from source (latest stable)
+curl -fsSL https://download.redis.io/redis-stable.tar.gz | tar xz
+cd redis-stable && make && sudo make install`}</CodeBlock>
+                    <CodeBlock>{`# start (if not running as a service)
+redis-server --daemonize yes --bind 127.0.0.1 --port 6379
+redis-cli ping   # PONG`}</CodeBlock>
+                </SubSection>
             </Section>
         </>
     );

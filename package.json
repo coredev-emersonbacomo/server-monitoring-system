@@ -19,6 +19,8 @@
     "resetalerts": "php artisan tinker --execute=\"App\\NodeConfig\\Models\\NodeConfigState::query()->delete();\"",
     "compileagent:go": "powershell -ExecutionPolicy Bypass -File scripts/build-agent.ps1",
     "compileagent": "npm run compileagent:go",
+    "install-redis:windows": "powershell -ExecutionPolicy Bypass -File scripts/install-redis.ps1",
+    "install-redis:linux": "bash scripts/install-redis.sh",
     "loadtestfactory": "php artisan tinker --execute=\"require 'database/seeders/load-test-factory.php';\""
   },
   "workspaces": [

@@ -26,6 +26,7 @@ export function AgentInstallationGuide({
         [
             "pending_installation",
             "waiting_for_installation",
+            "agent_uninstalled",
         ].includes(status)
     )
         return (
@@ -34,6 +35,26 @@ export function AgentInstallationGuide({
                     <Terminal className="size-5 text-primary" />
                     <h2>Agent Installation Guide</h2>
                 </div>
+
+                {status === "agent_uninstalled" && (
+                    <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                            The agent was uninstalled from the machine. To
+                            resume monitoring this server, you must reinstall
+                            the lightweight monitoring agent on the machine.
+                        </p>
+                        <Button
+                            variant="default"
+                            label={
+                                generating
+                                    ? "Generating..."
+                                    : "Generate Installation Command"
+                            }
+                            onClick={generateProvisionToken}
+                            disabled={generating}
+                        />
+                    </div>
+                )}
 
                 {status === "pending_installation" && !provisionDetails && (
                     <div className="space-y-4">

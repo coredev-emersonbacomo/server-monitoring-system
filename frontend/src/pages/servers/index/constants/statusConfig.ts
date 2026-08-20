@@ -34,4 +34,9 @@ export const STATUS_META: Record<
     },
     archived: { icon: Trash2, color: "text-slate-400", bg: "bg-slate-500/10" },
     pending_deletion: { icon: Trash2, color: "text-orange-400", bg: "bg-orange-500/10" },
+    agent_uninstalled: {
+        icon: WifiOff,
+        color: "text-red-400",
+        bg: "bg-red-500/10",
+    },
 };

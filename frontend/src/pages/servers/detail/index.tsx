@@ -269,7 +269,12 @@ export default function ServerDetail() {
         setTimeout(() => setCopiedKey(null), 2000);
     };
 
-    useServerSocket(uuid!);
+    useServerSocket(uuid!, undefined, () => {
+        // Agent uninstalled on the host — refetch in place so the status flips
+        // to "Agent Uninstalled" and the installation guide reappears live.
+        queryClient.invalidateQueries({ queryKey: ["server", uuid] });
+        queryClient.invalidateQueries({ queryKey: ["servers"] });
+    });
 
     const [confirmText, setConfirmText] = useState("");
     const deleteServer = useDeleteServer();
