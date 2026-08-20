@@ -213,13 +213,13 @@
 // ── Trend chart x-axis tick labels ───────────────────────────────────────────
 #let trend-tick-format = (dt, period: none) => {
   if period == "hour" {
-    dt.display("[hour repr:12][period]")
+    dt.display("[month repr:short] [day]")
   } else if period == "minute" {
     dt.display("[hour repr:12]:[minute][period]")
   } else if period == "day" {
-    dt.display("[weekday repr:short] [day]")
+    dt.display("[weekday repr:short], [month repr:short] [day]")
   } else {
-    dt.display()
+    dt.display("[month repr:short] [day]")
   }
 }
 #let trend-x-components(x) = x.map(c => datetime(
@@ -227,16 +227,20 @@
   hour: c.at(3), minute: c.at(4), second: c.at(5),
 ))
 
-#let trend-point-label = (dt, all) => {
-  let span = (all.last() - all.first()).hours()
-  if span >= 30 {
-    if all.first().month() != all.last().month() {
-      dt.display("[month repr:short] [day]")
-    } else {
-      dt.display("[weekday repr:short] [day]")
-    }
+#let trend-point-label = (dt, all, is-daily: false) => {
+  if is-daily {
+    dt.display("[month repr:short] [day]")
   } else {
-    dt.display("[hour repr:12][period]")
+    let span = (all.last() - all.first()).hours()
+    if span >= 30 {
+      if all.first().month() != all.last().month() {
+        dt.display("[month repr:short] [day]")
+      } else {
+        dt.display("[weekday repr:short], [month repr:short] [day]")
+      }
+    } else {
+      dt.display("[hour repr:12][period]")
+    }
   }
 }
 
