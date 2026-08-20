@@ -49,6 +49,12 @@ export const STATUS_CONFIG = {
         color: "text-slate-400",
         bg: "bg-slate-500/10 border-slate-500/20",
     },
+    agent_uninstalled: {
+        label: "Agent Uninstalled",
+        icon: WifiOff,
+        color: "text-red-400",
+        bg: "bg-red-500/10 border-red-500/20",
+    },
     pending_deletion: {
         label: "Pending Deletion",
         icon: Trash2,
@@ -68,6 +74,7 @@ export function resolveServerStatusKey(
     agentDeleted?: boolean,
 ): ServerStatusKey {
     if (recordStatus === "archived" || status === "archived") return "archived";
+    if (status === "agent_uninstalled") return "agent_uninstalled";
     if (agentDeleted) return "pending_deletion";
     return (status as ServerStatusKey) in STATUS_CONFIG
         ? (status as ServerStatusKey)

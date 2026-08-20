@@ -46,6 +46,7 @@ const STATUS_COLORS = {
     pending_installation: "#94a3b8",
     waiting_for_installation: "#f59e0b",
     pending_deletion: "#fb923c",
+    agent_uninstalled: "#ef4444",
 };
 
 // ─── Custom tooltip — uses CSS variables for dark-mode awareness ───────────────
@@ -255,6 +256,12 @@ export default function Dashboard() {
                   value: stats.pending_deletion_count,
                   color: STATUS_COLORS.pending_deletion,
                   status: "pending_deletion",
+              },
+              {
+                  name: "Agent Uninstalled",
+                  value: stats.agent_uninstalled_count ?? 0,
+                  color: STATUS_COLORS.agent_uninstalled,
+                  status: "agent_uninstalled",
               },
           ].filter((d) => d.value > 0)
         : [];

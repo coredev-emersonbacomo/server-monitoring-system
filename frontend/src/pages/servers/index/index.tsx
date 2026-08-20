@@ -107,6 +107,7 @@ export default function ServersIndex() {
             pending_installation: activeServers.filter((s) => (s.status === "pending_installation" || !s.status) && !s.agent_deleted).length,
             waiting_for_installation: activeServers.filter((s) => s.status === "waiting_for_installation" && !s.agent_deleted).length,
             pending_deletion: activeServers.filter((s) => s.agent_deleted).length,
+            agent_uninstalled: activeServers.filter((s) => s.status === "agent_uninstalled").length,
             archived: servers.filter((s) => s.record_status === "archived" || s.status === "archived").length,
         };
     }, [servers]);
@@ -164,6 +165,12 @@ return (
                             value: "pending_deletion",
                             count: counts.pending_deletion ?? 0,
                             icon: <Trash2 className="size-3 text-orange-400" />,
+                        },
+                        {
+                            label: "Agent Uninstalled",
+                            value: "agent_uninstalled",
+                            count: counts.agent_uninstalled ?? 0,
+                            icon: <WifiOff className="size-3 text-red-400" />,
                         },
                         {
                             label: "Archived",

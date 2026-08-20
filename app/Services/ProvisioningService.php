@@ -67,7 +67,12 @@ class ProvisioningService
         });
 
         // Set server status to waiting_for_installation
-        $server->update(['status' => ServerStatus::WaitingForInstallation->value]);
+        $server->update([
+            'status' => ServerStatus::WaitingForInstallation->value,
+            // An uninstalled server is being provisioned again: clear the
+            // no-resurrection flag so the fresh agent can register and heartbeat.
+            'agent_deleted' => false,
+        ]);
 
         // Log activity
         Activity::create([

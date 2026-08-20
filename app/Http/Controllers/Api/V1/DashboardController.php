@@ -31,6 +31,7 @@ class DashboardController extends Controller
         $pendingInstallationCount = 0;
         $waitingForInstallationCount = 0;
         $pendingDeletionCount = 0;
+        $agentUninstalledCount = 0;
 
         $latestUpdates = collect();
 
@@ -44,6 +45,12 @@ class DashboardController extends Controller
 
             $agent = $server->agent;
             $agentDeleted = $agent && $agent->registered_at ? (bool) $server->agent_deleted : false;
+
+            if ($server->status === ServerStatus::AgentUninstalled->value) {
+                $agentUninstalledCount++;
+
+                continue;
+            }
 
             if ($agentDeleted) {
                 $pendingDeletionCount++;
@@ -110,6 +117,7 @@ class DashboardController extends Controller
             pending_installation_count: $pendingInstallationCount,
             waiting_for_installation_count: $waitingForInstallationCount,
             pending_deletion_count: $pendingDeletionCount,
+            agent_uninstalled_count: $agentUninstalledCount,
             top_usage_cpu: $buildRanking('cpu_usage'),
             top_usage_memory: $buildRanking('memory_usage'),
             top_usage_disk: $buildRanking('storage'),

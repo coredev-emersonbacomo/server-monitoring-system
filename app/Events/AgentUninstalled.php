@@ -36,7 +36,7 @@ class AgentUninstalled implements ShouldBroadcastNow
         return [
             'server_uuid' => $this->server_uuid,
             'agent_deleted' => true,
-            'status' => ServerStatus::Archived->value,
+            'status' => ServerStatus::AgentUninstalled->value,
         ];
     }
 }

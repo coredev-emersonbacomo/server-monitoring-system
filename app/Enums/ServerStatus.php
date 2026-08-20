@@ -10,6 +10,7 @@ enum ServerStatus: string
     case Online = 'online';
     case Offline = 'offline';
     case Archived = 'archived';
+    case AgentUninstalled = 'agent_uninstalled';
 
     public function label(): string
     {
@@ -20,6 +21,7 @@ enum ServerStatus: string
             self::Online => 'Online',
             self::Offline => 'Offline',
             self::Archived => 'Archived',
+            self::AgentUninstalled => 'Agent Uninstalled',
         };
     }
 

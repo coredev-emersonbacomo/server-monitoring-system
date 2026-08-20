@@ -99,6 +99,7 @@ export interface DashboardStatsData {
             pending_installation_count: number;
             waiting_for_installation_count: number;
             pending_deletion_count: number;
+            agent_uninstalled_count?: number;
             top_usage_cpu: {
                 server_uuid: string;
                 name: string;
