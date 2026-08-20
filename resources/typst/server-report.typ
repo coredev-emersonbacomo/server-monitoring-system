@@ -130,9 +130,10 @@
   v(0.5em)
   section-title("Metrics Trends (" + range-label(d.at("hours", default: 24)) + ")")
   let x-span = if trend_x.len() >= 2 { (trend_x.last() - trend_x.first()).hours() } else { 0 }
-  let trend-xaxis = if trend_x.len() > 0 and type(trend_x.first()) == datetime and (trend_x.len() <= 12 or x-span < 30) {
+    let is-daily = d.at("hours", default: 24) >= 168
+  let trend-xaxis = if trend_x.len() > 0 and type(trend_x.first()) == datetime and (trend_x.len() <= 12 or x-span < 30 or is-daily) {
     let step = if trend_x.len() <= 12 { 1 } else { calc.ceil(trend_x.len() / 8) }
-    (ticks: range(0, trend_x.len(), step: step).map(i => (trend_x.at(i), trend-point-label(trend_x.at(i), trend_x))))
+    (ticks: range(0, trend_x.len(), step: step).map(i => (trend_x.at(i), trend-point-label(trend_x.at(i), trend_x, is-daily: is-daily))))
   } else if trend_x.len() > 0 and type(trend_x.first()) == datetime {
     (tick-args: (density: 40%), format-ticks: lq.format-ticks-datetime.with(format: trend-tick-format))
   } else {
