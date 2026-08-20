@@ -11870,6 +11870,12 @@
                             "integer",
                             "null"
                         ]
+                    },
+                    "last_seen": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     }
                 },
                 "required": [
@@ -11898,6 +11904,12 @@
                     "memory": {
                         "type": [
                             "number",
+                            "null"
+                        ]
+                    },
+                    "last_seen": {
+                        "type": [
+                            "string",
                             "null"
                         ]
                     }

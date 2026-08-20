@@ -16,7 +16,14 @@ class Process extends Model
         'last_seen' => 'datetime',
         'cpu' => 'double',
         'memory' => 'double',
+        'pids' => 'array',
     ];
+
+    /** Number of grouped processes, derived from the pid list. */
+    public function getCountAttribute(): int
+    {
+        return count($this->pids ?? []);
+    }
 
     public function agent(): BelongsTo
     {

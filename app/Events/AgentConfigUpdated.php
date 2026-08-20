@@ -21,18 +21,26 @@ class AgentConfigUpdated implements ShouldBroadcastNow
 
     public string $binaryUrl;    // URL to download new binary (empty for config-only)
 
+    public ?array $portFilter;
+
+    public ?array $processFilter;
+
     public function __construct(
         string $serverUuid,
         int $heartbeatInterval,
         string $type = 'config_update',
         string $version = '',
-        string $binaryUrl = ''
+        string $binaryUrl = '',
+        ?array $portFilter = null,
+        ?array $processFilter = null
     ) {
         $this->serverUuid = $serverUuid;
         $this->heartbeatInterval = $heartbeatInterval;
         $this->type = $type;
         $this->version = $version;
         $this->binaryUrl = $binaryUrl;
+        $this->portFilter = $portFilter;
+        $this->processFilter = $processFilter;
     }
 
     public function broadcastOn(): array
@@ -50,10 +58,13 @@ class AgentConfigUpdated implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
+            'server_uuid' => $this->serverUuid,
             'type' => $this->type,
             'heartbeat_interval' => $this->heartbeatInterval,
             'version' => $this->version,
             'binary_url' => $this->binaryUrl,
+            'port_filter' => $this->portFilter,
+            'process_filter' => $this->processFilter,
         ];
     }
 }

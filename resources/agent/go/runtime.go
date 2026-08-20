@@ -2,6 +2,7 @@ package main
 
 import (
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -60,6 +61,23 @@ func (rt *AgentRuntime) Remove(serverUUID string) {
 	delete(rt.servers, serverUUID)
 }
 
+// SyncFromSession re-applies every server's filters from a (fresh) auth
+// session. Called when the WS control channel (re)connects so a filter change
+// that was broadcast while the socket was down is recovered — the auth
+// response is the source of truth for the current filters.
+func (rt *AgentRuntime) SyncFromSession(sess *AgentSession) {
+	if sess == nil {
+		return
+	}
+	if len(sess.Servers) > 0 {
+		for _, a := range sess.Servers {
+			rt.Upsert(a.ServerUUID, a.PortFilter, a.ProcessFilter)
+		}
+	} else if sess.ServerUUID != "" {
+		rt.Upsert(sess.ServerUUID, nil, nil)
+	}
+}
+
 // ServerUUIDs returns the sorted list of monitored server UUIDs.
 func (rt *AgentRuntime) ServerUUIDs() []string {
 	rt.mu.RLock()
@@ -72,14 +90,20 @@ func (rt *AgentRuntime) ServerUUIDs() []string {
 	return out
 }
 
+// config returns the runtime config for a server, or nil when the server is
+// not tracked (callers treat missing config as "no filter").
+func (rt *AgentRuntime) config(serverUUID string) *ServerRuntimeConfig {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	return rt.servers[serverUUID]
+}
+
 // IsPortAllowed reports whether a port should be sent for a server. A nil
 // filter allows everything (the collector's noise filter already ran); a
 // non-nil filter allows only listed ports.
 func (rt *AgentRuntime) IsPortAllowed(serverUUID string, port int) bool {
-	rt.mu.RLock()
-	defer rt.mu.RUnlock()
-	cfg, ok := rt.servers[serverUUID]
-	if !ok || cfg.PortFilter == nil {
+	cfg := rt.config(serverUUID)
+	if cfg == nil || cfg.PortFilter == nil {
 		return true
 	}
 	return cfg.PortFilter[port]
@@ -88,10 +112,8 @@ func (rt *AgentRuntime) IsPortAllowed(serverUUID string, port int) bool {
 // IsProcessAllowed reports whether a process should be sent for a server, by
 // name. A nil filter allows everything.
 func (rt *AgentRuntime) IsProcessAllowed(serverUUID, name string) bool {
-	rt.mu.RLock()
-	defer rt.mu.RUnlock()
-	cfg, ok := rt.servers[serverUUID]
-	if !ok || cfg.ProcessFilter == nil {
+	cfg := rt.config(serverUUID)
+	if cfg == nil || cfg.ProcessFilter == nil {
 		return true
 	}
 	return cfg.ProcessFilter[name]
@@ -99,20 +121,38 @@ func (rt *AgentRuntime) IsProcessAllowed(serverUUID, name string) bool {
 
 // HasServer reports whether the runtime still tracks a server.
 func (rt *AgentRuntime) HasServer(serverUUID string) bool {
+	return rt.config(serverUUID) != nil
+}
+
+// AllowedProcessNames returns the lowercased union of every server's explicit
+// process filter. The collector uses it to preserve explicitly filtered-in
+// processes even when they would otherwise be dropped by the built-in noise
+// filter (an explicitly monitored process must never be silently removed).
+func (rt *AgentRuntime) AllowedProcessNames() map[string]bool {
 	rt.mu.RLock()
 	defer rt.mu.RUnlock()
-	_, ok := rt.servers[serverUUID]
-	return ok
+	out := make(map[string]bool)
+	for _, cfg := range rt.servers {
+		for name := range cfg.ProcessFilter {
+			out[strings.ToLower(name)] = true
+		}
+	}
+	return out
 }
 
 // FilterPorts drops every port that is not filtered-in for a server. With a
 // nil filter the input is returned unchanged; with an empty filter the
 // result is empty. This is what guarantees the agent only ever sends the
-// checked ports.
+// checked ports. The result never aliases the input, because the same
+// collected slice is filtered per server.
 func (rt *AgentRuntime) FilterPorts(serverUUID string, ports []PortInfo) []PortInfo {
-	out := ports[:0]
+	cfg := rt.config(serverUUID)
+	if cfg == nil || cfg.PortFilter == nil {
+		return ports
+	}
+	out := make([]PortInfo, 0, len(ports))
 	for _, p := range ports {
-		if rt.IsPortAllowed(serverUUID, p.Port) {
+		if cfg.PortFilter[p.Port] {
 			out = append(out, p)
 		}
 	}
@@ -120,11 +160,18 @@ func (rt *AgentRuntime) FilterPorts(serverUUID string, ports []PortInfo) []PortI
 }
 
 // FilterProcesses drops every process whose name is not filtered-in for a
-// server, mirroring FilterPorts.
+// server, mirroring FilterPorts. Without a filter it reports every grouped
+// process (the collector already noise-filtered them and grouping bounds the
+// list to unique names); with a filter it keeps every matching process so
+// explicitly monitored ones are always reported even when idle.
 func (rt *AgentRuntime) FilterProcesses(serverUUID string, procs []ProcessInfo) []ProcessInfo {
-	out := procs[:0]
+	cfg := rt.config(serverUUID)
+	if cfg == nil || cfg.ProcessFilter == nil {
+		return procs
+	}
+	out := make([]ProcessInfo, 0, len(procs))
 	for _, p := range procs {
-		if rt.IsProcessAllowed(serverUUID, p.Name) {
+		if cfg.ProcessFilter[p.Name] {
 			out = append(out, p)
 		}
 	}

@@ -58,6 +58,12 @@ class ServerData extends Data
         /** @var ProcessesData[]|null */
         public ?array $processes = null,
 
+        /** @var ProcessesData[]|null Noise-filtered discovered set for the monitoring filter. */
+        public ?array $available_processes = null,
+
+        /** @var PortsData[]|null Noise-filtered discovered set for the monitoring filter. */
+        public ?array $available_ports = null,
+
         public ?string $uninstall_linux_command = null,
 
         public ?string $uninstall_windows_command = null,
@@ -120,6 +126,7 @@ class ServerData extends Data
                 process: $p->process_name,
                 ping_status: $p->ping_status,
                 ping_time: $p->ping_time,
+                last_seen: $p->last_seen?->toIso8601String(),
             ))->values()->all() : null;
 
         $processes = $agent ? $agent->processes()->orderByDesc('cpu')->get()->map(fn ($pr) => new ProcessesData(
@@ -127,7 +134,36 @@ class ServerData extends Data
             name: $pr->name,
             cpu: $pr->cpu,
             memory: $pr->memory,
+            last_seen: $pr->last_seen?->toIso8601String(),
+            pids: $pr->pids,
         ))->values()->all() : null;
+
+        // The available sets are the noise-filtered discovery snapshot the
+        // agent sends every heartbeat, used to build the monitoring filter
+        // options (what CAN be monitored, not only what is monitored now).
+        $availableProcesses = $agent && $agent->available_processes
+            ? array_map(fn ($p) => new ProcessesData(
+                pid: $p['pid'] ?? 0,
+                name: $p['name'] ?? 'unknown',
+                cpu: $p['cpu'] ?? 0.0,
+                memory: $p['memory'] ?? 0.0,
+                last_seen: null,
+                pids: $p['pids'] ?? null,
+            ), $agent->available_processes)
+            : null;
+
+        $availablePorts = $agent && $agent->available_ports
+            ? array_map(fn ($p) => new PortsData(
+                id: $p['port'] ?? 0,
+                port: $p['port'] ?? 0,
+                protocol: $p['protocol'] ?? 'tcp',
+                state: $p['state'] ?? 'listening',
+                process: $p['process'] ?? null,
+                ping_status: null,
+                ping_time: null,
+                last_seen: null,
+            ), $agent->available_ports)
+            : null;
 
         $activities = $server->activities()
             ->orderBy('created_at', 'desc')
@@ -268,6 +304,8 @@ class ServerData extends Data
             activeProvisionDetails: $activeDetails,
             ports: $ports,
             processes: $processes,
+            available_processes: $availableProcesses,
+            available_ports: $availablePorts,
             uninstall_linux_command: $uninstallLinux,
             uninstall_windows_command: $uninstallWindows,
             agent_deleted: $agent && $agent->registered_at ? (bool) $server->agent_deleted : false,

@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -123,6 +126,112 @@ func bootstrapDefaultConfig(dir, instance string) (*BootstrapConfig, string, err
 		return nil, "", fmt.Errorf("write config: %w", err)
 	}
 	return cfg, cfgPath, nil
+}
+
+// maxProcesses caps how many processes the collector reports when no explicit
+// process filter is set. Grouping by name happens after collection, so the
+// payload is bounded by unique names, not by this raw-process cap.
+const maxProcesses = 500
+
+// groupProcesses collapses processes with the same name into one row (Task
+// Manager style): CPU and memory are summed, PIDs collected (sorted), and the
+// lowest PID is kept as the row's representative pid. The returned list is
+// sorted by total CPU descending. The count is the length of the PID list.
+func groupProcesses(procs []ProcessInfo) []ProcessInfo {
+	if len(procs) == 0 {
+		return nil
+	}
+	type group struct {
+		name   string
+		cpu    float64
+		memory float64
+		pids   []int32
+	}
+	byName := make(map[string]*group, len(procs))
+	order := make([]string, 0, len(procs))
+	for _, p := range procs {
+		key := strings.ToLower(strings.TrimSpace(p.Name))
+		if key == "" {
+			continue
+		}
+		g, ok := byName[key]
+		if !ok {
+			g = &group{name: p.Name}
+			byName[key] = g
+			order = append(order, key)
+		}
+		g.cpu += p.Cpu
+		g.memory += p.Memory
+		g.pids = append(g.pids, p.Pid)
+	}
+	out := make([]ProcessInfo, 0, len(order))
+	for _, key := range order {
+		g := byName[key]
+		sort.Slice(g.pids, func(i, j int) bool { return g.pids[i] < g.pids[j] })
+		out = append(out, ProcessInfo{
+			Pid:    g.pids[0],
+			Name:   g.name,
+			Cpu:    math.Round(g.cpu*100) / 100,
+			Memory: math.Round(g.memory*100) / 100,
+			Pids:   g.pids,
+		})
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Cpu > out[j].Cpu })
+	return out
+}
+
+// processSetSignature returns the sorted, unique, lowercase set of process
+// names. Two snapshots with the same discoverable processes produce the same
+// signature, regardless of CPU/pid churn, so the agent can skip re-sending
+// available_processes until the discoverable set actually changes.
+func processSetSignature(procs []ProcessInfo) []string {
+	seen := make(map[string]struct{}, len(procs))
+	for _, p := range procs {
+		name := strings.ToLower(strings.TrimSpace(p.Name))
+		if name == "" {
+			continue
+		}
+		seen[name] = struct{}{}
+	}
+	out := make([]string, 0, len(seen))
+	for name := range seen {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// portSetSignature is the numeric analogue of processSetSignature for ports.
+func portSetSignature(ports []PortInfo) []int {
+	seen := make(map[int]struct{}, len(ports))
+	for _, p := range ports {
+		seen[p.Port] = struct{}{}
+	}
+	out := make([]int, 0, len(seen))
+	for port := range seen {
+		out = append(out, port)
+	}
+	sort.Ints(out)
+	return out
+}
+
+// capProcesses keeps every explicitly filtered-in process (the `allowed` set)
+// regardless of CPU, then fills the cap with the highest-CPU remainder. The
+// collector truncates by CPU alone, so an idle monitored process would
+// otherwise be dropped before the per-server DB filter ever sees it.
+func capProcesses(procs []ProcessInfo, allowed map[string]bool, cap int) []ProcessInfo {
+	sort.SliceStable(procs, func(i, j int) bool {
+		ai := allowed[strings.ToLower(strings.TrimSpace(procs[i].Name))]
+		aj := allowed[strings.ToLower(strings.TrimSpace(procs[j].Name))]
+		if ai != aj {
+			return ai
+		}
+		return procs[i].Cpu > procs[j].Cpu
+	})
+	if len(procs) > cap {
+		return procs[:cap]
+	}
+	return procs
 }
 
 func downloadFile(urlStr string, destPath string) error {

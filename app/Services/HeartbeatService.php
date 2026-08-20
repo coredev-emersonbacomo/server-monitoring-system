@@ -167,8 +167,18 @@ class HeartbeatService
             }
 
             // Update Current State: Processes
-            if (isset($payload['top_processes']) && is_array($payload['top_processes'])) {
-                $this->updateProcesses($agent, $payload['top_processes']);
+            if (isset($payload['processes']) && is_array($payload['processes'])) {
+                $this->updateProcesses($agent, $payload['processes']);
+            }
+
+            // The noise-filtered discovered sets feed the monitoring filter so
+            // unmonitored processes/ports can be checked on. They are the
+            // agent-wide view, independent of this server's filter.
+            if (isset($payload['available_processes']) || isset($payload['available_ports'])) {
+                $agent->update([
+                    'available_processes' => $payload['available_processes'] ?? null,
+                    'available_ports' => $payload['available_ports'] ?? null,
+                ]);
             }
 
             // Acknowledge Completed Commands
@@ -202,17 +212,7 @@ class HeartbeatService
                 'heartbeat_interval' => $globalInterval ?: ($currentConfig ? $currentConfig->heartbeat_interval : 5),
                 'current_time' => now()->timestamp,
                 'feature_flags' => [],
-                // Always include Reverb credentials so the agent can connect the WS control channel
-                // even if bootstrap.json on disk is missing these fields (e.g. due to permissions)
                 'server_uuid' => $server->uuid,
-                // Per-server monitoring filter. null = monitor everything the
-                // agent's built-in noise filter allows; a list = only those.
-                'port_filter' => $server->port_filter,
-                'process_filter' => $server->process_filter,
-                'reverb_host' => env('REVERB_HOST', '127.0.0.1'),
-                'reverb_port' => (int) env('REVERB_PORT', 8080),
-                'reverb_scheme' => env('REVERB_SCHEME', 'http'),
-                'reverb_app_key' => env('REVERB_APP_KEY'),
             ];
 
             $latestBinaryUpdate = AgentVersion::orderBy('id', 'desc')
@@ -455,39 +455,32 @@ class HeartbeatService
 
     private function updateProcesses(Agent $agent, array $processes): void
     {
-        // Keep rows as history (the SecOps filter needs every process seen),
-        // upserting by PID and refreshing last_seen.
+        // Grouped rows (Task Manager style): one per name with summed CPU/memory
+        // and the pid list. Upsert by name, refreshing last_seen. The pid column
+        // keeps the representative (lowest) pid for sorting/identity.
         foreach ($processes as $line) {
-            if (is_array($line)) {
-                $pid = $line['pid'] ?? 0;
-                if ($pid <= 0) {
-                    continue;
-                }
-                Process::updateOrCreate(
-                    ['agent_id' => $agent->id, 'pid' => $pid],
-                    [
-                        'name' => $line['name'] ?? 'unknown',
-                        'cpu' => $line['cpu'] ?? 0.0,
-                        'memory' => $line['memory'] ?? 0.0,
-                        'command_line' => $line['command_line'] ?? null,
-                        'last_seen' => now(),
-                    ]
-                );
-            } else {
-                // Parse line: PID COMM %CPU %MEM
-                $parts = preg_split('/\s+/', trim($line));
-                if (count($parts) >= 4 && is_numeric($parts[0])) {
-                    Process::updateOrCreate(
-                        ['agent_id' => $agent->id, 'pid' => (int) $parts[0]],
-                        [
-                            'name' => $parts[1],
-                            'cpu' => (float) $parts[2],
-                            'memory' => (float) $parts[3],
-                            'last_seen' => now(),
-                        ]
-                    );
-                }
+            if (! is_array($line)) {
+                continue;
             }
+            $name = trim((string) ($line['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $pids = array_values(array_filter(array_map('intval', $line['pids'] ?? [$line['pid'] ?? 0])));
+            if ($pids === []) {
+                continue;
+            }
+            Process::updateOrCreate(
+                ['agent_id' => $agent->id, 'name' => $name],
+                [
+                    'pid' => min($pids),
+                    'pids' => $pids,
+                    'cpu' => $line['cpu'] ?? 0.0,
+                    'memory' => $line['memory'] ?? 0.0,
+                    'command_line' => $line['command_line'] ?? null,
+                    'last_seen' => now(),
+                ]
+            );
         }
     }
 

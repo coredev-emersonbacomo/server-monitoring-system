@@ -237,8 +237,14 @@ test('end-to-end agent provisioning, key registration, challenge-response auth, 
         ])
         ->assertJson([
             'server_uuid' => $server->uuid,
-            'port_filter' => null,
-            'process_filter' => null,
+        ])
+        // The heartbeat no longer carries the per-server config (filters,
+        // reverb creds) — those arrive on auth/startup and on change via the
+        // WS control channel (config.update).
+        ->assertJsonMissing([
+            'port_filter',
+            'process_filter',
+            'reverb_app_key',
         ]);
 
     expect($server->fresh()->status)->toBe(ServerStatus::Online->value);

@@ -180,6 +180,7 @@ export interface PortsData {
             process?: string | null;
             ping_status?: string | null;
             ping_time?: number | null;
+            last_seen?: string | null;
         }
 
 /** ProcessesData */
@@ -188,6 +189,8 @@ export interface ProcessesData {
             name: string;
             cpu?: number | null;
             memory?: number | null;
+            last_seen?: string | null;
+            pids?: number[] | null;
         }
 
 /** ProvisionDetailData */
@@ -244,6 +247,8 @@ export interface ServerData {
             activeProvisionDetails?: ProvisionDetailData | null;
             ports?: PortsData[] | null;
             processes?: ProcessesData[] | null;
+            available_processes?: ProcessesData[] | null;
+            available_ports?: PortsData[] | null;
             uninstall_linux_command?: string | null;
             uninstall_windows_command?: string | null;
             agent_deleted?: boolean;

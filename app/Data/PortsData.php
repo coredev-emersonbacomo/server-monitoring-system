@@ -14,5 +14,6 @@ class PortsData extends Data
         public ?string $process,
         public ?string $ping_status,
         public ?int $ping_time,
+        public ?string $last_seen = null,
     ) {}
 }

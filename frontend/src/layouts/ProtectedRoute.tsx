@@ -74,7 +74,7 @@ export function ProtectedRoute() {
                 {isFullScreen ? (
                     <main
                         style={{ marginLeft: sidebarMargin }}
-                        className="flex-1 flex flex-col min-h-0 relative transition-[margin] duration-300 ease-in-out"
+                        className="flex-1 flex flex-col h-full min-h-0 relative overflow-y-auto transition-[margin] duration-300 ease-in-out [scrollbar-gutter:stable]"
                     >
                         <Outlet />
                         <div
@@ -86,7 +86,7 @@ export function ProtectedRoute() {
                 ) : (
                     <main
                         style={{ marginLeft: sidebarMargin }}
-                        className="flex-1 flex flex-col px-8 py-8 sm:px-10 lg:px-12 gap-5 min-h-screen relative transition-[margin] duration-300 ease-in-out"
+                        className="flex-1 flex flex-col px-8 py-8 sm:px-10 lg:px-12 gap-5 h-screen min-h-0 relative overflow-y-auto transition-[margin] duration-300 ease-in-out [scrollbar-gutter:stable]"
                     >
                         <div className="flex-1 flex flex-col">
                             <Outlet />
