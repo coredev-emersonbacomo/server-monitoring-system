@@ -7,6 +7,7 @@ use App\Data\ServerData;
 use App\Data\ServerDataRequest;
 use App\Data\StatPointData;
 use App\Data\UpdateServerData;
+use App\Events\AgentConfigUpdated;
 use App\Events\ServerStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\ActionItem;
@@ -14,6 +15,7 @@ use App\Models\Client;
 use App\Models\CustomActivityLog;
 use App\Models\Server;
 use App\Models\ServerUpdate;
+use App\Models\Setting;
 use App\NodeConfig\Engine\NodeTaskScheduler;
 use App\NodeConfig\Models\NodeConfigState;
 use App\NodeConfig\Services\NodeConfigService;
@@ -434,6 +436,23 @@ class ServerController extends Controller
         }
 
         $serverModel->update($update);
+
+        // Push the new filter to the agent over the WS control channel. The
+        // heartbeat response no longer carries the per-server config (it only
+        // returns on auth/startup and on change), so the socket is the delivery
+        // mechanism for filter updates.
+        if ($agent = $serverModel->agent) {
+            $currentConfig = $agent->currentConfiguration;
+            event(new AgentConfigUpdated(
+                $serverUuid,
+                $currentConfig?->heartbeat_interval ?? (int) Setting::get('heartbeat_interval', 5),
+                'config_update',
+                '',
+                '',
+                $serverModel->port_filter,
+                $serverModel->process_filter,
+            ));
+        }
 
         return ServerData::fromModel($serverModel);
     }

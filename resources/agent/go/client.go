@@ -27,11 +27,11 @@ func (e *httpStatusError) Error() string {
 }
 
 type AgentClient struct {
-	http            *http.Client
-	baseURL         string
-	keystore        KeyStore
-	key             KeyHandle
-	pubHash         string
+	http             *http.Client
+	baseURL          string
+	keystore         KeyStore
+	key              KeyHandle
+	pubHash          string
 	installationUUID string
 
 	mu   sync.Mutex
@@ -97,6 +97,17 @@ func (c *AgentClient) invalidate() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.sess = nil
+}
+
+// refreshSession discards the cached session and re-authenticates, so the
+// returned session carries the freshest server filters. Used on WS control
+// channel (re)connect: an event broadcast while the socket was down is
+// recovered from the auth response, which is the source of truth for filters.
+func (c *AgentClient) refreshSession() (*AgentSession, error) {
+	c.mu.Lock()
+	c.sess = nil
+	c.mu.Unlock()
+	return c.ensureSession()
 }
 
 // authenticate performs the challenge-response handshake:
@@ -316,9 +327,6 @@ func (c *AgentClient) sendWithRetry(url string, payload interface{}, extraHeader
 		}
 
 		log.Printf("[attempt %d] HTTP %d from %s", attempt, status, url)
-		if msg, ok := tryGetMessage(respBody); ok {
-			log.Printf("  Response: %s", msg)
-		}
 
 		if maxAttempts > 0 && attempt >= maxAttempts {
 			return nil, &httpStatusError{Status: status, Body: respBody}
@@ -417,8 +425,6 @@ func (c *AgentClient) sendHeartbeat(payload *HeartbeatRequest) (*HeartbeatRespon
 		if uuid, ok := result["server_uuid"].(string); ok {
 			resp.ServerUUID = uuid
 		}
-		resp.PortFilter = parseIntList(result["port_filter"])
-		resp.ProcessFilter = parseStringList(result["process_filter"])
 		return resp, nil
 	}
 
@@ -490,13 +496,4 @@ func (c *AgentClient) revokeInstallation() error {
 		return err
 	}
 	return nil
-}
-
-func tryGetMessage(body []byte) (string, bool) {
-	var m map[string]interface{}
-	if json.Unmarshal(body, &m) != nil {
-		return "", false
-	}
-	msg, ok := m["message"].(string)
-	return msg, ok
 }

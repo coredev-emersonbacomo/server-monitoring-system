@@ -55,37 +55,37 @@ type ChallengeResponse struct {
 // AuthResponse is the short-lived session credential payload issued after a
 // successful challenge-response verification.
 type AuthResponse struct {
-	AccessToken         string             `json:"access_token"`
-	ExpiresIn           int                `json:"expires_in"`
-	WebsocketExpiresIn  int                `json:"websocket_expires_in"`
-	ServerUUID          string             `json:"server_uuid"` // legacy: first/primary server
-	Servers             []ServerAssignment `json:"servers"`
-	Config              AuthConfig         `json:"config"`
+	AccessToken        string             `json:"access_token"`
+	ExpiresIn          int                `json:"expires_in"`
+	WebsocketExpiresIn int                `json:"websocket_expires_in"`
+	ServerUUID         string             `json:"server_uuid"` // legacy: first/primary server
+	Servers            []ServerAssignment `json:"servers"`
+	Config             AuthConfig         `json:"config"`
 }
 
 // ServerAssignment is one server an installation monitors, with the SecOps
 // filter the agent mirrors in memory. nil filter = monitor everything
 // that passes the built-in noise filter; a list = only those ports/processes.
 type ServerAssignment struct {
-	ServerUUID      string   `json:"server_uuid"`
-	PortFilter      []int    `json:"port_filter"`
-	ProcessFilter   []string `json:"process_filter"`
+	ServerUUID    string   `json:"server_uuid"`
+	PortFilter    []int    `json:"port_filter"`
+	ProcessFilter []string `json:"process_filter"`
 }
 
 type AuthConfig struct {
-	HeartbeatInterval int              `json:"heartbeat_interval"`
-	Realtime          RealtimeConfig   `json:"realtime"`
+	HeartbeatInterval int            `json:"heartbeat_interval"`
+	Realtime          RealtimeConfig `json:"realtime"`
 }
 
 type RealtimeConfig struct {
-	Host    string `json:"host"`
-	Port    int    `json:"port"`
-	Scheme  string `json:"scheme"`
-	AppKey  string `json:"app_key"`
+	Host   string `json:"host"`
+	Port   int    `json:"port"`
+	Scheme string `json:"scheme"`
+	AppKey string `json:"app_key"`
 }
 
 type HeartbeatRequest struct {
-	ServerUUID          string             `json:"server_uuid"`
+	ServerUUID           string             `json:"server_uuid"`
 	AgentVersion         string             `json:"agent_version"`
 	ConfigurationVersion int                `json:"configuration_version"`
 	Timestamp            int64              `json:"timestamp"`
@@ -95,8 +95,10 @@ type HeartbeatRequest struct {
 	Disk                 *DiskMetrics       `json:"disk"`
 	Uptime               float64            `json:"uptime"`
 	Network              []NetworkMetrics   `json:"network"`
-	TopProcesses         []ProcessInfo      `json:"top_processes"`
+	Processes            []ProcessInfo      `json:"processes"`
 	OpenDbPorts          []PortInfo         `json:"open_db_ports"`
+	AvailableProcesses   []ProcessInfo      `json:"available_processes,omitempty"`
+	AvailablePorts       []PortInfo         `json:"available_ports,omitempty"`
 	CompletedCommands    []CommandResult    `json:"completed_commands,omitempty"`
 	AgentConfig          *AgentConfigReport `json:"agent_config,omitempty"`
 }
@@ -139,6 +141,7 @@ type ProcessInfo struct {
 	Name   string  `json:"name"`
 	Cpu    float64 `json:"cpu"`
 	Memory float64 `json:"memory"`
+	Pids   []int32 `json:"pids,omitempty"`
 }
 
 type PortInfo struct {
@@ -155,9 +158,7 @@ type HeartbeatResponse struct {
 	PendingCommands   []AgentCommand         `json:"pending_commands,omitempty"`
 	Configuration     map[string]interface{} `json:"configuration,omitempty"`
 	PendingUpdate     *AgentUpdateInfo       `json:"pending_update,omitempty"`
-	ServerUUID       string                 `json:"server_uuid"`
-	PortFilter       []int                  `json:"port_filter"`
-	ProcessFilter    []string               `json:"process_filter"`
+	ServerUUID        string                 `json:"server_uuid"`
 }
 
 type AgentUpdateInfo struct {
