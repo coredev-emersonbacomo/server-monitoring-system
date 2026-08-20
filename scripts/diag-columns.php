@@ -1,0 +1,13 @@
+<?php
+
+require __DIR__.'/../vendor/autoload.php';
+$app = require __DIR__.'/../bootstrap/app.php';
+$app->make(Kernel::class)->bootstrap();
+
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\Schema;
+
+$cols = Schema::getColumns('servers');
+foreach ($cols as $c) {
+    echo $c['name'].' ('.$c['type'].')'.($c['nullable'] ? ' null' : ' NOT NULL').($c['default'] !== null ? ' default='.$c['default'] : '')."\n";
+}

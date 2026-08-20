@@ -28,12 +28,17 @@ type pusherMsg struct {
 	Data    string `json:"data,omitempty"` // Pusher protocol: data is always a JSON-encoded STRING
 }
 
-// configUpdatePayload is the payload delivered on config.update events.
+// configUpdatePayload is the payload delivered on config.update events. The
+// filter pointers distinguish "absent" (nil → leave current filters) from
+// "explicitly empty" (non-nil empty slice → filter to nothing).
 type configUpdatePayload struct {
-	Type              string `json:"type"`
-	HeartbeatInterval int    `json:"heartbeat_interval"`
-	Version           string `json:"version"`
-	BinaryURL         string `json:"binary_url"`
+	Type              string    `json:"type"`
+	ServerUUID        string    `json:"server_uuid"`
+	HeartbeatInterval int       `json:"heartbeat_interval"`
+	Version           string    `json:"version"`
+	BinaryURL         string    `json:"binary_url"`
+	PortFilter        *[]int    `json:"port_filter"`
+	ProcessFilter     *[]string `json:"process_filter"`
 }
 
 // connectControlChannel maintains a persistent WebSocket connection to Reverb.
@@ -83,11 +88,16 @@ func connectControlChannel(client *AgentClient, runtime *AgentRuntime, heartbeat
 //  2. Call HTTP auth endpoint with real socket_id -> get signed auth token
 //  3. Send pusher:subscribe with auth token — once per monitored server channel
 //  4. Listen for events; send pusher:ping every 30s
+//
+// A fresh session is forced on every (re)connect and its filters are synced
+// into the runtime, so any config change broadcast while the socket was down
+// is recovered from the auth response (the source of truth).
 func runWsSession(client *AgentClient, runtime *AgentRuntime, heartbeatInterval *int, stop <-chan struct{}) error {
-	sess, err := client.ensureSession()
+	sess, err := client.refreshSession()
 	if err != nil {
 		return fmt.Errorf("session: %w", err)
 	}
+	runtime.SyncFromSession(sess)
 	if sess.ReverbHost == "" || sess.ReverbAppKey == "" {
 		return fmt.Errorf("reverb config not available")
 	}
@@ -102,10 +112,12 @@ func runWsSession(client *AgentClient, runtime *AgentRuntime, heartbeatInterval 
 		scheme = "wss"
 	}
 
+	// Do not log the full WS URL: it embeds the Reverb app key, which is a
+	// credential the client machine must never be able to read from agent.log.
 	wsURL := fmt.Sprintf("%s://%s:%d/app/%s?protocol=7&client=go-agent&version=1.0",
 		scheme, sess.ReverbHost, sess.ReverbPort, sess.ReverbAppKey)
 
-	log.Printf("[WS] Connecting to %s", wsURL)
+	log.Printf("[WS] Connecting to %s://%s:%d", scheme, sess.ReverbHost, sess.ReverbPort)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -130,7 +142,6 @@ func runWsSession(client *AgentClient, runtime *AgentRuntime, heartbeatInterval 
 	if err != nil {
 		return fmt.Errorf("connection_established: %w", err)
 	}
-	log.Printf("[WS] Got socket_id: %s", socketID)
 
 	// --- Steps 2 & 3: Authenticate and subscribe one channel per server ---
 	for _, uuid := range serverUUIDs {
@@ -188,7 +199,7 @@ func runWsSession(client *AgentClient, runtime *AgentRuntime, heartbeatInterval 
 			}
 
 		case msg := <-msgCh:
-			handlePusherEvent(client, msg, heartbeatInterval)
+			handlePusherEvent(client, runtime, msg, heartbeatInterval)
 		}
 	}
 }
@@ -242,7 +253,7 @@ func subscribeToPusherChannel(ctx context.Context, conn *websocket.Conn, channel
 }
 
 // handlePusherEvent dispatches a parsed Pusher message.
-func handlePusherEvent(client *AgentClient, msg pusherMsg, heartbeatInterval *int) {
+func handlePusherEvent(client *AgentClient, runtime *AgentRuntime, msg pusherMsg, heartbeatInterval *int) {
 	switch msg.Event {
 	case pusherSubscribed:
 		log.Printf("[WS] Subscribed to channel: %s", msg.Channel)
@@ -251,7 +262,7 @@ func handlePusherEvent(client *AgentClient, msg pusherMsg, heartbeatInterval *in
 		// Server pong — no action needed
 
 	case pusherError:
-		log.Printf("[WS] Pusher error: %s", msg.Data)
+		log.Println("[WS] Pusher error received")
 
 	case "config.update":
 		var payload configUpdatePayload
@@ -263,7 +274,7 @@ func handlePusherEvent(client *AgentClient, msg pusherMsg, heartbeatInterval *in
 		case "binary_update":
 			handleBinaryUpdate(client, payload, heartbeatInterval)
 		default:
-			handleConfigUpdate(client, payload, heartbeatInterval)
+			handleConfigUpdate(runtime, payload, heartbeatInterval)
 		}
 
 	default:
@@ -273,12 +284,24 @@ func handlePusherEvent(client *AgentClient, msg pusherMsg, heartbeatInterval *in
 
 // handleConfigUpdate applies a config.update pushed from the server. The
 // effective heartbeat interval is persisted via the next heartbeat's
-// agent_config payload.
-func handleConfigUpdate(client *AgentClient, payload configUpdatePayload, heartbeatInterval *int) {
-	log.Printf("[WS] Config update received: heartbeat_interval=%d", payload.HeartbeatInterval)
-
+// agent_config payload. Filters are applied per server (from the payload's
+// server_uuid); when the payload carries no filters the current ones are kept.
+func handleConfigUpdate(runtime *AgentRuntime, payload configUpdatePayload, heartbeatInterval *int) {
 	if payload.HeartbeatInterval > 0 {
 		*heartbeatInterval = payload.HeartbeatInterval
+	}
+
+	if payload.ServerUUID != "" && (payload.PortFilter != nil || payload.ProcessFilter != nil) {
+		var ports []int
+		if payload.PortFilter != nil {
+			ports = *payload.PortFilter
+		}
+		var processes []string
+		if payload.ProcessFilter != nil {
+			processes = *payload.ProcessFilter
+		}
+		runtime.Upsert(payload.ServerUUID, ports, processes)
+		log.Printf("[WS] Filter updated for server %s", payload.ServerUUID)
 	}
 }
 
@@ -321,7 +344,9 @@ func requestChannelAuth(client *AgentClient, channelName, socketID string) (stri
 	}
 
 	if status != 200 {
-		return "", fmt.Errorf("channel auth HTTP %d: %s", status, string(respBody))
+		// Status only — the response body may echo server-side data that the
+		// client machine must not read from agent.log.
+		return "", fmt.Errorf("channel auth HTTP %d", status)
 	}
 
 	var authResp struct {

@@ -19,6 +19,8 @@ class Agent extends Model
         'registered_at' => 'datetime',
         'last_seen_at' => 'datetime',
         'revoked_at' => 'datetime',
+        'available_processes' => 'array',
+        'available_ports' => 'array',
     ];
 
     public function scopeActive($query)

@@ -33,6 +33,8 @@ const LABELS: Record<TemplateVariableKey, { label: string; group: TemplateVariab
     'server.activeProvisionDetails' : { label: 'ActiveProvisionDetails', group: 'server', description: 'ActiveProvisionDetails (ServerData)' },
     'server.ports'                  : { label: 'Ports', group: 'server', description: 'Ports (ServerData)' },
     'server.processes'              : { label: 'Processes', group: 'server', description: 'Processes (ServerData)' },
+    'server.available_processes'    : { label: 'Available Processes', group: 'server', description: 'Available Processes (ServerData)' },
+    'server.available_ports'        : { label: 'Available Ports', group: 'server', description: 'Available Ports (ServerData)' },
     'server.uninstall_linux_command': { label: 'Uninstall Linux Command', group: 'server', description: 'Uninstall Linux Command (ServerData)' },
     'server.uninstall_windows_command': { label: 'Uninstall Windows Command', group: 'server', description: 'Uninstall Windows Command (ServerData)' },
     'server.agent_deleted'          : { label: 'Agent Deleted', group: 'server', description: 'Agent Deleted (ServerData)' },

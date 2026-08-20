@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const dbProcessNames = "mysqld|mariadbd|mariadb|postgres|postmaster|mongod|redis-server|memcached|cassandra|rabbitmq-server|beam\\.smp|influxd|clickhouse-server|elasticsearch"
@@ -211,36 +212,129 @@ func getNetworkStats() []NetworkMetrics {
 	return result
 }
 
-func getTopProcesses() []ProcessInfo {
-	out, err := exec.Command("ps", "-eo", "pid,comm,%cpu,%mem", "--sort=-%cpu").Output()
+// processNoiseNames are built-in kernel/OS/infra processes that are never
+// worth reporting (the "noise filter"). Matched case-insensitively against
+// the process comm. A process explicitly selected in a server's DB
+// process_filter is still reported (the collector receives the allowed set).
+var processNoiseNames = map[string]bool{
+	"systemd": true, "kthreadd": true, "kworker": true, "ksoftirqd": true,
+	"kdevtmpfs": true, "rcu": true, "migration": true, "watchdog": true,
+	"irq": true, "kauditd": true, "khugepaged": true, "ksmd": true,
+	"oom_reaper": true, "khungtaskd": true, "kcompactd": true, "kblockd": true,
+	"md": true, "jbd2": true, "flush": true, "loop": true, "systemd-journald": true,
+	"systemd-udevd": true, "systemd-resolved": true, "systemd-timesyncd": true,
+	"systemd-logind": true, "systemd-networkd": true, "systemd-userdbd": true,
+	"dbus-daemon": true, "avahi-daemon": true, "acpid": true, "cron": true,
+	"atd": true, "rsyslogd": true, "polkitd": true, "unattended-upgr": true,
+	"haveged": true, "irqbalance": true, "auditd": true, "modprobe": true,
+	"udevd": true, "udevadm": true, "multipathd": true, "rpcbind": true,
+	"iscsid": true, "containerd": true, "dockerd": true, "sshd": true,
+}
+
+// procProcessSample is the per-PID CPU state read from /proc on one pass.
+type procProcessSample struct {
+	comm  string
+	ticks float64
+}
+
+// readProcProcessSamples returns per-PID CPU ticks (utime+stime from /proc/
+// <pid>/stat) and the machine-wide total ticks from /proc/stat, both sampled
+// at the same instant. The ratio of the two deltas is the process' share of
+// total machine CPU — no clock-ticks-per-second constant needed.
+func readProcProcessSamples() (map[int]procProcessSample, float64) {
+	samples := make(map[int]procProcessSample)
+	entries, err := os.ReadDir("/proc")
 	if err != nil {
+		return nil, 0
+	}
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		pid, err := strconv.Atoi(e.Name())
+		if err != nil {
+			continue
+		}
+		data, err := os.ReadFile("/proc/" + e.Name() + "/stat")
+		if err != nil {
+			continue
+		}
+		content := string(data)
+		closeParen := strings.LastIndexByte(content, ')')
+		if closeParen < 0 {
+			continue
+		}
+		comm := strings.TrimSpace(content[strings.IndexByte(content, '(')+1 : closeParen])
+		rest := strings.Fields(content[closeParen+1:])
+		if len(rest) < 13 {
+			continue
+		}
+		utime, _ := strconv.ParseFloat(rest[11], 64)
+		stime, _ := strconv.ParseFloat(rest[12], 64)
+		samples[pid] = procProcessSample{comm: comm, ticks: utime + stime}
+	}
+
+	totalTicks := 0.0
+	if stat, err := os.ReadFile("/proc/stat"); err == nil {
+		if fields := strings.Fields(strings.SplitN(string(stat), "\n", 2)[0]); len(fields) > 1 {
+			for _, f := range fields[1:] {
+				v, _ := strconv.ParseFloat(f, 64)
+				totalTicks += v
+			}
+		}
+	}
+	return samples, totalTicks
+}
+
+// getProcesses reports processes sorted by real short-window CPU% (share
+// of total machine CPU), noise-filtered and capped at 50. `ps %cpu` is a
+// lifetime average and formatted /proc counters are erratic, so we sample the
+// raw utime/stime counters over a controlled interval instead.
+func getProcesses(allowed map[string]bool) []ProcessInfo {
+	s0, total0 := readProcProcessSamples()
+	if len(s0) == 0 || total0 <= 0 {
+		return nil
+	}
+	time.Sleep(800 * time.Millisecond)
+	s1, total1 := readProcProcessSamples()
+
+	totalDelta := total1 - total0
+	if totalDelta <= 0 {
 		return nil
 	}
 
+	pageSize := float64(os.Getpagesize())
 	var result []ProcessInfo
-	lines := strings.Split(string(out), "\n")
-	for i, line := range lines {
-		if i == 0 || strings.TrimSpace(line) == "" {
+	for pid, cur := range s1 {
+		prev, ok := s0[pid]
+		if !ok {
 			continue
 		}
-		fields := strings.Fields(line)
-		if len(fields) < 4 {
+		name := strings.ToLower(cur.comm)
+		if processNoiseNames[name] && !allowed[name] {
 			continue
 		}
-		pid, _ := strconv.ParseInt(fields[0], 10, 32)
-		cpu, _ := strconv.ParseFloat(fields[2], 64)
-		mem, _ := strconv.ParseFloat(fields[3], 64)
+		delta := cur.ticks - prev.ticks
+		if delta < 0 {
+			continue
+		}
+		mem := 0.0
+		if statm, err := os.ReadFile(fmt.Sprintf("/proc/%d/statm", pid)); err == nil {
+			if sf := strings.Fields(string(statm)); len(sf) > 1 {
+				if pages, err := strconv.ParseFloat(sf[1], 64); err == nil {
+					mem = math.Round(pages*pageSize/1024/1024*100) / 100
+				}
+			}
+		}
 		result = append(result, ProcessInfo{
 			Pid:    int32(pid),
-			Name:   fields[1],
-			Cpu:    cpu,
+			Name:   cur.comm,
+			Cpu:    math.Round(delta/totalDelta*10000) / 100,
 			Memory: mem,
 		})
-		if len(result) >= 5 {
-			break
-		}
 	}
-	return result
+
+	return capProcesses(result, allowed, maxProcesses)
 }
 
 func getOpenDatabasePorts() []PortInfo {
@@ -342,5 +436,7 @@ func (m *metricsCollector) GetMemoryUsage() *MemoryMetrics    { return getMemory
 func (m *metricsCollector) GetDiskUsage() *DiskMetrics        { return getDiskUsage() }
 func (m *metricsCollector) GetUptime() float64                { return getUptime() }
 func (m *metricsCollector) GetNetworkStats() []NetworkMetrics { return getNetworkStats() }
-func (m *metricsCollector) GetTopProcesses() []ProcessInfo    { return getTopProcesses() }
-func (m *metricsCollector) GetOpenDatabasePorts() []PortInfo  { return getOpenDatabasePorts() }
+func (m *metricsCollector) GetProcesses(allowed map[string]bool) []ProcessInfo {
+	return getProcesses(allowed)
+}
+func (m *metricsCollector) GetOpenDatabasePorts() []PortInfo { return getOpenDatabasePorts() }

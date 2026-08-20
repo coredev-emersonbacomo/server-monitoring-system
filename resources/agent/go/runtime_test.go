@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // Runtime filter semantics: nil = allow everything (noise filter already
 // ran); empty = filter to nothing; a list = only those items. Per-server
@@ -65,6 +68,42 @@ func TestAgentRuntimeRemove(t *testing.T) {
 	}
 }
 
+func TestAgentRuntimeSyncFromSession(t *testing.T) {
+	rt := NewAgentRuntime(&AgentSession{
+		Servers: []ServerAssignment{
+			{ServerUUID: "svr-a", PortFilter: []int{3306}},
+		},
+	})
+
+	// A fresh session (WS reconnect) carries the latest filters and must
+	// replace the in-memory ones — this is how a config change broadcast while
+	// the socket was down is recovered.
+	rt.SyncFromSession(&AgentSession{
+		Servers: []ServerAssignment{
+			{ServerUUID: "svr-a", PortFilter: []int{5432}, ProcessFilter: []string{"postgres"}},
+		},
+	})
+
+	if rt.IsPortAllowed("svr-a", 3306) {
+		t.Fatal("stale filter 3306 must be replaced by 5432")
+	}
+	if !rt.IsPortAllowed("svr-a", 5432) {
+		t.Fatal("fresh filter 5432 must be applied")
+	}
+	if !rt.IsProcessAllowed("svr-a", "postgres") {
+		t.Fatal("fresh process filter must be applied")
+	}
+	if rt.IsProcessAllowed("svr-a", "nginx") {
+		t.Fatal("fresh process filter must block unlisted processes")
+	}
+
+	// SyncFromSession must be safe against a nil session.
+	rt.SyncFromSession(nil)
+	if !rt.IsPortAllowed("svr-a", 5432) {
+		t.Fatal("nil session must not disturb existing filters")
+	}
+}
+
 func TestAgentRuntimeHeartbeatFiltering(t *testing.T) {
 	rt := NewAgentRuntime(&AgentSession{
 		Servers: []ServerAssignment{
@@ -100,5 +139,110 @@ func TestAgentRuntimeHeartbeatFiltering(t *testing.T) {
 	}
 	if got := rt.FilterProcesses("svr-a", procs); len(got) != 0 {
 		t.Fatalf("empty filter must filter to nothing, got %+v", got)
+	}
+}
+
+func TestCapProcessesKeepsFilteredInBelowCap(t *testing.T) {
+	// An idle process that is explicitly filtered-in must survive the
+	// collector's cap even though its CPU is lower than everything else.
+	allowed := map[string]bool{"monitoragent": true}
+	procs := []ProcessInfo{
+		{Name: "chrome", Cpu: 30},
+		{Name: "sqlservr", Cpu: 25},
+		{Name: "MonitorAgent", Cpu: 0.1},
+	}
+	got := capProcesses(procs, allowed, 2)
+	if len(got) != 2 {
+		t.Fatalf("want 2 capped rows, got %d: %+v", len(got), got)
+	}
+	if got[0].Name != "MonitorAgent" {
+		t.Fatalf("filtered-in process must be kept despite low CPU, got %+v", got)
+	}
+
+	// Without an allowed set the cap is pure CPU ordering.
+	got = capProcesses(procs, nil, 2)
+	if got[0].Name != "chrome" || got[1].Name != "sqlservr" {
+		t.Fatalf("nil allowed must cap by CPU desc, got %+v", got)
+	}
+}
+
+func TestFilterProcessesKeepsFilteredInWhenIdle(t *testing.T) {
+	rt := NewAgentRuntime(&AgentSession{
+		Servers: []ServerAssignment{
+			{ServerUUID: "svr-a", ProcessFilter: []string{"MonitorAgent"}},
+		},
+	})
+	procs := []ProcessInfo{
+		{Name: "chrome", Cpu: 40},
+		{Name: "MonitorAgent", Cpu: 0.05},
+	}
+	got := rt.FilterProcesses("svr-a", procs)
+	if len(got) != 1 || got[0].Name != "MonitorAgent" {
+		t.Fatalf("filter must keep idle filtered-in process, got %+v", got)
+	}
+}
+
+func TestAvailableSetSignatures(t *testing.T) {
+	// Identical sets produce identical signatures regardless of CPU/pid churn.
+	procSig := func(procs []ProcessInfo) string {
+		return strings.Join(processSetSignature(procs), ",")
+	}
+	a := procSig([]ProcessInfo{{Name: "Chrome", Cpu: 10}, {Name: "node", Cpu: 5}})
+	b := procSig([]ProcessInfo{{Name: "node", Cpu: 99}, {Name: "chrome", Cpu: 0.1}})
+	if a != b {
+		t.Fatalf("same process set must have same signature, got %q vs %q", a, b)
+	}
+	c := procSig([]ProcessInfo{{Name: "node", Cpu: 99}, {Name: "chrome", Cpu: 0.1}, {Name: "postgres"}})
+	if a == c {
+		t.Fatal("different process sets must differ in signature")
+	}
+
+	portSig := func(ports []PortInfo) string {
+		nums := portSetSignature(ports)
+		s := make([]string, len(nums))
+		for i, n := range nums {
+			s[i] = string(rune(n))
+		}
+		return strings.Join(s, ",")
+	}
+	pa := portSig([]PortInfo{{Port: 5432}, {Port: 6379}})
+	pb := portSig([]PortInfo{{Port: 6379}, {Port: 5432}})
+	if pa != pb {
+		t.Fatalf("same port set must have same signature, got %q vs %q", pa, pb)
+	}
+}
+
+func TestGroupProcesses(t *testing.T) {
+	in := []ProcessInfo{
+		{Name: "chrome", Pid: 10, Cpu: 1, Memory: 100},
+		{Name: "chrome", Pid: 2, Cpu: 2, Memory: 200},
+		{Name: "Code", Pid: 5, Cpu: 3, Memory: 50},
+	}
+	got := groupProcesses(in)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 groups, got %d: %+v", len(got), got)
+	}
+	var chrome, code *ProcessInfo
+	for i := range got {
+		if got[i].Name == "chrome" {
+			chrome = &got[i]
+		} else {
+			code = &got[i]
+		}
+	}
+	if chrome == nil || code == nil {
+		t.Fatalf("missing groups: %+v", got)
+	}
+	if chrome.Cpu != 3 || chrome.Memory != 300 {
+		t.Fatalf("chrome must sum cpu/mem, got %+v", chrome)
+	}
+	if chrome.Pid != 2 || len(chrome.Pids) != 2 || chrome.Pids[0] != 2 || chrome.Pids[1] != 10 {
+		t.Fatalf("chrome must keep lowest pid + sorted pids, got %+v", chrome)
+	}
+	if len(code.Pids) != 1 {
+		t.Fatalf("single process must keep one pid, got %+v", code)
+	}
+	if got[0].Cpu < got[1].Cpu {
+		t.Fatal("groups must be sorted by total cpu desc")
 	}
 }
