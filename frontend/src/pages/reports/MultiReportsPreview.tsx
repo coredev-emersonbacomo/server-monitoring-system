@@ -1,17 +1,13 @@
-import { useSearchParams, useLocation, useOutletContext } from "react-router-dom";
+import { useLocation, useOutletContext } from "react-router-dom";
 import type { ReportOutletContext } from "@/layouts/ReportsLayout";
 import { TypstPreview } from "./TypstPreview";
 
 export default function MultiReportsPreview() {
-    const [searchParams] = useSearchParams();
     const location = useLocation();
-    const { orientation, hours } = useOutletContext<ReportOutletContext>();
+    const { orientation, hours, selectedIds } = useOutletContext<ReportOutletContext>();
     const isServer = location.pathname.includes("/report/servers");
 
-    const ids = (searchParams.get("ids") ?? "")
-        .split(",")
-        .map((id) => id.trim())
-        .filter(Boolean);
+    const ids = selectedIds;
 
     if (ids.length === 0) {
         return (
