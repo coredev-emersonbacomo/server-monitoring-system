@@ -11,5 +11,8 @@ class ProcessesData extends Data
         public string $name,
         public ?float $cpu,
         public ?float $memory,
+        public ?string $last_seen = null,
+        /** @var int[]|null Grouped process pids (count = the instance count). */
+        public ?array $pids = null,
     ) {}
 }

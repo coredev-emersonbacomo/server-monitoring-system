@@ -32,6 +32,17 @@ $app = Application::configure(basePath: dirname(__DIR__))
 // .env override it so personal keys win. The default loader is pointed at a
 // file that never exists so it does not re-load .env immutably afterwards.
 $app->beforeBootstrapping(LoadEnvironmentVariables::class, function (Application $app): void {
+    // phpunit.xml/.env.testing own the test environment. Never load the dev
+    // files there — they point DB_DATABASE at the dev DB, so a RefreshDatabase
+    // test (migrate:fresh) would wipe it.
+    $appEnv = getenv('APP_ENV') ?: ($_SERVER['APP_ENV'] ?? '');
+    $isTestCommand = $app->runningInConsole()
+        && str_contains(implode(' ', $_SERVER['argv'] ?? []), 'artisan test');
+    if (strtolower($appEnv) === 'testing' || $isTestCommand) {
+        $app->loadEnvironmentFrom('.env.testing');
+
+        return;
+    }
     Dotenv::createMutable($app->environmentPath(), ['.env.development', '.env'], false)->load();
     $app->loadEnvironmentFrom('__app_env_injected__.env');
 });

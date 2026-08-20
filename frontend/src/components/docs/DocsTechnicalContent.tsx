@@ -55,7 +55,7 @@ export function DocsArchitectureContent() {
                 <ol className="list-decimal pl-5 space-y-1.5">
                     <li>
                         The <strong>agent</strong> on each server POSTs
-                        heartbeats (CPU, memory, disk, network, top processes,
+                        heartbeats (CPU, memory, disk, network, processes,
                         open ports) every heartbeat interval.
                     </li>
                     <li>
@@ -162,7 +162,7 @@ export function DocsAgentContent() {
                     </li>
                     <li>
                         <strong>Heartbeat</strong> — one heartbeat per owned
-                        server (CPU, memory, disk, network, top processes, open
+                        server (CPU, memory, disk, network, processes, open
                         ports), filtered by each server's filter.
                     </li>
                     <li>

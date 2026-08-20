@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"time"
 )
 
@@ -404,7 +405,36 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 	}
 }
 
+// lastSentAvailable* hold the identity signature of the discoverable set last
+// reported to the backend. The available set is agent-wide (not per-server), so
+// a single package-level snapshot is correct. sendHeartbeatStep is the only
+// writer and runs on the heartbeat goroutine, so no lock is needed.
+var (
+	lastSentProcesses []string
+	lastSentPorts     []int
+)
+
 func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *AgentClient, metrics *metricsCollector, runtime *AgentRuntime, heartbeatInterval *int) {
+	// Collect processes and ports once per cycle, not per server: the process
+	// collector samples over a controlled interval (~1s), so per-server
+	// collection would multiply that latency. Each server's DB filter is
+	// applied separately below.
+	allowedProcesses := runtime.AllowedProcessNames()
+	processes := metrics.GetProcesses(allowedProcesses)
+	processes = groupProcesses(processes)
+	openPorts := metrics.GetOpenDatabasePorts()
+
+	// Only include the discoverable set in the heartbeat when its identity
+	// actually changed since the last send. The backend keeps the previous
+	// snapshot until then.
+	procSig := processSetSignature(processes)
+	portSig := portSetSignature(openPorts)
+	availableChanged := !slices.Equal(procSig, lastSentProcesses) || !slices.Equal(portSig, lastSentPorts)
+	if availableChanged {
+		lastSentProcesses = procSig
+		lastSentPorts = portSig
+	}
+
 	for _, serverUUID := range runtime.ServerUUIDs() {
 		if !runtime.HasServer(serverUUID) {
 			continue
@@ -421,18 +451,20 @@ func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *Agent
 			Disk:                 metrics.GetDiskUsage(),
 			Uptime:               metrics.GetUptime(),
 			Network:              metrics.GetNetworkStats(),
-			TopProcesses:         metrics.GetTopProcesses(),
-			OpenDbPorts:          metrics.GetOpenDatabasePorts(),
+			Processes:            runtime.FilterProcesses(serverUUID, processes),
+			OpenDbPorts:          runtime.FilterPorts(serverUUID, openPorts),
 			AgentConfig: &AgentConfigReport{
 				HeartbeatInterval: *heartbeatInterval,
 				AgentVersion:      config.AgentVersion,
 			},
 		}
-
-		// Apply this server's SecOps filter: only the important ports and
-		// processes are reported, independently per server.
-		payload.OpenDbPorts = runtime.FilterPorts(serverUUID, payload.OpenDbPorts)
-		payload.TopProcesses = runtime.FilterProcesses(serverUUID, payload.TopProcesses)
+		// The noise-filtered discovered set, sent only when it changes, is what
+		// the backend shows in the monitoring filter so new/unmonitored
+		// processes and ports can be checked on.
+		if availableChanged {
+			payload.AvailableProcesses = processes
+			payload.AvailablePorts = openPorts
+		}
 
 		response, err := client.sendHeartbeat(payload)
 		if err != nil {
@@ -448,10 +480,10 @@ func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *Agent
 			continue
 		}
 
-		// Refresh this server's filter from the authoritative response.
-		if response.ServerUUID != "" {
-			runtime.Upsert(response.ServerUUID, response.PortFilter, response.ProcessFilter)
-		}
+		// Per-server filters are NOT refreshed from the heartbeat response —
+		// the backend no longer returns them there. They arrive on auth/startup
+		// and via the WS control channel (config.update), which re-syncs from a
+		// fresh session on every reconnect.
 
 		if response.HeartbeatInterval > 0 && *heartbeatInterval != response.HeartbeatInterval {
 			*heartbeatInterval = response.HeartbeatInterval

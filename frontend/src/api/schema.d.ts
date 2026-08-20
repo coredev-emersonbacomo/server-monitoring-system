@@ -2804,21 +2804,7 @@ export interface operations {
                         heartbeat_interval: number;
                         current_time: string;
                         feature_flags: string[];
-                        /**
-                         * @description Always include Reverb credentials so the agent can connect the WS control channel
-                         *     even if bootstrap.json on disk is missing these fields (e.g. due to permissions)
-                         */
                         server_uuid: string;
-                        /**
-                         * @description Per-server monitoring filter. null = monitor everything the
-                         *     agent's built-in noise filter allows; a list = only those.
-                         */
-                        port_filter: unknown[] | null;
-                        process_filter: unknown[] | null;
-                        reverb_host: unknown;
-                        reverb_port: number;
-                        reverb_scheme: unknown;
-                        reverb_app_key: unknown;
                         pending_update: {
                             version: string;
                             heartbeat_interval: null;
@@ -3332,21 +3318,7 @@ export interface operations {
                         heartbeat_interval: number;
                         current_time: string;
                         feature_flags: string[];
-                        /**
-                         * @description Always include Reverb credentials so the agent can connect the WS control channel
-                         *     even if bootstrap.json on disk is missing these fields (e.g. due to permissions)
-                         */
                         server_uuid: string;
-                        /**
-                         * @description Per-server monitoring filter. null = monitor everything the
-                         *     agent's built-in noise filter allows; a list = only those.
-                         */
-                        port_filter: unknown[] | null;
-                        process_filter: unknown[] | null;
-                        reverb_host: unknown;
-                        reverb_port: number;
-                        reverb_scheme: unknown;
-                        reverb_app_key: unknown;
                         pending_update: {
                             version: string;
                             heartbeat_interval: null;

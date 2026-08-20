@@ -20,17 +20,17 @@ import (
 )
 
 var (
-	kernel32              = syscall.NewLazyDLL("kernel32.dll")
-	procGetSystemTimes    = kernel32.NewProc("GetSystemTimes")
+	kernel32                 = syscall.NewLazyDLL("kernel32.dll")
+	procGetSystemTimes       = kernel32.NewProc("GetSystemTimes")
 	procGlobalMemoryStatusEx = kernel32.NewProc("GlobalMemoryStatusEx")
-	procGetDiskFreeSpaceExW = kernel32.NewProc("GetDiskFreeSpaceExW")
-	procGetNativeSystemInfo = kernel32.NewProc("GetNativeSystemInfo")
-	procGetTickCount64    = kernel32.NewProc("GetTickCount64")
-	iphlpapi              = syscall.NewLazyDLL("iphlpapi.dll")
-	procGetExtendedTcpTable = iphlpapi.NewProc("GetExtendedTcpTable")
-	advapi32              = syscall.NewLazyDLL("advapi32.dll")
-	procOpenSCManager     = advapi32.NewProc("OpenSCManagerW")
-	procCloseServiceHandle = advapi32.NewProc("CloseServiceHandle")
+	procGetDiskFreeSpaceExW  = kernel32.NewProc("GetDiskFreeSpaceExW")
+	procGetNativeSystemInfo  = kernel32.NewProc("GetNativeSystemInfo")
+	procGetTickCount64       = kernel32.NewProc("GetTickCount64")
+	iphlpapi                 = syscall.NewLazyDLL("iphlpapi.dll")
+	procGetExtendedTcpTable  = iphlpapi.NewProc("GetExtendedTcpTable")
+	advapi32                 = syscall.NewLazyDLL("advapi32.dll")
+	procOpenSCManager        = advapi32.NewProc("OpenSCManagerW")
+	procCloseServiceHandle   = advapi32.NewProc("CloseServiceHandle")
 	procEnumServicesStatusEx = advapi32.NewProc("EnumServicesStatusExW")
 )
 
@@ -293,19 +293,103 @@ func (m *metricsCollector) GetNetworkStats() []NetworkMetrics {
 	return result
 }
 
-func (m *metricsCollector) GetTopProcesses() []ProcessInfo {
-	// Wrap in @(...) to guarantee a JSON array is always returned by ConvertTo-Json
-	out, err := exec.Command("powershell", "-Command",
-		"@(Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | Where-Object { $_.Name -ne '_Total' -and $_.Name -ne 'Idle' } | Sort-Object PercentProcessorTime -Descending | Select-Object -First 5 IDProcess,Name,PercentProcessorTime,WorkingSetPrivate) | ConvertTo-Json").Output()
+// processNoiseNames are built-in OS/driver/infra processes that are never
+// worth reporting (the "noise filter"). Matched case-insensitively against
+// the base WMI instance name. A process explicitly selected in a server's
+// DB process_filter is still reported (the collector receives the allowed
+// set) — an explicitly monitored process must never be silently dropped.
+var processNoiseNames = map[string]bool{
+	"idle": true, "_total": true, "system": true, "registry": true,
+	"memory compression": true, "dwm": true, "svchost": true, "lsass": true,
+	"services": true, "csrss": true, "wininit": true, "winlogon": true,
+	"smss": true, "spoolsv": true, "dashost": true, "conhost": true,
+	"fontdrvhost": true, "sihost": true, "taskhostw": true, "runtimebroker": true,
+	"searchhost": true, "searchfilterhost": true, "searchindexer": true,
+	"searchprotocolhost": true, "wmiprvse": true, "msmpeng": true,
+	"nvdisplay.container": true, "ctfmon": true, "tabtip": true,
+	"shellexperiencehost": true, "startmenuexperiencehost": true,
+	"securityhealthservice": true, "wifidiag": true, "cdpsvc": true,
+	"settingssynchost": true, "browser_broker": true, "dllhost": true,
+	"backgroundtaskhost": true, "backgroundtransferhost": true,
+	"textinputhost": true, "inputswitch": true, "cloudfilesyncengine": true,
+	"vmmem": true, "vmcompute": true, "vmmemwsl": true, "audiodg": true,
+
+	// Desktop/consumer/session processes — local user-session noise that
+	// SecOps does not care about on a monitored server. A process explicitly
+	// selected in a server's DB process_filter is still reported (the
+	// `!allowed[name]` guard in the collector keeps it).
+	"explorer": true, "cmd": true, "cncmd": true, "openconsole": true,
+	"windows_terminal": true, "lockapp": true, "logonui": true,
+	"useroobebroker": true, "searchapp": true, "applicationframehost": true,
+	"aggregatorhost": true, "comppkgsrv": true, "videoui": true,
+	"splwow64": true, "unsecapp": true, "wudfhost": true,
+	"securityhealthsystray": true, "mpdefendercoreservice": true, "nissrv": true,
+	"sqlceip": true, "phoneexperiencehost": true,
+	"chrome": true, "brave": true, "bravecrashhandler": true, "bravecrashhandler64": true,
+	"msedge": true, "msedgewebview2": true, "firefox": true, "opera": true,
+	"iexplore": true, "qtwebengineprocess": true, "ms-teams": true,
+	"code": true, "microsoft.codeanalysis.languageserver": true,
+	"microsoft.visualstudio.code.server": true,
+	"microsoft.visualstudio.code.servicecontroller": true,
+	"microsoft.visualstudio.code.servicehost": true,
+	"server-v0.0.31-x64-win32": true, "dotnet": true, "node": true,
+	"onedrive.sync.service": true, "adobecollabsync": true,
+	"avid link": true, "avidappmanhelper": true,
+	"musenotifyicon": true, "museauthservice": true, "musehub": true,
+	"everything": true, "officeclicktorun": true, "e_yatilue": true,
+	"asusappservice": true, "asushidservice": true, "asusoledshifter": true,
+	"asusoptimization": true, "asusoptimizationstartuptask": true,
+	"asusosd": true, "asusproarthost": true, "asusproartservice": true,
+	"asusproartupdateservice": true, "asussoftwaremanager": true,
+	"asussoftwaremanageragent": true, "asusswitch": true,
+	"asussystemanalysis": true, "asussystemdiagnosis": true,
+	"amdserv": true, "amdrsserv": true, "amdrssrcext": true, "atieclxx": true,
+	"atiesrxx": true, "radesoftware": true, "nvcontainer": true,
+	"nvidia overlay": true, "nvsphelper64": true, "lghub_updater": true,
+	"pentablet": true, "elanfpservice": true, "eppccmon": true,
+	"dtsapo4service": true, "rtkauduservice64": true, "sdxhelper": true,
+	"mep": true, "mepservice": true, "iyu.api": true, "epsecuritysupport": true,
+	"wlanext": true, "armsvc": true,
+}
+
+// winProcessesScript computes a real short-window CPU% from the RAW
+// PerfProc counter (100ns ticks) sampled over a controlled interval. The
+// formatted WMI class gives erratic values (it averages since whoever last
+// sampled the raw counter), so we never use it. 100% = one core; Go divides
+// by core count for "% of total machine CPU".
+const winProcessesScript = `
+$s0 = @(Get-CimInstance Win32_PerfRawData_PerfProc_Process | Where-Object { $_.Name -ne '_Total' -and $_.Name -ne 'Idle' } | Select-Object IDProcess,Name,PercentProcessorTime,Timestamp_Sys100NS,WorkingSetPrivate)
+Start-Sleep -Milliseconds 800
+$s1 = @(Get-CimInstance Win32_PerfRawData_PerfProc_Process | Where-Object { $_.Name -ne '_Total' -and $_.Name -ne 'Idle' } | Select-Object IDProcess,Name,PercentProcessorTime,Timestamp_Sys100NS,WorkingSetPrivate)
+$map = @{}
+foreach ($p in $s0) { $map[[string]$p.IDProcess] = $p }
+$rows = foreach ($q in $s1) {
+    $key = [string]$q.IDProcess
+    if (-not $map.ContainsKey($key)) { continue }
+    $p = $map[$key]
+    $dt = [double]$q.Timestamp_Sys100NS - [double]$p.Timestamp_Sys100NS
+    $dc = [double]$q.PercentProcessorTime - [double]$p.PercentProcessorTime
+    $pct = 0.0
+    if ($dt -gt 0) { $pct = ($dc / $dt) * 100.0 }
+    [pscustomobject]@{ IDProcess = $q.IDProcess; Name = ($q.Name -split '#')[0]; Percent = $pct; WorkingSetPrivate = $q.WorkingSetPrivate }
+}
+$rows | Sort-Object Percent -Descending | ConvertTo-Json -Compress
+`
+
+func (m *metricsCollector) GetProcesses(allowed map[string]bool) []ProcessInfo {
+	out, err := exec.Command("powershell", "-Command", winProcessesScript).Output()
 	if err != nil {
+		return nil
+	}
+	if len(bytes.TrimSpace(out)) == 0 {
 		return nil
 	}
 
 	type wmiProcess struct {
-		IDProcess            int32   `json:"IDProcess"`
-		Name                 string  `json:"Name"`
-		PercentProcessorTime float64 `json:"PercentProcessorTime"`
-		WorkingSetPrivate    float64 `json:"WorkingSetPrivate"`
+		IDProcess         int32   `json:"IDProcess"`
+		Name              string  `json:"Name"`
+		Percent           float64 `json:"Percent"`
+		WorkingSetPrivate float64 `json:"WorkingSetPrivate"`
 	}
 
 	var wmiList []wmiProcess
@@ -327,14 +411,18 @@ func (m *metricsCollector) GetTopProcesses() []ProcessInfo {
 
 	var result []ProcessInfo
 	for _, p := range wmiList {
+		name := strings.ToLower(strings.TrimSpace(p.Name))
+		if processNoiseNames[name] && !allowed[name] {
+			continue
+		}
 		result = append(result, ProcessInfo{
 			Pid:    p.IDProcess,
 			Name:   p.Name,
-			Cpu:    math.Round((p.PercentProcessorTime/numCores)*100) / 100,
+			Cpu:    math.Round((p.Percent/numCores)*100) / 100,
 			Memory: math.Round(p.WorkingSetPrivate/1024/1024*100) / 100,
 		})
 	}
-	return result
+	return capProcesses(result, allowed, maxProcesses)
 }
 
 func (m *metricsCollector) GetOpenDatabasePorts() []PortInfo {
@@ -471,11 +559,9 @@ func (m *metricsCollector) GetOpenDatabasePorts() []PortInfo {
 	return result
 }
 
-
-
-func (m *metricsCollector) GetCPUSpec() *CPUSpec           { return getCPUSpec() }
-func (m *metricsCollector) GetMemorySpec() string          { return getMemorySpec() }
-func (m *metricsCollector) GetDiskSpec() string            { return getDiskSpec() }
-func (m *metricsCollector) GetOS() string                  { return getOS() }
-func (m *metricsCollector) GetArch() string                { return getArch() }
-func (m *metricsCollector) GetHostname() string            { return getHostname() }
+func (m *metricsCollector) GetCPUSpec() *CPUSpec  { return getCPUSpec() }
+func (m *metricsCollector) GetMemorySpec() string { return getMemorySpec() }
+func (m *metricsCollector) GetDiskSpec() string   { return getDiskSpec() }
+func (m *metricsCollector) GetOS() string         { return getOS() }
+func (m *metricsCollector) GetArch() string       { return getArch() }
+func (m *metricsCollector) GetHostname() string   { return getHostname() }
