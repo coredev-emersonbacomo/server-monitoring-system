@@ -3,9 +3,7 @@ import { useNavigate, useMatch, useLocation, Outlet } from "react-router-dom";
 import { FileBarChart, RefreshCw } from "lucide-react";
 import IndexHeader from "@/components/IndexHeader";
 import { EntityPickerModal } from "../pages/reports/EntityPickerModal";
-import { FilterDropdown } from "../pages/reports/FilterDropdown";
 import { RangeDropdown } from "../pages/reports/RangeDropdown";
-import type { FilterOption } from "../pages/reports/FilterDropdown";
 
 export type ReportView = "global" | "clients" | "servers";
 export type ReportOrientation = "landscape" | "portrait";
@@ -25,14 +23,6 @@ const VIEWS: { key: ReportView; label: string }[] = [
     { key: "global", label: "Global" },
     { key: "clients", label: "Clients" },
     { key: "servers", label: "Servers" },
-];
-
-const FILTER_OPTIONS: FilterOption[] = [
-    { value: "online", label: "Online" },
-    { value: "offline", label: "Offline" },
-    { value: "production", label: "Production" },
-    { value: "staging", label: "Staging" },
-    { value: "development", label: "Development" },
 ];
 
 type EntityType = "clients" | "servers";
@@ -80,7 +70,6 @@ function loadSavedHours(): number {
 export function ReportsLayout() {
     const [view, setView] = useState<ReportView>("global");
     const [pickerOpen, setPickerOpen] = useState(false);
-    const [filters, setFilters] = useState<string[]>([]);
     const [orientation, setOrientation] = useState<ReportOrientation>("portrait");
     const [refreshToken, setRefreshToken] = useState(0);
     const [savedIds, setSavedIds] = useState<Record<EntityType, string[]>>({
@@ -192,12 +181,6 @@ export function ReportsLayout() {
             </div>
 
             <div className="flex items-center justify-end gap-3">
-                <FilterDropdown
-                    options={FILTER_OPTIONS}
-                    selected={filters}
-                    onChange={setFilters}
-                />
-
                 {view === "servers" && (
                     <RangeDropdown
                         value={hours}
@@ -228,7 +211,6 @@ export function ReportsLayout() {
             <Outlet
                 context={{
                     view,
-                    filters,
                     orientation,
                     hours,
                     setHours,
