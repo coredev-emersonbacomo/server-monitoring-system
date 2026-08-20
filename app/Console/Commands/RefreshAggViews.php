@@ -28,7 +28,7 @@ class RefreshAggViews extends Command
             ));
 
             if ($isContinuousAgg) {
-                DB::statement("SELECT refresh_continuous_aggregate('{$view}', NULL, NULL)");
+                DB::statement("CALL refresh_continuous_aggregate('{$view}', NULL, NULL)");
 
                 continue;
             }
