@@ -27,9 +27,7 @@ import {
     X,
     type LucideIcon,
 } from "lucide-react";
-import PageLayout from "@/components/PageLayout";
 import { cn } from "@/lib/utils";
-import IndexHeader from "@/components/IndexHeader";
 import DocCard from "@/components/docs/DocCard";
 import {
     DocsSidebar,
@@ -301,9 +299,6 @@ const PAGES: Record<
     },
 };
 
-// Manual sub-items override the auto-collected ones per page. The
-// auto-collector only picks top-level headers; pages that embed heavy live
-// components (alerting) get an explicit list instead.
 const MANUAL_SUBS: Record<string, DocSubItem[]> = {
     alerting: [
         { id: "overview", label: "Overview", level: 1 },
@@ -342,32 +337,6 @@ const MANUAL_SUBS: Record<string, DocSubItem[]> = {
     ],
 };
 
-function DocSectionHeader({
-    icon: Icon,
-    title,
-    description,
-}: {
-    icon: LucideIcon;
-    title: string;
-    description: string;
-}) {
-    return (
-        <div className="flex gap-4 items-center mb-6">
-            <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-                <Icon className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex flex-col justify-center">
-                <h2 className="text-lg font-semibold leading-none tracking-tight">
-                    {title}
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                    {description}
-                </p>
-            </div>
-        </div>
-    );
-}
-
 function DocPager({
     prev,
     next,
@@ -378,39 +347,28 @@ function DocPager({
     onGo: (id: string) => void;
 }) {
     return (
-        <div className="flex justify-between gap-4 mt-12 border-t border-border/40 pt-8">
-            <div className="flex-1">
-                {prev && (
-                    <button
-                        onClick={() => onGo(prev.id)}
-                        className="group flex w-full flex-col items-start gap-1 rounded-xl border border-border/40 px-4 py-3 text-left transition hover:border-primary/40 hover:bg-primary/5"
-                    >
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <ChevronLeft className="size-3.5 transition group-hover:-translate-x-0.5" />
-                            Previous Page
-                        </span>
-                        <span className="text-sm font-medium">
-                            {prev.label}
-                        </span>
-                    </button>
-                )}
-            </div>
-            <div className="flex-1">
-                {next && (
-                    <button
-                        onClick={() => onGo(next.id)}
-                        className="group flex w-full flex-col items-end gap-1 rounded-xl border border-border/40 px-4 py-3 text-right transition hover:border-primary/40 hover:bg-primary/5"
-                    >
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            Next Page
-                            <ChevronRight className="size-3.5 transition group-hover:translate-x-0.5" />
-                        </span>
-                        <span className="text-sm font-medium">
-                            {next.label}
-                        </span>
-                    </button>
-                )}
-            </div>
+        <div className="flex items-center justify-between gap-4 mt-16 pt-8 border-t border-border/60">
+            {prev ? (
+                <button
+                    type="button"
+                    onClick={() => onGo(prev.id)}
+                    className="group inline-flex items-center gap-2 rounded-lg border border-border/60 bg-card px-4 py-2.5 text-sm font-medium text-foreground transition-all hover:bg-muted/50 hover:border-border cursor-pointer"
+                >
+                    <ChevronLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
+                    <span>{prev.label}</span>
+                </button>
+            ) : <div />}
+
+            {next && (
+                <button
+                    type="button"
+                    onClick={() => onGo(next.id)}
+                    className="group inline-flex items-center gap-2 rounded-lg border border-border/60 bg-card px-4 py-2.5 text-sm font-medium text-foreground transition-all hover:bg-muted/50 hover:border-border cursor-pointer ml-auto"
+                >
+                    <span>{next.label}</span>
+                    <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+                </button>
+            )}
         </div>
     );
 }
@@ -520,7 +478,7 @@ export default function Docs() {
             setActiveSub(headings[headings.length - 1].id);
             return;
         }
-        const offset = 40;
+        const offset = 60;
         let active: string | null = null;
         headings.forEach((heading) => {
             const top =
@@ -552,26 +510,40 @@ export default function Docs() {
         navigate(`/docs/${id}`);
         setMobileOpen(false);
     };
+
     const page = PAGES[current.id];
     const isOverview = current.id === "overview";
+    const currentSubs = subSections[current.id] ?? [];
 
     return (
-        <div className="flex h-full flex-col w-full">
-            <header className="shrink-0 z-40 border-b border-border/40 bg-background/95 backdrop-blur">
-                <div className="flex items-center gap-3 px-4 sm:px-6 py-3">
-                    <IndexHeader
-                        icon={BookOpen}
-                        title="Docs"
-                        description="System documentation and reference guides."
-                    />
-                    <button
-                        type="button"
-                        aria-label="Toggle docs navigation"
-                        onClick={() => setMobileOpen((v) => !v)}
-                        className="lg:hidden p-2 -mr-2 ml-auto rounded-lg text-muted-foreground hover:bg-sidebar-hover transition cursor-pointer"
-                    >
-                        <Menu className="size-5" />
-                    </button>
+        <div className="flex h-full flex-col w-full bg-background text-foreground">
+            {/* Top Navigation Bar */}
+            <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <div className="relative flex h-14 items-center px-4 sm:px-6">
+                    <div className="absolute left-4 sm:left-6">
+                        <button
+                            type="button"
+                            onClick={() => navigate("/")}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-all hover:bg-muted/50 hover:border-border cursor-pointer"
+                        >
+                            <ChevronLeft className="size-4" />
+                            <span>Back</span>
+                        </button>
+                    </div>
+                    <div className="flex flex-1 items-center justify-center gap-2">
+                        <BookOpen className="size-5 text-foreground" />
+                        <span className="font-semibold text-base tracking-tight">Server Monitoring Documentation</span>
+                    </div>
+                    <div className="absolute right-4 sm:right-6">
+                        <button
+                            type="button"
+                            aria-label="Toggle docs navigation"
+                            onClick={() => setMobileOpen((v) => !v)}
+                            className="lg:hidden flex size-9 items-center justify-center rounded-lg border border-border/60 text-muted-foreground hover:bg-muted transition cursor-pointer"
+                        >
+                            <Menu className="size-4.5" />
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -582,23 +554,23 @@ export default function Docs() {
                 }
                 className="flex-1 min-h-0 w-full"
             >
+                {/* Left Sidebar */}
                 <ResizablePanel
                     id="docs-sidebar"
-                    minSize="12"
+                    minSize="15"
                     maxSize="30"
-                    className="hidden lg:block"
+                    className="hidden lg:block border-r border-border/60 bg-background/50"
                 >
                     <DocsSidebar
                         sections={DOC_SECTIONS}
                         activeId={current.id}
                         onJump={go}
-                        subSections={subSections}
-                        activeSub={activeSub}
-                        onSubJump={jumpToSub}
                     />
                 </ResizablePanel>
                 <ResizableHandle withHandle className="hidden lg:flex" />
-                <ResizablePanel id="docs-content" minSize="40">
+
+                {/* Main Content Area */}
+                <ResizablePanel id="docs-content" minSize="50">
                     <div
                         ref={contentRef}
                         onScroll={handleContentScroll}
@@ -610,65 +582,109 @@ export default function Docs() {
                         }}
                         className="h-full overflow-y-auto"
                     >
-                        <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8">
-                        <PageLayout>
-                            {isOverview ? (
-                                <>
-                                    <DocSectionHeader
-                                        icon={BookOpen}
-                                        title="Overview"
-                                        description="What the system is and how this documentation is organized."
-                                    />
-                                    <DocsOverviewContent />
+                        <div className="mx-auto flex w-full max-w-7xl justify-center px-4 sm:px-8 py-10 lg:py-12">
+                            {/* Center Article Content */}
+                            <div className="min-w-0 max-w-3xl flex-1 pb-16">
+                                {/* Breadcrumb */}
+                                <nav className="mb-4 flex items-center space-x-1 text-sm text-muted-foreground">
+                                    <span className="truncate">Docs</span>
+                                    <ChevronRight className="size-3.5" />
+                                    <span className="truncate">{current.group || "User Guide"}</span>
+                                    <ChevronRight className="size-3.5" />
+                                    <span className="font-medium text-foreground truncate">
+                                        {isOverview ? "Overview" : page?.title}
+                                    </span>
+                                </nav>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
-                                        <DocCard
-                                            title="Getting Started"
-                                            description="Prerequisites, installation, configuration, and running the application."
-                                            icon={Rocket}
-                                            href="#requirements"
-                                            onClick={() =>
-                                                go("requirements")
-                                            }
-                                        />
-                                        <DocCard
-                                            title="User Guide"
-                                            description="A walkthrough of the app: dashboard, clients, servers, users, logs, reports, and settings."
-                                            icon={Activity}
-                                            href="#dashboard"
-                                            onClick={() => go("dashboard")}
-                                        />
-                                        <DocCard
-                                            title="Technical Reference"
-                                            description="ADRs, agent flow, credentials storage, architecture, the alerting engine, and scheduling."
-                                            icon={Network}
-                                            href="#adrs"
-                                            onClick={() => go("adrs")}
-                                        />
+                                {/* Header block (shadcn format) */}
+                                <div className="space-y-2 pb-6 border-b border-border/50">
+                                    <h1 className="scroll-m-20 text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+                                        {isOverview ? "Overview" : page?.title}
+                                    </h1>
+                                    <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
+                                        {isOverview
+                                            ? "Welcome to the Server Monitoring System documentation. Explore guides, setup instructions, and technical references."
+                                            : page?.description}
+                                    </p>
+                                </div>
+
+                                {/* Article Body */}
+                                <div className="mt-8">
+                                    {isOverview ? (
+                                        <>
+                                            <DocsOverviewContent />
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-10">
+                                                <DocCard
+                                                    title="Getting Started"
+                                                    description="Prerequisites, installation, configuration, and running the application."
+                                                    icon={Rocket}
+                                                    href="#requirements"
+                                                    onClick={() =>
+                                                        go("requirements")
+                                                    }
+                                                />
+                                                <DocCard
+                                                    title="User Guide"
+                                                    description="A walkthrough of the app: dashboard, clients, servers, users, logs, reports, and settings."
+                                                    icon={Activity}
+                                                    href="#dashboard"
+                                                    onClick={() => go("dashboard")}
+                                                />
+                                                <DocCard
+                                                    title="Technical Reference"
+                                                    description="ADRs, agent flow, credentials storage, architecture, alerting engine, and scheduling."
+                                                    icon={Network}
+                                                    href="#adrs"
+                                                    onClick={() => go("adrs")}
+                                                />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        page && <page.Content />
+                                    )}
+                                </div>
+
+                                <DocPager prev={prev} next={next} onGo={go} />
+                            </div>
+
+                            {/* Right "On this page" TOC Sidebar (shadcn format) */}
+                            {currentSubs.length > 0 && (
+                                <div className="hidden xl:block w-64 shrink-0 pl-8">
+                                    <div className="sticky top-6 space-y-2">
+                                        <p className="text-sm font-semibold text-foreground tracking-tight">
+                                            On this page
+                                        </p>
+                                        <div className="space-y-1 text-sm border-l border-border/50 pl-3">
+                                            {currentSubs.map((sub) => (
+                                                <button
+                                                    key={sub.id}
+                                                    type="button"
+                                                    onClick={() => jumpToSub(current.id, sub.id)}
+                                                    className={cn(
+                                                        "block w-full text-left py-1 text-xs transition-colors cursor-pointer leading-normal",
+                                                        activeSub === sub.id
+                                                            ? "font-medium text-foreground"
+                                                            : "text-muted-foreground hover:text-foreground",
+                                                    )}
+                                                >
+                                                    {sub.label}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </>
-                            ) : (
-                                <>
-                                    <DocSectionHeader
-                                        icon={current.icon}
-                                        title={page.title}
-                                        description={page.description}
-                                    />
-                                    <page.Content />
-                                </>
+                                </div>
                             )}
-
-                            <DocPager prev={prev} next={next} onGo={go} />
-                        </PageLayout>
-                    </div>
+                        </div>
                     </div>
                 </ResizablePanel>
             </ResizablePanelGroup>
 
+            {/* Mobile Drawer */}
             <div className="lg:hidden fixed inset-0 z-50 pointer-events-none">
                 <div
                     className={cn(
-                        "absolute inset-0 bg-black/50 transition-opacity duration-300",
+                        "absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300",
                         mobileOpen ? "opacity-100" : "opacity-0",
                         mobileOpen && "pointer-events-auto",
                     )}
@@ -676,34 +692,35 @@ export default function Docs() {
                 />
                 <div
                     className={cn(
-                        "absolute inset-y-0 right-0 w-72 max-w-[85vw] bg-background border-l border-border/40 shadow-xl overflow-y-auto py-4 px-3 transition-transform duration-300 ease-in-out",
+                        "absolute inset-y-0 right-0 w-72 max-w-[85vw] bg-background border-l border-border/60 shadow-2xl overflow-y-auto py-5 px-4 transition-transform duration-300 ease-in-out",
                         mobileOpen
                             ? "translate-x-0 pointer-events-auto"
                             : "translate-x-full",
                     )}
                 >
-                    <div className="flex items-center justify-between px-3 mb-4">
-                        <span className="text-sm font-semibold">Docs</span>
+                    <div className="flex items-center justify-between pb-4 mb-4 border-b border-border/50">
+                        <div className="flex items-center gap-2">
+                            <BookOpen className="size-4.5 text-foreground" />
+                            <span className="text-sm font-semibold">Docs Navigation</span>
+                        </div>
                         <button
                             type="button"
                             aria-label="Close docs navigation"
                             onClick={() => setMobileOpen(false)}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:bg-sidebar-hover transition cursor-pointer"
+                            className="flex size-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground hover:text-foreground cursor-pointer"
                         >
-                            <X className="size-5" />
+                            <X className="size-4" />
                         </button>
                     </div>
                     <DocsNav
                         sections={DOC_SECTIONS}
                         activeId={current.id}
                         onJump={go}
-                        subSections={subSections}
-                        activeSub={activeSub}
-                        onSubJump={jumpToSub}
                     />
                 </div>
             </div>
 
+            {/* Hidden parser for auto-generating TOC sub-items */}
             <div ref={hiddenRef} className="hidden" aria-hidden="true">
                 {DOC_SECTIONS.filter((s) => s.id !== "alerting").map(
                     (section) => {

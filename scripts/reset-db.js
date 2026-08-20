@@ -18,4 +18,3 @@ execSync('php artisan schema:dump', { stdio: 'inherit' });
 
 execSync('php artisan system:monitor', { stdio: 'inherit' });
 
-execSync('npm run loadtestfactory', { stdio: 'inherit' });
