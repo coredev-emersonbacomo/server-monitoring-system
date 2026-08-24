@@ -1,4 +1,23 @@
-// File Path: frontend/src/utils/helpers.ts
+// File Path: frontend\src\utils\helpers.ts
+
+export function formatCurrency(
+    value: number | string | null | undefined,
+    options: {
+        currency?: string;
+        decimals?: number;
+        suffix?: string;
+    } = {},
+): string {
+    const { currency = "₱", decimals = 2, suffix = "" } = options;
+    const num = Number(value) || 0;
+
+    return `${currency}${num.toLocaleString(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+    })}${suffix}`;
+}
+
+
 export function toLabelCase(
     key: string | null | undefined,
     preserveDash: boolean = false,

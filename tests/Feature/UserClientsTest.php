@@ -67,6 +67,16 @@ test('can retrieve clients assigned to a user', function () {
         ->assertJsonPath('0.uuid', $this->client->uuid);
 });
 
+test('can retrieve available clients while excluding a user', function () {
+    $token = loginAsUser($this->admin);
+
+    $response = $this->withHeaders([
+        'Authorization' => 'Bearer ' . $token,
+    ])->getJson('/api/v1/clients?exclude_user_uuid=' . $this->secop->uuid . '&available_only=true');
+
+    $response->assertOk();
+});
+
 test('admin can remove a client from a user', function () {
     $this->secop->clients()->attach($this->client->id, [
         'uuid' => \Illuminate\Support\Str::uuid()->toString(),

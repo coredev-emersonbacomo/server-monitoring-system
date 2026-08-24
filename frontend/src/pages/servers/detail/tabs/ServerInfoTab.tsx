@@ -25,7 +25,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-
+import { useFormattedNumberInput } from "@/hooks/useFormattedNumberInput";
+import { formatCurrency } from "@/utils/helpers";
 export function ServerInfoTab() {
     const { store, initial, server, mode, form, navigate } =
         useServerDetailContext();
@@ -41,6 +42,7 @@ export function ServerInfoTab() {
         budget: number;
         pendingPayload: { nameStr: string; descStr: string; feeNum: number };
     } | null>(null);
+
 
     const executeUpdateServer = async (payload: {
         nameStr: string;
@@ -88,6 +90,9 @@ export function ServerInfoTab() {
         }
     };
 
+    const { inputRef, formatValue, handleChange, handleKeyDown, handlePaste } =
+        useFormattedNumberInput();
+
     return (
         <Form.Root store={store}>
             <Form.SubmitHandler
@@ -104,16 +109,16 @@ export function ServerInfoTab() {
                             : "";
                         const descStr =
                             data.description &&
-                            String(data.description).trim() !== "undefined" &&
-                            String(data.description).trim() !== "null"
+                                String(data.description).trim() !== "undefined" &&
+                                String(data.description).trim() !== "null"
                                 ? String(data.description).trim()
                                 : "";
                         const feeNum =
                             typeof data.subscription_fee === "number"
                                 ? data.subscription_fee
                                 : parseFloat(
-                                      String(data.subscription_fee || 0),
-                                  ) || 0;
+                                    String(data.subscription_fee || 0),
+                                ) || 0;
 
                         const clientBudget = Number(client?.budget) || 0;
                         const currentOtherServersFee = (clientServers ?? [])
@@ -163,15 +168,19 @@ export function ServerInfoTab() {
                                         Subscription Fee (₱ / mo)
                                     </label>
                                     <Input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={form.subscription_fee ?? 0}
-                                        onChange={(e) =>
-                                            store.set("subscription_fee")(
-                                                e.target.value,
-                                            )
-                                        }
+                                        ref={inputRef}
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={formatValue(String(form.subscription_fee ?? 0))}
+                                        onChange={(e) => {
+                                            const el = inputRef.current;
+                                            const cursorPos = el?.selectionStart ?? e.target.value.length;
+                                            handleChange(e.target.value, cursorPos, (unformatted) => {
+                                                store.set("subscription_fee")(unformatted);
+                                            });
+                                        }}
+                                        onKeyDown={handleKeyDown}
+                                        onPaste={handlePaste}
                                         className="text-sm"
                                     />
                                 </div>
@@ -244,7 +253,7 @@ export function ServerInfoTab() {
                     {
                         icon: Banknote,
                         label: "Subscription Fee",
-                        value: `₱${(Number(server.subscription_fee) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mo`,
+                        value: `${formatCurrency(form.subscription_fee, { suffix: " / mo" })}`,
                     },
                     {
                         icon: Cpu,
