@@ -1,11 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { z } from "zod";
-<<<<<<< HEAD
 import { Link, useNavigate, useParams } from "react-router-dom";
-=======
-import { useNavigate, useParams } from "react-router-dom";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
->>>>>>> 1a9cd265016fc67f1d9bd76f5e5d30946a0c4014
 import {
     Pencil,
     Upload,
