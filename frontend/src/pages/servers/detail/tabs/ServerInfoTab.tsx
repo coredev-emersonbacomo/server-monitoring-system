@@ -270,14 +270,18 @@ export function ServerInfoTab() {
                         icon: MemoryStick,
                         label: "Memory",
                         value: server.ram
-                            ? `${server.ram} GB`
+                            ? (server.ram.toUpperCase().includes("B")
+                                ? server.ram
+                                : `${server.ram} GB`)
                             : "Waiting for Agent",
                     },
                     {
                         icon: HardDrive,
                         label: "Disk",
                         value: server.disk
-                            ? `${server.disk} GB`
+                            ? (server.disk.toUpperCase().includes("B")
+                                ? server.disk
+                                : `${server.disk} GB`)
                             : "Waiting for Agent",
                     },
                     {

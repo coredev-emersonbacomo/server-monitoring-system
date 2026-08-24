@@ -7,6 +7,7 @@ import {
     ResponsiveContainer,
 } from "recharts";
 import jwtClient from "@/api/jwtClient";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import type { GeneralReport } from "../reportTypes";
 import { ReportHeader } from "../ReportHeader";
 
@@ -19,6 +20,7 @@ const BORDER = { border: "1px solid #d1d5db" };
 
 
 export default function GeneralReport() {
+    useDocumentTitle("General Report");
     const { data: report, isLoading, error } = useQuery({
         queryKey: ["general-report"],
         queryFn: async () => {

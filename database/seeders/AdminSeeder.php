@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
-use App\Models\User;
 
 class AdminSeeder extends Seeder
 {
@@ -15,12 +15,12 @@ class AdminSeeder extends Seeder
             [
                 'uuid' => (string) Str::uuid7(),
                 'first_name' => 'Admin',
-                'last_name'=> 'Surname',
+                'last_name' => 'Surname',
                 'email' => 'admin@example.com',
                 'phone_number' => '09517380165',
                 'timezone' => 'Asia/Manila',
                 'password' => bcrypt('admin123'),
-                'last_login' => now()
+                'last_login' => now(),
             ]
         );
     }

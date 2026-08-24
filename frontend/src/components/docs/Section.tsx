@@ -1,5 +1,14 @@
-import { useState, type ReactNode } from "react";
-import { Check, Copy, Info, AlertTriangle, AlertCircle, Lightbulb } from "lucide-react";
+import { useState, useEffect, type ReactNode } from "react";
+import {
+    Check,
+    Copy,
+    Info,
+    AlertTriangle,
+    AlertCircle,
+    Lightbulb,
+    Maximize2,
+    X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function slugify(text: string): string {
@@ -190,6 +199,86 @@ export function Callout({
     );
 }
 
+export function DocImage({
+    src,
+    alt,
+    caption,
+    className,
+}: {
+    src: string;
+    alt: string;
+    caption?: string;
+    className?: string;
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setIsOpen(false);
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [isOpen]);
+
+    return (
+        <>
+            <div
+                onClick={() => setIsOpen(true)}
+                className={cn(
+                    "group relative my-4 overflow-hidden rounded-lg border border-border/60 bg-muted/20 shadow-sm cursor-zoom-in transition-all hover:border-primary/50 hover:shadow-md",
+                    className,
+                )}
+            >
+                <img
+                    src={src}
+                    alt={alt}
+                    className="w-full object-cover rounded-lg transition-transform duration-300 group-hover:scale-[1.01]"
+                    loading="lazy"
+                />
+                <div className="absolute inset-0 bg-black/0 transition-colors duration-200 group-hover:bg-black/25 flex items-center justify-center pointer-events-none">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/80 backdrop-blur-md text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg border border-white/10">
+                        <Maximize2 className="size-3.5" />
+                        Click to enlarge
+                    </span>
+                </div>
+            </div>
+
+            {isOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md p-4 sm:p-6 animate-in fade-in-0 duration-200"
+                    onClick={() => setIsOpen(false)}
+                >
+                    <button
+                        type="button"
+                        onClick={() => setIsOpen(false)}
+                        aria-label="Close image preview"
+                        className="absolute top-4 right-4 sm:top-6 sm:right-6 flex size-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer backdrop-blur-sm z-50"
+                    >
+                        <X className="size-5" />
+                    </button>
+
+                    <div
+                        className="relative flex flex-col items-center justify-center max-w-[85vw] max-h-[85vh]"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img
+                            src={src}
+                            alt={alt}
+                            className="w-[75vw] max-w-7xl max-h-[80vh] object-contain rounded-xl drop-shadow-2xl"
+                        />
+                        {(caption || alt) && (
+                            <p className="mt-3 text-center text-sm text-white/90 font-medium max-w-3xl drop-shadow">
+                                {caption || alt}
+                            </p>
+                        )}
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
+
 export function DocMedia({
     src,
     alt,
@@ -200,15 +289,10 @@ export function DocMedia({
     caption?: string;
 }) {
     return (
-        <figure className="my-6 overflow-hidden rounded-xl border border-border/60 bg-muted/20 shadow-sm">
-            <img
-                src={src}
-                alt={alt}
-                className="w-full object-cover rounded-t-xl"
-                loading="lazy"
-            />
+        <figure className="my-6">
+            <DocImage src={src} alt={alt} caption={caption} />
             {caption && (
-                <figcaption className="border-t border-border/40 bg-muted/40 px-4 py-2 text-center text-xs text-muted-foreground">
+                <figcaption className="mt-1 text-center text-xs text-muted-foreground">
                     {caption}
                 </figcaption>
             )}

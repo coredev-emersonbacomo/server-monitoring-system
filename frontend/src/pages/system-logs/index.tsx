@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import PageLayout from "@/components/PageLayout";
 import IndexHeader from "@/components/IndexHeader";
 import { ScrollText, Terminal, FileText, Server } from "lucide-react";
@@ -14,6 +15,7 @@ import { LogTable } from "./components/LogTable";
 import { LogDetailModal } from "./components/LogDetailModal";
 
 export default function LogsPage() {
+    useDocumentTitle("Logs");
     const { data: activityLogs = [], isLoading: isLoadingActivity } =
         useActivityLogs();
     const { data: healthLogs = [], isLoading: isLoadingHealth } =

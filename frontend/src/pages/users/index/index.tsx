@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import { Users2, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import ProfileCard from "@/components/ProfileCard";
 import { Button } from "@/components/ui/button";
 import PageLayout from "@/components/PageLayout";
@@ -43,6 +44,7 @@ function SkeletonGrid() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const Users = () => {
+    useDocumentTitle("Users");
     const navigate = useNavigate();
     const { data: users = [], isLoading, isError, refetch } = useUsers();
     const deleteUser = useDeleteUser();

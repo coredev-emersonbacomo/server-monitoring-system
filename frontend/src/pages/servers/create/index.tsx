@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { z } from "zod";
 import {
     AlertTriangle,
@@ -38,6 +39,7 @@ const schema = z.object({
 });
 
 export default function CreateServer() {
+    useDocumentTitle("Create Server");
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const clientUuid = searchParams.get("client_uuid") || null;

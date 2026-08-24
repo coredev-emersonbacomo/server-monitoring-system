@@ -71,7 +71,7 @@ export type ServerStatusKey = keyof typeof STATUS_CONFIG;
 export function resolveServerStatusKey(
     status?: string | null,
     recordStatus?: string | null,
-    agentDeleted?: boolean,
+    agentDeleted?: boolean | null,
 ): ServerStatusKey {
     if (recordStatus === "archived" || status === "archived") return "archived";
     if (status === "agent_uninstalled") return "agent_uninstalled";
