@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, type SubmitEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, ChevronLeft, Eye, EyeOff, Mail, Lock, Key } from "lucide-react";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { cn } from "@/lib/utils";
 import axios from "axios";
@@ -8,6 +9,7 @@ import axios from "axios";
 type Step = 1 | 2 | 3;
 
 export default function ForgotPassword() {
+    useDocumentTitle("Forgot Password");
     const navigate = useNavigate();
     const [step, setStep] = useState<Step>(1);
     const [email, setEmail] = useState("");

@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import PageLayout from "@/components/PageLayout";
 import { Server, Wifi, WifiOff, AlertTriangle, Trash2 } from "lucide-react";
 import { useServers } from "@/hooks/useServers";
@@ -16,6 +17,7 @@ import { ServerStatusBadge } from "@/components/ServerStatusBadge";
 import { cn } from "@/lib/utils";
 
 export default function ServersIndex() {
+    useDocumentTitle("Servers");
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const [search, setSearch] = useState("");
