@@ -79,7 +79,7 @@ export default function Login() {
                     </span>
                 </div>
 
-                <div className="w-full max-w-sm mx-auto lg:ml-18 -mt-12">
+                <div className="w-full max-w-sm mx-auto -mt-12">
                     <h1 className="text-4xl font-semibold mb-8">Sign In</h1>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
