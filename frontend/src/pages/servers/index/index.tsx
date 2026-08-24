@@ -51,19 +51,31 @@ export default function ServersIndex() {
         if (!servers) return [];
         const statusResult = statusFilter
             ? statusFilter === "archived"
-                ? servers.filter((s) => s.record_status === "archived" || s.status === "archived")
-                : statusFilter === "pending_deletion"
-                ? servers.filter((s) => s.agent_deleted && s.record_status !== "archived" && s.status !== "archived")
-                : servers.filter((s) => (s.status === statusFilter || (statusFilter === "pending_installation" && !s.status)) && !s.agent_deleted && s.record_status !== "archived" && s.status !== "archived")
-            : servers.filter((s) => s.record_status !== "archived" && s.status !== "archived");
+                ? servers.filter(
+                      (s) =>
+                          s.record_status === "archived" ||
+                          s.status === "archived",
+                  )
+                : servers.filter(
+                      (s) =>
+                          (s.status === statusFilter ||
+                              (statusFilter === "pending_installation" &&
+                                  !s.status)) &&
+                          s.record_status !== "archived" &&
+                          s.status !== "archived",
+                  )
+            : servers.filter(
+                  (s) =>
+                      s.record_status !== "archived" && s.status !== "archived",
+              );
 
         const q = search.toLowerCase().trim();
         const result = q
             ? statusResult.filter(
-                (s) =>
-                    s.name.toLowerCase().includes(q) ||
-                    s.client_name?.toLowerCase().includes(q),
-            )
+                  (s) =>
+                      s.name.toLowerCase().includes(q) ||
+                      s.client_name?.toLowerCase().includes(q),
+              )
             : statusResult;
 
         return result.sort((a, b) => {
@@ -96,38 +108,57 @@ export default function ServersIndex() {
                 offline: 0,
                 pending_installation: 0,
                 waiting_for_installation: 0,
-                pending_deletion: 0,
                 archived: 0,
             };
 
-        const activeServers = servers.filter((s) => s.record_status !== "archived" && s.status !== "archived");
+        const activeServers = servers.filter(
+            (s) => s.record_status !== "archived" && s.status !== "archived",
+        );
         return {
             all: activeServers.length,
-            online: activeServers.filter((s) => s.status === "online" && !s.agent_deleted).length,
-            warning: activeServers.filter((s) => s.status === "warning" && !s.agent_deleted).length,
-            offline: activeServers.filter((s) => s.status === "offline" && !s.agent_deleted).length,
-            pending_installation: activeServers.filter((s) => (s.status === "pending_installation" || !s.status) && !s.agent_deleted).length,
-            waiting_for_installation: activeServers.filter((s) => s.status === "waiting_for_installation" && !s.agent_deleted).length,
-            pending_deletion: activeServers.filter((s) => s.agent_deleted).length,
-            agent_uninstalled: activeServers.filter((s) => s.status === "agent_uninstalled").length,
-            archived: servers.filter((s) => s.record_status === "archived" || s.status === "archived").length,
+            online: activeServers.filter(
+                (s) => s.status === "online" && !s.agent_deleted,
+            ).length,
+            warning: activeServers.filter(
+                (s) => s.status === "warning" && !s.agent_deleted,
+            ).length,
+            offline: activeServers.filter(
+                (s) => s.status === "offline" && !s.agent_deleted,
+            ).length,
+            pending_installation: activeServers.filter(
+                (s) =>
+                    (s.status === "pending_installation" || !s.status) &&
+                    !s.agent_deleted,
+            ).length,
+            waiting_for_installation: activeServers.filter(
+                (s) =>
+                    s.status === "waiting_for_installation" && !s.agent_deleted,
+            ).length,
+            pending_deletion: activeServers.filter((s) => s.agent_deleted)
+                .length,
+            agent_uninstalled: activeServers.filter(
+                (s) => s.status === "agent_uninstalled",
+            ).length,
+            archived: servers.filter(
+                (s) =>
+                    s.record_status === "archived" || s.status === "archived",
+            ).length,
         };
     }, [servers]);
 
-return (
-    <PageLayout>
-        <IndexHeader
-            icon={Server}
-            title={
-                clientUuid && clientName
-                    ? `${clientName} Servers`
-                    : "Servers"
-            }
-            description={`Manage ${clientUuid ? clientName + "'s" : "all"} servers.`}
-        />
+    return (
+        <PageLayout>
+            <IndexHeader
+                icon={Server}
+                title={
+                    clientUuid && clientName
+                        ? `${clientName} Servers`
+                        : "Servers"
+                }
+                description={`Manage ${clientUuid ? clientName + "'s" : "all"} servers.`}
+            />
 
-        <main className="w-full flex-1 min-h-0 flex flex-col gap-5">
-          
+            <main className="w-full flex-1 min-h-0 flex flex-col gap-5">
                 <IndexToolbar
                     search={search}
                     onSearchChange={setSearch}
@@ -154,13 +185,17 @@ return (
                             label: "Pending Installation",
                             value: "pending_installation",
                             count: counts.pending_installation,
-                            icon: <AlertTriangle className="size-3 text-slate-400" />,
+                            icon: (
+                                <AlertTriangle className="size-3 text-slate-400" />
+                            ),
                         },
                         {
                             label: "Waiting For Installation",
                             value: "waiting_for_installation",
                             count: counts.waiting_for_installation,
-                            icon: <AlertTriangle className="size-3 text-amber-400 animate-pulse" />,
+                            icon: (
+                                <AlertTriangle className="size-3 text-amber-400 animate-pulse" />
+                            ),
                         },
                         {
                             label: "Pending Deletion",
@@ -186,14 +221,14 @@ return (
                         setSearchParams(
                             value
                                 ? {
-                                    status: value,
-                                    ...(clientUuid
-                                        ? { client_uuid: String(clientUuid) }
-                                        : {}),
-                                }
+                                      status: value,
+                                      ...(clientUuid
+                                          ? { client_uuid: String(clientUuid) }
+                                          : {}),
+                                  }
                                 : clientUuid
-                                    ? { client_uuid: String(clientUuid) }
-                                    : {},
+                                  ? { client_uuid: String(clientUuid) }
+                                  : {},
                         )
                     }
                     filterLabel={
@@ -201,8 +236,8 @@ return (
                             ? statusFilter === "pending_installation"
                                 ? "Pending Installation"
                                 : statusFilter === "waiting_for_installation"
-                                    ? "Waiting For Installation"
-                                    : statusFilter.charAt(0).toUpperCase() +
+                                  ? "Waiting For Installation"
+                                  : statusFilter.charAt(0).toUpperCase() +
                                     statusFilter.slice(1)
                             : "All"
                     }
@@ -216,23 +251,20 @@ return (
                     sortLabel={currentSortLabel}
                     onCreate={() =>
                         clientUuid
-                            ? navigate(`/servers/create?client_uuid=${clientUuid}`)
+                            ? navigate(
+                                  `/servers/create?client_uuid=${clientUuid}`,
+                              )
                             : setShowClientPicker(true)
                     }
                     createLabel="Add server"
                     onViewByClient={() => setShowClientFilterPicker(true)}
                     viewByClientLabel={
-                        clientUuid && clientName
-                            ? clientName
-                            : "View by Client"
+                        clientUuid && clientName ? clientName : "View by Client"
                     }
                     onClearViewByClient={
-                        clientUuid
-                            ? () => setSearchParams({})
-                            : undefined
+                        clientUuid ? () => setSearchParams({}) : undefined
                     }
                 />
-
 
                 {isLoading ? (
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
@@ -242,51 +274,64 @@ return (
                                 className="h-48 bg-card border border-border rounded-lg animate-pulse"
                             />
                         ))}
-                </div>
-            ) : (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
-                    {filtered.map((server) => {
-                        const effectiveStatus =
-                            resolveServerStatusKey(
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
+                        {filtered.map((server) => {
+                            const effectiveStatus = resolveServerStatusKey(
                                 server.status,
                                 server.record_status,
                                 server.agent_deleted,
                             );
-                        const meta = STATUS_CONFIG[effectiveStatus];
-                        const Icon = meta.icon;
-                        return (
-                            <Link
-                                key={server.uuid}
-                                to={`/servers/${server.uuid}?client=all`}
-                                className="block rounded-lg transition-transform duration-200 hover:-translate-y-1"
-                            >
-                                <div className="relative size-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans gap-3 transition-shadow hover:shadow-md">
-                                    <div className={cn("p-3 rounded-lg", meta.bg)}>
-                                        <Icon className={cn("size-5", meta.color)} />
+                            const meta = STATUS_CONFIG[effectiveStatus];
+                            const Icon = meta.icon;
+                            return (
+                                <Link
+                                    key={server.uuid}
+                                    to={`/servers/${server.uuid}?client=all`}
+                                    className="block rounded-lg transition-transform duration-200 hover:-translate-y-1"
+                                >
+                                    <div className="relative size-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans gap-3 transition-shadow hover:shadow-md">
+                                        <div
+                                            className={cn(
+                                                "p-3 rounded-lg",
+                                                meta.bg,
+                                            )}
+                                        >
+                                            <Icon
+                                                className={cn(
+                                                    "size-5",
+                                                    meta.color,
+                                                )}
+                                            />
+                                        </div>
+                                        <div className="text-center w-full flex flex-col items-center gap-1.5">
+                                            <p className="text-sm font-medium text-foreground truncate w-full">
+                                                {server.name}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground truncate w-full">
+                                                {server.client_name}
+                                            </p>
+                                            <ServerStatusBadge
+                                                status={server.status}
+                                                record_status={
+                                                    server.record_status
+                                                }
+                                                agent_deleted={
+                                                    server.agent_deleted
+                                                }
+                                                size="sm"
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="text-center w-full flex flex-col items-center gap-1.5">
-                                        <p className="text-sm font-medium text-foreground truncate w-full">
-                                            {server.name}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground truncate w-full">
-                                            {server.client_name}
-                                        </p>
-                                        <ServerStatusBadge
-                                            status={server.status}
-                                            record_status={server.record_status}
-                                            agent_deleted={server.agent_deleted}
-                                            size="sm"
-                                        />
-                                    </div>
-                                </div>
-                            </Link>
-                        );
-                    })}
-                </div>
-            )}
-        </main>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                )}
+            </main>
 
-        {/* Client Pickers */}
+            {/* Client Pickers */}
             <SelectClientDialog
                 open={showClientPicker}
                 onOpenChange={setShowClientPicker}
@@ -294,7 +339,9 @@ return (
                 description="Choose which client this server belongs to."
                 clients={clients}
                 isLoading={clientsLoading}
-                onSelectClient={(uuid) => navigate(`/servers/create?client_uuid=${uuid}`)}
+                onSelectClient={(uuid) =>
+                    navigate(`/servers/create?client_uuid=${uuid}`)
+                }
             />
 
             <SelectClientDialog
@@ -304,7 +351,9 @@ return (
                 description="Select a client to view all of their servers."
                 clients={clients}
                 isLoading={clientsLoading}
-                onSelectClient={(uuid) => navigate(`/servers?client_uuid=${uuid}`)}
+                onSelectClient={(uuid) =>
+                    navigate(`/servers?client_uuid=${uuid}`)
+                }
             />
         </PageLayout>
     );

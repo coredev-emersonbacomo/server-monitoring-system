@@ -236,8 +236,8 @@ export default function ClientsIndex() {
                 aVal = aVal.toLowerCase();
                 bVal = typeof bVal === "string" ? bVal.toLowerCase() : "";
             }
-            if (aVal < (bVal as typeof aVal)) return sortDir === "asc" ? -1 : 1;
-            if (aVal > (bVal as typeof aVal)) return sortDir === "asc" ? 1 : -1;
+            if ((aVal as any) < (bVal as any)) return sortDir === "asc" ? -1 : 1;
+            if ((aVal as any) > (bVal as any)) return sortDir === "asc" ? 1 : -1;
             return 0;
         });
 

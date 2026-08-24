@@ -1,12 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AgentController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\AgentController;
 
 // When `npm start` has deployed the SPA into public/, serve it at the root.
 Route::get('/', function () {
     $spa = public_path('index.html');
+
     return file_exists($spa) ? response()->file($spa) : view('welcome');
 });
 
@@ -21,5 +22,6 @@ Route::fallback(function (Request $request) {
         return response()->json(['message' => 'Not Found'], 404);
     }
     $spa = public_path('index.html');
+
     return file_exists($spa) ? response()->file($spa) : abort(404);
 });

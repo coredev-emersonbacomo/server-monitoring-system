@@ -18,8 +18,6 @@ export function ServerGridCard({ server }: ServerGridCardProps) {
         server.record_status === "archived" || server.status === "archived";
     const effectiveStatus = isArchived
         ? "archived"
-        : server.agent_deleted
-        ? "pending_deletion"
         : server.status ?? "offline";
     const meta = STATUS_META[effectiveStatus] ?? STATUS_META.offline;
     const Icon = meta.icon;

@@ -1,5 +1,5 @@
 import { ChevronLeft, Upload } from "lucide-react";
-import { Form } from "@/components/ui/form";
+import { Form, type FormStore } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import type { AuthUserData } from "@/types/models";
 
@@ -7,7 +7,7 @@ interface ProfileHeaderProps {
     mode: "view" | "edit" | "create";
     user: AuthUserData;
     form: Record<string, string>;
-    store: { set: (key: string) => (value: string) => void };
+    store: FormStore<any>;
     fullName: string;
     avatarSrc: string | null;
     onNavigateBack: () => void;
