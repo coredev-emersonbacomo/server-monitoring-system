@@ -224,18 +224,6 @@ export function DocsServersContent() {
             <Section title="Server statuses">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Online</strong> — the agent is reporting
-                        heartbeats.
-                    </li>
-                    <li>
-                        <strong>Warning</strong> — the agent is connected but a
-                        condition needs attention.
-                    </li>
-                    <li>
-                        <strong>Offline</strong> — no heartbeat within the
-                        offline threshold.
-                    </li>
-                    <li>
                         <strong>Pending Installation</strong> — server created,
                         no installation command generated yet.
                     </li>
@@ -244,16 +232,25 @@ export function DocsServersContent() {
                         token has been generated; the agent has not installed.
                     </li>
                     <li>
-                        <strong>Waiting for Heartbeat</strong> — the agent
+                        <strong>Waiting for First Heartbeat</strong> — the agent
                         registered but has not sent its first heartbeat.
+                    </li>
+                    <li>
+                        <strong>Online</strong> — the agent is reporting
+                        heartbeats.
+                    </li>
+                    <li>
+                        <strong>Offline</strong> — no heartbeat within the
+                        offline threshold.
                     </li>
                     <li>
                         <strong>Archived</strong> — removed from active
                         monitoring.
                     </li>
                     <li>
-                        <strong>Pending Deletion</strong> — the agent was
-                        uninstalled; deletion is allowed.
+                        <strong>Agent Uninstalled</strong> — the agent was
+                        uninstalled; the installation guide reappears so you can
+                        reinstall and resume monitoring.
                     </li>
                 </ul>
             </Section>

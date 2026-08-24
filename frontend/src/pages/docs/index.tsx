@@ -25,7 +25,6 @@ import {
     ChevronRight,
     Menu,
     X,
-    type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DocCard from "@/components/docs/DocCard";
@@ -64,6 +63,12 @@ import {
     DocsAdrContent,
     DocsCredentialsContent,
 } from "@/components/docs/DocsTechnicalContent";
+import { DocsAgentInstallContent } from "@/components/docs/DocsAgentInstallContent";
+import { DocsAgentArchitectureContent } from "@/components/docs/DocsAgentArchitectureContent";
+import { DocsAgentIdentityContent } from "@/components/docs/DocsAgentIdentityContent";
+import { DocsAgentStorageContent } from "@/components/docs/DocsAgentStorageContent";
+import { DocsAgentMonitoringContent } from "@/components/docs/DocsAgentMonitoringContent";
+import { DocsAgentSecurityContent } from "@/components/docs/DocsAgentSecurityContent";
 import { DocsAlertsContent } from "@/components/docs/DocsAlertsContent";
 import { DocsStorageProvidersContent } from "@/components/docs/DocsStorageProvidersContent";
 
@@ -154,7 +159,7 @@ const DOC_SECTIONS: DocsSection[] = [
     },
     {
         id: "agent-flow",
-        label: "Agent Flow",
+        label: "Agent",
         icon: Bot,
         group: "Technical Reference",
     },
@@ -232,6 +237,12 @@ const PAGES: Record<
         description: "Create servers, install the agent, and monitor metrics.",
         Content: DocsServersContent,
     },
+    "agent-setup": {
+        title: "Agent Installation & Lifecycle",
+        description:
+            "Install the agent on Windows or Linux, watch the server come online, and uninstall cleanly.",
+        Content: DocsAgentInstallContent,
+    },
     "users": {
         title: "Users",
         description: "Manage accounts, credentials, and client assignments.",
@@ -267,9 +278,40 @@ const PAGES: Record<
         Content: DocsAdrContent,
     },
     "agent-flow": {
-        title: "Agent Flow",
-        description: "How the Go agent on each monitored server works.",
+        title: "Agent",
+        description:
+            "The Go agent on each monitored server — overview, then deep dives into architecture, identity, storage, monitoring, and security.",
         Content: DocsAgentContent,
+    },
+    "agent-architecture": {
+        title: "Agent Architecture",
+        description:
+            "The Go agent's startup sequence, CLI, runtime behavior, and source layout.",
+        Content: DocsAgentArchitectureContent,
+    },
+    "agent-identity": {
+        title: "Agent Identity",
+        description:
+            "Installation UUID and RSA keypair — how agent identity is generated and stored per platform.",
+        Content: DocsAgentIdentityContent,
+    },
+    "agent-storage": {
+        title: "Agent Storage",
+        description:
+            "The three storage tiers: persistent config and logs, the OS keystore, and process memory.",
+        Content: DocsAgentStorageContent,
+    },
+    "agent-monitoring": {
+        title: "Agent Monitoring",
+        description:
+            "Heartbeats, per-server port/process filters, and backend port pinging.",
+        Content: DocsAgentMonitoringContent,
+    },
+    "agent-security": {
+        title: "Agent Security",
+        description:
+            "Challenge-response authentication, channel authorization, and local key protection.",
+        Content: DocsAgentSecurityContent,
     },
     "credentials": {
         title: "Credentials Storage",
@@ -298,6 +340,32 @@ const PAGES: Record<
         Content: DocsSchedulingContent,
     },
 };
+
+// Sub-pages are fully-fledged doc pages registered in PAGES that are NOT listed
+// in DOC_SECTIONS (so they don't clutter the sidebar). Each belongs to a parent
+// sidebar section and appears in the pager in a fixed order.
+const PARENT_SECTION: Record<string, string> = {
+    "agent-setup": "agent-flow",
+    "agent-architecture": "agent-flow",
+    "agent-identity": "agent-flow",
+    "agent-storage": "agent-flow",
+    "agent-monitoring": "agent-flow",
+    "agent-security": "agent-flow",
+};
+
+const siblingsOf = (parent: string) =>
+    Object.keys(PARENT_SECTION).filter((id) => PARENT_SECTION[id] === parent);
+
+// Sidebar nesting: each parent section expands to show its sub-pages. The
+// nested labels drop the parent's name (e.g. "Agent Architecture" → "Architecture").
+const SIDEBAR_SUBS: Record<string, DocSubItem[]> = {};
+for (const parent of new Set(Object.values(PARENT_SECTION))) {
+    SIDEBAR_SUBS[parent] = siblingsOf(parent).map((id) => ({
+        id,
+        label: (PAGES[id]?.title ?? id).replace(/^Agent /, ""),
+        level: 1,
+    }));
+}
 
 const MANUAL_SUBS: Record<string, DocSubItem[]> = {
     alerting: [
@@ -337,13 +405,18 @@ const MANUAL_SUBS: Record<string, DocSubItem[]> = {
     ],
 };
 
+interface DocPageRef {
+    id: string;
+    label: string;
+}
+
 function DocPager({
     prev,
     next,
     onGo,
 }: {
-    prev: DocsSection | null;
-    next: DocsSection | null;
+    prev: DocPageRef | null;
+    next: DocPageRef | null;
     onGo: (id: string) => void;
 }) {
     return (
@@ -398,13 +471,40 @@ export default function Docs() {
     const pendingScroll = useRef<string | null>(null);
     const overrideSubRef = useRef(false);
     const userScrolledRef = useRef(false);
-    const index = DOC_SECTIONS.findIndex((s) => s.id === sectionId);
-    const current = index >= 0 ? DOC_SECTIONS[index] : null;
-    const prev = index > 0 ? DOC_SECTIONS[index - 1] : null;
-    const next =
-        index >= 0 && index < DOC_SECTIONS.length - 1
-            ? DOC_SECTIONS[index + 1]
-            : null;
+    const routeId = sectionId ?? "";
+    const index = DOC_SECTIONS.findIndex((s) => s.id === routeId);
+    const inSidebar = index >= 0;
+    const parentId = PARENT_SECTION[sectionId ?? ""];
+    const current = inSidebar
+        ? DOC_SECTIONS[index]
+        : parentId
+          ? DOC_SECTIONS.find((s) => s.id === parentId) ?? null
+          : null;
+
+    let prev: DocPageRef | null = null;
+    let next: DocPageRef | null = null;
+    if (inSidebar) {
+        prev = index > 0 ? DOC_SECTIONS[index - 1] : null;
+        next =
+            index >= 0 && index < DOC_SECTIONS.length - 1
+                ? DOC_SECTIONS[index + 1]
+                : null;
+    } else if (parentId) {
+        const siblings = siblingsOf(parentId);
+        const subPos = siblings.indexOf(sectionId ?? "");
+        const parentIndex = DOC_SECTIONS.findIndex((s) => s.id === parentId);
+        const ref = (id: string): DocPageRef => ({
+            id,
+            label: PAGES[id]?.title ?? id,
+        });
+        prev = subPos > 0 ? ref(siblings[subPos - 1]) : DOC_SECTIONS[parentIndex] ?? null;
+        next =
+            subPos >= 0 && subPos < siblings.length - 1
+                ? ref(siblings[subPos + 1])
+                : parentIndex >= 0 && parentIndex < DOC_SECTIONS.length - 1
+                  ? DOC_SECTIONS[parentIndex + 1]
+                  : null;
+    }
 
     useEffect(() => {
         const hidden = hiddenRef.current;
@@ -453,7 +553,7 @@ export default function Docs() {
                     ?.scrollIntoView({ behavior: "smooth", block: "start" });
             });
         }
-    }, [current?.id]);
+    }, [sectionId]);
 
     const handleContentScroll = () => {
         const container = contentRef.current;
@@ -492,7 +592,7 @@ export default function Docs() {
     const jumpToSub = (sectionId: string, subId: string) => {
         overrideSubRef.current = true;
         setActiveSub(subId);
-        if (sectionId === current?.id) {
+        if (sectionId === routeId) {
             contentRef.current
                 ?.querySelector<HTMLElement>(`#${CSS.escape(subId)}`)
                 ?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -511,9 +611,9 @@ export default function Docs() {
         setMobileOpen(false);
     };
 
-    const page = PAGES[current.id];
-    const isOverview = current.id === "overview";
-    const currentSubs = subSections[current.id] ?? [];
+    const page = PAGES[routeId];
+    const isOverview = routeId === "overview";
+    const currentSubs = subSections[routeId] ?? [];
 
     return (
         <div className="flex h-full flex-col w-full bg-background text-foreground">
@@ -563,8 +663,9 @@ export default function Docs() {
                 >
                     <DocsSidebar
                         sections={DOC_SECTIONS}
-                        activeId={current.id}
+                        activeId={routeId}
                         onJump={go}
+                        subItems={SIDEBAR_SUBS}
                     />
                 </ResizablePanel>
                 <ResizableHandle withHandle className="hidden lg:flex" />
@@ -714,30 +815,36 @@ export default function Docs() {
                     </div>
                     <DocsNav
                         sections={DOC_SECTIONS}
-                        activeId={current.id}
+                        activeId={routeId}
                         onJump={go}
+                        subItems={SIDEBAR_SUBS}
                     />
                 </div>
             </div>
 
             {/* Hidden parser for auto-generating TOC sub-items */}
             <div ref={hiddenRef} className="hidden" aria-hidden="true">
-                {DOC_SECTIONS.filter((s) => s.id !== "alerting").map(
-                    (section) => {
+                {Array.from(
+                    new Set([
+                        ...DOC_SECTIONS.map((s) => s.id),
+                        ...Object.keys(PAGES),
+                    ]),
+                )
+                    .filter((id) => id !== "alerting")
+                    .map((id) => {
                         const Content =
-                            section.id === "overview"
+                            id === "overview"
                                 ? DocsOverviewContent
-                                : PAGES[section.id].Content;
+                                : PAGES[id].Content;
                         return (
                             <div
-                                key={section.id}
-                                data-docpage={section.id}
+                                key={id}
+                                data-docpage={id}
                             >
                                 <Content />
                             </div>
                         );
-                    },
-                )}
+                    })}
             </div>
         </div>
     );
