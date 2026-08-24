@@ -1,6 +1,7 @@
 // path: frontend/src/pages/reports/report-index.tsx
 import { useOutletContext, useParams, useLocation } from "react-router-dom";
 import { FileText } from "lucide-react";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import type { ReportOutletContext } from "@/layouts/ReportsLayout";
 import { TypstPreview } from "./TypstPreview";
 
@@ -42,6 +43,7 @@ function GeneralReportWithPreview({
 }
 
 export default function ReportIndexPage() {
+    useDocumentTitle("Reports");
     const { view, orientation, hours } = useOutletContext<ReportOutletContext>();
     const { uuid } = useParams<{ uuid?: string }>();
     const location = useLocation();

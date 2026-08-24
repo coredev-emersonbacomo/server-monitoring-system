@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import api from "@/api/api";
 import {
     Info,
@@ -124,6 +125,8 @@ export default function ServerDetail() {
         fromTime: (timeSpanArgs as any)?.fromTime,
         toTime: (timeSpanArgs as any)?.toTime,
     });
+
+    useDocumentTitle(initial?.name ?? undefined);
 
     const queryClient = useQueryClient();
     const serverAlertTab = useServerAlertTab(

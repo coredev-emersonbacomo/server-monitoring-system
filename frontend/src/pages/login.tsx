@@ -2,10 +2,12 @@ import { useState, type SubmitEvent } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Loader2, Mail, Lock, Eye, EyeOff, Home } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { cn } from "@/lib/utils";
 
 export default function Login() {
+    useDocumentTitle("Login");
     const { login, isLoggingIn } = useJwtAuth();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();

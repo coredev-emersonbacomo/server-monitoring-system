@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
     Pencil,
     Upload,
@@ -71,6 +72,9 @@ export default function ClientDetail() {
 
     // ── Data fetching ──────────────────────────────────────────────────────────
     const { data: client, isLoading, isError } = useClient(clientUuid!);
+
+    useDocumentTitle(client?.name ?? undefined);
+
     const { data: servers = [], isLoading: serversLoading } = useClientServers(
         clientUuid!,
     );

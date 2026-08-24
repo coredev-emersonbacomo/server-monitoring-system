@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { z } from "zod";
 import { useNavigate, useParams } from "react-router-dom";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
     Pencil,
     Upload,
@@ -178,6 +179,11 @@ export default function UserDetail() {
 
     // ── Data fetching ──────────────────────────────────────────────────────────
     const { data: user, isLoading, isError } = useUser(uuid);
+
+    useDocumentTitle(
+        user ? `${user.first_name} ${user.last_name}` : undefined,
+    );
+
     const { data: userClients = [], isLoading: clientsLoading } =
         useUserClients(uuid);
     const { data: allClients = [] } = useClients({

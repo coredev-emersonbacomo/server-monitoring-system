@@ -1,5 +1,6 @@
 import { useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
     Cpu,
     Save,
@@ -51,6 +52,7 @@ function SettingRow({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AgentSettings() {
+    useDocumentTitle("Agent Settings");
     const { user, isLoading: authLoading } = useJwtAuth();
     const navigate = useNavigate();
 
