@@ -280,7 +280,7 @@ function MonitoringFilter({
     // discarded edit never lingers.
     useEffect(() => {
         if (!open) return;
-        setSel(stored ? new Set(stored) : null);
+        setSel(stored ? new Set(stored as (number | string)[]) : null);
     }, [open, stored]);
 
     const visibleOptions = useMemo(() => {
@@ -326,7 +326,7 @@ function MonitoringFilter({
                               : [...sel].map(Number).sort((a, b) => a - b),
                   }
                 : {
-                      process_filter: sel === null ? null : [...sel].sort(),
+                      process_filter: sel === null ? null : ([...sel].sort() as string[]),
                   };
             const { error } = await api.PATCH(
                 "/v1/clients/{clientUuid}/servers/{serverUuid}/monitoring",
@@ -1115,7 +1115,6 @@ export function MetricsTab({
                     />
                 </div>
             </div>
-
         </div>
     );
 }

@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\Api\V1\SettingController;
 use App\Http\Controllers\Api\V1\GlobalAlertController;
+use App\Http\Controllers\Api\V1\SettingController;
 use Illuminate\Support\Facades\Route;
 
 // File path: routes/api/settings.php

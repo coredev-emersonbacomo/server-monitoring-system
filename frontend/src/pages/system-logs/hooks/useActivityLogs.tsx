@@ -3,8 +3,8 @@ import api from "@/api/api";
 
 export interface ActivityLogData {
     id: number;
-    logable_type: string;
-    logable_id: string;
+    logable_type: string | null;
+    logable_id: string | null;
     user_id: number | null;
     user: string | null;
     action: string;
@@ -21,7 +21,7 @@ export const useActivityLogs = () => {
                 params: {},
             });
             if (error) throw error;
-            return data ?? [];
+            return (data as unknown as ActivityLogData[]) ?? [];
         },
     });
 };
@@ -34,7 +34,7 @@ export const useServerHealthLogs = () => {
                 params: {},
             });
             if (error) throw error;
-            return data ?? [];
+            return (data as unknown as ActivityLogData[]) ?? [];
         },
     });
 };
@@ -47,7 +47,7 @@ export const useAgentLogs = () => {
                 params: {},
             });
             if (error) throw error;
-            return data ?? [];
+            return (data as unknown as ActivityLogData[]) ?? [];
         },
     });
 };
@@ -60,7 +60,7 @@ export const useBillingLogs = () => {
                 params: {},
             });
             if (error) throw error;
-            return data ?? [];
+            return (data as unknown as ActivityLogData[]) ?? [];
         },
     });
 };

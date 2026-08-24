@@ -21,7 +21,8 @@ import type { ProvisionDetailData } from "@/types/models";
 import IndexHeader, { type Crumb } from "@/components/IndexHeader";
 import { useServerSocket } from "@/hooks/useServerSocket";
 import { toast } from "sonner";
-import { createFormStore, useForm } from "@/components/ui/form";
+import { createFormStore, useForm, type FormStore } from "@/components/ui/form";
+import type { ServerInfoForm } from "./context/ServerDetailContext";
 
 import { useServer } from "./hooks/useServer";
 import { useDeleteServer } from "./hooks/useDeleteServer";
@@ -150,13 +151,13 @@ export default function ServerDetail() {
                 schema: serverInfoSchema,
                 originalData: null,
                 initialMode: "view",
-            }),
+            }) as unknown as FormStore<ServerInfoForm>,
         // Only recreate store when navigating to a different server, not on every poll
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [initial?.uuid],
     );
 
-    const form = useForm(store, (s) => s.form);
+    const form = useForm(store, (s) => s.form) as ServerInfoForm;
     const mode = useForm(store, (s) => s.mode);
 
     // Populate form when server data first loads (uuid change) — never overwrite during active edit
@@ -173,8 +174,8 @@ export default function ServerDetail() {
             externalDirty: false,
         });
         store.setMode("view");
-    // Only run when the server uuid changes (navigating to a different server)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // Only run when the server uuid changes (navigating to a different server)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initial?.uuid, store]);
 
     useEffect(() => {
@@ -319,15 +320,15 @@ export default function ServerDetail() {
     const trail: Crumb[] = allClient
         ? [{ label: "Servers", href: "/servers" }, { label: server.name }]
         : [
-            { label: "Clients", href: "/clients" },
-            {
-                label: server.client_name ?? "Client",
-                href: server.client_uuid
-                    ? `/clients/${server.client_uuid}`
-                    : undefined,
-            },
-            { label: server.name },
-        ];
+              { label: "Clients", href: "/clients" },
+              {
+                  label: server.client_name ?? "Client",
+                  href: server.client_uuid
+                      ? `/clients/${server.client_uuid}`
+                      : undefined,
+              },
+              { label: server.name },
+          ];
     const statusKey = resolveServerStatusKey(
         server.status,
         server.record_status,

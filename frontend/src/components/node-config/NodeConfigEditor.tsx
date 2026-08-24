@@ -107,6 +107,26 @@ function fromFlow(nodes: Node[], edges: Edge[]): NodeConfigGraph {
     };
 }
 
+const CAPABILITY_SETTINGS: Record<string, Record<string, unknown>> = {
+    repeat: {
+        repeat_interval: "10000",
+        repeat_max_repeats: -1,
+    },
+};
+
+const TIME_NODE_TYPES = new Set(["sustained", "check_after"]);
+
+const CAPABILITY_EXISTS: Record<
+    string,
+    (data: Record<string, unknown>) => boolean
+> = {
+    repeat: (data) => {
+        const ri =
+            parseInt((data.repeat_interval as string) || "0", 10) || 0;
+        return ri > 0;
+    },
+};
+
 interface NodeConfigEditorProps {
     configKey?: string;
     scopeLabel?: string;
@@ -198,7 +218,7 @@ export function NodeConfigEditor({
     const [hydrated, setHydrated] = useState(false);
     const [previewOpen, setPreviewOpen] = useState(false);
     const [compiledPreview, setCompiledPreview] = useState<unknown>(null);
-    const savedSnapshotRef = useRef<string>("");
+    const [savedSnapshot, setSavedSnapshot] = useState<string>("");
 
     const initialNodes = useMemo(
         () =>
@@ -335,14 +355,17 @@ export function NodeConfigEditor({
 
     // ── Right-drag selection box ──────────────────────────────
     const [selBox, setSelBox] = useState<{
-        x: number;
-        y: number;
-        w: number;
-        h: number;
+        left: number;
+        top: number;
+        width: number;
+        height: number;
     } | null>(null);
-    const rightDragRef = useRef<{ startX: number; startY: number } | null>(
-        null,
-    );
+    const rightDragRef = useRef<{
+        startX: number;
+        startY: number;
+        containerLeft: number;
+        containerTop: number;
+    } | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
     const onContextMenu = useCallback((e: React.MouseEvent) => {
@@ -354,20 +377,39 @@ export function NodeConfigEditor({
             const target = e.target as HTMLElement;
             if (!target.closest(".react-flow__pane")) return;
             e.preventDefault();
-            rightDragRef.current = { startX: e.clientX, startY: e.clientY };
-            setSelBox({ x: e.clientX, y: e.clientY, w: 0, h: 0 });
+            const rect = containerRef.current?.getBoundingClientRect();
+            const containerLeft = rect?.left ?? 0;
+            const containerTop = rect?.top ?? 0;
+            rightDragRef.current = {
+                startX: e.clientX,
+                startY: e.clientY,
+                containerLeft,
+                containerTop,
+            };
+            setSelBox({
+                left: e.clientX - containerLeft,
+                top: e.clientY - containerTop,
+                width: 0,
+                height: 0,
+            });
         }
     }, []);
 
     useEffect(() => {
         const onMove = (e: MouseEvent) => {
             if (!rightDragRef.current) return;
-            const { startX, startY } = rightDragRef.current;
-            const x = Math.min(startX, e.clientX);
-            const y = Math.min(startY, e.clientY);
-            const w = Math.abs(e.clientX - startX);
-            const h = Math.abs(e.clientY - startY);
-            setSelBox({ x, y, w, h });
+            const { startX, startY, containerLeft, containerTop } =
+                rightDragRef.current;
+            const minX = Math.min(startX, e.clientX);
+            const minY = Math.min(startY, e.clientY);
+            const width = Math.abs(e.clientX - startX);
+            const height = Math.abs(e.clientY - startY);
+            setSelBox({
+                left: minX - containerLeft,
+                top: minY - containerTop,
+                width,
+                height,
+            });
         };
         const onUp = (e: MouseEvent) => {
             if (!rightDragRef.current) return;
@@ -522,10 +564,12 @@ export function NodeConfigEditor({
             const flowEdges = toFlowEdges(effectiveConfig.config.edges);
             setNodes(flowNodes);
             setEdges(flowEdges);
-            savedSnapshotRef.current = JSON.stringify({
-                nodes: flowNodes,
-                edges: flowEdges,
-            });
+            setSavedSnapshot(
+                JSON.stringify({
+                    nodes: flowNodes,
+                    edges: flowEdges,
+                }),
+            );
             historyRef.current = [
                 { nodes: flowNodes, edges: flowEdges, label: "Load config" },
             ];
@@ -533,7 +577,14 @@ export function NodeConfigEditor({
             syncHistoryButtons();
             setHydrated(true);
         }
-    }, [effectiveConfig, definitions, hydrated, setNodes, setEdges]);
+    }, [
+        effectiveConfig,
+        definitions,
+        hydrated,
+        setNodes,
+        setEdges,
+        syncHistoryButtons,
+    ]);
 
     const onConnect: OnConnect = useCallback(
         (connection: Connection) => {
@@ -578,7 +629,7 @@ export function NodeConfigEditor({
                 sourceNode?.data as Record<string, unknown> | undefined,
             );
             const targetDef = getInputType(
-                nodesRef.current.find((n) => n.id === target)?.type || "",
+                targetNode?.type || "",
                 targetHandle,
             );
             if (!sourceDef || !targetDef) return false;
@@ -628,14 +679,6 @@ export function NodeConfigEditor({
         [setNodes, setEdges, pushSnapshot],
     );
 
-    const CAPABILITY_SETTINGS: Record<string, Record<string, unknown>> = {
-        repeat: {
-            repeat_interval: "10000",
-            repeat_max_repeats: -1,
-        },
-    };
-
-    const TIME_NODE_TYPES = new Set(["sustained", "check_after"]);
     const capHighlightRef = useRef<string | null>(null);
 
     const clearCapHighlight = useCallback(() => {
@@ -706,16 +749,7 @@ export function NodeConfigEditor({
         [clearCapHighlight],
     );
 
-    const CAPABILITY_EXISTS: Record<
-        string,
-        (data: Record<string, unknown>) => boolean
-    > = {
-        repeat: (data) => {
-            const ri =
-                parseInt((data.repeat_interval as string) || "0", 10) || 0;
-            return ri > 0;
-        },
-    };
+
 
     const applyCapability = useCallback(
         (capId: string, targetNodeId: string | null) => {
@@ -837,7 +871,7 @@ export function NodeConfigEditor({
                 slug: configKey,
                 data: { name: displayName, config: graph },
             });
-            savedSnapshotRef.current = JSON.stringify({ nodes, edges });
+            setSavedSnapshot(JSON.stringify({ nodes, edges }));
             toast.success("Config saved");
         } catch {
             toast.error("Failed to save config");
@@ -869,8 +903,8 @@ export function NodeConfigEditor({
 
     const isDirty = useMemo(() => {
         if (!hydrated) return false;
-        return savedSnapshotRef.current !== JSON.stringify({ nodes, edges });
-    }, [hydrated, nodes, edges]);
+        return savedSnapshot !== JSON.stringify({ nodes, edges });
+    }, [hydrated, savedSnapshot, nodes, edges]);
 
     if (defsLoading || (!externalConfig && configLoading)) {
         return (
@@ -950,7 +984,11 @@ export function NodeConfigEditor({
                         onMouseDown={onPaneMouseDown}
                     >
                         <ReactFlow
-                            colorMode={theme}
+                            colorMode={
+                                theme.toLowerCase().includes("light")
+                                    ? "light"
+                                    : "dark"
+                            }
                             nodes={nodes}
                             edges={edges}
                             onNodesChange={handleNodesChange}
@@ -1006,20 +1044,14 @@ export function NodeConfigEditor({
                                 />
                             )}
                         </ReactFlow>
-                        {selBox && selBox.w > 0 && (
+                        {selBox && selBox.width > 0 && (
                             <div
                                 className="absolute pointer-events-none border border-dashed border-primary/60 bg-primary/10 rounded-sm z-50"
                                 style={{
-                                    left:
-                                        selBox.x -
-                                        (containerRef.current?.getBoundingClientRect()
-                                            .left ?? 0),
-                                    top:
-                                        selBox.y -
-                                        (containerRef.current?.getBoundingClientRect()
-                                            .top ?? 0),
-                                    width: selBox.w,
-                                    height: selBox.h,
+                                    left: selBox.left,
+                                    top: selBox.top,
+                                    width: selBox.width,
+                                    height: selBox.height,
                                 }}
                             />
                         )}
