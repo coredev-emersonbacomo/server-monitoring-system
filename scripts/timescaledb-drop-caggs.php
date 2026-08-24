@@ -31,14 +31,14 @@ try {
         SELECT c.relname, c.relkind
         FROM pg_class c
         JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE n.nspname = 'public' AND c.relname IN (" . implode(', ', array_fill(0, count($caggs), '?')) . ")
-    ", $caggs);
+        WHERE n.nspname = 'public' AND c.relname IN (".implode(', ', array_fill(0, count($caggs), '?')).')
+    ', $caggs);
 
     foreach ($existing as $cagg) {
         if ($cagg->relkind === 'm') {
-            DB::statement('DROP MATERIALIZED VIEW IF EXISTS "' . $cagg->relname . '" CASCADE');
+            DB::statement('DROP MATERIALIZED VIEW IF EXISTS "'.$cagg->relname.'" CASCADE');
         } else {
-            DB::statement('DROP VIEW IF EXISTS "' . $cagg->relname . '" CASCADE');
+            DB::statement('DROP VIEW IF EXISTS "'.$cagg->relname.'" CASCADE');
         }
     }
 
@@ -54,7 +54,7 @@ try {
     }
 
     echo "[resetdb] Cleaned TimescaleDB continuous aggregates and internal hypertables.\n";
-} catch (\Throwable $e) {
+} catch (Throwable $e) {
     // Not PostgreSQL or TimescaleDB not present — safe to ignore.
-    echo "[resetdb] TimescaleDB cleanup skipped: " . $e->getMessage() . "\n";
+    echo '[resetdb] TimescaleDB cleanup skipped: '.$e->getMessage()."\n";
 }

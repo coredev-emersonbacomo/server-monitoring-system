@@ -2,12 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Client;
-use App\Models\Server;
 use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
-
 
 class ClientSeeder extends Seeder
 {
@@ -17,8 +15,9 @@ class ClientSeeder extends Seeder
     public function run(): void
     {
         $user = User::where('username', 'admin')->first();
-        if (!$user) {
+        if (! $user) {
             $this->command->error('Please run AdminSeeder first, no users found.');
+
             return;
         }
         $client = Client::updateOrCreate(

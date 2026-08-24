@@ -96,6 +96,7 @@ export default function ClientDetail() {
     const removeSecop = useRemoveClientSecop(clientUuid!);
 
     // ── Local state ────────────────────────────────────────────────────────────
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDelete, setShowDelete] = useState(false);
     const [showSecopDialog, setShowSecopDialog] = useState(false);
     const defaultBanner = import.meta.env.VITE_DEFAULT_CLIENT_BANNER as string;
@@ -107,6 +108,8 @@ export default function ClientDetail() {
     const [serverFilter, setServerFilter] = useState<
         "all" | "online" | "offline" | "archived"
     >("all");
+
+    const isSaving = createClient.isPending || updateClient.isPending || isSubmitting;
 
     // ── Form store ─────────────────────────────────────────────────────────────
     const isCreate = !clientUuid;
@@ -217,6 +220,8 @@ export default function ClientDetail() {
 
     // ── Handlers ───────────────────────────────────────────────────────────────
     const handleSubmit = async () => {
+        if (isSaving) return;
+
         const fd = new FormData();
         fd.append("name", form.name);
         fd.append("description", form.description ?? "");
@@ -244,6 +249,7 @@ export default function ClientDetail() {
             fd.append("_method", "PUT");
         }
 
+        setIsSubmitting(true);
         try {
             if (isCreate) {
                 await createClient.mutateAsync(fd);
@@ -276,6 +282,8 @@ export default function ClientDetail() {
                         : "Failed to update client.",
                 );
             }
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -359,7 +367,6 @@ export default function ClientDetail() {
 
     // ── Derived state ──────────────────────────────────────────────────────────
     const hasBanner = !!bannerPreview;
-    const isSaving = createClient.isPending || updateClient.isPending;
     const bannerInputId = "banner-upload";
     const filteredServers = servers.filter((s) => {
         const matchSearch = s.name

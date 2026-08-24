@@ -46,6 +46,12 @@ class CreateUserData extends Data
     public static function rules(?ValidationContext $context = null): array
     {
         return [
+            'first_name' => ['required', 'string', 'max:64'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'phone_number' => ['required', 'string', 'min:11', 'max:255', 'unique:users,phone_number'],
+            'username' => ['required', 'string', 'max:255', 'unique:users,username'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
             'timezone' => ['nullable', 'string', 'max:255', 'timezone'],
         ];
     }

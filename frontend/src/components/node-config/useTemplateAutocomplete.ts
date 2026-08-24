@@ -77,7 +77,7 @@ function getCaretCoordinates(
 export function useTemplateAutocomplete(
     value: string,
     onChange: (value: string) => void,
-    fieldRef: RefObject<TemplateField>,
+    fieldRef: RefObject<TemplateField | null>,
     onKeyDown?: (e: React.KeyboardEvent) => void,
 ) {
     const [open, setOpen] = useState(false);

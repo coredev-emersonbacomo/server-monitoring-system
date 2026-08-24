@@ -51,7 +51,7 @@ export function getLogSubjectLabel(log: ActivityLogData): string {
     return shortModel(log.logable_type);
 }
 
-export function shortModel(fqcn: string): string {
+export function shortModel(fqcn: string | null | undefined): string {
     if (!fqcn) return "—";
     const parts = fqcn.split("\\");
     return parts[parts.length - 1];
