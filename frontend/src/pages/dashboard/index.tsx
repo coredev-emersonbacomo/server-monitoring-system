@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import PageLayout from "@/components/PageLayout";
 import {
     Activity,
@@ -184,6 +185,7 @@ function CompletedModal({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
+    useDocumentTitle("Dashboard");
     const { user } = useAuthContext();
     const [completedOpen, setCompletedOpen] = useState(false);
 

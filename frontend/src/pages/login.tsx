@@ -1,11 +1,12 @@
 import { useState, type SubmitEvent } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { Loader2, Mail, Lock, Eye, EyeOff, Home } from "lucide-react";
+import { Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { FloatingInput } from "@/components/ui/floatingInput";
-import { cn } from "@/lib/utils";
 
 export default function Login() {
+    useDocumentTitle("Login");
     const { login, isLoggingIn } = useJwtAuth();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -77,7 +78,7 @@ export default function Login() {
                     </span>
                 </div>
 
-                <div className="w-full max-w-sm mx-auto lg:ml-18 -mt-12">
+                <div className="w-full max-w-sm mx-auto -mt-12">
                     <h1 className="text-4xl font-semibold mb-8">Sign In</h1>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
