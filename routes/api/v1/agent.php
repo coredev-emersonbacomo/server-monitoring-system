@@ -17,5 +17,3 @@ Route::post('agent/auth/verify', [AgentController::class, 'verify']);
 Route::post('agent/heartbeat', [AgentController::class, 'heartbeat']);
 Route::post('agent/uninstall', [AgentController::class, 'uninstall']);
 Route::post('agent/error', [AgentController::class, 'agentError']);
-
-

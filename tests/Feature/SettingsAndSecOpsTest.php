@@ -39,7 +39,7 @@ test('settings index returns key-value settings', function () {
     $token = loginAs($this->admin);
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->getJson('/api/settings');
 
     $response->assertStatus(200)
@@ -50,7 +50,7 @@ test('admin can update settings', function () {
     $token = loginAs($this->admin);
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->putJson('/api/settings', [
         'secop_limit_per_client' => 3,
     ]);
@@ -65,7 +65,7 @@ test('settings validation fails if offline threshold is less than heartbeat inte
     $token = loginAs($this->admin);
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->putJson('/api/settings', [
         'heartbeat_interval' => 10,
         'offline_threshold' => 9,
@@ -81,7 +81,7 @@ test('settings validation passes if offline threshold is greater than or equal t
     $token = loginAs($this->admin);
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->putJson('/api/settings', [
         'heartbeat_interval' => 10,
         'offline_threshold' => 11,
@@ -94,7 +94,7 @@ test('non-admin cannot update settings', function () {
     $token = loginAs($this->secop);
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->putJson('/api/settings', [
         'secop_limit_per_client' => 5,
     ]);
@@ -106,14 +106,14 @@ test('admin can assign secops to a client within limit', function () {
     $token = loginAs($this->admin);
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->postJson("/api/clients/{$this->client->uuid}/secops", [
         'user_uuid' => $this->secop->uuid,
     ]);
     $response->assertStatus(201);
 
     $responseTwo = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->postJson("/api/clients/{$this->client->uuid}/secops", [
         'user_uuid' => $secopTwo->uuid,
     ]);
@@ -133,20 +133,20 @@ test('assign secops rejects assignments above configured limit', function () {
 
     // Assign up to the limit (2)
     $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->postJson("/api/clients/{$this->client->uuid}/secops", [
         'user_uuid' => $this->secop->uuid,
     ])->assertStatus(201);
 
     $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->postJson("/api/clients/{$this->client->uuid}/secops", [
         'user_uuid' => $secopTwo->uuid,
     ])->assertStatus(201);
 
     // Try assigning a third one (limit is 2)
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->postJson("/api/clients/{$this->client->uuid}/secops", [
         'user_uuid' => $secopThree->uuid,
     ]);
@@ -158,12 +158,12 @@ test('assign secops rejects assignments above configured limit', function () {
 test('client secops endpoint returns assigned secops', function () {
     $this->client->secopclients()->attach($this->secop->id, [
         'uuid' => Str::uuid()->toString(),
-        'record_status' => 'active'
+        'record_status' => 'active',
     ]);
     $token = loginAs($this->admin);
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->getJson("/api/clients/{$this->client->uuid}/secops");
 
     $response->assertStatus(200)

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { TemplateVariable } from './templateVariables';
+import type { TemplateVariable } from './nodes/templateVariables';
 import type { CaretCoords } from './useTemplateAutocomplete';
 
 interface TemplateDropdownProps {

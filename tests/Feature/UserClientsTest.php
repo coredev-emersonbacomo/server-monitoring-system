@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\Client;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class)->group('user_clients');
 
@@ -36,7 +38,7 @@ test('admin can assign a client to a user', function () {
     $token = loginAsUser($this->admin);
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->postJson("/api/users/{$this->secop->uuid}/clients", [
         'client_uuid' => $this->client->uuid,
     ]);
@@ -53,14 +55,14 @@ test('admin can assign a client to a user', function () {
 
 test('can retrieve clients assigned to a user', function () {
     $this->secop->clients()->attach($this->client->id, [
-        'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+        'uuid' => Str::uuid()->toString(),
         'record_status' => 'active',
     ]);
 
     $token = loginAsUser($this->admin);
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->getJson("/api/users/{$this->secop->uuid}/clients");
 
     $response->assertStatus(200)
@@ -69,14 +71,14 @@ test('can retrieve clients assigned to a user', function () {
 
 test('admin can remove a client from a user', function () {
     $this->secop->clients()->attach($this->client->id, [
-        'uuid' => \Illuminate\Support\Str::uuid()->toString(),
+        'uuid' => Str::uuid()->toString(),
         'record_status' => 'active',
     ]);
 
     $token = loginAsUser($this->admin);
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->deleteJson("/api/users/{$this->secop->uuid}/clients/{$this->client->uuid}");
 
     $response->assertStatus(204);
@@ -88,21 +90,21 @@ test('admin can remove a client from a user', function () {
 });
 
 test('assigning client to user rejects if client exceeds secops limit', function () {
-    \App\Models\Setting::set('secop_limit_per_client', '1');
+    Setting::set('secop_limit_per_client', '1');
 
     $secopTwo = User::factory()->create();
     $token = loginAsUser($this->admin);
 
     // Assign the first SecOp user
     $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->postJson("/api/users/{$this->secop->uuid}/clients", [
         'client_uuid' => $this->client->uuid,
     ])->assertStatus(201);
 
     // Assigning the second SecOp user to same client should fail (limit is 1)
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->postJson("/api/users/{$secopTwo->uuid}/clients", [
         'client_uuid' => $this->client->uuid,
     ]);

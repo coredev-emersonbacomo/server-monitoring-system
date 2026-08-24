@@ -1,12 +1,13 @@
 import { Clock } from "lucide-react";
 import { TimezoneCombobox, tzOffsetLabel } from "@/components/TimezoneCombobox";
 import { InfoBlock } from "./InfoBlock";
+import { type FormStore } from "@/components/ui/form";
 
 interface TimezoneSectionProps {
     mode: "view" | "edit" | "create";
     form: Record<string, string>;
-    store: { set: (key: string) => (value: string) => void };
-    timezone?: string;
+    store: FormStore<any>;
+    timezone?: string | null;
 }
 
 export function TimezoneSection({

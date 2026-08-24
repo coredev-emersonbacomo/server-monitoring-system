@@ -24,7 +24,7 @@ test('passes request with valid token', function () {
     $token = $this->jwtService->generateAccessToken($this->user->id, $sessionUuid);
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
+        'Authorization' => 'Bearer '.$token,
     ])->getJson('/api/_test/middleware');
 
     $response->assertStatus(200);

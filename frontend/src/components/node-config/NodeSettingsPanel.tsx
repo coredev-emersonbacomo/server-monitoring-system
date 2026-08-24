@@ -39,6 +39,7 @@ export function NodeSettingsPanel({
 }: NodeSettingsPanelProps) {
     const handleChange = useCallback(
         (key: string, value: unknown) => {
+            if (!node) return;
             onUpdate(node.id, {
                 ...((node.data as Record<string, unknown>) || {}),
                 [key]: value,
