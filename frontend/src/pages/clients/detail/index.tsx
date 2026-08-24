@@ -63,6 +63,8 @@ import {
     formatContactNumber,
     validateContactNumber,
 } from "../utils/client-helper";
+import { formatCurrency } from "@/utils/helpers";
+import { useFormattedNumberInput } from "@/hooks/useFormattedNumberInput";
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClientDetail() {
@@ -87,6 +89,8 @@ export default function ClientDetail() {
         client?.name ?? "",
         client?.alert_scope,
     );
+
+    const { inputRef, formatValue, handleChange, handleKeyDown, handlePaste } = useFormattedNumberInput();
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createClient = useCreateClient();
@@ -130,21 +134,21 @@ export default function ClientDetail() {
             schema: clientSchema,
             originalData: client
                 ? {
-                      name: client.name,
-                      description: client.description ?? "",
-                      location: client.location,
-                      email: client.email,
-                      contact_number: client.contact_number,
-                      budget: client.budget ?? 0,
-                  }
+                    name: client.name,
+                    description: client.description ?? "",
+                    location: client.location,
+                    email: client.email,
+                    contact_number: client.contact_number,
+                    budget: client.budget ?? 0,
+                }
                 : {
-                      name: "",
-                      description: "",
-                      location: "",
-                      email: "",
-                      contact_number: "",
-                      budget: 0,
-                  },
+                    name: "",
+                    description: "",
+                    location: "",
+                    email: "",
+                    contact_number: "",
+                    budget: 0,
+                },
             initialMode: "view",
         });
     }, [isCreate, client]);
@@ -291,8 +295,8 @@ export default function ClientDetail() {
             };
             toast.error(
                 e?.response?.data?.message ||
-                    e?.message ||
-                    "Failed to delete client.",
+                e?.message ||
+                "Failed to delete client.",
             );
         }
     };
@@ -406,14 +410,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                          backgroundImage: `url(${bannerPreview})`,
-                                          backgroundSize: "cover",
-                                          backgroundPosition: "top center",
-                                      }
+                                        backgroundImage: `url(${bannerPreview})`,
+                                        backgroundSize: "cover",
+                                        backgroundPosition: "top center",
+                                    }
                                     : {
-                                          background:
-                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                      }
+                                        background:
+                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                    }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -476,7 +480,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                            defaultBanner,
+                                                        defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -583,7 +587,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none break-all",
                                             errors.description &&
-                                                "border-destructive",
+                                            "border-destructive",
                                         )}
                                     />
                                     {errors.description && (
@@ -740,16 +744,19 @@ export default function ClientDetail() {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {showEdit ? (
                                                 <FloatingInput
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
+                                                    type="text"
+                                                    inputMode="decimal"
                                                     label="Monthly Budget (₱)"
-                                                    value={String(
-                                                        form.budget ?? 0,
-                                                    )}
-                                                    onValueChange={(val) =>
-                                                        store.set("budget")(val)
-                                                    }
+                                                    value={formatValue(String(form.budget ?? 0))}
+                                                    onValueChange={(val) => {
+                                                        const el = inputRef.current;
+                                                        const cursorPos = el?.selectionStart ?? val.length;
+                                                        handleChange(val, cursorPos, (unformatted) => {
+                                                            store.set("budget")(unformatted);
+                                                        });
+                                                    }}
+                                                    onKeyDown={handleKeyDown}
+                                                    onPaste={handlePaste}
                                                     error={errors.budget}
                                                 />
                                             ) : (
@@ -759,19 +766,7 @@ export default function ClientDetail() {
                                                     isEdit={showEdit}
                                                 >
                                                     <p className="text-base font-semibold text-foreground">
-                                                        ₱
-                                                        {(
-                                                            Number(
-                                                                client?.budget,
-                                                            ) || 0
-                                                        ).toLocaleString(
-                                                            undefined,
-                                                            {
-                                                                minimumFractionDigits: 2,
-                                                                maximumFractionDigits: 2,
-                                                            },
-                                                        )}{" "}
-                                                        / mo
+                                                        {formatCurrency(client?.budget, { suffix: " / mo" })}
                                                     </p>
                                                 </Field>
                                             )}
@@ -783,19 +778,7 @@ export default function ClientDetail() {
                                                     isEdit={false}
                                                 >
                                                     <p className="text-base font-semibold text-foreground">
-                                                        ₱
-                                                        {(
-                                                            Number(
-                                                                client?.total_subscription_fee,
-                                                            ) || 0
-                                                        ).toLocaleString(
-                                                            undefined,
-                                                            {
-                                                                minimumFractionDigits: 2,
-                                                                maximumFractionDigits: 2,
-                                                            },
-                                                        )}{" "}
-                                                        / mo
+                                                        {formatCurrency(client?.total_subscription_fee, { suffix: " / mo" })}
                                                     </p>
                                                 </Field>
                                             )}
@@ -1052,11 +1035,11 @@ export default function ClientDetail() {
                                                         ? "All"
                                                         : serverFilter ===
                                                             "online"
-                                                          ? "Online"
-                                                          : serverFilter ===
-                                                              "offline"
-                                                            ? "Offline"
-                                                            : "Archived"}
+                                                            ? "Online"
+                                                            : serverFilter ===
+                                                                "offline"
+                                                                ? "Offline"
+                                                                : "Archived"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -1087,10 +1070,10 @@ export default function ClientDetail() {
                                                         onClick={() =>
                                                             setServerFilter(
                                                                 opt.value as
-                                                                    | "all"
-                                                                    | "online"
-                                                                    | "offline"
-                                                                    | "archived",
+                                                                | "all"
+                                                                | "online"
+                                                                | "offline"
+                                                                | "archived",
                                                             )
                                                         }
                                                         className={cn(

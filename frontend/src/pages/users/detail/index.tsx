@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { z } from "zod";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
     Pencil,
     Upload,
@@ -1067,7 +1067,11 @@ export default function UserDetail() {
                                                         key={client.uuid}
                                                         className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"
                                                     >
-                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                        <Link
+                                                            to={`/clients/${client.uuid}`}
+                                                            aria-label={`Open ${client.name}`}
+                                                            className="flex items-center gap-3 flex-1 min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                        >
                                                             <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted shrink-0 flex items-center justify-center">
                                                                 {client.banner_image_url ? (
                                                                     <img
@@ -1100,7 +1104,7 @@ export default function UserDetail() {
                                                                     }
                                                                 </p>
                                                             </div>
-                                                        </div>
+                                                        </Link>
                                                         <button
                                                             type="button"
                                                             onClick={() =>
