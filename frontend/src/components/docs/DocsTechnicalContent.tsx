@@ -5,6 +5,7 @@ import {
     Callout,
     CodeBlock,
 } from "./Section";
+import { Link } from "react-router-dom";
 
 export function DocsArchitectureContent() {
     return (
@@ -283,6 +284,72 @@ C:\\ProgramData\\MonitorAgent\\
                         can confirm and tear down the service.
                     </p>
                 </SubSection>
+            </Section>
+
+            <Section title="Deep dive">
+                <p>
+                    This page is the overview. The agent is documented in detail
+                    across five dedicated references:
+                </p>
+                <ul className="list-disc pl-5 space-y-1.5">
+                    <li>
+                        <Link
+                            to="/docs/agent-architecture"
+                            className="text-primary hover:underline"
+                        >
+                            Agent Architecture
+                        </Link>{" "}
+                        — startup sequence, CLI, runtime behavior, source files.
+                    </li>
+                    <li>
+                        <Link
+                            to="/docs/agent-identity"
+                            className="text-primary hover:underline"
+                        >
+                            Agent Identity
+                        </Link>{" "}
+                        — the installation UUID and per-platform key storage.
+                    </li>
+                    <li>
+                        <Link
+                            to="/docs/agent-storage"
+                            className="text-primary hover:underline"
+                        >
+                            Agent Storage
+                        </Link>{" "}
+                        — config, logs, keystore, and what survives what.
+                    </li>
+                    <li>
+                        <Link
+                            to="/docs/agent-monitoring"
+                            className="text-primary hover:underline"
+                        >
+                            Agent Monitoring
+                        </Link>{" "}
+                        — heartbeats, filters, and backend port pinging.
+                    </li>
+                    <li>
+                        <Link
+                            to="/docs/agent-security"
+                            className="text-primary hover:underline"
+                        >
+                            Agent Security
+                        </Link>{" "}
+                        — challenge-response auth, channel authorization, and
+                        local protection.
+                    </li>
+                </ul>
+                <p>
+                    For the operator's view — install commands, statuses, and
+                    troubleshooting — see{" "}
+                    <Link
+                        to="/docs/agent-setup"
+                        className="text-primary hover:underline"
+                    >
+                        Agent Installation &amp; Lifecycle
+                    </Link>{" "}
+                    in the User Guide.
+                </p>
             </Section>
         </>
     );
