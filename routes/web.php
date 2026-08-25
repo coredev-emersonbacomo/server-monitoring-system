@@ -15,6 +15,8 @@ Route::get('/install/linux', [AgentController::class, 'installLinux']);
 Route::get('/install/windows.ps1', [AgentController::class, 'installWindows']);
 Route::get('/uninstall/linux', [AgentController::class, 'uninstallLinux']);
 Route::get('/uninstall/windows.ps1', [AgentController::class, 'uninstallWindows']);
+Route::get('/detach/linux', [AgentController::class, 'detachLinux']);
+Route::get('/detach/windows.ps1', [AgentController::class, 'detachWindows']);
 
 // Serve the SPA for client-side routes, but keep API 404s as JSON.
 Route::fallback(function (Request $request) {

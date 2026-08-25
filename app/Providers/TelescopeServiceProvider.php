@@ -15,19 +15,20 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
      */
     public function register(): void
     {
-        // Telescope::night();
+        // Telescope is dev-only — completely disabled in production.
+        // `npm start` (prod) uses .env.production with TELESCOPE_ENABLED=false
+        // and APP_ENV=production, so Telescope::night() is called.
+        if (! $this->app->environment('local') || ! config('telescope.enabled')) {
+            Telescope::night();
+
+            return;
+        }
 
         $this->hideSensitiveRequestDetails();
 
-        $isLocal = $this->app->environment('local');
-
-        Telescope::filter(function (IncomingEntry $entry) use ($isLocal) {
-            return $isLocal ||
-                   $entry->isReportableException() ||
-                   $entry->isFailedRequest() ||
-                   $entry->isFailedJob() ||
-                   $entry->isScheduledTask() ||
-                   $entry->hasMonitoredTag();
+        Telescope::filter(function (IncomingEntry $entry) {
+            // In local with TELESCOPE_ENABLED=true, record everything.
+            return true;
         });
     }
 
@@ -57,10 +58,17 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
     protected function gate(): void
     {
         Gate::define('viewTelescope', function (User $user) {
+            // Telescope is dev-only. In production the route is blocked by Telescope::night()
+            // and by TELESCOPE_ENABLED=false, but as a second lock require local env.
+            // If you must enable it in production, set TELESCOPE_ENABLED=true and
+            // add admin emails here — never leave it open.
+            if (! app()->environment('local')) {
+                return false;
+            }
+
             return true;
-            // return in_array($user->email, [
-            //     //
-            // ]);
+            // To admin-lock in production, use:
+            // return in_array($user->email, explode(',', env('TELESCOPE_ADMIN_EMAILS', '')));
         });
     }
 }

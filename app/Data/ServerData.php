@@ -7,6 +7,7 @@ use App\Enums\ServerHealth;
 use App\Enums\ServerStatus;
 use App\Models\ActionItem;
 use App\Models\Activity;
+use App\Models\Agent;
 use App\Models\CustomActivityLog;
 use App\Models\Server;
 use App\Models\Setting;
@@ -71,6 +72,10 @@ class ServerData extends Data
 
         public ?string $uninstall_windows_command = null,
 
+        public ?string $detach_linux_command = null,
+
+        public ?string $detach_windows_command = null,
+
         public bool $agent_deleted = false,
 
         /** @var int[]|null Explicit port filter (null = monitor all noise-filtered ports). */
@@ -93,6 +98,8 @@ class ServerData extends Data
         public int $uptime_seconds = 0,
 
         public float $subscription_fee = 0.00,
+
+        public ?int $agent_server_count = null,
     ) {}
 
     public static function fromModel(Server $server): self
@@ -113,11 +120,56 @@ class ServerData extends Data
 
         $agent = $server->agent;
 
+        // For an uninstalled server with past data, keep showing last known agent
+        // instead of "No agent data". The agent row still exists (revoked) and
+        // the server's agent_id was nulled on detach.
+        $fallbackAgent = null;
+        if (! $agent) {
+            // For any server without a current agent but with past data, show last known agent.
+            // This covers agent_uninstalled, pending_installation after prior install, etc.
+            // Don't depend only on agent_deleted — a re-provisioned server is pending_installation
+            // with agent_deleted still true or with a new token but past data exists.
+            $lastActivity = Activity::where('server_id', $server->id)
+                ->whereIn('type', ['server_detached', 'agent_uninstalled', 'server_offline'])
+                ->latest('created_at')
+                ->first();
+            if ($lastActivity?->agent_id) {
+                $fallbackAgent = Agent::find($lastActivity->agent_id);
+            }
+            if (! $fallbackAgent) {
+                // Fallback to any recently revoked agent that ever monitored this server's host
+                // (single-agent per host — last revoked is the best guess)
+                $fallbackAgent = Activity::where('type', 'agent_uninstalled')
+                    ->where('description', 'like', "%{$server->name}%")
+                    ->latest('created_at')
+                    ->first();
+                if ($fallbackAgent?->agent_id) {
+                    $fallbackAgent = Agent::find($fallbackAgent->agent_id);
+                } else {
+                    $fallbackAgent = Agent::where('status', 'revoked')
+                        ->latest('revoked_at')
+                        ->first();
+                }
+            }
+            // Only keep fallback if that agent actually has data for this server
+            // (ports/processes or server_updates). Otherwise leave as "No agent data".
+            if ($fallbackAgent && $fallbackAgent->processes()->count() === 0 && $fallbackAgent->ports()->count() === 0) {
+                // Check if server has any historical ServerUpdate
+                $hasHistory = \App\Models\ServerUpdate::where('server_id', $server->id)->exists();
+                if (! $hasHistory) {
+                    $fallbackAgent = null;
+                }
+            }
+        }
+        $displayAgent = $agent ?? $fallbackAgent;
+
         // Uninstall targets the agent's immutable installation UUID (the public
         // identity the install scripts name everything after), not the
         // one-time provision token (which is already consumed/expired by the
         // time an agent is installed). With no installed agent there is
         // nothing to uninstall, so the commands stay null.
+        // For uninstalled with past data we still show last agent via displayAgent,
+        // but uninstall commands are only for the currently installed agent.
         $installationId = $agent?->installation_uuid;
         $appUrl = rtrim(url('/'), '/');
 
@@ -127,11 +179,19 @@ class ServerData extends Data
         $uninstallWindows = $installationId
             ? WindowsCommand::make('/uninstall/windows.ps1', '-Instance', $installationId, $appUrl)
             : null;
+        $detachLinux = $installationId
+            ? 'sudo curl -fsSL '.url('/detach/linux').' | sudo bash -s -- '.$installationId.' '.$server->uuid
+            : null;
+        $detachWindows = $installationId
+            ? WindowsCommand::make('/detach/windows.ps1', '-Instance', $installationId, $appUrl, '-Server', $server->uuid)
+            : null;
 
         // The DB only ever holds what the agent sent (already noise-filtered
         // on the agent, then filtered to the server's filter). Every row — including
         // currently-closed ports — is history the SecOps filter can see.
-        $ports = $agent ? $agent->ports
+        // For uninstalled with past data, show last known agent's data.
+        $effectiveAgent = $displayAgent ?? $agent;
+        $ports = $effectiveAgent ? $effectiveAgent->ports
             ->sortByDesc('state')
             ->values()
             ->map(fn ($p) => new PortsData(
@@ -145,7 +205,7 @@ class ServerData extends Data
                 last_seen: $p->last_seen?->toIso8601String(),
             ))->values()->all() : null;
 
-        $processes = $agent ? $agent->processes()->orderByDesc('cpu')->get()->map(fn ($pr) => new ProcessesData(
+        $processes = $effectiveAgent ? $effectiveAgent->processes()->orderByDesc('cpu')->get()->map(fn ($pr) => new ProcessesData(
             pid: $pr->pid,
             name: $pr->name,
             cpu: $pr->cpu,
@@ -157,7 +217,7 @@ class ServerData extends Data
         // The available sets are the noise-filtered discovery snapshot the
         // agent sends every heartbeat, used to build the monitoring filter
         // options (what CAN be monitored, not only what is monitored now).
-        $availableProcesses = $agent && $agent->available_processes
+        $availableProcesses = $effectiveAgent && $effectiveAgent->available_processes
             ? array_map(fn ($p) => new ProcessesData(
                 pid: $p['pid'] ?? 0,
                 name: $p['name'] ?? 'unknown',
@@ -165,10 +225,10 @@ class ServerData extends Data
                 memory: $p['memory'] ?? 0.0,
                 last_seen: null,
                 pids: $p['pids'] ?? null,
-            ), $agent->available_processes)
+            ), $effectiveAgent->available_processes)
             : null;
 
-        $availablePorts = $agent && $agent->available_ports
+        $availablePorts = $effectiveAgent && $effectiveAgent->available_ports
             ? array_map(fn ($p) => new PortsData(
                 id: $p['port'] ?? 0,
                 port: $p['port'] ?? 0,
@@ -178,11 +238,11 @@ class ServerData extends Data
                 ping_status: null,
                 ping_time: null,
                 last_seen: null,
-            ), $agent->available_ports)
+            ), $effectiveAgent->available_ports)
             : null;
 
-        $availableInterfaces = $agent && $agent->available_interfaces
-            ? array_values($agent->available_interfaces)
+        $availableInterfaces = $effectiveAgent && $effectiveAgent->available_interfaces
+            ? array_values($effectiveAgent->available_interfaces)
             : null;
 
         $activities = $server->activities()
@@ -196,14 +256,32 @@ class ServerData extends Data
             ])
             ->toArray();
 
+        $agentServerCount = null;
+        $agentForCount = $effectiveAgent ?? $agent;
+        if ($agentForCount) {
+            $agentServerCount = $agentForCount->monitoredServers()->where('agent_deleted', false)->count();
+            // Fallback to at least 1 if the agent exists but count is 0 due to race
+            if ($agentServerCount === 0 && $agentForCount->monitoredServers()->withTrashed()->count() > 0) {
+                $agentServerCount = 1;
+            }
+        } elseif ($server->agent_deleted) {
+            // For uninstalled, show 0
+            $agentServerCount = 0;
+        }
+
         $agentData = null;
-        if ($agent) {
-            $config = $agent->currentConfiguration;
+        // For uninstalled with past data, show last known agent (revoked) — the
+        // live $agent is null but $effectiveAgent holds the last one.
+        $agentForData = $effectiveAgent ?? $agent;
+        if ($agentForData) {
+            $config = $agentForData->currentConfiguration;
+            // If the agent is the revoked fallback, currentConfiguration may be null;
+            // still show last known version/status.
             $agentData = new AgentData(
-                version: $agent->version,
-                status: $agent->status,
-                registered_at: $agent->registered_at->toIso8601String(),
-                last_seen_at: $agent->last_seen_at?->toIso8601String(),
+                version: $agentForData->version,
+                status: $agentForData->status,
+                registered_at: $agentForData->registered_at->toIso8601String(),
+                last_seen_at: $agentForData->last_seen_at?->toIso8601String(),
                 heartbeat_interval: $config ? $config->heartbeat_interval : 5,
                 metrics_interval: $config ? $config->metrics_interval : 5,
                 port_scan_interval: $config ? $config->port_scan_interval : 60,
@@ -246,8 +324,12 @@ class ServerData extends Data
                     return 'archived';
                 }
 
+                if ($server->status === ServerStatus::AgentUninstalled->value) {
+                    return ServerStatus::AgentUninstalled->value;
+                }
+
                 if ($server->agent_deleted) {
-                    return 'offline';
+                    return ServerStatus::AgentUninstalled->value;
                 }
 
                 if (! $agent || ! $agent->registered_at) {
@@ -333,6 +415,8 @@ class ServerData extends Data
             available_interfaces: $availableInterfaces,
             uninstall_linux_command: $uninstallLinux,
             uninstall_windows_command: $uninstallWindows,
+            detach_linux_command: $detachLinux,
+            detach_windows_command: $detachWindows,
             agent_deleted: $agent && $agent->registered_at ? (bool) $server->agent_deleted : false,
             port_filter: $server->port_filter,
             process_filter: $server->process_filter,
@@ -342,6 +426,7 @@ class ServerData extends Data
             alert_scope: $server->alert_scope ?? 'global',
             uptime_seconds: $uptimeSeconds,
             subscription_fee: (float) ($server->subscription_fee ?? 0.00),
+            agent_server_count: $agentServerCount,
         );
     }
 }

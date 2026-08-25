@@ -83,6 +83,23 @@ func main() {
 				os.Exit(1)
 			}
 			return
+		case "-detach", "--detach":
+			instance := parseInstance(os.Args)
+			serverUuid := flagValue(os.Args, "-server")
+			if serverUuid == "" {
+				serverUuid = flagValue(os.Args, "--server")
+			}
+			if instance == "" {
+				fatalUsage("-detach requires -instance <uuid> -server <server-uuid>")
+			}
+			if serverUuid == "" {
+				fatalUsage("-detach requires -server <server-uuid>")
+			}
+			if err := detachWithMarker(instance, serverUuid); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to detach: %v\n", err)
+				os.Exit(1)
+			}
+			return
 		case "-has-key", "--has-key":
 			keyName := flagValue(os.Args, "-key")
 			if keyName == "" {
@@ -163,6 +180,7 @@ func serviceNameFor(instance string) string {
 }
 
 const uninstallFlagFile = "uninstall.flag"
+const detachFlagFile = "detach.flag"
 
 // uninstallWithMarker performs a marker-based uninstall. The uninstaller runs
 // as the administrator, but the identity key lives in the keystore of the
@@ -236,6 +254,78 @@ func handleUninstallMarker(instance, dir, keyName string, keystore KeyStore, cli
 	return true
 }
 
+func detachWithMarker(instance, serverUuid string) error {
+	dir := instanceDir(instance)
+	marker := filepath.Join(dir, detachFlagFile)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to access instance directory: %w", err)
+	}
+	if err := os.WriteFile(marker, []byte(serverUuid), 0644); err != nil {
+		return fmt.Errorf("failed to write detach marker: %w", err)
+	}
+	fmt.Printf("Detach marker written for server %s; sending immediate detach request...\n", serverUuid)
+	// Try immediate POST via the agent's own identity (like handleDetachMarker) so it
+	// doesn't wait for the next 5s heartbeat. Fallback is the marker for the
+	// running service to pick up.
+	if cfg, _, err := loadConfig(dir); err == nil {
+		if keystore := newKeyStore(); keystore != nil {
+			if keyName := keyIDForInstallation(instance); keyName != "" {
+				if key, err := keystore.GetOrCreateKey(context.Background(), keyName); err == nil {
+					if pub, err := keystore.PublicKey(context.Background(), key); err == nil {
+						client := NewAgentClient(keystore, key, cfg.ServerURL, instance)
+						client.SetPublicKeyHash(publicKeyHashHex(pub))
+						if err := client.detachServer(serverUuid); err != nil {
+							fmt.Printf("Warning: immediate detach failed (will retry on next heartbeat): %v\n", err)
+						} else {
+							fmt.Println("Server detached immediately.")
+							_ = os.WriteFile(marker, []byte("done"), 0644)
+							go func() { time.Sleep(2 * time.Second); os.Remove(marker) }()
+							return nil
+						}
+					}
+				}
+			}
+		}
+	}
+	fmt.Println("Detach signal queued — will be sent on next heartbeat if immediate failed.")
+	return nil
+}
+
+func handleDetachMarker(dir string, client *AgentClient) bool {
+	marker := filepath.Join(dir, detachFlagFile)
+	data, err := os.ReadFile(marker)
+	if err != nil {
+		return false
+	}
+	serverUuid := strings.TrimSpace(string(data))
+	if serverUuid == "" || serverUuid == "pending" {
+		return false
+	}
+	if serverUuid == "done" {
+		// Already handled, clean up
+		os.Remove(marker)
+		return false
+	}
+	log.Printf("Detach marker detected for server %s — detaching from agent.", serverUuid)
+	if client != nil {
+		if err := client.detachServer(serverUuid); err != nil {
+			log.Printf("Warning: detach request failed for %s: %v", serverUuid, err)
+			// Leave marker as "pending" for retry on next loop
+			return false
+		}
+		log.Printf("Server %s detached successfully.", serverUuid)
+	}
+	if err := os.WriteFile(marker, []byte("done"), 0644); err != nil {
+		log.Printf("Warning: failed to record detach result: %v", err)
+	}
+	// Clean up the marker after a short delay so the uninstaller can confirm
+	go func() {
+		time.Sleep(2 * time.Second)
+		os.Remove(marker)
+	}()
+	return false // do not exit — agent stays for other servers
+}
+
 func runAgentLoop(instance string, stopChan <-chan struct{}) {
 	currentInstance = instance
 	dir := instanceDir(instance)
@@ -307,10 +397,11 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 	client := NewAgentClient(keystore, key, config.ServerURL, instance)
 	client.SetPublicKeyHash(pubHash)
 
-	// Handle a pending uninstall before doing anything else.
+	// Handle a pending uninstall/detach before doing anything else.
 	if handleUninstallMarker(instance, dir, keyName, keystore, client) {
 		return
 	}
+	handleDetachMarker(dir, client)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -397,11 +488,12 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 			handleUninstallMarker(instance, dir, keyName, keystore, client)
 			return
 		case <-ticker.C:
-			// A marker may appear mid-run (admin starts uninstall while the
-			// agent is healthy). Handle it, then exit so the service stops.
+			// A marker may appear mid-run (admin starts uninstall/detach while the
+			// agent is healthy). Handle it, then exit or continue.
 			if handleUninstallMarker(instance, dir, keyName, keystore, client) {
 				return
 			}
+			handleDetachMarker(dir, client)
 			sendHeartbeatStep(config, configPath, client, metrics, runtime, &heartbeatInterval)
 			ticker.Reset(time.Duration(heartbeatInterval) * time.Second)
 		}

@@ -21,7 +21,8 @@ export function DeleteModalDangerZone() {
         copyToClipboard,
     } = useServerDetailContext();
 
-    const isArchived = initial?.record_status === "archived" || initial?.status === "archived";
+    const isArchived =
+        initial?.record_status === "archived" || initial?.status === "archived";
     if (isArchived) return null;
 
     return (
@@ -56,75 +57,198 @@ export function DeleteModalDangerZone() {
                             undone.
                         </p>
 
-
-
                         {initial && initial.agent && !initial.agent_deleted && (
-                            <div className="flex flex-col gap-3 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
-                                <div className="flex items-start gap-2">
-                                    <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-                                    <div>
-                                        <p className="font-semibold text-foreground">
-                                            Agent Uninstallation Required
-                                        </p>
-                                        <p className="text-muted-foreground mt-0.5">
-                                            You must uninstall the agent service
-                                            from the target machine before you
-                                            can delete this server. Run the
-                                            command for your operating system:
-                                        </p>
-                                    </div>
-                                </div>
+                            <>
+                                {(
+                                    initial as unknown as {
+                                        agent_server_count?: number;
+                                    }
+                                ).agent_server_count !== undefined &&
+                                (
+                                    initial as unknown as {
+                                        agent_server_count?: number;
+                                    }
+                                ).agent_server_count! > 1 ? (
+                                    <div className="flex flex-col gap-3 p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs my-3">
+                                        <div className="flex items-start gap-2">
+                                            <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-500" />
+                                            <div>
+                                                <p className="font-semibold text-foreground">
+                                                    Shared Agent — Detach
+                                                    Instead
+                                                </p>
+                                                <p className="text-muted-foreground mt-0.5">
+                                                    This host agent monitors{" "}
+                                                    <strong className="text-foreground">
+                                                        {
+                                                            (
+                                                                initial as unknown as {
+                                                                    agent_server_count?: number;
+                                                                }
+                                                            ).agent_server_count
+                                                        }{" "}
+                                                        servers
+                                                    </strong>
+                                                    . Deleting{" "}
+                                                    <strong className="text-foreground">
+                                                        {initial.name}
+                                                    </strong>{" "}
+                                                    will only detach it from the
+                                                    shared agent — the agent
+                                                    will stay installed for the
+                                                    other server(s).
+                                                </p>
+                                            </div>
+                                        </div>
 
-                                <div className="flex flex-col gap-2.5 mt-1 text-foreground">
-                                    <div>
-                                        <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                            Linux (bash)
-                                        </label>
-                                        <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
-                                            <span className="flex-1 whitespace-pre-wrap break-all">
-                                                {
-                                                    initial.uninstall_linux_command
-                                                }
-                                            </span>
-                                            <button
-                                                onClick={() =>
-                                                    copyToClipboard(
-                                                        initial.uninstall_linux_command!,
-                                                        "uninstall_linux",
-                                                    )
-                                                }
-                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                            >
-                                                <Copy className="size-3.5" />
-                                            </button>
+                                        <div className="flex flex-col gap-2.5 mt-1 text-foreground">
+                                            <p className="text-[11px] text-muted-foreground">
+                                                To detach via the host (same
+                                                command flow as uninstall), run:
+                                            </p>
+                                            <div>
+                                                <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                                    Linux (bash) — detach
+                                                </label>
+                                                <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
+                                                    <span className="flex-1 whitespace-pre-wrap break-all">
+                                                        {
+                                                            (
+                                                                initial as unknown as {
+                                                                    detach_linux_command?: string;
+                                                                }
+                                                            )
+                                                                .detach_linux_command
+                                                        }
+                                                    </span>
+                                                    <button
+                                                        onClick={() =>
+                                                            copyToClipboard(
+                                                                (
+                                                                    initial as unknown as {
+                                                                        detach_linux_command?: string;
+                                                                    }
+                                                                )
+                                                                    .detach_linux_command!,
+                                                                "uninstall_linux",
+                                                            )
+                                                        }
+                                                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                    >
+                                                        <Copy className="size-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                                    Windows (PowerShell) —
+                                                    detach
+                                                </label>
+                                                <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
+                                                    <span className="flex-1 whitespace-pre-wrap break-all">
+                                                        {
+                                                            (
+                                                                initial as unknown as {
+                                                                    detach_windows_command?: string;
+                                                                }
+                                                            )
+                                                                .detach_windows_command
+                                                        }
+                                                    </span>
+                                                    <button
+                                                        onClick={() =>
+                                                            copyToClipboard(
+                                                                (
+                                                                    initial as unknown as {
+                                                                        detach_windows_command?: string;
+                                                                    }
+                                                                )
+                                                                    .detach_windows_command!,
+                                                                "uninstall_windows",
+                                                            )
+                                                        }
+                                                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                    >
+                                                        <Copy className="size-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+
                                         </div>
                                     </div>
+                                ) : (
+                                    <div className="flex flex-col gap-3 p-3.5 bg-destructive/5 border border-destructive/20 rounded-lg text-xs text-destructive">
+                                        <div className="flex items-start gap-2">
+                                            <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="font-semibold text-foreground">
+                                                    Agent Uninstallation
+                                                    Required
+                                                </p>
+                                                <p className="text-muted-foreground mt-0.5">
+                                                    You must uninstall the agent
+                                                    service from the target
+                                                    machine before you can
+                                                    delete this server. Run the
+                                                    command for your operating
+                                                    system:
+                                                </p>
+                                            </div>
+                                        </div>
 
-                                    <div>
-                                        <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                                            Windows (PowerShell)
-                                        </label>
-                                        <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
-                                            <span className="flex-1 whitespace-pre-wrap break-all">
-                                                {
-                                                    initial.uninstall_windows_command
-                                                }
-                                            </span>
-                                            <button
-                                                onClick={() =>
-                                                    copyToClipboard(
-                                                        initial.uninstall_windows_command!,
-                                                        "uninstall_windows",
-                                                    )
-                                                }
-                                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                                            >
-                                                <Copy className="size-3.5" />
-                                            </button>
+                                        <div className="flex flex-col gap-2.5 mt-1 text-foreground">
+                                            <div>
+                                                <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                                    Linux (bash)
+                                                </label>
+                                                <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
+                                                    <span className="flex-1 whitespace-pre-wrap break-all">
+                                                        {
+                                                            initial.uninstall_linux_command
+                                                        }
+                                                    </span>
+                                                    <button
+                                                        onClick={() =>
+                                                            copyToClipboard(
+                                                                initial.uninstall_linux_command!,
+                                                                "uninstall_linux",
+                                                            )
+                                                        }
+                                                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                    >
+                                                        <Copy className="size-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                                    Windows (PowerShell)
+                                                </label>
+                                                <div className="flex items-center gap-2 bg-background p-2 rounded border border-border font-mono text-[11px] overflow-x-auto select-all">
+                                                    <span className="flex-1 whitespace-pre-wrap break-all">
+                                                        {
+                                                            initial.uninstall_windows_command
+                                                        }
+                                                    </span>
+                                                    <button
+                                                        onClick={() =>
+                                                            copyToClipboard(
+                                                                initial.uninstall_windows_command!,
+                                                                "uninstall_windows",
+                                                            )
+                                                        }
+                                                        className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                    >
+                                                        <Copy className="size-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
+                                )}
+                            </>
                         )}
 
                         <div className="flex flex-col gap-2 pt-1">
