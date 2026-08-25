@@ -409,7 +409,6 @@ function Segmented<T extends string>({
 export function DashboardChartsSection() {
     const [timeSpan, setTimeSpan] = useState<TimeSpan>("1H");
     const [view, setView] = useState<ChartView>("overview");
-    const [metric, setMetric] = useState<MetricKey>("cpu");
     const [selected, setSelected] = useState<string[]>([]);
     const [search, setSearch] = useState("");
     const queryClient = useQueryClient();
@@ -469,22 +468,12 @@ export function DashboardChartsSection() {
 
             {view === "perServer" && (
                 <div className="flex flex-wrap items-start gap-2 mb-4">
-                    <div className="flex flex-col gap-2">
-                        <Segmented<MetricKey>
-                            options={CHARTS.map((c) => ({
-                                value: c.metric,
-                                label: c.title,
-                            }))}
-                            value={metric}
-                            onChange={setMetric}
-                        />
-                        <Input
-                            placeholder="Search servers…"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="h-8 w-56 text-xs"
-                        />
-                    </div>
+                    <Input
+                        placeholder="Search servers…"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="h-8 w-56 text-xs"
+                    />
                     <div className="flex flex-col border border-border/60 rounded-lg bg-card/40 p-2 max-h-52 overflow-y-auto min-w-56 flex-1 max-w-xs gap-0.5">
                         <label className="flex items-center gap-2 text-xs cursor-pointer py-0.5">
                             <input
@@ -528,22 +517,19 @@ export function DashboardChartsSection() {
                             scope="avg"
                         />
                     ))
-                ) : (() => {
-                    const cfg = CHARTS.find((c) => c.metric === metric)!;
-                    return (
-                        <DashboardMetricChart
-                            key={cfg.metric}
-                            title={cfg.title}
-                            metric={cfg.metric}
-                            unit={cfg.unit}
-                            yDomain={cfg.yDomain}
-                            timeSpan={timeSpan}
-                            scope={isAll ? "all" : "server"}
-                            serverUuid={compareUuids}
-                            nameFilter={isAll ? q || undefined : undefined}
-                        />
-                    );
-                })()}
+                ) : CHARTS.map((cfg) => (
+                    <DashboardMetricChart
+                        key={cfg.metric}
+                        title={cfg.title}
+                        metric={cfg.metric}
+                        unit={cfg.unit}
+                        yDomain={cfg.yDomain}
+                        timeSpan={timeSpan}
+                        scope={isAll ? "all" : "server"}
+                        serverUuid={compareUuids}
+                        nameFilter={isAll ? q || undefined : undefined}
+                    />
+                ))}
             </div>
         </div>
     );

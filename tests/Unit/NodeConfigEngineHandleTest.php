@@ -14,8 +14,8 @@ use App\NodeConfig\NodeTypes\NotificationNode;
 use App\NodeConfig\NodeTypes\RepeatNode;
 use App\NodeConfig\NodeTypes\SustainedNode;
 use App\NodeConfig\NodeTypes\TemplateNode;
-use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class NodeConfigEngineHandleTest extends TestCase
 {
@@ -27,14 +27,14 @@ class NodeConfigEngineHandleTest extends TestCase
     {
         parent::setUp();
 
-        $registry = new NodeRegistry();
+        $registry = new NodeRegistry;
         $registry->register(new MetricNode);
         $registry->register(new ConditionNode);
         $registry->register(new LogicNode);
         $registry->register(new CheckAfterNode);
         $registry->register(new SustainedNode);
         $registry->register(new RepeatNode);
-         $registry->register(new NotificationNode);
+        $registry->register(new NotificationNode);
         $registry->register(new TemplateNode);
 
         $this->engine = new NodeConfigEngine($registry);
@@ -181,7 +181,7 @@ class NodeConfigEngineHandleTest extends TestCase
             'nodes' => [
                 ['id' => 'metric_ports',  'type' => 'metric',       'settings' => ['metric_type' => 'ports_ping']],
                 ['id' => 'compare_ping',  'type' => 'condition',    'settings' => ['operator' => 'greater_than', 'threshold' => 200]],
-                ['id' => 'sustained_ping','type' => 'sustained',    'settings' => ['duration' => '10000']],
+                ['id' => 'sustained_ping', 'type' => 'sustained',    'settings' => ['duration' => '10000']],
                 ['id' => 'check_ping',    'type' => 'check_after',  'settings' => ['duration' => '10000']],
                 ['id' => 'notify_slow',   'type' => 'notification', 'settings' => ['channel' => 'discord', 'message' => 'Slow {runtime.port}']],
                 ['id' => 'notify_off',    'type' => 'notification', 'settings' => ['channel' => 'discord', 'message' => 'Unreachable {runtime.port}']],

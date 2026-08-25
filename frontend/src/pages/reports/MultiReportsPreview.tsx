@@ -1,8 +1,10 @@
 import { useLocation, useOutletContext } from "react-router-dom";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import type { ReportOutletContext } from "@/layouts/ReportsLayout";
 import { TypstPreview } from "./TypstPreview";
 
 export default function MultiReportsPreview() {
+    useDocumentTitle("Reports");
     const location = useLocation();
     const { orientation, hours, selectedIds } = useOutletContext<ReportOutletContext>();
     const isServer = location.pathname.includes("/report/servers");

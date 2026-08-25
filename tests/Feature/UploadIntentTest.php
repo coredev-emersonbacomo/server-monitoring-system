@@ -2,11 +2,13 @@
 
 use App\Enums\UploadIntentStatus;
 use App\Enums\UploadPurpose;
+use App\Jobs\CleanupExpiredUploadIntents;
 use App\Models\UploadIntent;
 use App\Models\User;
+use App\Services\MediaUrlService;
+use App\Services\StorageProviderFactory;
 use App\Services\UploadIntentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\RateLimiter;
 
 uses(RefreshDatabase::class)->group('uploads');
 
@@ -28,7 +30,7 @@ beforeEach(function () {
     ]);
 
     $this->token = $loginResponse->json('access_token');
-    $this->headers = ['Authorization' => 'Bearer ' . $this->token];
+    $this->headers = ['Authorization' => 'Bearer '.$this->token];
 });
 
 // ─── Upload Intent Creation ───────────────────────────────────────────────────
@@ -171,8 +173,8 @@ test('upload intent service enforces expiration', function () {
     expect($intent->isExpired())->toBeTrue();
     expect($intent->isPending())->toBeTrue();
 
-    expect(fn() => $service->validateAttachment($intent, $this->user))
-        ->toThrow(\InvalidArgumentException::class, 'has expired');
+    expect(fn () => $service->validateAttachment($intent, $this->user))
+        ->toThrow(InvalidArgumentException::class, 'has expired');
 });
 
 test('upload intent service validates ownership', function () {
@@ -181,8 +183,8 @@ test('upload intent service validates ownership', function () {
 
     $otherUser = User::factory()->create();
 
-    expect(fn() => $service->validateAttachment($intent, $otherUser))
-        ->toThrow(\InvalidArgumentException::class, 'does not belong to this user');
+    expect(fn () => $service->validateAttachment($intent, $otherUser))
+        ->toThrow(InvalidArgumentException::class, 'does not belong to this user');
 });
 
 test('upload intent service prevents double attachment', function () {
@@ -191,8 +193,8 @@ test('upload intent service prevents double attachment', function () {
 
     $service->markDeleted($intent);
 
-    expect(fn() => $service->validateAttachment($intent, $this->user))
-        ->toThrow(\InvalidArgumentException::class, 'not in a pending state');
+    expect(fn () => $service->validateAttachment($intent, $this->user))
+        ->toThrow(InvalidArgumentException::class, 'not in a pending state');
 });
 
 // ─── Attachment Workflow ──────────────────────────────────────────────────────
@@ -220,7 +222,7 @@ test('cleanup job processes expired intents', function () {
     ]);
 
     $intentService = app(UploadIntentService::class);
-    $job = new \App\Jobs\CleanupExpiredUploadIntents();
+    $job = new CleanupExpiredUploadIntents;
     $job->handle($intentService);
 
     $this->assertDatabaseHas('upload_intents', [
@@ -233,7 +235,7 @@ test('cleanup job does not affect non-expired intents', function () {
     $service = app(UploadIntentService::class);
     $intent = $service->create($this->user, UploadPurpose::PROFILE_PICTURE);
 
-    $job = app(\App\Jobs\CleanupExpiredUploadIntents::class);
+    $job = app(CleanupExpiredUploadIntents::class);
     $job->handle(app(UploadIntentService::class));
 
     $this->assertDatabaseHas('upload_intents', [
@@ -245,7 +247,7 @@ test('cleanup job does not affect non-expired intents', function () {
 // ─── Media URL Service ────────────────────────────────────────────────────────
 
 test('media url service generates correct profile picture url', function () {
-    $mediaService = app(\App\Services\MediaUrlService::class);
+    $mediaService = app(MediaUrlService::class);
 
     $url = $mediaService->profilePicture('profile_pictures/user_1/test-key');
 
@@ -255,7 +257,7 @@ test('media url service generates correct profile picture url', function () {
 });
 
 test('media url service returns default for empty storage key', function () {
-    $mediaService = app(\App\Services\MediaUrlService::class);
+    $mediaService = app(MediaUrlService::class);
 
     $url = $mediaService->profilePicture(null);
 
@@ -263,7 +265,7 @@ test('media url service returns default for empty storage key', function () {
 });
 
 test('media url service generates transformed url', function () {
-    $mediaService = app(\App\Services\MediaUrlService::class);
+    $mediaService = app(MediaUrlService::class);
 
     $url = $mediaService->profilePictureTransformed(
         'profile_pictures/user_1/test-key',
@@ -278,7 +280,7 @@ test('media url service generates transformed url', function () {
 // ─── Provider Switching Compatibility ─────────────────────────────────────────
 
 test('storage provider factory creates cloudinary provider', function () {
-    $factory = app(\App\Services\StorageProviderFactory::class);
+    $factory = app(StorageProviderFactory::class);
     $provider = $factory->make('cloudinary');
 
     expect($provider->name())->toBe('cloudinary');
@@ -288,7 +290,7 @@ test('storage provider factory creates local provider', function () {
     config(['uploads.providers.local.base_path' => 'uploads']);
     config(['uploads.providers.local.delivery_url' => '/storage/uploads']);
 
-    $factory = app(\App\Services\StorageProviderFactory::class);
+    $factory = app(StorageProviderFactory::class);
     $provider = $factory->make('local');
 
     expect($provider->name())->toBe('local');
@@ -307,7 +309,7 @@ test('storage provider can be switched via configuration', function () {
 });
 
 test('cloudinary provider generates upload config', function () {
-    $factory = app(\App\Services\StorageProviderFactory::class);
+    $factory = app(StorageProviderFactory::class);
     $provider = $factory->make('cloudinary');
 
     $config = $provider->uploadConfig(

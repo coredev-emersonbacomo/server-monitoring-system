@@ -1,5 +1,6 @@
-import { type ClipboardEvent, type KeyboardEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { z } from "zod";
 import {
     AlertTriangle,
@@ -24,21 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-const blockedSubscriptionFeeKeys = new Set(["e", "E", "-"]);
-
-function blockInvalidSubscriptionFeeKey(e: KeyboardEvent<HTMLInputElement>) {
-    if (blockedSubscriptionFeeKeys.has(e.key)) e.preventDefault();
-}
-
-function blockInvalidSubscriptionFeePaste(e: ClipboardEvent<HTMLInputElement>) {
-    if (/[eE-]/.test(e.clipboardData.getData("text"))) e.preventDefault();
-}
-
-function setSubscriptionFeeValue(setValue: (value: string) => void, value: string) {
-    if (/[eE-]/.test(value)) return;
-    const numericValue = Number(value);
-    setValue(numericValue < 0 ? "0" : value);
-}
+import { formatCurrency } from "@/utils/helpers";
+import { useFormattedNumberInput } from "@/hooks/useFormattedNumberInput";
 
 const schema = z.object({
     name: z.string().min(1, "Server name is required"),
@@ -51,13 +39,13 @@ const schema = z.object({
 });
 
 export default function CreateServer() {
+    useDocumentTitle("Create Server");
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const clientUuid = searchParams.get("client_uuid") || null;
 
     const { data: client, isLoading: clientLoading } = useClient(clientUuid ?? "");
     const { data: clientServers = [] } = useClientServers(clientUuid ?? "");
-
     const [budgetWarning, setBudgetWarning] = useState<{
         newTotal: number;
         budget: number;
@@ -77,6 +65,7 @@ export default function CreateServer() {
         { label: "Clients", href: "/clients" },
         { label: "Add server" },
     ];
+
 
     if (!clientUuid) {
         return (
@@ -217,19 +206,19 @@ export default function CreateServer() {
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Monthly Budget Limit:</span>
                                 <span className="font-semibold text-foreground">
-                                    ₱{(budgetWarning?.budget ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    {formatCurrency(budgetWarning?.budget)}
                                 </span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">New Total Subscription Fees:</span>
                                 <span className="font-semibold text-amber-500">
-                                    ₱{(budgetWarning?.newTotal ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    {formatCurrency(budgetWarning?.newTotal)}
                                 </span>
                             </div>
                             <div className="flex justify-between border-t border-amber-500/20 pt-1.5">
                                 <span className="text-muted-foreground">Amount Exceeded:</span>
                                 <span className="font-bold text-destructive">
-                                    ₱{((budgetWarning?.newTotal ?? 0) - (budgetWarning?.budget ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    {formatCurrency((budgetWarning?.newTotal ?? 0) - (budgetWarning?.budget ?? 0))}
                                 </span>
                             </div>
                         </div>
@@ -278,6 +267,7 @@ function CreateServerFields({
 }) {
     const form = useForm(store, (s) => s.form as z.infer<typeof schema>);
     const errors = useForm(store, (s) => s.errors);
+    const { inputRef, formatValue, handleChange, handleKeyDown, handlePaste } = useFormattedNumberInput();
 
     return (
         <>
@@ -302,16 +292,19 @@ function CreateServerFields({
                 <FloatingInput
                     label="Subscription Fee (₱ / mo)"
                     inputBg="bg-card"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={String(form.subscription_fee ?? "")}
-                    onKeyDown={blockInvalidSubscriptionFeeKey}
-                    onPaste={blockInvalidSubscriptionFeePaste}
-                    onValueChange={(value) =>
-                        setSubscriptionFeeValue(store.set("subscription_fee"), value)
-                    }
-                    error={errors.monthly_cost}
+                    inputRef={inputRef}
+                    type="text"
+                    inputMode="decimal"
+                    value={formatValue(String(form.subscription_fee ?? ""))}
+                    onChange={(e) => {
+                        const cursorPos = e.currentTarget.selectionStart ?? e.currentTarget.value.length;
+                        handleChange(e.currentTarget.value, cursorPos, (unformatted) => {
+                            store.set("subscription_fee")(unformatted);
+                        });
+                    }}
+                    onKeyDown={handleKeyDown}
+                    onPaste={handlePaste}
+                    error={errors.subscription_fee}
                 />
             </div>
 

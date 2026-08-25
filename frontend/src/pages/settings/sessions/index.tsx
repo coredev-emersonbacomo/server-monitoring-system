@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import PageLayout from "@/components/PageLayout";
 import {
     Smartphone,
@@ -167,6 +168,7 @@ function ConfirmDialog({
 }
 
 export default function Sessions() {
+    useDocumentTitle("Sessions");
     const {
         sessions,
         sessionsLoading,

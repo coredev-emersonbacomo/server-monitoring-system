@@ -3,6 +3,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { Landmark, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useClients } from "@/hooks/useClients";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import PageLayout from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import IndexHeader from "@/components/IndexHeader";
@@ -134,6 +135,7 @@ function ClientGrid({
 }
 
 export default function ClientsIndex() {
+    useDocumentTitle("Clients");
     const navigate = useNavigate();
     const { data: clients, isLoading, isError } = useClients();
 
@@ -234,8 +236,8 @@ export default function ClientsIndex() {
                 aVal = aVal.toLowerCase();
                 bVal = typeof bVal === "string" ? bVal.toLowerCase() : "";
             }
-            if (aVal < (bVal as typeof aVal)) return sortDir === "asc" ? -1 : 1;
-            if (aVal > (bVal as typeof aVal)) return sortDir === "asc" ? 1 : -1;
+            if ((aVal as any) < (bVal as any)) return sortDir === "asc" ? -1 : 1;
+            if ((aVal as any) > (bVal as any)) return sortDir === "asc" ? 1 : -1;
             return 0;
         });
 

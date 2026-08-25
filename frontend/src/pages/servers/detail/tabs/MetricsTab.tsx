@@ -1,4 +1,11 @@
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+    Fragment,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import {
     Cpu,
     Link2,
@@ -251,32 +258,63 @@ function MonitoringFilter({
             // available_interfaces is agent-wide non-disconnected set; fallback to seen networks in stats
             const seen = new Map<string, { type: string; state: string }>();
             const availRawItf = server?.available_interfaces as unknown;
-            const availListItf: Array<{ interface?: string; name?: string; type?: string; state?: string }> = Array.isArray(availRawItf)
-                ? (availRawItf as Array<{ interface?: string; name?: string; type?: string; state?: string }>)
+            const availListItf: Array<{
+                interface?: string;
+                name?: string;
+                type?: string;
+                state?: string;
+            }> = Array.isArray(availRawItf)
+                ? (availRawItf as Array<{
+                      interface?: string;
+                      name?: string;
+                      type?: string;
+                      state?: string;
+                  }>)
                 : availRawItf && typeof availRawItf === "object"
-                  ? (Object.values(availRawItf as Record<string, unknown>) as Array<{ interface?: string; name?: string; type?: string; state?: string }>)
+                  ? (Object.values(
+                        availRawItf as Record<string, unknown>,
+                    ) as Array<{
+                        interface?: string;
+                        name?: string;
+                        type?: string;
+                        state?: string;
+                    }>)
                   : [];
             for (const iface of availListItf) {
                 const name = iface.interface ?? iface.name;
                 if (!name) continue;
-                seen.set(name, { type: iface.type ?? "unknown", state: iface.state ?? "unknown" });
+                seen.set(name, {
+                    type: iface.type ?? "unknown",
+                    state: iface.state ?? "unknown",
+                });
             }
             if (seen.size === 0) {
                 const statsRawItf = server?.stats as unknown;
-                const statsListItf: Array<{ networks?: { name: string }[] }> = Array.isArray(statsRawItf)
-                    ? (statsRawItf as Array<{ networks?: { name: string }[] }>)
-                    : statsRawItf && typeof statsRawItf === "object"
-                      ? (Object.values(statsRawItf as Record<string, unknown>) as Array<{ networks?: { name: string }[] }>)
-                      : [];
+                const statsListItf: Array<{ networks?: { name: string }[] }> =
+                    Array.isArray(statsRawItf)
+                        ? (statsRawItf as Array<{
+                              networks?: { name: string }[];
+                          }>)
+                        : statsRawItf && typeof statsRawItf === "object"
+                          ? (Object.values(
+                                statsRawItf as Record<string, unknown>,
+                            ) as Array<{ networks?: { name: string }[] }>)
+                          : [];
                 for (const pt of statsListItf) {
-                    const netsRaw = (pt as unknown as { networks?: unknown }).networks;
-                    const netsArr: Array<{ name: string }> = Array.isArray(netsRaw)
+                    const netsRaw = (pt as unknown as { networks?: unknown })
+                        .networks;
+                    const netsArr: Array<{ name: string }> = Array.isArray(
+                        netsRaw,
+                    )
                         ? (netsRaw as Array<{ name: string }>)
                         : netsRaw && typeof netsRaw === "object"
-                          ? (Object.values(netsRaw as Record<string, unknown>) as Array<{ name: string }>)
+                          ? (Object.values(
+                                netsRaw as Record<string, unknown>,
+                            ) as Array<{ name: string }>)
                           : [];
                     for (const n of netsArr) {
-                        if (!seen.has(n.name)) seen.set(n.name, { type: "unknown", state: "up" });
+                        if (!seen.has(n.name))
+                            seen.set(n.name, { type: "unknown", state: "up" });
                     }
                 }
             }
@@ -319,14 +357,18 @@ function MonitoringFilter({
         isInterfaces,
     ]);
 
-    const stored = isPorts ? server?.port_filter : isInterfaces ? server?.network_filter : server?.process_filter;
+    const stored = isPorts
+        ? server?.port_filter
+        : isInterfaces
+          ? server?.network_filter
+          : server?.process_filter;
     const allChecked = sel === null;
 
     // Re-sync from the persisted filter every time the modal opens, so a
     // discarded edit never lingers.
     useEffect(() => {
         if (!open) return;
-        setSel(stored ? new Set(stored as unknown as (string | number)[]) : null);
+        setSel(stored ? new Set(stored as (number | string)[]) : null);
     }, [open, stored]);
 
     const visibleOptions = useMemo(() => {
@@ -373,12 +415,15 @@ function MonitoringFilter({
                   }
                 : isInterfaces
                   ? {
-                        network_filter: sel === null ? null : [...sel].map(String).sort(),
+                        network_filter:
+                            sel === null ? null : [...sel].map(String).sort(),
                     }
                   : {
-                      process_filter: sel === null ? null : [...sel].sort(),
-                  };
-            const { error } = await (api as unknown as { PATCH: typeof api.PATCH }).PATCH(
+                        process_filter: sel === null ? null : [...sel].sort(),
+                    };
+            const { error } = await (
+                api as unknown as { PATCH: typeof api.PATCH }
+            ).PATCH(
                 "/v1/clients/{clientUuid}/servers/{serverUuid}/monitoring" as never,
                 {
                     params: {
@@ -1173,7 +1218,6 @@ export function MetricsTab({
                     />
                 </div>
             </div>
-
         </div>
     );
 }

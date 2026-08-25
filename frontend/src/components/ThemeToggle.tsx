@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sun, Moon, Palette, Check, Sparkles, X } from "lucide-react";
+import { Sun, Moon, Palette, Check, Sparkles } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { useTheme } from "@/hooks/useTheme";
 import type { ThemeMode } from "@/contexts/themeContext";

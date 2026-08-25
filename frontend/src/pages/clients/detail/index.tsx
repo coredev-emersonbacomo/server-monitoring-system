@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
     Pencil,
     Upload,
@@ -63,6 +64,8 @@ import {
     formatContactNumber,
     validateContactNumber,
 } from "../utils/client-helper";
+import { formatCurrency } from "@/utils/helpers";
+import { useFormattedNumberInput } from "@/hooks/useFormattedNumberInput";
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClientDetail() {
@@ -71,6 +74,9 @@ export default function ClientDetail() {
 
     // ── Data fetching ──────────────────────────────────────────────────────────
     const { data: client, isLoading, isError } = useClient(clientUuid!);
+
+    useDocumentTitle(client?.name ?? undefined);
+
     const { data: servers = [], isLoading: serversLoading } = useClientServers(
         clientUuid!,
     );
@@ -88,6 +94,8 @@ export default function ClientDetail() {
         client?.alert_scope,
     );
 
+    const { inputRef, formatValue, handleChange, handleKeyDown, handlePaste } = useFormattedNumberInput();
+
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createClient = useCreateClient();
     const updateClient = useUpdateClient(clientUuid!);
@@ -96,6 +104,7 @@ export default function ClientDetail() {
     const removeSecop = useRemoveClientSecop(clientUuid!);
 
     // ── Local state ────────────────────────────────────────────────────────────
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDelete, setShowDelete] = useState(false);
     const [showSecopDialog, setShowSecopDialog] = useState(false);
     const defaultBanner = import.meta.env.VITE_DEFAULT_CLIENT_BANNER as string;
@@ -107,6 +116,8 @@ export default function ClientDetail() {
     const [serverFilter, setServerFilter] = useState<
         "all" | "online" | "offline" | "archived"
     >("all");
+
+    const isSaving = createClient.isPending || updateClient.isPending || isSubmitting;
 
     // ── Form store ─────────────────────────────────────────────────────────────
     const isCreate = !clientUuid;
@@ -130,21 +141,21 @@ export default function ClientDetail() {
             schema: clientSchema,
             originalData: client
                 ? {
-                      name: client.name,
-                      description: client.description ?? "",
-                      location: client.location,
-                      email: client.email,
-                      contact_number: client.contact_number,
-                      budget: client.budget ?? 0,
-                  }
+                    name: client.name,
+                    description: client.description ?? "",
+                    location: client.location,
+                    email: client.email,
+                    contact_number: client.contact_number,
+                    budget: client.budget ?? 0,
+                }
                 : {
-                      name: "",
-                      description: "",
-                      location: "",
-                      email: "",
-                      contact_number: "",
-                      budget: 0,
-                  },
+                    name: "",
+                    description: "",
+                    location: "",
+                    email: "",
+                    contact_number: "",
+                    budget: 0,
+                },
             initialMode: "view",
         });
     }, [isCreate, client]);
@@ -217,6 +228,8 @@ export default function ClientDetail() {
 
     // ── Handlers ───────────────────────────────────────────────────────────────
     const handleSubmit = async () => {
+        if (isSaving) return;
+
         const fd = new FormData();
         fd.append("name", form.name);
         fd.append("description", form.description ?? "");
@@ -244,6 +257,7 @@ export default function ClientDetail() {
             fd.append("_method", "PUT");
         }
 
+        setIsSubmitting(true);
         try {
             if (isCreate) {
                 await createClient.mutateAsync(fd);
@@ -276,6 +290,8 @@ export default function ClientDetail() {
                         : "Failed to update client.",
                 );
             }
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -291,8 +307,8 @@ export default function ClientDetail() {
             };
             toast.error(
                 e?.response?.data?.message ||
-                    e?.message ||
-                    "Failed to delete client.",
+                e?.message ||
+                "Failed to delete client.",
             );
         }
     };
@@ -359,7 +375,6 @@ export default function ClientDetail() {
 
     // ── Derived state ──────────────────────────────────────────────────────────
     const hasBanner = !!bannerPreview;
-    const isSaving = createClient.isPending || updateClient.isPending;
     const bannerInputId = "banner-upload";
     const filteredServers = servers.filter((s) => {
         const matchSearch = s.name
@@ -406,14 +421,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                          backgroundImage: `url(${bannerPreview})`,
-                                          backgroundSize: "cover",
-                                          backgroundPosition: "top center",
-                                      }
+                                        backgroundImage: `url(${bannerPreview})`,
+                                        backgroundSize: "cover",
+                                        backgroundPosition: "top center",
+                                    }
                                     : {
-                                          background:
-                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                      }
+                                        background:
+                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                    }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -476,7 +491,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                            defaultBanner,
+                                                        defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -583,7 +598,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none break-all",
                                             errors.description &&
-                                                "border-destructive",
+                                            "border-destructive",
                                         )}
                                     />
                                     {errors.description && (
@@ -721,8 +736,9 @@ export default function ClientDetail() {
                                                     isEdit={showEdit}
                                                 >
                                                     <p className="text-base font-semibold text-foreground">
-                                                        {client?.contact_number ||
-                                                            ""}
+                                                        {formatContactNumber(
+                                                            client?.contact_number,
+                                                        ) || ""}
                                                     </p>
                                                 </Field>
                                             )}
@@ -740,16 +756,19 @@ export default function ClientDetail() {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {showEdit ? (
                                                 <FloatingInput
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
+                                                    type="text"
+                                                    inputMode="decimal"
                                                     label="Monthly Budget (₱)"
-                                                    value={String(
-                                                        form.budget ?? 0,
-                                                    )}
-                                                    onValueChange={(val) =>
-                                                        store.set("budget")(val)
-                                                    }
+                                                    value={formatValue(String(form.budget ?? 0))}
+                                                    onValueChange={(val) => {
+                                                        const el = inputRef.current;
+                                                        const cursorPos = el?.selectionStart ?? val.length;
+                                                        handleChange(val, cursorPos, (unformatted) => {
+                                                            store.set("budget")(unformatted);
+                                                        });
+                                                    }}
+                                                    onKeyDown={handleKeyDown}
+                                                    onPaste={handlePaste}
                                                     error={errors.budget}
                                                 />
                                             ) : (
@@ -759,19 +778,7 @@ export default function ClientDetail() {
                                                     isEdit={showEdit}
                                                 >
                                                     <p className="text-base font-semibold text-foreground">
-                                                        ₱
-                                                        {(
-                                                            Number(
-                                                                client?.budget,
-                                                            ) || 0
-                                                        ).toLocaleString(
-                                                            undefined,
-                                                            {
-                                                                minimumFractionDigits: 2,
-                                                                maximumFractionDigits: 2,
-                                                            },
-                                                        )}{" "}
-                                                        / mo
+                                                        {formatCurrency(client?.budget, { suffix: " / mo" })}
                                                     </p>
                                                 </Field>
                                             )}
@@ -783,19 +790,7 @@ export default function ClientDetail() {
                                                     isEdit={false}
                                                 >
                                                     <p className="text-base font-semibold text-foreground">
-                                                        ₱
-                                                        {(
-                                                            Number(
-                                                                client?.total_subscription_fee,
-                                                            ) || 0
-                                                        ).toLocaleString(
-                                                            undefined,
-                                                            {
-                                                                minimumFractionDigits: 2,
-                                                                maximumFractionDigits: 2,
-                                                            },
-                                                        )}{" "}
-                                                        / mo
+                                                        {formatCurrency(client?.total_subscription_fee, { suffix: " / mo" })}
                                                     </p>
                                                 </Field>
                                             )}
@@ -1052,11 +1047,11 @@ export default function ClientDetail() {
                                                         ? "All"
                                                         : serverFilter ===
                                                             "online"
-                                                          ? "Online"
-                                                          : serverFilter ===
-                                                              "offline"
-                                                            ? "Offline"
-                                                            : "Archived"}
+                                                            ? "Online"
+                                                            : serverFilter ===
+                                                                "offline"
+                                                                ? "Offline"
+                                                                : "Archived"}
                                                     <ChevronDown size={14} />
                                                 </Button>
                                             </PopoverTrigger>
@@ -1087,10 +1082,10 @@ export default function ClientDetail() {
                                                         onClick={() =>
                                                             setServerFilter(
                                                                 opt.value as
-                                                                    | "all"
-                                                                    | "online"
-                                                                    | "offline"
-                                                                    | "archived",
+                                                                | "all"
+                                                                | "online"
+                                                                | "offline"
+                                                                | "archived",
                                                             )
                                                         }
                                                         className={cn(
