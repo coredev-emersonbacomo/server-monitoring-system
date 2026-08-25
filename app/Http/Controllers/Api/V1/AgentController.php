@@ -435,18 +435,20 @@ class AgentController extends Controller
                 'last_seen_at' => null,
             ]);
 
-            // Every server this installation monitored follows the existing
-            // lifecycle: it is decommissioned and detached from the agent.
+            // Every server this installation monitored has its agent detached and marked uninstalled,
+            // and transitions to offline status immediately (without auto-archiving).
             foreach ($servers as $server) {
                 $server->update([
                     'agent_deleted' => true,
                     'status' => ServerStatus::AgentUninstalled->value,
                     'agent_id' => null,
+                    'went_offline_at' => now(),
                 ]);
             }
         });
 
         foreach ($servers as $server) {
+            event(new ServerStatusUpdated($server->uuid, ServerStatus::Offline->value, $server->name));
             event(new AgentUninstalled($server->uuid));
         }
 

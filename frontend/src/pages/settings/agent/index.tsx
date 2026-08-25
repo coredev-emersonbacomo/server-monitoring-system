@@ -1,13 +1,12 @@
 import { useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
     Cpu,
     Save,
     Loader2,
     AlertTriangle,
     Radio,
-    Undo2,
-    Redo2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -16,7 +15,12 @@ import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
 import IndexHeader from "@/components/IndexHeader";
 import PageLayout from "@/components/PageLayout";
 import { DurationInput } from "@/components/node-config/nodes/DurationInput";
-import { Form, createFormStore, useForm, type FormStore } from "@/components/ui/form";
+import {
+    Form,
+    createFormStore,
+    useForm,
+    type FormStore,
+} from "@/components/ui/form";
 
 const schema = z.object({
     heartbeat_interval: z.string(),
@@ -51,6 +55,7 @@ function SettingRow({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AgentSettings() {
+    useDocumentTitle("Agent Settings");
     const { user, isLoading: authLoading } = useJwtAuth();
     const navigate = useNavigate();
 
@@ -65,31 +70,37 @@ export default function AgentSettings() {
     }, [user, authLoading, navigate]);
 
     const store = useMemo(
-        () => createFormStore({
-            schema,
-            originalData: settings
-                ? {
-                      heartbeat_interval: String(
-                          parseInt(settings.heartbeat_interval, 10) >= 1000
-                              ? Math.floor(parseInt(settings.heartbeat_interval, 10) / 1000)
-                              : parseInt(settings.heartbeat_interval, 10) || 5
-                      ),
-                      offline_threshold: String(
-                          parseInt(settings.offline_threshold, 10) >= 1000
-                              ? Math.floor(parseInt(settings.offline_threshold, 10) / 1000)
-                              : parseInt(settings.offline_threshold, 10) || 15
-                      ),
-                      port_ping_interval: String(
-                          parseInt(settings.port_ping_interval, 10) >= 1000
-                              ? Math.floor(parseInt(settings.port_ping_interval, 10) / 1000)
-                              : parseInt(settings.port_ping_interval, 10) || 60
-                      ),
-                  }
-                : { heartbeat_interval: "5", offline_threshold: "15", port_ping_interval: "60" },
-            initialMode: "edit",
-        }),
-        [settings],
+        () =>
+            createFormStore({
+                schema,
+                originalData: {
+                    heartbeat_interval: "5",
+                    offline_threshold: "15",
+                    port_ping_interval: "60",
+                },
+                initialMode: "edit",
+            }),
+        [],
     );
+
+    // Sync from server settings
+    useEffect(() => {
+        if (settings) {
+            const hb = String(parseInt(settings.heartbeat_interval, 10) || 5);
+            const off = String(parseInt(settings.offline_threshold, 10) || 15);
+            const pp = String(parseInt(settings.port_ping_interval, 10) || 60);
+            const data = {
+                heartbeat_interval: hb,
+                offline_threshold: off,
+                port_ping_interval: pp,
+            };
+            store.setState({
+                originalData: data,
+                form: data,
+                hasChanges: false,
+            });
+        }
+    }, [settings, store]);
 
     if (isLoading) {
         return (
@@ -142,10 +153,13 @@ function AgentSettingsContent<T extends FormData>({
     const offlineBelowHeartbeat = offlineValue < heartbeatValue;
 
     const isValid =
-        heartbeatValue >= 1 && heartbeatValue <= 1000 &&
-        offlineValue >= 1 && offlineValue <= 1000 &&
+        heartbeatValue >= 1 &&
+        heartbeatValue <= 1000 &&
+        offlineValue >= 1 &&
+        offlineValue <= 3600 &&
         offlineValue >= heartbeatValue &&
-        portPingValue >= 1 && portPingValue <= 3600;
+        portPingValue >= 1 &&
+        portPingValue <= 3600;
 
     return (
         <Form.Root store={store}>
@@ -159,7 +173,9 @@ function AgentSettingsContent<T extends FormData>({
                             <Save className="w-3.5 h-3.5" />
                         )
                     }
-                    disabled={updateSettings.isPending || !isValid || !hasChanges}
+                    disabled={
+                        updateSettings.isPending || !isValid || !hasChanges
+                    }
                 >
                     {updateSettings.isPending ? "Saving…" : "Save Changes"}
                 </Form.Button>
@@ -172,27 +188,41 @@ function AgentSettingsContent<T extends FormData>({
                     const pp = parseInt(String(data.port_ping_interval), 10);
 
                     if (isNaN(hb) || hb < 1 || hb > 1000) {
-                        toast.error("Heartbeat interval must be between 1s and ~16m.");
+                        toast.error(
+                            "Heartbeat interval must be between 1s and ~16m.",
+                        );
                         return;
                     }
-                    if (isNaN(off) || off < 1 || off > 1000) {
-                        toast.error("Offline threshold must be between 1s and ~16m.");
+                    if (isNaN(off) || off < 1 || off > 3600) {
+                        toast.error(
+                            "Offline threshold must be between 1s and 1h.",
+                        );
                         return;
                     }
                     if (off < hb) {
-                        toast.error("Offline threshold must be greater than or equal to the heartbeat interval.");
+                        toast.error(
+                            "Offline threshold must be greater than or equal to the heartbeat interval.",
+                        );
                         return;
                     }
                     if (isNaN(pp) || pp < 1 || pp > 3600) {
-                        toast.error("Port ping interval must be between 1s and 1h.");
+                        toast.error(
+                            "Port ping interval must be between 1s and 1h.",
+                        );
                         return;
                     }
 
                     try {
-                        await updateSettings.mutateAsync({
+                        const saved = {
                             heartbeat_interval: String(hb),
                             offline_threshold: String(off),
                             port_ping_interval: String(pp),
+                        };
+                        await updateSettings.mutateAsync(saved);
+                        store.setState({
+                            originalData: saved as any,
+                            form: saved as any,
+                            hasChanges: false,
                         });
                         toast.success("Agent settings saved.");
                     } catch {
@@ -230,8 +260,13 @@ function AgentSettingsContent<T extends FormData>({
                                     label=""
                                     value={heartbeatValue * 1000}
                                     onChange={(ms) => {
-                                        const secs = Math.max(1, Math.round(ms / 1000));
-                                        store.set("heartbeat_interval")(String(secs));
+                                        const secs = Math.max(
+                                            1,
+                                            Math.round(ms / 1000),
+                                        );
+                                        store.set("heartbeat_interval")(
+                                            String(secs),
+                                        );
                                     }}
                                     placeholder="5s"
                                 />
@@ -245,8 +280,13 @@ function AgentSettingsContent<T extends FormData>({
                                     label=""
                                     value={offlineValue * 1000}
                                     onChange={(ms) => {
-                                        const secs = Math.max(1, Math.round(ms / 1000));
-                                        store.set("offline_threshold")(String(secs));
+                                        const secs = Math.max(
+                                            1,
+                                            Math.round(ms / 1000),
+                                        );
+                                        store.set("offline_threshold")(
+                                            String(secs),
+                                        );
                                     }}
                                     placeholder="15s"
                                 />
@@ -260,8 +300,13 @@ function AgentSettingsContent<T extends FormData>({
                                     label=""
                                     value={portPingValue * 1000}
                                     onChange={(ms) => {
-                                        const secs = Math.max(1, Math.round(ms / 1000));
-                                        store.set("port_ping_interval")(String(secs));
+                                        const secs = Math.max(
+                                            1,
+                                            Math.round(ms / 1000),
+                                        );
+                                        store.set("port_ping_interval")(
+                                            String(secs),
+                                        );
                                     }}
                                     placeholder="60s"
                                 />
@@ -274,9 +319,9 @@ function AgentSettingsContent<T extends FormData>({
                         <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-red-500/5 border border-red-500/20 text-red-600 dark:text-red-400">
                             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                             <p className="text-xs leading-relaxed">
-                                Offline threshold ({offlineValue}s) must
-                                be greater than or equal to the heartbeat
-                                interval ({heartbeatValue}s).
+                                Offline threshold ({offlineValue}s) must be
+                                greater than or equal to the heartbeat interval
+                                ({heartbeatValue}s).
                             </p>
                         </div>
                     )}

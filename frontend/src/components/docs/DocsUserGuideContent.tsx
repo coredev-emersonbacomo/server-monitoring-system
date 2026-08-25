@@ -1,4 +1,11 @@
-import { Section, SubSection, CodeBlock, InlineCode, Callout } from "./Section";
+import {
+    Section,
+    SubSection,
+    CodeBlock,
+    InlineCode,
+    Callout,
+    DocImage,
+} from "./Section";
 
 export function DocsDashboardContent() {
     return (
@@ -142,10 +149,9 @@ export function DocsClientsContent() {
                     Submit to create the client. You can edit these fields later
                     from the client page.
                 </p>
-                <img
+                <DocImage
                     src="/images/cc1.gif"
                     alt="Create client walkthrough"
-                    className="mt-4 w-full rounded-lg border border-white/10"
                 />
             </Section>
 
@@ -172,10 +178,9 @@ export function DocsClientsContent() {
                         client's alert configuration (see the Settings section).
                     </li>
                 </ul>
-                <img
+                <DocImage
                     src="/images/cdetails.gif"
                     alt="Client details walkthrough"
-                    className="mt-4 w-full rounded-lg border border-white/10"
                 />
             </Section>
 
@@ -187,6 +192,10 @@ export function DocsClientsContent() {
                     <strong>Add Server</strong> to create a new server under
                     this client.
                 </p>
+                <DocImage
+                    src="/images/client_serverlist.png"
+                    alt="Client server list"
+                />
             </Section>
 
             <Section title="Deleting a client">
@@ -196,10 +205,9 @@ export function DocsClientsContent() {
                     blocked while any associated server still has a live agent —
                     uninstall the agent on those servers first.
                 </p>
-                <img
+                <DocImage
                     src="/images/cdelete1.gif"
                     alt="Delete client walkthrough"
-                    className="mt-4 w-full rounded-lg border border-white/10"
                 />
             </Section>
         </>
@@ -290,6 +298,10 @@ export function DocsServersContent() {
                     <strong>Agent Installation Guide</strong> — that's the next
                     step.
                 </p>
+                <DocImage
+                    src="/images/screate.gif"
+                    alt="Create server walkthrough"
+                />
             </Section>
 
             <Section title="Installing the agent">
@@ -330,6 +342,10 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1'
                     The provision token expires after 1 hour. If it expires
                     before you finish installing, generate a new one.
                 </Callout>
+                <DocImage
+                    src="/images/sinstall.gif"
+                    alt="Agent installation walkthrough"
+                />
             </Section>
 
             <Section title="Server details">
@@ -360,6 +376,10 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1'
                         flag, first registration, and last heartbeat.
                     </li>
                 </ul>
+                <DocImage
+                    src="/images/sdetails.gif"
+                    alt="Server details walkthrough"
+                />
             </Section>
 
             <Section title="Deleting a server">
@@ -441,6 +461,10 @@ export function DocsUsersContent() {
                         <strong>Confirm password</strong>
                     </li>
                 </ul>
+                <DocImage
+                    src="/images/ucreate.gif"
+                    alt="Create user walkthrough"
+                />
             </Section>
 
             <Section title="User details">
@@ -460,6 +484,10 @@ export function DocsUsersContent() {
                         Ops tab.
                     </li>
                 </ul>
+                <DocImage
+                    src="/images/udetails.gif"
+                    alt="User details walkthrough"
+                />
             </Section>
 
             <Section title="Deleting a user">
@@ -468,6 +496,10 @@ export function DocsUsersContent() {
                     Type the user's full name to confirm. The account is
                     permanently removed.
                 </p>
+                <DocImage
+                    src="/images/udelete.gif"
+                    alt="Delete user walkthrough"
+                />
             </Section>
         </>
     );

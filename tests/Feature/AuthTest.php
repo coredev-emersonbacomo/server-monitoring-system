@@ -3,7 +3,7 @@
 use App\Models\User;
 use App\Services\JwtService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 
 uses(RefreshDatabase::class)->group('auth');
 
@@ -95,7 +95,7 @@ test('me endpoint returns authenticated user', function () {
     $accessToken = $loginResponse->json('access_token');
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $accessToken,
+        'Authorization' => 'Bearer '.$accessToken,
     ])->getJson('/api/me');
 
     $response->assertStatus(200)
@@ -127,7 +127,7 @@ test('logout revokes session and clears cookie', function () {
     $accessToken = $loginResponse->json('access_token');
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $accessToken,
+        'Authorization' => 'Bearer '.$accessToken,
     ])->postJson('/api/logout');
 
     $response->assertStatus(200);
@@ -152,7 +152,7 @@ test('refresh endpoint rotates token', function () {
     $response = $this->call('POST', '/api/refresh', [], [
         'refresh_token' => $refreshTokenValue,
     ], []);
-    $response = \Illuminate\Testing\TestResponse::fromBaseResponse($response);
+    $response = TestResponse::fromBaseResponse($response);
 
     $response->assertStatus(201)
         ->assertJsonStructure([
@@ -176,7 +176,7 @@ test('sessions endpoint returns user sessions', function () {
     $accessToken = $loginResponse->json('access_token');
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $accessToken,
+        'Authorization' => 'Bearer '.$accessToken,
     ])->getJson('/api/sessions');
 
     $response->assertStatus(200)
@@ -202,7 +202,7 @@ test('logout all revokes all other sessions', function () {
     $accessToken = $loginResponse->json('access_token');
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $accessToken,
+        'Authorization' => 'Bearer '.$accessToken,
     ])->postJson('/api/logout-all');
 
     $response->assertStatus(200);
@@ -217,7 +217,7 @@ test('security activity endpoint returns audit logs', function () {
     $accessToken = $loginResponse->json('access_token');
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $accessToken,
+        'Authorization' => 'Bearer '.$accessToken,
     ])->getJson('/api/security-activity');
 
     $response->assertStatus(200)
@@ -234,16 +234,16 @@ test('revoke session endpoint works', function () {
 
     $accessToken = $loginResponse->json('access_token');
     $sessionsResponse = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $accessToken,
+        'Authorization' => 'Bearer '.$accessToken,
     ])->getJson('/api/sessions');
 
     $sessions = $sessionsResponse->json('data');
-    $nonCurrentSession = collect($sessions)->first(fn ($s) => !$s['current_session']);
+    $nonCurrentSession = collect($sessions)->first(fn ($s) => ! $s['current_session']);
 
     if ($nonCurrentSession) {
         $response = $this->withHeaders([
-            'Authorization' => 'Bearer ' . $accessToken,
-        ])->deleteJson('/api/sessions/' . $nonCurrentSession['session_uuid']);
+            'Authorization' => 'Bearer '.$accessToken,
+        ])->deleteJson('/api/sessions/'.$nonCurrentSession['session_uuid']);
 
         $response->assertStatus(200);
     }
@@ -258,7 +258,7 @@ test('active sessions count endpoint works', function () {
     $accessToken = $loginResponse->json('access_token');
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $accessToken,
+        'Authorization' => 'Bearer '.$accessToken,
     ])->getJson('/api/sessions/active-count');
 
     $response->assertStatus(200)

@@ -20,6 +20,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     disableInput?: boolean;
     divClassName?: string;
     inputBg?: string;
+    inputRef?: React.Ref<HTMLInputElement>;
     autoValidate?: boolean;
     onValueChange?: (value: string, name: string) => void;
     error?: string;
@@ -47,6 +48,7 @@ export const FloatingInput = forwardRef<InputRef, InputProps>(
             debounceMs = 300,
             divClassName,
             disableInput,
+            inputRef: externalInputRef,
             defaultValue,
             autoValidate,
             prefix = "",
@@ -163,7 +165,15 @@ export const FloatingInput = forwardRef<InputRef, InputProps>(
                     <div className={"relative flex-1 h-full flex items-center"}>
                         <input
                             {...props}
-                            ref={inputRef}
+                            ref={(element) => {
+                                inputRef.current = element;
+
+                                if (typeof externalInputRef === "function") {
+                                    externalInputRef(element);
+                                } else if (externalInputRef) {
+                                    externalInputRef.current = element;
+                                }
+                            }}
                             placeholder=" "
                             onChange={handleChange}
                             value={internalValue}

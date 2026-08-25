@@ -246,6 +246,10 @@ class ServerData extends Data
                     return 'archived';
                 }
 
+                if ($server->agent_deleted) {
+                    return 'offline';
+                }
+
                 if (! $agent || ! $agent->registered_at) {
                     return $server->status ?? 'pending_installation';
                 }

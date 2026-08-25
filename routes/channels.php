@@ -1,9 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Broadcast;
-use Illuminate\Http\Request;
-use App\Models\AgentIdentity;
-use App\Models\Server;
 
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
@@ -20,4 +17,3 @@ Broadcast::channel('agent.{serverUuid}', function ($user, $serverUuid) {
 }, ['guards' => ['jwt']]);
 
 Broadcast::channel('system-telemetry', fn ($user) => true, ['guards' => ['jwt']]);
-

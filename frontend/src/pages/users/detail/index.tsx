@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { z } from "zod";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
     Pencil,
     Upload,
@@ -33,6 +34,7 @@ import {
     useRemoveUserClient,
 } from "@/hooks/useUsers";
 import { useClients } from "@/hooks/useClients";
+import { useSettings } from "@/hooks/useSettings";
 import { Tab } from "@/components/ui/tab";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
 import { uploadFile } from "@/lib/uploadToast";
@@ -178,12 +180,15 @@ export default function UserDetail() {
 
     // ── Data fetching ──────────────────────────────────────────────────────────
     const { data: user, isLoading, isError } = useUser(uuid);
+
+    useDocumentTitle(
+        user ? `${user.first_name} ${user.last_name}` : undefined,
+    );
+
     const { data: userClients = [], isLoading: clientsLoading } =
         useUserClients(uuid);
-    const { data: allClients = [] } = useClients({
-        ...(uuid ? { exclude_user_uuid: uuid } : {}),
-        available_only: true,
-    });
+    const { data: allClients = [] } = useClients();
+    const { data: settings } = useSettings();
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createUser = useCreateUser();
@@ -193,7 +198,6 @@ export default function UserDetail() {
     const removeClient = useRemoveUserClient(uuid);
 
     const isCreate = !uuid;
-    const isSaving = createUser.isPending || updateUser.isPending;
 
     // ── Form store ─────────────────────────────────────────────────────────────
     const store = useMemo(() => {
@@ -241,11 +245,14 @@ export default function UserDetail() {
     }, [isCreate, user]);
 
     // ── Local state ────────────────────────────────────────────────────────────
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDelete, setShowDelete] = useState(false);
     const [showClientDialog, setShowClientDialog] = useState(false);
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [localErrors, setErrors] = useState<Record<string, string>>({});
+
+    const isSaving = createUser.isPending || updateUser.isPending || isSubmitting;
 
     const form = useForm(store, (s) => s.form);
     const mode = useForm(store, (s) => s.mode);
@@ -323,6 +330,8 @@ export default function UserDetail() {
 
     // ── Handlers ───────────────────────────────────────────────────────────────
     const handleSubmit = async () => {
+        if (isSaving) return;
+
         // Run Zod schema validation
         const result = userSchema.safeParse(form);
         const newErrors: Record<string, string> = {};
@@ -348,6 +357,7 @@ export default function UserDetail() {
 
         setErrors({});
         store.setState({ errors: {} });
+        setIsSubmitting(true);
 
         try {
             let uploadFields: Record<string, string> = {};
@@ -435,6 +445,8 @@ export default function UserDetail() {
                             : "Failed to update user."),
                 );
             }
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -516,9 +528,14 @@ export default function UserDetail() {
     const avatarSrc = avatarPreview || DEFAULT_AVATAR;
     const avatarInputId = "avatar-upload";
 
-    const availableClients = allClients.filter(
-        (client) => !userClients.some((uc) => uc.uuid === client.uuid),
-    );
+    const secopLimit =
+        parseInt(settings?.secop_limit_per_client ?? "2", 10) || 2;
+
+    const availableClients = allClients.filter((client) => {
+        const isAssigned = userClients.some((uc) => uc.uuid === client.uuid);
+        const count = client.secops_count ?? 0;
+        return !isAssigned && count < secopLimit;
+    });
 
     return (
         <>
@@ -1067,7 +1084,11 @@ export default function UserDetail() {
                                                         key={client.uuid}
                                                         className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"
                                                     >
-                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                        <Link
+                                                            to={`/clients/${client.uuid}`}
+                                                            aria-label={`Open ${client.name}`}
+                                                            className="flex items-center gap-3 flex-1 min-w-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                        >
                                                             <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted shrink-0 flex items-center justify-center">
                                                                 {client.banner_image_url ? (
                                                                     <img
@@ -1100,7 +1121,7 @@ export default function UserDetail() {
                                                                     }
                                                                 </p>
                                                             </div>
-                                                        </div>
+                                                        </Link>
                                                         <button
                                                             type="button"
                                                             onClick={() =>
@@ -1158,6 +1179,7 @@ export default function UserDetail() {
                     open={showClientDialog}
                     onOpenChange={setShowClientDialog}
                     availableClients={availableClients}
+                    secopLimit={secopLimit}
                     isAdding={addClient.isPending}
                     onAssignClient={(clientUuid, clientName) => {
                         addClient.mutate(clientUuid, {

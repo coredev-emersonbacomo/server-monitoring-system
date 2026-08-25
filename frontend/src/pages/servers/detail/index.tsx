@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import api from "@/api/api";
 import {
     Info,
@@ -20,7 +21,7 @@ import type { ProvisionDetailData } from "@/types/models";
 import IndexHeader, { type Crumb } from "@/components/IndexHeader";
 import { useServerSocket } from "@/hooks/useServerSocket";
 import { toast } from "sonner";
-import { createFormStore, useForm } from "@/components/ui/form";
+import { createFormStore, useForm, type FormStore } from "@/components/ui/form";
 
 import { useServer } from "./hooks/useServer";
 import { useDeleteServer } from "./hooks/useDeleteServer";
@@ -126,6 +127,8 @@ export default function ServerDetail() {
         toTime: timeSpanArgs?.toTime,
     });
 
+    useDocumentTitle(initial?.name ?? undefined);
+
     const queryClient = useQueryClient();
     const serverAlertTab = useServerAlertTab(
         initial?.uuid ?? "",
@@ -148,13 +151,13 @@ export default function ServerDetail() {
                 schema: serverInfoSchema,
                 originalData: null,
                 initialMode: "view",
-            }),
+            }) as unknown as FormStore<ServerInfoForm>,
         // Only recreate store when navigating to a different server, not on every poll
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [initial?.uuid],
     );
 
-    const form = useForm(store, (s) => s.form);
+    const form = useForm(store, (s) => s.form) as ServerInfoForm;
     const mode = useForm(store, (s) => s.mode);
 
     // Populate form when server data first loads (uuid change) — never overwrite during active edit
