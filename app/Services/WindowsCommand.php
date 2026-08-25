@@ -4,10 +4,26 @@ namespace App\Services;
 
 class WindowsCommand
 {
-    public static function make(string $scriptPath, string $token, string $appUrl): string
+    /**
+     * Build a PowerShell one-liner that downloads a remote install/uninstall
+     * script and runs it. The argument flag differs by intent:
+     *  - install      → -ProvisionToken <token>
+     *  - uninstall    → -Instance <installation_uuid>
+     */
+    public static function make(string $scriptPath, string $argFlag, string $argValue, string $appUrl): string
     {
         $fileName = str_contains($scriptPath, 'uninstall') ? 'monitor-uninstall.ps1' : 'monitor-install.ps1';
 
-        return 'powershell -ExecutionPolicy Bypass -Command "irm \''.$appUrl.$scriptPath."' -OutFile \$env:TEMP\\$fileName; & \$env:TEMP\\$fileName -ProvisionToken '".$token."'\"";
+        // argValue is single-quoted so the emitted -Command string always stays
+        // balanced; $env:TEMP is left literal so PowerShell expands it at run time.
+        return sprintf(
+            'powershell -ExecutionPolicy Bypass -Command "irm \'%s%s\' -OutFile $env:TEMP\\%s; & $env:TEMP\\%s %s \'%s\'"',
+            $appUrl,
+            $scriptPath,
+            $fileName,
+            $fileName,
+            $argFlag,
+            $argValue,
+        );
     }
 }

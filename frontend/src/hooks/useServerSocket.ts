@@ -130,6 +130,7 @@ export function useServerSocket(
                     i: number;
                     o: number;
                     d: number;
+                    n?: { name: string; type?: string; state?: string; i: number; o: number }[];
                 }) => {
                     globalMetrics.push(serverUuid, e);
                     // queryClient.invalidateQueries({ queryKey: ["server", serverUuid] });

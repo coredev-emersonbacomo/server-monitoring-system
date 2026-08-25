@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"time"
 )
 
@@ -152,11 +153,13 @@ func flagValue(args []string, name string) string {
 	return ""
 }
 
-// serviceNameFor derives the per-installation service name. Every installation
-// gets its own service, so multiple agents on one machine are fully isolated
-// and can be managed (start/stop/uninstall) independently.
+// serviceNameFor is the single stable Windows service name for this agent
+// installation. Under the one-agent-per-computer model there is exactly one
+// service per host ("MonitorAgent"), so the installation UUID is NOT part of
+// the service name — it is pinned via the service's "-instance <uuid>" argument
+// instead. The parameter is retained for call-site compatibility.
 func serviceNameFor(instance string) string {
-	return "MonitorAgent-" + instance
+	return "MonitorAgent"
 }
 
 const uninstallFlagFile = "uninstall.flag"
@@ -410,130 +413,202 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 // a single package-level snapshot is correct. sendHeartbeatStep is the only
 // writer and runs on the heartbeat goroutine, so no lock is needed.
 var (
-	lastSentProcesses []string
-	lastSentPorts     []int
+	lastSentProcesses  []string
+	lastSentPorts      []int
+	lastSentInterfaces []string
+	// pendingCompleted accumulates command results between ticks. The agent
+	// executes commands it received in the previous heartbeat and acks them
+	// on the NEXT aggregated heartbeat (a one-tick delay is acceptable).
+	pendingCompleted []CommandResult
 )
 
 func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *AgentClient, metrics *metricsCollector, runtime *AgentRuntime, heartbeatInterval *int) {
-	// Collect processes and ports once per cycle, not per server: the process
-	// collector samples over a controlled interval (~1s), so per-server
-	// collection would multiply that latency. Each server's DB filter is
-	// applied separately below.
+	// Collect agent-wide state ONCE per tick — the process collector samples
+	// over a controlled interval (~1s), so per-server collection would multiply
+	// that latency. Each server's DB filter is applied into its partition below.
 	allowedProcesses := runtime.AllowedProcessNames()
 	processes := metrics.GetProcesses(allowedProcesses)
 	processes = groupProcesses(processes)
 	openPorts := metrics.GetOpenDatabasePorts()
+	allNetworks := metrics.GetNetworkStats()
+	// Available interfaces are non-disconnected ones (state == "up"); they drive the checklist.
+	availableNetworks := filterAvailableNetworks(allNetworks)
 
-	// Only include the discoverable set in the heartbeat when its identity
-	// actually changed since the last send. The backend keeps the previous
+	// The noise-filtered discoverable set is agent-wide. Only re-send it when
+	// its signature changed since the last send; the backend keeps the prior
 	// snapshot until then.
 	procSig := processSetSignature(processes)
 	portSig := portSetSignature(openPorts)
-	availableChanged := !slices.Equal(procSig, lastSentProcesses) || !slices.Equal(portSig, lastSentPorts)
+	ifaceSig := interfaceSetSignature(availableNetworks)
+	availableChanged := !slices.Equal(procSig, lastSentProcesses) || !slices.Equal(portSig, lastSentPorts) || !slices.Equal(ifaceSig, lastSentInterfaces)
 	if availableChanged {
 		lastSentProcesses = procSig
 		lastSentPorts = portSig
+		lastSentInterfaces = ifaceSig
 	}
 
-	for _, serverUUID := range runtime.ServerUUIDs() {
-		if !runtime.HasServer(serverUUID) {
+	// Build ONE partition per monitored server, applying that server's filter
+	// to the shared collected set. This is the only per-server work.
+	// For dedup, top-level dicts hold the union of per-server filtered objects
+	// and per-server partitions hold only keys referencing those dicts.
+	partitions := make([]ServerPartition, 0, len(runtime.ServerUUIDs()))
+	procDict := make(map[string]ProcessInfo)
+	portDict := make(map[string]PortInfo)
+	netDict := make(map[string]NetworkMetrics)
+	for _, uuid := range runtime.ServerUUIDs() {
+		if !runtime.HasServer(uuid) {
 			continue
 		}
-
-		payload := &HeartbeatRequest{
-			ServerUUID:           serverUUID,
-			AgentVersion:         config.AgentVersion,
-			ConfigurationVersion: config.confVersion,
-			Timestamp:            time.Now().Unix(),
-			Hostname:             metrics.GetHostname(),
-			Cpu:                  metrics.GetCPUUsage(),
-			Memory:               metrics.GetMemoryUsage(),
-			Disk:                 metrics.GetDiskUsage(),
-			Uptime:               metrics.GetUptime(),
-			Network:              metrics.GetNetworkStats(),
-			Processes:            runtime.FilterProcesses(serverUUID, processes),
-			OpenDbPorts:          runtime.FilterPorts(serverUUID, openPorts),
-			AgentConfig: &AgentConfigReport{
-				HeartbeatInterval: *heartbeatInterval,
-				AgentVersion:      config.AgentVersion,
-			},
+		cfg := runtime.config(uuid)
+		if cfg == nil {
+			continue
 		}
-		// The noise-filtered discovered set, sent only when it changes, is what
-		// the backend shows in the monitoring filter so new/unmonitored
-		// processes and ports can be checked on.
-		if availableChanged {
-			payload.AvailableProcesses = processes
-			payload.AvailablePorts = openPorts
+		portFilter := sortedIntKeys(cfg.PortFilter)
+		if portFilter == nil {
+			portFilter = []int{}
+		}
+		procFilter := sortedStringKeys(cfg.ProcessFilter)
+		if procFilter == nil {
+			procFilter = []string{}
+		}
+		networkFilter := sortedStringKeys(cfg.NetworkFilter)
+		if networkFilter == nil {
+			networkFilter = []string{}
+		}
+		filtProcs := runtime.FilterProcesses(uuid, processes)
+		filtPorts := runtime.FilterPorts(uuid, openPorts)
+		filtNets := runtime.FilterNetworks(uuid, allNetworks)
+		// Union into top-level dicts
+		for _, p := range filtProcs {
+			procDict[p.Name] = p
+		}
+		for _, p := range filtPorts {
+			key := fmt.Sprintf("%s:%d", strings.ToLower(p.Protocol), p.Port)
+			portDict[key] = p
+		}
+		for _, n := range filtNets {
+			netDict[n.Interface] = n
+		}
+		// Per-server lists are just keys
+		procNames := make([]string, 0, len(filtProcs))
+		for _, p := range filtProcs {
+			procNames = append(procNames, p.Name)
+		}
+		portKeys := make([]string, 0, len(filtPorts))
+		for _, p := range filtPorts {
+			portKeys = append(portKeys, fmt.Sprintf("%s:%d", strings.ToLower(p.Protocol), p.Port))
+		}
+		netNames := make([]string, 0, len(filtNets))
+		for _, n := range filtNets {
+			netNames = append(netNames, n.Interface)
+		}
+		partitions = append(partitions, ServerPartition{
+			ServerUUID:    uuid,
+			PortFilter:    portFilter,
+			ProcessFilter: procFilter,
+			NetworkFilter: networkFilter,
+			Processes:     procNames,
+			OpenDbPorts:   portKeys,
+			Network:       netNames,
+		})
+	}
+
+	payload := &AgentHeartbeatRequest{
+		AgentVersion:         config.AgentVersion,
+		ConfigurationVersion: config.confVersion,
+		Timestamp:            time.Now().Unix(),
+		Hostname:             metrics.GetHostname(),
+		Cpu:                  metrics.GetCPUUsage(),
+		Memory:               metrics.GetMemoryUsage(),
+		Disk:                 metrics.GetDiskUsage(),
+		Uptime:               metrics.GetUptime(),
+		AgentConfig: &AgentConfigReport{
+			HeartbeatInterval: *heartbeatInterval,
+			AgentVersion:      config.AgentVersion,
+		},
+		ProcessesDict: procDict,
+		PortsDict:     portDict,
+		NetworksDict:  netDict,
+		Servers:       partitions,
+	}
+	if availableChanged {
+		// Available is just details (for filter UI), not live data — heartbeat partitions carry the data
+		lightProcs := make([]ProcessInfo, 0, len(processes))
+		for _, p := range processes {
+			lightProcs = append(lightProcs, ProcessInfo{Name: p.Name, Pids: p.Pids, Pid: p.Pid})
+		}
+		lightPorts := make([]PortInfo, 0, len(openPorts))
+		for _, p := range openPorts {
+			lightPorts = append(lightPorts, PortInfo{Port: p.Port, Protocol: p.Protocol, Process: p.Process})
+		}
+		lightIfaces := make([]NetworkMetrics, 0, len(availableNetworks))
+		for _, n := range availableNetworks {
+			lightIfaces = append(lightIfaces, NetworkMetrics{Interface: n.Interface, Type: n.Type, State: n.State})
+		}
+		payload.AvailableProcesses = lightProcs
+		payload.AvailablePorts = lightPorts
+		payload.AvailableInterfaces = lightIfaces
+	}
+	if len(pendingCompleted) > 0 {
+		payload.CompletedCommands = pendingCompleted
+		pendingCompleted = nil
+	}
+
+	// Only bother sending if we actually monitor something.
+	if len(payload.Servers) == 0 && payload.AgentVersion == "" {
+		return
+	}
+
+	response, err := client.sendAgentHeartbeat(payload)
+	if err != nil {
+		log.Printf("Aggregated heartbeat failed: %v", err)
+		return
+	}
+
+	// Drop servers the backend no longer wants this agent to monitor.
+	for _, uuid := range response.RevokedServerUUIDs {
+		log.Printf("Server %s revoked by backend — removing from monitored set.", uuid)
+		runtime.Remove(uuid)
+	}
+
+	if response.HeartbeatInterval > 0 && *heartbeatInterval != response.HeartbeatInterval {
+		*heartbeatInterval = response.HeartbeatInterval
+		log.Printf("Heartbeat interval updated to %ds", *heartbeatInterval)
+	}
+
+	if v, ok := response.Configuration["version"].(float64); ok {
+		config.confVersion = int(v)
+		log.Printf("Configuration updated to version %d", config.confVersion)
+	}
+
+	if response.PendingUpdate != nil {
+		log.Printf("Received agent update notification to version %s", response.PendingUpdate.Version)
+
+		if response.PendingUpdate.HeartbeatInterval > 0 {
+			*heartbeatInterval = response.PendingUpdate.HeartbeatInterval
 		}
 
-		response, err := client.sendHeartbeat(payload)
-		if err != nil {
-			// A decommissioned / reassigned server must stop being monitored,
-			// not flap. Remove it from the runtime until it is assigned again.
-			var hse *httpStatusError
-			if errors.As(err, &hse) && (hse.Status == 403 || hse.Status == 404 || hse.Status == 410) {
-				log.Printf("Server %s rejected by backend (%d) — removing from monitored set.", serverUUID, hse.Status)
-				runtime.Remove(serverUUID)
+		config.AgentVersion = response.PendingUpdate.Version
+		_ = writeConfig(configPath, config)
+
+		if response.PendingUpdate.BinaryURL != "" {
+			log.Printf("Updating agent binary from %s...", response.PendingUpdate.BinaryURL)
+			if err := updateBinary(response.PendingUpdate.BinaryURL); err != nil {
+				log.Printf("Binary update failed: %v", err)
 			} else {
-				log.Printf("Heartbeat failed for %s: %v", serverUUID, err)
-			}
-			continue
-		}
-
-		// Per-server filters are NOT refreshed from the heartbeat response —
-		// the backend no longer returns them there. They arrive on auth/startup
-		// and via the WS control channel (config.update), which re-syncs from a
-		// fresh session on every reconnect.
-
-		if response.HeartbeatInterval > 0 && *heartbeatInterval != response.HeartbeatInterval {
-			*heartbeatInterval = response.HeartbeatInterval
-			log.Printf("Heartbeat interval updated to %ds", *heartbeatInterval)
-		}
-
-		if v, ok := response.Configuration["version"].(float64); ok {
-			config.confVersion = int(v)
-			log.Printf("Configuration updated to version %d", config.confVersion)
-		}
-
-		if response.PendingUpdate != nil {
-			log.Printf("Received agent update notification to version %s", response.PendingUpdate.Version)
-
-			if response.PendingUpdate.HeartbeatInterval > 0 {
-				*heartbeatInterval = response.PendingUpdate.HeartbeatInterval
-			}
-
-			config.AgentVersion = response.PendingUpdate.Version
-			_ = writeConfig(configPath, config)
-
-			if response.PendingUpdate.BinaryURL != "" {
-				log.Printf("Updating agent binary from %s...", response.PendingUpdate.BinaryURL)
-				if err := updateBinary(response.PendingUpdate.BinaryURL); err != nil {
-					log.Printf("Binary update failed: %v", err)
-				} else {
-					log.Println("Binary updated successfully! Exiting to allow restart.")
-					restartAgent()
-					os.Exit(0)
-				}
+				log.Println("Binary updated successfully! Exiting to allow restart.")
+				restartAgent()
+				os.Exit(0)
 			}
 		}
+	}
 
-		if len(response.PendingCommands) > 0 {
-			var completed []CommandResult
-			for _, cmd := range response.PendingCommands {
-				log.Printf("Executing command: %s (id: %d)", cmd.Type, cmd.Id)
-				result := executeCommand(cmd)
-				completed = append(completed, result)
-			}
-			if len(completed) > 0 {
-				ackPayload := &HeartbeatRequest{
-					ServerUUID:           serverUUID,
-					ConfigurationVersion: config.confVersion,
-					Timestamp:            time.Now().Unix(),
-					Hostname:             metrics.GetHostname(),
-					CompletedCommands:    completed,
-				}
-				client.sendHeartbeat(ackPayload)
-			}
+	// Execute pending commands and ack them on the next aggregated tick.
+	if len(response.PendingCommands) > 0 {
+		for _, cmd := range response.PendingCommands {
+			log.Printf("Executing command: %s (id: %d)", cmd.Type, cmd.Id)
+			result := executeCommand(cmd)
+			pendingCompleted = append(pendingCompleted, result)
 		}
 	}
 }

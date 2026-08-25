@@ -4,6 +4,14 @@
 
 Accepted
 
+> **Note (superseded installer/on-disk/uninstall model):** the data-model, authentication,
+> heartbeat, filter, and log-root-cause decisions in this ADR remain in force. The *installer /
+> per-instance service / `instances/<uuid>` on-disk layout / multi-delete uninstall* portions of
+> this ADR's On-Disk Layout and Consequences are superseded by [ADR-0002: Single Agent per
+> Physical Computer](./0002-singleton-agent-per-computer.md), which makes the agent synonymous
+> with the physical computer (one shared service, shared non-secret state dir, detect-and-attach
+> installer, and split server-detach vs. full-agent uninstall).
+
 ## Context
 
 The monitoring agent was designed as one installation per server: `agents.server_id` was a required FK and a partial unique index (`agents_server_id_active_unique`) enforced one active agent per server. Registration rejected the same installation UUID on a different server (409) and revoked the previous agent when a new installation took over a server. Auth, heartbeat, WS channel authorization, uninstall, version sync, and the reverse lookup all relied on `$agent->server` (a single server).

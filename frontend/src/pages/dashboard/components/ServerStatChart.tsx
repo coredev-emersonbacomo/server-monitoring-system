@@ -14,7 +14,7 @@ const YEARLY_SPANS = new Set(["1Y", "3Y", "6Y", "9Y", "12Y"]);
 const MONTHLY_SPANS = new Set(["3M", "6M"]);
 const WEEKLY_SPANS = new Set(["1W", "1M"]);
 
-function fmtTime(ts: number, timeSpan: string = "1H") {
+export function fmtTime(ts: number, timeSpan: string = "1H") {
     const d = new Date(ts);
     if (YEARLY_SPANS.has(timeSpan)) {
         return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
@@ -28,7 +28,7 @@ function fmtTime(ts: number, timeSpan: string = "1H") {
     return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
-function fmtDatetime(ts: number, timeSpan: string = "1H") {
+export function fmtDatetime(ts: number, timeSpan: string = "1H") {
     const d = new Date(ts);
     if (YEARLY_SPANS.has(timeSpan)) {
         return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
@@ -46,7 +46,7 @@ function fmtDatetime(ts: number, timeSpan: string = "1H") {
 interface ServerStatChartProps {
     title: string;
     data?: StatPoint[];
-    dataKey: keyof Omit<StatPoint, "timestamp">;
+    dataKey: Exclude<keyof StatPoint, "timestamp" | "networks">;
     color: string;
     unit?: string;
     yDomain?: [number | "auto", number | "auto"];

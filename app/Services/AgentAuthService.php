@@ -59,6 +59,7 @@ class AgentAuthService
                 'server_uuid' => $server->uuid,
                 'port_filter' => $server->port_filter ?? null,
                 'process_filter' => $server->process_filter ?? null,
+                'network_filter' => $server->network_filter ?? null,
             ])->values(),
             'config' => [
                 'heartbeat_interval' => $heartbeatInterval,

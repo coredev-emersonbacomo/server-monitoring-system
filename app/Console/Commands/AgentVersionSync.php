@@ -113,31 +113,38 @@ class AgentVersionSync extends Command
 
         // Broadcast binary update to connected agents for immediate pickup
         // (heartbeat pending_update remains the fallback trigger).
+        // One dispatch per agent (not per server) — single-agent-per-computer
+        // holds 2 servers on 1 agent, so counting servers as agents is wrong.
         $heartbeatInterval = (int) (Setting::get('heartbeat_interval') ?: 5);
         $agents = Agent::where('status', 'active')->with('monitoredServers')->get();
-        $dispatched = 0;
+        $dispatchedAgents = 0;
+        $dispatchedServers = 0;
 
         foreach ($agents as $agent) {
-            foreach ($agent->monitoredServers as $server) {
-                // Detect platform from agent's server OS to send the right binary URL
-                $os = strtolower($server->operating_system ?? '');
-                $agentBinaryUrl = str_contains($os, 'windows')
-                    ? url('/MonitorAgent.exe')
-                    : url('/agent');
-
-                event(new AgentConfigUpdated(
-                    $server->uuid,
-                    $heartbeatInterval,
-                    'binary_update',
-                    $nextVersion,
-                    $agentBinaryUrl
-                ));
-                $dispatched++;
+            $server = $agent->monitoredServers->first();
+            if (! $server) {
+                continue;
             }
+            // Detect platform from the agent's first server OS to send the right binary URL
+            // (all servers on one host share the OS).
+            $os = strtolower($server->operating_system ?? '');
+            $agentBinaryUrl = str_contains($os, 'windows')
+                ? url('/MonitorAgent.exe')
+                : url('/agent');
+
+            event(new AgentConfigUpdated(
+                $server->uuid,
+                $heartbeatInterval,
+                'binary_update',
+                $nextVersion,
+                $agentBinaryUrl
+            ));
+            $dispatchedAgents++;
+            $dispatchedServers += $agent->monitoredServers->count();
         }
 
-        if ($dispatched > 0) {
-            $this->info("✓ Broadcast binary_update v{$nextVersion} to {$dispatched} agent(s) via WebSocket.");
+        if ($dispatchedAgents > 0) {
+            $this->info("✓ Broadcast binary_update v{$nextVersion} to {$dispatchedAgents} agent(s) ({$dispatchedServers} server(s)) via WebSocket.");
         }
 
         // Persist updated manifest

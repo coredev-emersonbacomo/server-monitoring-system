@@ -104,7 +104,7 @@ class ProvisioningService
             'token' => $rawToken,
             'expires_at' => $expiresAt->toIso8601String(),
             'linux_command' => 'sudo curl -fsSL '.url('/install/linux').' | sudo bash -s -- '.$rawToken,
-            'windows_command' => WindowsCommand::make('/install/windows.ps1', $rawToken, rtrim(url('/'), '/')),
+            'windows_command' => WindowsCommand::make('/install/windows.ps1', '-ProvisionToken', $rawToken, rtrim(url('/'), '/')),
             'token_expires_in' => $expiresAt->timestamp,
         ];
     }

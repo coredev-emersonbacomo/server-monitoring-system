@@ -35,7 +35,7 @@ func TestRuntimeFiltersArePerServer(t *testing.T) {
 	}
 
 	// Empty filter = filter to nothing.
-	rt.Upsert("svr-a", []int{}, []string{})
+	rt.Upsert("svr-a", []int{}, []string{}, []string{})
 	if rt.IsPortAllowed("svr-a", 3306) {
 		t.Fatal("empty filter must block everything")
 	}
@@ -133,12 +133,40 @@ func TestAgentRuntimeHeartbeatFiltering(t *testing.T) {
 	}
 
 	// Empty filter = nothing sent.
-	rt.Upsert("svr-a", []int{}, []string{})
+	rt.Upsert("svr-a", []int{}, []string{}, []string{})
 	if got := rt.FilterPorts("svr-a", ports); len(got) != 0 {
 		t.Fatalf("empty filter must filter to nothing, got %+v", got)
 	}
 	if got := rt.FilterProcesses("svr-a", procs); len(got) != 0 {
 		t.Fatalf("empty filter must filter to nothing, got %+v", got)
+	}
+}
+
+func TestAgentRuntimeServerConfigsSnapshot(t *testing.T) {
+	rt := NewAgentRuntime(&AgentSession{
+		Servers: []ServerAssignment{
+			{ServerUUID: "svr-a", PortFilter: []int{3306, 5432}, ProcessFilter: []string{"mysqld", "postgres"}},
+			{ServerUUID: "svr-b"},
+		},
+	})
+
+	cfgs := rt.ServerConfigs()
+	if len(cfgs) != 2 {
+		t.Fatalf("want 2 configs, got %d", len(cfgs))
+	}
+	byUUID := map[string]ServerRuntimeConfig{cfgs[0].ServerUUID: cfgs[0], cfgs[1].ServerUUID: cfgs[1]}
+	if a, ok := byUUID["svr-a"]; !ok || len(a.PortFilter) != 2 || len(a.ProcessFilter) != 2 {
+		t.Fatalf("svr-a config malformed: %+v", a)
+	}
+	if b, ok := byUUID["svr-b"]; !ok || b.PortFilter != nil || b.ProcessFilter != nil {
+		t.Fatalf("svr-b nil filters must round-trip: %+v", b)
+	}
+
+	// Snapshot must be independent of the live runtime: mutating one after
+	// Remove must not corrupt the returned slice.
+	rt.Remove("svr-a")
+	if len(rt.ServerConfigs()) != 1 {
+		t.Fatal("Remove must drop a server from the runtime")
 	}
 }
 

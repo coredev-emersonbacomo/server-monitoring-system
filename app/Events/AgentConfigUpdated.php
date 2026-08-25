@@ -25,6 +25,8 @@ class AgentConfigUpdated implements ShouldBroadcastNow
 
     public ?array $processFilter;
 
+    public ?array $networkFilter;
+
     public function __construct(
         string $serverUuid,
         int $heartbeatInterval,
@@ -32,7 +34,8 @@ class AgentConfigUpdated implements ShouldBroadcastNow
         string $version = '',
         string $binaryUrl = '',
         ?array $portFilter = null,
-        ?array $processFilter = null
+        ?array $processFilter = null,
+        ?array $networkFilter = null
     ) {
         $this->serverUuid = $serverUuid;
         $this->heartbeatInterval = $heartbeatInterval;
@@ -41,6 +44,7 @@ class AgentConfigUpdated implements ShouldBroadcastNow
         $this->binaryUrl = $binaryUrl;
         $this->portFilter = $portFilter;
         $this->processFilter = $processFilter;
+        $this->networkFilter = $networkFilter;
     }
 
     public function broadcastOn(): array
@@ -65,6 +69,7 @@ class AgentConfigUpdated implements ShouldBroadcastNow
             'binary_url' => $this->binaryUrl,
             'port_filter' => $this->portFilter,
             'process_filter' => $this->processFilter,
+            'network_filter' => $this->networkFilter,
         ];
     }
 }

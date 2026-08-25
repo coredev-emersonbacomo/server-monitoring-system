@@ -162,9 +162,10 @@ export function DocsAgentContent() {
                         single-use challenge-response; no persistent token.
                     </li>
                     <li>
-                        <strong>Heartbeat</strong> — one heartbeat per owned
-                        server (CPU, memory, disk, network, processes, open
-                        ports), filtered by each server's filter.
+                        <strong>Heartbeat</strong> — one aggregated heartbeat
+                        per tick covering every owned server (CPU, memory,
+                        disk, network sent once; processes/open ports filtered
+                        per server inside its partition).
                     </li>
                     <li>
                         <strong>Control</strong> — a WebSocket channel per
@@ -537,9 +538,8 @@ php artisan schedule:work           # Task scheduler`}</CodeBlock>
                     <InlineCode>frontend/.env</InlineCode>.
                 </p>
                 <Callout>
-                    Optional arg:{" "}
-                    <InlineCode>npm run dev muteNotification</InlineCode> sets{" "}
-                    <InlineCode>MUTE_NOTIFICATION=1</InlineCode> to suppress
+                    Set <InlineCode>MUTE_NOTIFICATION=true</InlineCode> in{" "}
+                    <InlineCode>.env.development</InlineCode> to suppress
                     notifications during development.
                 </Callout>
                 <p>

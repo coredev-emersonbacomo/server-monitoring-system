@@ -35,7 +35,7 @@ export function DocsAgentInstallContent() {
                 <p>
                     Click <strong>Generate Installation Command</strong>. The
                     backend creates a one-time <strong>provision token</strong>{" "}
-                    (valid for 1 hour) and returns two one-liner commands — one
+                    (valid for 30 minutes) and returns two one-liner commands — one
                     for Linux, one for Windows. Copy the one for the target
                     machine's OS and run it there.
                 </p>
@@ -54,7 +54,7 @@ export function DocsAgentInstallContent() {
                     </li>
                 </ol>
                 <Callout type="warning">
-                    The provision token expires after 1 hour. If it expires
+                    The provision token expires after 30 minutes. If it expires
                     before you finish installing, generate a new one — an
                     expired token makes the installer fail immediately.
                 </Callout>
@@ -69,8 +69,8 @@ export function DocsAgentInstallContent() {
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
                         Binary at{" "}
-                        <InlineCode>/opt/monitor-agent/&lt;uuid&gt;/monitor-agent</InlineCode>{" "}
-                        (root-owned, read-only at runtime).
+                        <InlineCode>/opt/monitor-agent/monitor-agent</InlineCode>{" "}
+                        (shared location, root-owned, read-only at runtime).
                     </li>
                     <li>
                         Instance config at{" "}
@@ -80,10 +80,9 @@ export function DocsAgentInstallContent() {
                     </li>
                     <li>
                         A dedicated <InlineCode>monitor</InlineCode> system user
-                        is created if missing, and a hardened systemd instance
-                        unit{" "}
-                        <InlineCode>monitor-agent@&lt;uuid&gt;.service</InlineCode>{" "}
-                        is enabled and started.
+                        is created if missing, and a hardened systemd unit{" "}
+                        <InlineCode>monitor-agent.service</InlineCode>{" "}
+                        (stable, one per host) is enabled and started.
                     </li>
                     <li>
                         The install log is written to{" "}
@@ -91,13 +90,18 @@ export function DocsAgentInstallContent() {
                     </li>
                 </ul>
                 <p>Useful checks after install:</p>
-                <CodeBlock language="bash">{`systemctl status monitor-agent@<uuid>.service
-journalctl -u monitor-agent@<uuid>.service -f
+                <CodeBlock language="bash">{`systemctl status monitor-agent.service
+journalctl -u monitor-agent.service -f
 cat /var/log/monitor-agent-install.log`}</CodeBlock>
                 <Callout>
-                    A fresh installation always uses a new UUID, so you can
-                    install agents on as many machines as you like — they never
-                    collide, even on the same host.
+                    There is exactly one <InlineCode>monitor-agent.service</InlineCode>{" "}
+                    per physical computer, named by the host (not the server). When
+                    the installer finds an existing service it reuses the same
+                    installation UUID, service, and identity key — it only
+                    attaches the new server to the already-running agent, so
+                    installing a second server on the same host creates no
+                    duplicate service, binary, or key. A fresh UUID is minted
+                    only when no service is detected.
                 </Callout>
             </Section>
 
@@ -111,9 +115,9 @@ cat /var/log/monitor-agent-install.log`}</CodeBlock>
                     <li>
                         Binary at{" "}
                         <InlineCode>
-                            C:\Program Files\MonitorAgent\&lt;uuid&gt;\MonitorAgent.exe
+                            C:\Program Files\MonitorAgent\MonitorAgent.exe
                         </InlineCode>{" "}
-                        (the agent never writes here at runtime).
+                        (shared location, the agent never writes here at runtime).
                     </li>
                     <li>
                         Instance config at{" "}
@@ -125,9 +129,10 @@ cat /var/log/monitor-agent-install.log`}</CodeBlock>
                     </li>
                     <li>
                         A Windows service{" "}
-                        <InlineCode>MonitorAgent-&lt;uuid&gt;</InlineCode>{" "}
-                        running as <strong>LocalSystem</strong> is created and
-                        started.
+                        <InlineCode>MonitorAgent</InlineCode>{" "}
+                        (stable, one per host) running as <strong>LocalSystem</strong> is
+                        created and started. Installing a second server on the
+                        same host reuses this service and identity.
                     </li>
                     <li>
                         The install log is written to{" "}
@@ -138,7 +143,7 @@ cat /var/log/monitor-agent-install.log`}</CodeBlock>
                     </li>
                 </ul>
                 <p>Useful checks after install:</p>
-                <CodeBlock language="powershell">{`Get-Service -Name "MonitorAgent-<uuid>"
+                <CodeBlock language="powershell">{`Get-Service -Name "MonitorAgent"
 Get-Content "$env:TEMP\\monitor-agent-install.log"
 Get-Content "C:\\ProgramData\\MonitorAgent\\instances\\<uuid>\\agent.log"`}</CodeBlock>
             </Section>
@@ -162,8 +167,9 @@ Get-Content "C:\\ProgramData\\MonitorAgent\\instances\\<uuid>\\agent.log"`}</Cod
                     </li>
                     <li>
                         <strong>Heartbeat</strong> — the agent starts sending one
-                        heartbeat per monitored server on the heartbeat interval
-                        (default 5 seconds). The server moves to{" "}
+                        aggregated heartbeat (all monitored servers in a single
+                        request) on the heartbeat interval (default 5 seconds).
+                        The server moves to{" "}
                         <em>waiting for first heartbeat</em>, then{" "}
                         <em>online</em> once the first heartbeat lands.
                     </li>
@@ -238,10 +244,12 @@ Get-Content "C:\\ProgramData\\MonitorAgent\\instances\\<uuid>\\agent.log"`}</Cod
                 </p>
                 <SubSection title="Installed Agent Properties">
                     <p>
-                        Read-only properties reported by the agent: agent
-                        version, heartbeat interval, metrics/port/service/
-                        process scan intervals, update channel, auto-update
-                        flag, first registration time, and last heartbeat time.
+                        Agent version and heartbeat interval (the interval the
+                        agent actually polls on, kept on the agent row and pushed
+                        via the backend's configuration endpoint), plus the
+                        per-collector scan intervals, update channel, and
+                        auto-update setting, with first-registration and last
+                        heartbeat times.
                     </p>
                 </SubSection>
                 <SubSection title="Danger Zone — Uninstall Agent">
@@ -287,18 +295,24 @@ Get-Content "C:\\ProgramData\\MonitorAgent\\instances\\<uuid>\\agent.log"`}</Cod
                     </li>
                 </ol>
                 <p>
-                    The scripts uninstall <strong>all</strong> installations on
-                    the host by default; pass an instance UUID to target a
-                    single one (
-                    <InlineCode>-Instance &lt;uuid&gt;</InlineCode> on Windows,
-                    a positional argument on Linux).
+                    Uninstall targets one agent by its immutable installation UUID — the
+                    same id the installer gave the instance directory, service, and
+                    identity key. The server detail page's Agent tab emits the exact
+                    command for this server, so copy it instead of typing the UUID:
                 </p>
+                <CodeBlock language="bash">{`sudo curl -fsSL {APP_URL}/uninstall/linux | sudo bash -s -- <INSTALLATION_UUID>`}</CodeBlock>
+                <CodeBlock language="powershell">{`powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/uninstall/windows.ps1' -OutFile $env:TEMP\\monitor-uninstall.ps1; & $env:TEMP\\monitor-uninstall.ps1 -Instance '<INSTALLATION_UUID>'"`}</CodeBlock>
+                <Callout type="warning">
+                    The uninstaller takes <strong>exactly one</strong> installation UUID
+                    and never touches other agents on the same host. If the UUID is
+                    wrong or missing, the script fails rather than guessing.
+                </Callout>
                 <Callout>
-                    Because revocation is authenticated by the agent's own
-                    short-lived session, only the machine that holds the
-                    identity key can remove the agent from the backend. The
-                    server's status flips to <em>Agent Uninstalled</em> and the
-                    installation guide reappears for reinstallation.
+                    Because revocation is authenticated by the agent's own short-lived
+                    session, only the machine that holds the identity key can remove the
+                    agent from the backend. The server's status flips to{" "}
+                    <em>Agent Uninstalled</em> and the installation guide reappears for
+                    reinstallation.
                 </Callout>
             </Section>
 

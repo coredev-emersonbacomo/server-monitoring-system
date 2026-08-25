@@ -215,6 +215,35 @@ func portSetSignature(ports []PortInfo) []int {
 	return out
 }
 
+// interfaceSetSignature returns sorted unique interface names for available_interfaces change detection.
+func interfaceSetSignature(nets []NetworkMetrics) []string {
+	seen := make(map[string]struct{}, len(nets))
+	for _, n := range nets {
+		name := strings.TrimSpace(n.Interface)
+		if name == "" {
+			continue
+		}
+		seen[name] = struct{}{}
+	}
+	out := make([]string, 0, len(seen))
+	for name := range seen {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// filterAvailableNetworks returns only non-disconnected interfaces (state == "up") for the available set.
+func filterAvailableNetworks(nets []NetworkMetrics) []NetworkMetrics {
+	out := make([]NetworkMetrics, 0, len(nets))
+	for _, n := range nets {
+		if strings.EqualFold(strings.TrimSpace(n.State), "up") {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
 // capProcesses keeps every explicitly filtered-in process (the `allowed` set)
 // regardless of CPU, then fills the cap with the highest-CPU remainder. The
 // collector truncates by CPU alone, so an idle monitored process would

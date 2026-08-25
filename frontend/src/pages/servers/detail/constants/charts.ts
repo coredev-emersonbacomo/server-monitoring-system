@@ -13,18 +13,7 @@ export const CHARTS = [
         unit: "%",
         yDomain: [0, 100] as [number | "auto", number | "auto"],
     },
-    {
-        title: "Net In",
-        dataKey: "netIn" as const,
-        color: "#f59e0b",
-        unit: " MB/s",
-    },
-    {
-        title: "Net Out",
-        dataKey: "netOut" as const,
-        color: "#f43f5e",
-        unit: " MB/s",
-    },
+    // Network Traffic lives here, rendered by NetworkTrafficChart (per-interface multi-series).
     {
         title: "Disk",
         dataKey: "disk" as const,
