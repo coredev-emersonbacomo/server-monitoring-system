@@ -174,13 +174,15 @@ monitor-agent -selftest                     # key-store round-trip self-test`}</
             <Section title="Runtime behavior">
                 <SubSection title="Heartbeat loop">
                     <p>
-                        On each tick the agent collects processes and open ports{" "}
-                        <strong>once</strong>, then sends one heartbeat per
-                        owned server with that server's filter applied. The
-                        heartbeat carries CPU, memory, disk, network, uptime,
-                        processes, ports, and the current agent configuration.
-                        The interval is adjustable from Settings → Agent
-                        Settings and is pushed to running agents immediately.
+                        On each tick the agent collects metrics, processes and
+                        open ports <strong>once</strong>, then sends a single
+                        aggregated heartbeat covering every owned server:
+                        CPU, memory, disk, network, uptime and the current
+                        agent configuration travel once, and each server
+                        contributes its own partition with that server's filter
+                        applied. The interval is adjustable from Settings →
+                        Agent Settings and is pushed to running agents
+                        immediately.
                     </p>
                 </SubSection>
                 <SubSection title="Control channel">
@@ -206,12 +208,11 @@ monitor-agent -selftest                     # key-store round-trip self-test`}</
                 </SubSection>
                 <SubSection title="Rejected servers">
                     <p>
-                        If the backend rejects a heartbeat with{" "}
-                        <InlineCode>403</InlineCode>, <InlineCode>404</InlineCode>
-                        , or <InlineCode>410</InlineCode>, the server is removed
-                        from the monitored set rather than left flapping. The
-                        agent resumes monitoring it only when it is assigned
-                        again.
+                        Each heartbeat response lists revoked servers —
+                        decommissioned, reassigned, or no longer owned — which
+                        the agent removes from its monitored set rather than
+                        leaving flapping. The agent resumes monitoring a server
+                        only when it is assigned again.
                     </p>
                 </SubSection>
             </Section>

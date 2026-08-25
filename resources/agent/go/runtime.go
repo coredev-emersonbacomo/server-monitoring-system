@@ -17,6 +17,9 @@ type ServerRuntimeConfig struct {
 	// ProcessFilter: nil = report all top processes; non-nil (possibly
 	// empty) = report only processes whose name is filtered-in.
 	ProcessFilter map[string]bool
+	// NetworkFilter: nil = report all non-disconnected interfaces; non-nil
+	// (possibly empty) = report only interfaces whose name is checked.
+	NetworkFilter map[string]bool
 }
 
 // AgentRuntime is the thread-safe registry of one server runtime config per
@@ -34,23 +37,24 @@ func NewAgentRuntime(sess *AgentSession) *AgentRuntime {
 	rt := &AgentRuntime{servers: make(map[string]*ServerRuntimeConfig)}
 	if len(sess.Servers) > 0 {
 		for _, a := range sess.Servers {
-			rt.Upsert(a.ServerUUID, a.PortFilter, a.ProcessFilter)
+			rt.Upsert(a.ServerUUID, a.PortFilter, a.ProcessFilter, a.NetworkFilter)
 		}
 	} else if sess.ServerUUID != "" {
-		rt.Upsert(sess.ServerUUID, nil, nil)
+		rt.Upsert(sess.ServerUUID, nil, nil, nil)
 	}
 	return rt
 }
 
 // Upsert creates or updates the runtime config for a server, replacing its
 // filters.
-func (rt *AgentRuntime) Upsert(serverUUID string, ports []int, processes []string) {
+func (rt *AgentRuntime) Upsert(serverUUID string, ports []int, processes []string, networks []string) {
 	rt.mu.Lock()
 	defer rt.mu.Unlock()
 	rt.servers[serverUUID] = &ServerRuntimeConfig{
 		ServerUUID:    serverUUID,
 		PortFilter:    intSet(ports),
 		ProcessFilter: stringSet(processes),
+		NetworkFilter: stringSet(networks),
 	}
 }
 
@@ -71,10 +75,10 @@ func (rt *AgentRuntime) SyncFromSession(sess *AgentSession) {
 	}
 	if len(sess.Servers) > 0 {
 		for _, a := range sess.Servers {
-			rt.Upsert(a.ServerUUID, a.PortFilter, a.ProcessFilter)
+			rt.Upsert(a.ServerUUID, a.PortFilter, a.ProcessFilter, a.NetworkFilter)
 		}
 	} else if sess.ServerUUID != "" {
-		rt.Upsert(sess.ServerUUID, nil, nil)
+		rt.Upsert(sess.ServerUUID, nil, nil, nil)
 	}
 }
 
@@ -178,6 +182,31 @@ func (rt *AgentRuntime) FilterProcesses(serverUUID string, procs []ProcessInfo) 
 	return out
 }
 
+// IsNetworkAllowed reports whether an interface should be sent for a server. A nil
+// filter allows every non-disconnected interface; a non-nil filter allows only checked ones.
+func (rt *AgentRuntime) IsNetworkAllowed(serverUUID, iface string) bool {
+	cfg := rt.config(serverUUID)
+	if cfg == nil || cfg.NetworkFilter == nil {
+		return true
+	}
+	return cfg.NetworkFilter[iface]
+}
+
+// FilterNetworks drops interfaces not checked for a server, mirroring FilterPorts.
+func (rt *AgentRuntime) FilterNetworks(serverUUID string, nets []NetworkMetrics) []NetworkMetrics {
+	cfg := rt.config(serverUUID)
+	if cfg == nil || cfg.NetworkFilter == nil {
+		return nets
+	}
+	out := make([]NetworkMetrics, 0, len(nets))
+	for _, n := range nets {
+		if cfg.NetworkFilter[n.Interface] {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
 func intSet(list []int) map[int]bool {
 	if list == nil {
 		return nil
@@ -198,4 +227,43 @@ func stringSet(list []string) map[string]bool {
 		set[v] = true
 	}
 	return set
+}
+
+// sortedIntKeys returns the integer keys of m as a sorted slice (nil if m is nil).
+func sortedIntKeys(m map[int]bool) []int {
+	if m == nil {
+		return nil
+	}
+	out := make([]int, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Ints(out)
+	return out
+}
+
+// sortedStringKeys returns the string keys of m as a sorted slice (nil if m is nil).
+func sortedStringKeys(m map[string]bool) []string {
+	if m == nil {
+		return nil
+	}
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// ServerConfigs returns a snapshot of every monitored server's uuid and its
+// filters, so the heartbeat builder can emit one partition per server without
+// racing the map. The returned slices are freshly allocated.
+func (rt *AgentRuntime) ServerConfigs() []ServerRuntimeConfig {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	out := make([]ServerRuntimeConfig, 0, len(rt.servers))
+	for _, cfg := range rt.servers {
+		out = append(out, *cfg)
+	}
+	return out
 }

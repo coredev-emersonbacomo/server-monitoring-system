@@ -1,4 +1,12 @@
-import type { StatPoint } from "@/types/stats";
+import type { NetworkPoint, StatPoint } from "@/types/stats";
+
+interface RawWsNetwork {
+    name: string;
+    type?: string;
+    state?: string;
+    i: number;
+    o: number;
+}
 
 interface RawWsPoint {
     t: number;
@@ -7,6 +15,7 @@ interface RawWsPoint {
     i: number;
     o: number;
     d: number;
+    n?: RawWsNetwork[];
 }
 
 type Subscriber = (data: ReadonlyMap<string, StatPoint>) => void;
@@ -21,6 +30,11 @@ class MetricsBuffer {
     private ivId: ReturnType<typeof setInterval> | null = null;
 
     push(serverUuid: string, raw: RawWsPoint) {
+        const networks: NetworkPoint[] | undefined = raw.n?.map((net) => ({
+            name: net.name,
+            netIn: net.i,
+            netOut: net.o,
+        }));
         const point: StatPoint = {
             timestamp: raw.t,
             cpu: raw.c,
@@ -28,6 +42,7 @@ class MetricsBuffer {
             netIn: raw.i,
             netOut: raw.o,
             disk: raw.d,
+            ...(networks && networks.length > 0 ? { networks } : {}),
         };
         this.latest.set(serverUuid, point);
         this.dirty = true;

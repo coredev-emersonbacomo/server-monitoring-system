@@ -64,6 +64,9 @@ class ServerData extends Data
         /** @var PortsData[]|null Noise-filtered discovered set for the monitoring filter. */
         public ?array $available_ports = null,
 
+        /** @var array<int, array{interface: string, type: string, state: string}>|null Non-disconnected interfaces for the network filter. */
+        public ?array $available_interfaces = null,
+
         public ?string $uninstall_linux_command = null,
 
         public ?string $uninstall_windows_command = null,
@@ -75,6 +78,9 @@ class ServerData extends Data
 
         /** @var string[]|null Explicit process filter (null = monitor all processes). */
         public ?array $process_filter = null,
+
+        /** @var string[]|null Explicit network interface filter (null = monitor all non-disconnected interfaces). */
+        public ?array $network_filter = null,
 
         /** @var array{type: string, description: string, created_at: string}[]|null */
         public ?array $activities = null,
@@ -100,17 +106,27 @@ class ServerData extends Data
                     token: $token,
                     expires_at: $activeToken->expires_at->copy()->utc()->toIso8601String(),
                     linux_command: 'sudo curl -fsSL '.url('/install/linux').' | sudo bash -s -- '.$token,
-                    windows_command: WindowsCommand::make('/install/windows.ps1', $token, rtrim(url('/'), '/')),
+                    windows_command: WindowsCommand::make('/install/windows.ps1', '-ProvisionToken', $token, rtrim(url('/'), '/')),
                 );
             }
         }
 
-        $tokenModel = $server->provisionTokens()->latest()->first();
-        $token = $tokenModel ? $tokenModel->token : '';
-        $uninstallLinux = 'sudo curl -fsSL '.url('/uninstall/linux').' | sudo bash -s -- '.$token;
-        $uninstallWindows = WindowsCommand::make('/uninstall/windows.ps1', $token, rtrim(url('/'), '/'));
-
         $agent = $server->agent;
+
+        // Uninstall targets the agent's immutable installation UUID (the public
+        // identity the install scripts name everything after), not the
+        // one-time provision token (which is already consumed/expired by the
+        // time an agent is installed). With no installed agent there is
+        // nothing to uninstall, so the commands stay null.
+        $installationId = $agent?->installation_uuid;
+        $appUrl = rtrim(url('/'), '/');
+
+        $uninstallLinux = $installationId
+            ? 'sudo curl -fsSL '.url('/uninstall/linux').' | sudo bash -s -- '.$installationId
+            : null;
+        $uninstallWindows = $installationId
+            ? WindowsCommand::make('/uninstall/windows.ps1', '-Instance', $installationId, $appUrl)
+            : null;
 
         // The DB only ever holds what the agent sent (already noise-filtered
         // on the agent, then filtered to the server's filter). Every row — including
@@ -163,6 +179,10 @@ class ServerData extends Data
                 ping_time: null,
                 last_seen: null,
             ), $agent->available_ports)
+            : null;
+
+        $availableInterfaces = $agent && $agent->available_interfaces
+            ? array_values($agent->available_interfaces)
             : null;
 
         $activities = $server->activities()
@@ -306,11 +326,13 @@ class ServerData extends Data
             processes: $processes,
             available_processes: $availableProcesses,
             available_ports: $availablePorts,
+            available_interfaces: $availableInterfaces,
             uninstall_linux_command: $uninstallLinux,
             uninstall_windows_command: $uninstallWindows,
             agent_deleted: $agent && $agent->registered_at ? (bool) $server->agent_deleted : false,
             port_filter: $server->port_filter,
             process_filter: $server->process_filter,
+            network_filter: $server->network_filter,
             activities: $activities,
             agent: $agentData,
             alert_scope: $server->alert_scope ?? 'global',

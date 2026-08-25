@@ -21,6 +21,7 @@ use App\Models\MetricSample;
 use App\Models\Port;
 use App\Models\Process;
 use App\Models\Server;
+use App\Models\ServerNetworkStats;
 use App\Models\ServerUpdate;
 use App\Models\Service;
 use App\Models\Setting;
@@ -29,26 +30,20 @@ use App\NodeConfig\Models\NodeConfig;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class HeartbeatService
 {
     public function process(Agent $agent, Server $server, array $payload): array
     {
         $oldStatus = $server->status;
+        $offlineThresholdSeconds = self::secondsSetting('offline_threshold', 15);
 
         // Accumulate monitored online time OUTSIDE the transaction so it always persists.
         // ONLY accumulate time if the server was ALREADY in Online status prior to this heartbeat.
         // If it was offline, this first heartbeat transitions it back to online, so we do NOT add the offline gap to online_seconds.
-        $rawOffline = (int) Setting::get('offline_threshold', '15');
-        $offlineThresholdSeconds = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
         if ($oldStatus === ServerStatus::Online->value && $agent->last_seen_at) {
-            $elapsedSeconds = (int) $agent->last_seen_at->diffInSeconds(now());
-            $maxStepSeconds = max(5, $offlineThresholdSeconds + 5);
-            if ($elapsedSeconds > 0 && $elapsedSeconds <= $maxStepSeconds) {
-                $incrementSeconds = min($elapsedSeconds, $maxStepSeconds);
-                $server->increment('online_seconds', $incrementSeconds);
-                $server->refresh();
-            }
+            $this->accumulateOnlineSeconds($agent, $server);
         }
 
         return DB::transaction(function () use ($agent, $server, $payload, $offlineThresholdSeconds) {
@@ -71,52 +66,7 @@ class HeartbeatService
             CheckServerOffline::dispatch($server->uuid)
                 ->delay(now()->addSeconds($offlineThresholdSeconds + 2));
 
-            // Transition server to online if needed
-            $oldStatus = $server->status;
-            if ($oldStatus !== ServerStatus::Online->value) {
-                $server->update(['status' => ServerStatus::Online->value]);
-
-                Activity::create([
-                    'server_id' => $server->id,
-                    'agent_id' => $agent->id,
-                    'type' => 'server_online',
-                    'description' => 'Server transitioned to Online state.',
-                ]);
-
-                CustomActivityLog::create([
-                    'type' => 'server_health',
-                    'logable_type' => get_class($server),
-                    'logable_id' => $server->id,
-                    'user_id' => null,
-                    'user' => 'System',
-                    'action' => 'Agent Online',
-                    'details' => json_encode([
-                        'message' => "Agent came online for server: {$server->name}",
-                        'server_name' => $server->name,
-                    ]),
-                ]);
-
-                // Resolve server offline problems on the Action Board
-                ActionItem::where('action_type', 'server_offline')
-                    ->where('server_id', $server->id)
-                    ->where('status', 'open')
-                    ->update(['status' => 'completed', 'completed_at' => now()]);
-
-                // Real-time push so UI immediately reflects online status (failsafe if Reverb is offline)
-                try {
-                    ServerStatusUpdated::dispatch($server->uuid, ServerStatus::Online->value, $server->name);
-                    ServerStatsUpdated::dispatchSync($server->uuid, [
-                        'timestamp' => now()->timestamp,
-                        'c' => 0.0,
-                        'm' => 0.0,
-                        'd' => 0.0,
-                        'netIn' => 0.0,
-                        'netOut' => 0.0,
-                    ]);
-                } catch (\Throwable $e) {
-                    Log::warning('[broadcast] Failed to push online update', ['error' => $e->getMessage()]);
-                }
-            }
+            $this->bringServerOnline($agent, $server);
 
             // Create Heartbeat
             $heartbeat = Heartbeat::create([
@@ -137,8 +87,9 @@ class HeartbeatService
                 'disk' => $payload['disk']['percent'] ?? ($payload['disk'] ?? 0),
             ]);
 
-            // Ingest Metrics
-            $this->ingestMetrics($heartbeat, $agent, $server, $payload);
+            // Ingest Metrics (agent-level samples) + the per-server rollup row
+            $this->ingestMetrics($heartbeat, $agent, $payload);
+            $this->recordServerUpdate($server, $payload);
 
             // Trigger node config evaluation: numeric metrics + online status
             $this->evaluateMetricsForNodeConfig($server, $agent, $payload);
@@ -155,16 +106,7 @@ class HeartbeatService
             }
 
             // Ping exposed TCP ports on an interval (drives PingServerPorts + ports_ping node config alerts)
-            $rawPing = (int) Setting::get('port_ping_interval', '60');
-            $pingInterval = $rawPing >= 1000 ? intdiv($rawPing, 1000) : ($rawPing ?: 60);
-            if ($pingInterval > 0 && ! PingServerPorts::pingablePorts($server, $agent)->isEmpty()) {
-                $cacheKey = 'port_ping_last:'.$server->uuid;
-                $lastPing = (int) cache()->get($cacheKey, 0);
-                if (now()->timestamp - $lastPing >= $pingInterval) {
-                    cache()->put($cacheKey, now()->timestamp, $pingInterval * 2);
-                    PingServerPorts::dispatch($server);
-                }
-            }
+            $this->maybeDispatchPortPing($server, $agent);
 
             // Update Current State: Processes
             if (isset($payload['processes']) && is_array($payload['processes'])) {
@@ -172,13 +114,22 @@ class HeartbeatService
             }
 
             // The noise-filtered discovered sets feed the monitoring filter so
-            // unmonitored processes/ports can be checked on. They are the
+            // unmonitored processes/ports/interfaces can be checked on. They are the
             // agent-wide view, independent of this server's filter.
-            if (isset($payload['available_processes']) || isset($payload['available_ports'])) {
-                $agent->update([
-                    'available_processes' => $payload['available_processes'] ?? null,
-                    'available_ports' => $payload['available_ports'] ?? null,
-                ]);
+            if (array_key_exists('available_processes', $payload) || array_key_exists('available_ports', $payload) || array_key_exists('available_interfaces', $payload)) {
+                $updates = [];
+                if (array_key_exists('available_processes', $payload)) {
+                    $updates['available_processes'] = $payload['available_processes'];
+                }
+                if (array_key_exists('available_ports', $payload)) {
+                    $updates['available_ports'] = $payload['available_ports'];
+                }
+                if (array_key_exists('available_interfaces', $payload)) {
+                    $updates['available_interfaces'] = $payload['available_interfaces'];
+                }
+                if ($updates !== []) {
+                    $agent->update($updates);
+                }
             }
 
             // Acknowledge Completed Commands
@@ -188,17 +139,7 @@ class HeartbeatService
 
             // Sync AgentConfiguration from agent's reported config (source of truth from bootstrap.json)
             if (isset($payload['agent_config']) && is_array($payload['agent_config'])) {
-                $agentCfg = $payload['agent_config'];
-                $currentConfig = $agent->currentConfiguration;
-                if ($currentConfig) {
-                    $cfgUpdates = [];
-                    if (isset($agentCfg['heartbeat_interval']) && $agentCfg['heartbeat_interval'] > 0) {
-                        $cfgUpdates['heartbeat_interval'] = (int) $agentCfg['heartbeat_interval'];
-                    }
-                    if (! empty($cfgUpdates)) {
-                        $currentConfig->update($cfgUpdates);
-                    }
-                }
+                $this->syncReportedAgentConfig($agent, $payload['agent_config']);
             }
 
             // Fetch current configuration
@@ -206,8 +147,7 @@ class HeartbeatService
             $configVersion = $currentConfig ? $currentConfig->version : 1;
             $agentConfigVersion = (int) ($payload['configuration_version'] ?? 0);
 
-            $rawInterval = (int) Setting::get('heartbeat_interval', '5');
-            $globalInterval = $rawInterval >= 1000 ? intdiv($rawInterval, 1000) : ($rawInterval ?: 5);
+            $globalInterval = self::secondsSetting('heartbeat_interval', 5);
             $response = [
                 'heartbeat_interval' => $globalInterval ?: ($currentConfig ? $currentConfig->heartbeat_interval : 5),
                 'current_time' => now()->timestamp,
@@ -237,37 +177,399 @@ class HeartbeatService
                 );
             }
 
-            // Get Pending Commands
-            $pendingCommands = AgentCommand::where('agent_id', $agent->id)
-                ->where('status', 'pending')
-                ->where(function ($q) {
-                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-                })
-                ->orderBy('priority', 'asc')
-                ->orderBy('created_at', 'asc')
-                ->get();
-
-            $commandsPayload = [];
-            foreach ($pendingCommands as $cmd) {
-                $cmd->update([
-                    'status' => 'sent',
-                    'sent_at' => now(),
-                ]);
-
-                $commandsPayload[] = [
-                    'id' => $cmd->id,
-                    'type' => $cmd->type,
-                    'payload' => $cmd->payload,
-                ];
-            }
-
-            $response['pending_commands'] = $commandsPayload;
+            $response['pending_commands'] = $this->claimPendingCommands($agent);
 
             return $response;
         });
     }
 
-    private function ingestMetrics(Heartbeat $heartbeat, Agent $agent, Server $server, array $payload): void
+    /**
+     * Aggregated heartbeat: ONE request per agent tick covering every server
+     * the agent monitors. Agent-wide state (heartbeat row, metric samples,
+     * services, discovered sets, command acks, config sync) is applied once;
+     * each server partition drives only genuinely per-server work (rollup
+     * row, online transition, node-config evaluation, port pings).
+     *
+     * Ports/processes arrive pre-filtered per server; their union becomes the
+     * agent-wide inventory, so a server whose filter excludes a port can no
+     * longer close a port another server monitors.
+     */
+    public function processAgent(Agent $agent, array $payload): array
+    {
+        $accepted = [];
+        $revoked = [];
+        foreach ((array) ($payload['servers'] ?? []) as $partition) {
+            if (! is_array($partition) || empty($partition['server_uuid'])) {
+                continue;
+            }
+
+            $uuid = $partition['server_uuid'];
+
+            // Malformed uuids can never be owned; skip the query (the uuid
+            // column is a native Postgres uuid and would reject the cast).
+            if (! Str::isUuid($uuid)) {
+                $revoked[] = $uuid;
+
+                continue;
+            }
+
+            $server = Server::where('uuid', $uuid)->first();
+
+            // No-resurrection guard mirrors the legacy path: unknown, unowned,
+            // deleted or archived servers come back as revoked so the agent
+            // drops them locally instead of retrying forever.
+            if (! $server || $server->agent_id !== $agent->id || $server->agent_deleted || $server->status === ServerStatus::Archived->value) {
+                $revoked[] = $uuid;
+
+                continue;
+            }
+
+            $accepted[] = ['server' => $server, 'partition' => $partition];
+        }
+
+        // The agent sends its metrics once at the top level; partitions carry
+        // no metrics of their own.
+        $metrics = is_array($payload['metrics'] ?? null) ? $payload['metrics'] : [];
+        // Fallback: Go sends cpu/memory/disk/network at top level, not inside 'metrics'
+        if (empty($metrics) && (isset($payload['cpu']) || isset($payload['memory']) || isset($payload['disk']))) {
+            $metrics = [
+                'cpu' => $payload['cpu'] ?? null,
+                'memory' => $payload['memory'] ?? null,
+                'disk' => $payload['disk'] ?? null,
+                'uptime' => $payload['uptime'] ?? null,
+                'network' => $payload['network'] ?? null,
+            ];
+        }
+        $offlineThresholdSeconds = self::secondsSetting('offline_threshold', 15);
+
+        // Online-time accumulation outside the transaction (see process()).
+        foreach ($accepted as ['server' => $server]) {
+            if ($server->status === ServerStatus::Online->value && $agent->last_seen_at) {
+                $this->accumulateOnlineSeconds($agent, $server);
+            }
+        }
+
+        return DB::transaction(function () use ($agent, $payload, $metrics, $accepted, $revoked, $offlineThresholdSeconds) {
+            // ---- agent-wide state, applied ONCE per tick ----
+            $oldVersion = $agent->version;
+            $newVersion = $payload['agent_version'] ?? $agent->version;
+            if ($oldVersion !== $newVersion && isset($accepted[0]['server'])) {
+                Activity::create([
+                    'server_id' => $accepted[0]['server']->id,
+                    'agent_id' => $agent->id,
+                    'type' => 'agent_updated',
+                    'description' => "Agent updated from version {$oldVersion} to {$newVersion}.",
+                ]);
+            }
+
+            $agent->update([
+                'last_seen_at' => now(),
+                'version' => $newVersion,
+            ]);
+
+            $heartbeat = Heartbeat::create([
+                'agent_id' => $agent->id,
+                'latency_ms' => null,
+                'agent_time' => isset($payload['timestamp']) ? Carbon::createFromTimestamp($payload['timestamp']) : null,
+                'status' => 'success',
+                'received_at' => now(),
+            ]);
+
+            $this->ingestMetrics($heartbeat, $agent, $metrics);
+
+            // Ports/processes: union across partitions -> one agent-wide state.
+            // 2.7+ sends top-level dicts + per-server lists of keys (deduped); older agents sent full objects per partition.
+            \Illuminate\Support\Facades\Log::info('[heartbeat:debug2] per-server network', [
+                'servers' => array_map(fn($p) => ['uuid' => substr($p['server_uuid'] ?? '', 0, 8), 'net' => $p['network'] ?? null, 'net_is_string' => isset($p['network'][0]) ? is_string($p['network'][0]) : null], $payload['servers'] ?? []),
+                'net_dict_keys' => is_array($payload['networks_dict'] ?? null) ? array_keys($payload['networks_dict']) : null,
+            ]);
+            $procDict = $payload['processes_dict'] ?? null;
+            $portDict = $payload['ports_dict'] ?? null;
+            $unionPorts = [];
+            $unionProcesses = [];
+            foreach ($accepted as ['partition' => $partition]) {
+                $rawPorts = (array) ($partition['open_db_ports'] ?? []);
+                $rawProcs = (array) ($partition['processes'] ?? []);
+                // New: list of keys referencing top-level dicts
+                if (!empty($rawPorts) && is_string($rawPorts[0] ?? null) && is_array($portDict)) {
+                    foreach ($rawPorts as $key) {
+                        if (isset($portDict[$key])) {
+                            $unionPorts[] = $portDict[$key];
+                        } elseif (is_numeric($key) && isset($portDict["tcp:{$key}"])) {
+                            // fallback for old key format (just port number)
+                            $unionPorts[] = $portDict["tcp:{$key}"];
+                        }
+                    }
+                } else {
+                    foreach ($rawPorts as $port) {
+                        $unionPorts[] = $port;
+                    }
+                }
+                if (!empty($rawProcs) && is_string($rawProcs[0] ?? null) && is_array($procDict)) {
+                    foreach ($rawProcs as $name) {
+                        if (isset($procDict[$name])) {
+                            $unionProcesses[] = $procDict[$name];
+                        }
+                    }
+                } else {
+                    foreach ($rawProcs as $process) {
+                        $unionProcesses[] = $process;
+                    }
+                }
+            }
+            if ($unionPorts !== []) {
+                $this->updatePorts($agent, $unionPorts);
+            }
+            if ($unionProcesses !== []) {
+                $this->updateProcesses($agent, $unionProcesses);
+            }
+
+            if (isset($payload['services']) && is_array($payload['services'])) {
+                $this->updateServices($agent, $payload['services']);
+            }
+
+            // The noise-filtered discovered sets feed the monitoring filter so
+            // unmonitored processes/ports/interfaces can be checked on. They are sent at
+            // the top level because they are agent-wide.
+            if (array_key_exists('available_processes', $payload) || array_key_exists('available_ports', $payload) || array_key_exists('available_interfaces', $payload)) {
+                $updates = [];
+                if (array_key_exists('available_processes', $payload)) {
+                    $updates['available_processes'] = $payload['available_processes'];
+                }
+                if (array_key_exists('available_ports', $payload)) {
+                    $updates['available_ports'] = $payload['available_ports'];
+                }
+                if (array_key_exists('available_interfaces', $payload)) {
+                    $updates['available_interfaces'] = $payload['available_interfaces'];
+                }
+                if ($updates !== []) {
+                    $agent->update($updates);
+                }
+            }
+
+            if (isset($payload['completed_commands']) && is_array($payload['completed_commands'])) {
+                $this->processCompletedCommands($payload['completed_commands']);
+            }
+
+            if (isset($payload['agent_config']) && is_array($payload['agent_config'])) {
+                $this->syncReportedAgentConfig($agent, $payload['agent_config']);
+            }
+
+            // ---- per-server partitions ----
+            foreach ($accepted as ['server' => $server, 'partition' => $partition]) {
+                CheckServerOffline::dispatch($server->uuid)
+                    ->delay(now()->addSeconds($offlineThresholdSeconds + 2));
+
+                $this->bringServerOnline($agent, $server);
+                // Merge per-partition network (filtered by that server's network_filter) into metrics.
+                // 2.7+ sends networks_dict + per-server list of interface names (deduped); older sent full objects.
+                $perServerMetrics = $metrics;
+                $netDict = $payload['networks_dict'] ?? null;
+                if (array_key_exists('network', $partition)) {
+                    $rawNet = $partition['network'];
+                    if (is_array($rawNet) && !empty($rawNet) && is_string($rawNet[0] ?? null) && is_array($netDict)) {
+                        $resolved = [];
+                        foreach ($rawNet as $iface) {
+                            if (isset($netDict[$iface])) {
+                                $resolved[] = $netDict[$iface];
+                            }
+                        }
+                        $perServerMetrics['network'] = $resolved;
+                    } else {
+                        $perServerMetrics['network'] = $rawNet;
+                    }
+                } elseif (isset($payload['network']) && is_array($payload['network'])) {
+                    $perServerMetrics['network'] = $payload['network'];
+                }
+                $this->recordServerUpdate($server, $perServerMetrics);
+
+                SystemTelemetryEvent::emit('agent_heartbeat', [
+                    'server_id' => $server->id,
+                    'server_name' => $server->name,
+                    'server_uuid' => $server->uuid,
+                    'latency_ms' => 0,
+                    'cpu' => $metrics['cpu']['load1'] ?? ($metrics['cpu'] ?? 0),
+                    'memory' => $metrics['memory']['percent'] ?? ($metrics['memory'] ?? 0),
+                    'disk' => $metrics['disk']['percent'] ?? ($metrics['disk'] ?? 0),
+                ]);
+
+                $this->evaluateMetricsForNodeConfig($server, $agent, $metrics);
+                $this->triggerOnlineStatusEvaluation($server);
+                $this->maybeDispatchPortPing($server, $agent);
+            }
+
+            // ---- response ----
+            $currentConfig = $agent->currentConfiguration;
+            $configVersion = $currentConfig ? $currentConfig->version : 1;
+            $agentConfigVersion = (int) ($payload['configuration_version'] ?? 0);
+
+            $response = [
+                'heartbeat_interval' => self::secondsSetting('heartbeat_interval', 5) ?: ($currentConfig ? $currentConfig->heartbeat_interval : 5),
+                'current_time' => now()->timestamp,
+                'feature_flags' => [],
+                'server_uuids' => array_map(fn (array $entry) => $entry['server']->uuid, $accepted),
+                'revoked_server_uuids' => $revoked,
+            ];
+
+            $latestBinaryUpdate = AgentVersion::orderBy('id', 'desc')
+                ->first();
+            $agentVersion = $agent->version;
+            if ($latestBinaryUpdate && $agentVersion !== $latestBinaryUpdate->version) {
+                // Pick the binary URL for the agent's platform — every server
+                // on one computer shares the OS, so the first server suffices.
+                $os = strtolower($accepted[0]['server']->operating_system ?? '');
+                $binaryUrl = str_contains($os, 'windows') ? url('/MonitorAgent.exe') : url('/agent');
+                $response['pending_update'] = [
+                    'version' => $latestBinaryUpdate->version,
+                    'heartbeat_interval' => null,
+                    'binary_url' => $binaryUrl,
+                ];
+            }
+
+            if ($configVersion !== $agentConfigVersion && $currentConfig) {
+                $response['configuration'] = array_merge(
+                    $currentConfig->configuration_json,
+                    ['version' => $configVersion]
+                );
+            }
+
+            $response['pending_commands'] = $this->claimPendingCommands($agent);
+
+            return $response;
+        });
+    }
+
+    /** Settings may be stored in milliseconds; normalize to whole seconds. */
+    private static function secondsSetting(string $key, int $default): int
+    {
+        $raw = (int) Setting::get($key, (string) $default);
+
+        return $raw >= 1000 ? intdiv($raw, 1000) : ($raw ?: $default);
+    }
+
+    private function accumulateOnlineSeconds(Agent $agent, Server $server): void
+    {
+        $elapsedSeconds = (int) $agent->last_seen_at->diffInSeconds(now());
+        $maxStepSeconds = max(5, self::secondsSetting('offline_threshold', 15) + 5);
+        if ($elapsedSeconds > 0 && $elapsedSeconds <= $maxStepSeconds) {
+            $server->increment('online_seconds', min($elapsedSeconds, $maxStepSeconds));
+            $server->refresh();
+        }
+    }
+
+    private function bringServerOnline(Agent $agent, Server $server): void
+    {
+        // Transition server to online if needed
+        if ($server->status !== ServerStatus::Online->value) {
+            $server->update(['status' => ServerStatus::Online->value]);
+
+            Activity::create([
+                'server_id' => $server->id,
+                'agent_id' => $agent->id,
+                'type' => 'server_online',
+                'description' => 'Server transitioned to Online state.',
+            ]);
+
+            CustomActivityLog::create([
+                'type' => 'server_health',
+                'logable_type' => get_class($server),
+                'logable_id' => $server->id,
+                'user_id' => null,
+                'user' => 'System',
+                'action' => 'Agent Online',
+                'details' => json_encode([
+                    'message' => "Agent came online for server: {$server->name}",
+                    'server_name' => $server->name,
+                ]),
+            ]);
+
+            // Resolve server offline problems on the Action Board
+            ActionItem::where('action_type', 'server_offline')
+                ->where('server_id', $server->id)
+                ->where('status', 'open')
+                ->update(['status' => 'completed', 'completed_at' => now()]);
+
+            // Real-time push so UI immediately reflects online status (failsafe if Reverb is offline)
+            try {
+                ServerStatusUpdated::dispatch($server->uuid, ServerStatus::Online->value, $server->name);
+                ServerStatsUpdated::dispatchSync($server->uuid, [
+                    'timestamp' => now()->timestamp,
+                    'c' => 0.0,
+                    'm' => 0.0,
+                    'd' => 0.0,
+                    'netIn' => 0.0,
+                    'netOut' => 0.0,
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning('[broadcast] Failed to push online update', ['error' => $e->getMessage()]);
+            }
+        }
+    }
+
+    /**
+     * Ping exposed TCP ports on an interval (drives PingServerPorts +
+     * ports_ping node config alerts).
+     */
+    private function maybeDispatchPortPing(Server $server, Agent $agent): void
+    {
+        $pingInterval = self::secondsSetting('port_ping_interval', 60);
+        if ($pingInterval > 0 && ! PingServerPorts::pingablePorts($server, $agent)->isEmpty()) {
+            $cacheKey = 'port_ping_last:'.$server->uuid;
+            $lastPing = (int) cache()->get($cacheKey, 0);
+            if (now()->timestamp - $lastPing >= $pingInterval) {
+                cache()->put($cacheKey, now()->timestamp, $pingInterval * 2);
+                PingServerPorts::dispatch($server);
+            }
+        }
+    }
+
+    /** Atomically claim this agent's due pending commands and mark them sent. */
+    private function claimPendingCommands(Agent $agent): array
+    {
+        $pendingCommands = AgentCommand::where('agent_id', $agent->id)
+            ->where('status', 'pending')
+            ->where(function ($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->orderBy('priority', 'asc')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $commandsPayload = [];
+        foreach ($pendingCommands as $cmd) {
+            $cmd->update([
+                'status' => 'sent',
+                'sent_at' => now(),
+            ]);
+
+            $commandsPayload[] = [
+                'id' => $cmd->id,
+                'type' => $cmd->type,
+                'payload' => $cmd->payload,
+            ];
+        }
+
+        return $commandsPayload;
+    }
+
+    /** Sync AgentConfiguration from the agent's reported config (bootstrap.json is the source of truth). */
+    private function syncReportedAgentConfig(Agent $agent, array $agentCfg): void
+    {
+        $currentConfig = $agent->currentConfiguration;
+        if (! $currentConfig) {
+            return;
+        }
+
+        $cfgUpdates = [];
+        if (isset($agentCfg['heartbeat_interval']) && $agentCfg['heartbeat_interval'] > 0) {
+            $cfgUpdates['heartbeat_interval'] = (int) $agentCfg['heartbeat_interval'];
+        }
+        if (! empty($cfgUpdates)) {
+            $currentConfig->update($cfgUpdates);
+        }
+    }
+
+    private function ingestMetrics(Heartbeat $heartbeat, Agent $agent, array $payload): void
     {
         $batch = MetricBatch::create([
             'heartbeat_id' => $heartbeat->id,
@@ -343,15 +645,44 @@ class HeartbeatService
                 'recorded_at' => $recordedAt,
             ]));
         }
+    }
 
-        // Calculate total network bytes from nested interfaces if present
+    /**
+     * Per-server metrics rollup: one server_updates row per heartbeat (the
+     * dashboard and historical charts read this table) plus the real-time UI
+     * push. Agent-level samples live in ingestMetrics; this is the per-server
+     * projection of the same agent-wide metrics.
+     */
+    private function recordServerUpdate(Server $server, array $payload): void
+    {
+        // One pass over the interfaces: sum into the server_updates totals and
+        // collect per-interface rows for the Network Traffic time-series.
         $networkRx = 0;
         $networkTx = 0;
-        if (isset($payload['network']) && is_array($payload['network'])) {
-            foreach ($payload['network'] as $net) {
-                $networkRx += $net['rx_bytes'] ?? 0;
-                $networkTx += $net['tx_bytes'] ?? 0;
+        $now = now();
+        $networkRows = [];
+        foreach ($payload['network'] ?? [] as $net) {
+            if (! is_array($net)) {
+                continue;
             }
+            $rx = (int) ($net['rx_bytes'] ?? 0);
+            $tx = (int) ($net['tx_bytes'] ?? 0);
+            $networkRx += $rx;
+            $networkTx += $tx;
+
+            $name = trim((string) ($net['interface'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $networkRows[] = [
+                'server_id' => $server->id,
+                'interface_name' => mb_substr($name, 0, 255),
+                'interface_type' => (string) ($net['type'] ?? 'unknown'),
+                'oper_state' => (string) ($net['state'] ?? 'unknown'),
+                'rx_bytes' => $rx,
+                'tx_bytes' => $tx,
+                'created_at' => $now,
+            ];
         }
 
         // Populate server_updates table for compatibility with dashboard/historical charts
@@ -363,8 +694,13 @@ class HeartbeatService
             'uptime' => (int) ($payload['uptime'] ?? 0),
             'network_rbytes' => $networkRx,
             'network_tbytes' => $networkTx,
-            'created_at' => $recordedAt,
+            'created_at' => $now,
         ]);
+
+        // Per-interface rows feed the Network Traffic graph; the CAGGs roll them up.
+        if ($networkRows !== []) {
+            ServerNetworkStats::insert($networkRows);
+        }
 
         // Broadcast stats for UI compatibility (similar to existing server/stats ingest)
         $uiStats = [

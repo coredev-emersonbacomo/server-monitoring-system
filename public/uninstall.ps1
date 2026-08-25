@@ -1,8 +1,6 @@
 param(
-    [Parameter(Mandatory=$false)]
-    [string]$Instance,
-    [Parameter(Mandatory=$false)]
-    [string]$ProvisionToken
+    [Parameter(Mandatory=$true)]
+    [string]$Instance
 )
 
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -11,8 +9,13 @@ if (-not $isAdmin) {
     exit 1
 }
 
+# An instance is targeted by its immutable installation UUID only — this is the
+# public identity the installer names the instance directory, the keystore key
+# and the service's -instance argument after. There is no multi-delete: every
+# agent on this host has a distinct UUID, so only the named one is removed.
+# The service itself is the single stable "MonitorAgent" per host.
+$ServiceName = "MonitorAgent"
 $DataRoot = "C:\ProgramData\MonitorAgent"
-$AppRoot = "C:\Program Files\MonitorAgent"
 $LogFile = "$env:TEMP\monitor-agent-uninstall.log"
 
 function Log($msg) {
@@ -20,63 +23,46 @@ function Log($msg) {
     Write-Host $msg
 }
 
-# ProvisionToken is accepted for CLI symmetry with install.ps1 but not needed:
-# the marker flow revokes on the backend using the running service's own JWT.
-# Use -Instance <uuid> to target one installation; otherwise all are removed.
-$instances = @()
-if ($Instance) {
-    $instances = @($Instance)
-} elseif (Test-Path "$DataRoot\instances") {
-    $instances = Get-ChildItem "$DataRoot\instances" -Directory | ForEach-Object { $_.Name }
+function Fail($msg) {
+    "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [ERROR] $msg" | Out-File -FilePath $LogFile -Append
+    Write-Error $msg
+    exit 1
 }
 
-if ($instances.Count -eq 0) {
-    Log "No MonitorAgent installations found. Nothing to uninstall."
-    exit 0
+Log "Uninstalling instance: $Instance"
+
+$InstanceDir = "$DataRoot\instances\$Instance"
+
+# Marker-based uninstall: write the flag into the instance directory, then
+# restart the stable service. The running service (LocalSystem) revokes the
+# agent on the backend and deletes its own identity key, then exits. This
+# script then removes the service registration and the instance directory.
+if (-not (Test-Path $InstanceDir)) {
+    Fail "No MonitorAgent instance found for UUID: $Instance"
 }
 
-foreach ($installationId in $instances) {
-    Log "Uninstalling instance: $installationId"
-    $ServiceName = "MonitorAgent-$installationId"
-    $InstanceDir = "$DataRoot\instances\$installationId"
-    $AppDir = "$AppRoot\$installationId"
-    $AgentFile = "$AppDir\MonitorAgent.exe"
-
-    if (Test-Path $AgentFile) {
-        # Marker-based uninstall: the script writes the flag, stops the service,
-        # and the service (running as LocalSystem) revokes the agent on the
-        # backend, deletes its own keystore key, then exits. This script then
-        # removes the service registration and the instance directory.
-        & "$AgentFile" -uninstall -instance $installationId
-        if ($LASTEXITCODE -ne 0) {
-            Log "Warning: marker-based uninstall reported an error (exit $LASTEXITCODE)."
-        }
-    } else {
-        # Binary missing - fall back to manual cleanup. The keystore key may
-        # remain (only LocalSystem can delete it) but is inert.
-        Log "Agent binary not found - manual cleanup."
-        if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
-            Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-            sc.exe delete $ServiceName | Out-Null
-        }
+$AgentFile = "C:\Program Files\MonitorAgent\MonitorAgent.exe"
+if (Test-Path $AgentFile) {
+    & "$AgentFile" -uninstall -instance $Instance
+    if ($LASTEXITCODE -ne 0) {
+        Log "Warning: marker-based uninstall reported an error (exit $LASTEXITCODE)."
     }
+} else {
+    Log "Agent binary not found - removing service registration directly."
+}
 
-    if (Test-Path $InstanceDir) {
-        try {
-            Remove-Item -Recurse -Force $InstanceDir
-            Log "Removed instance directory."
-        } catch {
-            Log "Warning: could not remove instance directory: $_"
-        }
-    }
+if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
+    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    sc.exe delete $ServiceName | Out-Null
+    Log "Removed service registration."
+}
 
-    if (Test-Path $AppDir) {
-        try {
-            Remove-Item -Recurse -Force $AppDir
-            Log "Removed program directory."
-        } catch {
-            Log "Warning: could not remove program directory: $_"
-        }
+if (Test-Path $InstanceDir) {
+    try {
+        Remove-Item -Recurse -Force $InstanceDir
+        Log "Removed instance directory."
+    } catch {
+        Log "Warning: could not remove instance directory: $_"
     }
 }
 

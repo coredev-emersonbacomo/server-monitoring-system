@@ -188,6 +188,51 @@ func getUptime() float64 {
 	return v
 }
 
+// linuxIfaceType maps kernel ARPHRD hardware types (from /sys/class/net/<iface>/type)
+// to friendly interface type labels. The value is a decimal string as exposed by sysfs.
+var linuxIfaceType = map[int]string{
+	1:   "ethernet",  // ARPHRD_ETHER
+	772: "loopback",  // ARPHRD_LOOPBACK
+	801: "wifi",      // ARPHRD_ESSID (wireless extensions)
+	6:   "serial",    // ARPHRD_SERIAL
+	779: "infiniband", // ARPHRD_INFINIBAND
+	776: "infiniband", // ARPHRD_INFINIBAND_1LETTER (alias)
+	65534: "vlan",    // commonly alias
+}
+
+// getIfaceType reads /sys/class/net/<iface>/type and labels it. Unknown types
+// fall through to a best-effort label derived from sysfs.
+func getIfaceType(iface string) string {
+	raw, err := os.ReadFile("/sys/class/net/" + iface + "/type")
+	if err != nil {
+		return "unknown"
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(string(raw)))
+	if err != nil {
+		return "unknown"
+	}
+	if label, ok := linuxIfaceType[n]; ok {
+		return label
+	}
+	if n == 772 {
+		return "loopback"
+	}
+	return "unknown"
+}
+
+// getIfaceState reads /sys/class/net/<iface>/operstate ("up", "down", etc.).
+func getIfaceState(iface string) string {
+	raw, err := os.ReadFile("/sys/class/net/" + iface + "/operstate")
+	if err != nil {
+		return "unknown"
+	}
+	state := strings.TrimSpace(string(raw))
+	if state == "" {
+		return "unknown"
+	}
+	return state
+}
+
 func getNetworkStats() []NetworkMetrics {
 	data, err := os.ReadFile("/proc/net/dev")
 	if err != nil {
@@ -195,21 +240,40 @@ func getNetworkStats() []NetworkMetrics {
 	}
 
 	var result []NetworkMetrics
-	re := regexp.MustCompile(`^\s*(eth\w*|en\w*|ens\w*|eno\w*):\s*(\d+)\s+(?:\d+\s+){6}\s*(\d+)`)
 	for _, line := range strings.Split(string(data), "\n") {
-		m := re.FindStringSubmatch(line)
-		if m == nil {
+		line = strings.TrimSpace(line)
+		if !strings.Contains(line, ":") {
 			continue
 		}
-		rx, _ := strconv.ParseInt(m[2], 10, 64)
-		tx, _ := strconv.ParseInt(m[3], 10, 64)
+		name, rest := splitInterfaceLine(line)
+		if name == "" || name == "lo" {
+			continue
+		}
+		fields := strings.Fields(rest)
+		if len(fields) < 2 {
+			continue
+		}
+		rx, _ := strconv.ParseInt(fields[0], 10, 64)
+		tx, _ := strconv.ParseInt(fields[1], 10, 64)
 		result = append(result, NetworkMetrics{
-			Interface: m[1],
+			Interface: name,
+			Type:      getIfaceType(name),
+			State:     getIfaceState(name),
 			RxBytes:   rx,
 			TxBytes:   tx,
 		})
 	}
 	return result
+}
+
+// splitInterfaceLine splits a /proc/net/dev line "iface: rx ... tx ..." into
+// the interface name and the raw counters portion.
+func splitInterfaceLine(line string) (string, string) {
+	idx := strings.IndexByte(line, ':')
+	if idx < 0 {
+		return "", ""
+	}
+	return strings.TrimSpace(line[:idx]), strings.TrimSpace(line[idx+1:])
 }
 
 // processNoiseNames are built-in kernel/OS/infra processes that are never

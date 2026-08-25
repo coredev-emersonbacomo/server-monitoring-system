@@ -249,46 +249,82 @@ func (m *metricsCollector) GetUptime() float64 {
 	return float64(ret) / 1000
 }
 
+// winNetworkScript joins per-adapter counters (Get-NetAdapterStatistics) with
+// adapter identity/type/state (Get-NetAdapter) and emits one JSON row per
+// interface — including virtual/disconnected ones, whose state travels in `st`.
+const winNetworkScript = `
+$m = @{}
+Get-NetAdapterStatistics | ForEach-Object { $m[$_.Name] = $_ }
+Get-NetAdapter | ForEach-Object {
+    $s = $m[$_.Name]
+    $rx = [long]0; $tx = [long]0
+    if ($s) { $rx = [long]$s.ReceivedBytes; $tx = [long]$s.SentBytes }
+    [pscustomobject]@{ name = $_.Name; mt = [string]$_.MediaType; pmt = [string]$_.PhysicalMediaType; d = $_.InterfaceDescription; st = [string]$_.Status; rxb = $rx; txb = $tx }
+} | ConvertTo-Json -Compress
+`
+
+type winNetAdapter struct {
+	Name     string `json:"name"`
+	Type     string `json:"mt"`
+	PhysType string `json:"pmt"`
+	Desc     string `json:"d"`
+	State    string `json:"st"`
+	RxBytes  int64  `json:"rxb"`
+	TxBytes  int64  `json:"txb"`
+}
+
+// winVpnMarkers are substrings of InterfaceDescription identifying tunnel
+// adapters (they usually claim MediaType 802.3, so description wins).
+var winVpnMarkers = []string{"tap", "tun", "vpn", "wireguard"}
+
+func winIfaceType(mediaType, physType, desc string) string {
+	d := strings.ToLower(desc)
+	for _, marker := range winVpnMarkers {
+		if strings.Contains(d, marker) {
+			return "vpn"
+		}
+	}
+	// "802.11" substring covers both plain and "Native 802.11" media types.
+	if strings.Contains(strings.ToLower(physType), "802.11") || strings.Contains(strings.ToLower(mediaType), "802.11") {
+		return "wifi"
+	}
+	switch strings.ToLower(mediaType) {
+	case "802.3":
+		return "ethernet"
+	case "loopback":
+		return "loopback"
+	}
+	return "unknown"
+}
+
 func (m *metricsCollector) GetNetworkStats() []NetworkMetrics {
-	out, err := exec.Command("powershell", "-Command",
-		"Get-NetAdapterStatistics | Where-Object { $_.State -eq 'Enabled' } | Select-Object Name,ReceivedBytes,SentBytes | ConvertTo-Json").Output()
-	if err != nil {
+	out, err := exec.Command("powershell", "-Command", winNetworkScript).Output()
+	if err != nil || len(bytes.TrimSpace(out)) == 0 {
 		return nil
 	}
 
-	var result []NetworkMetrics
-	lines := strings.Split(string(out), "\n")
-	inObj := false
-	var current NetworkMetrics
+	var adapters []winNetAdapter
+	if err := json.Unmarshal(out, &adapters); err != nil {
+		var single winNetAdapter
+		if errSingle := json.Unmarshal(out, &single); errSingle != nil {
+			log.Printf("[Metrics] Failed to parse network adapter JSON: %v", err)
+			return nil
+		}
+		adapters = []winNetAdapter{single}
+	}
 
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "{" {
-			inObj = true
-			current = NetworkMetrics{}
+	var result []NetworkMetrics
+	for _, a := range adapters {
+		if a.Name == "" || strings.EqualFold(a.Type, "loopback") {
 			continue
 		}
-		if line == "}" {
-			inObj = false
-			if current.Interface != "" {
-				result = append(result, current)
-			}
-			continue
-		}
-		if !inObj || !strings.Contains(line, ":") {
-			continue
-		}
-		parts := strings.SplitN(line, ":", 2)
-		key := strings.Trim(strings.TrimSpace(parts[0]), "\"")
-		val := strings.Trim(strings.TrimSpace(parts[1]), "\",")
-		switch key {
-		case "Name":
-			current.Interface = val
-		case "ReceivedBytes":
-			current.RxBytes, _ = strconv.ParseInt(val, 10, 64)
-		case "SentBytes":
-			current.TxBytes, _ = strconv.ParseInt(val, 10, 64)
-		}
+		result = append(result, NetworkMetrics{
+			Interface: a.Name,
+			Type:      winIfaceType(a.Type, a.PhysType, a.Desc),
+			State:     strings.ToLower(strings.TrimSpace(a.State)),
+			RxBytes:   a.RxBytes,
+			TxBytes:   a.TxBytes,
+		})
 	}
 	return result
 }
@@ -329,10 +365,10 @@ var processNoiseNames = map[string]bool{
 	"msedge": true, "msedgewebview2": true, "firefox": true, "opera": true,
 	"iexplore": true, "qtwebengineprocess": true, "ms-teams": true,
 	"code": true, "microsoft.codeanalysis.languageserver": true,
-	"microsoft.visualstudio.code.server": true,
+	"microsoft.visualstudio.code.server":            true,
 	"microsoft.visualstudio.code.servicecontroller": true,
-	"microsoft.visualstudio.code.servicehost": true,
-	"server-v0.0.31-x64-win32": true, "dotnet": true, "node": true,
+	"microsoft.visualstudio.code.servicehost":       true,
+	"server-v0.0.31-x64-win32":                      true, "dotnet": true, "node": true,
 	"onedrive.sync.service": true, "adobecollabsync": true,
 	"avid link": true, "avidappmanhelper": true,
 	"musenotifyicon": true, "museauthservice": true, "musehub": true,

@@ -45,6 +45,7 @@ class Server extends Model
             'subscription_fee' => 'decimal:2',
             'port_filter' => 'array',
             'process_filter' => 'array',
+            'network_filter' => 'array',
         ];
     }
 

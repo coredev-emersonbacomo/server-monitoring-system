@@ -3,8 +3,13 @@
 use App\Enums\ServerStatus;
 use App\Models\Agent;
 use App\Models\Client;
+use App\Models\Heartbeat;
+use App\Models\MetricBatch;
+use App\Models\Port;
+use App\Models\Process;
 use App\Models\ProvisionToken;
 use App\Models\Server;
+use App\Models\ServerUpdate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -104,6 +109,14 @@ test('end-to-end agent provisioning, key registration, challenge-response auth, 
         ]);
 
     $token = $response->json('token');
+    $windows = $response->json('windows_command');
+
+    // Regression: WindowsCommand must single-quote AND close the -ProvisionToken
+    // argument so the emitted one-liner parses (see app/Services/WindowsCommand.php).
+    expect($windows)
+        ->toContain('powershell -ExecutionPolicy Bypass -Command "irm ')
+        ->toContain("-ProvisionToken '".$token."'");
+
     expect($server->fresh()->status)->toBe(ServerStatus::WaitingForInstallation->value);
 
     // 3. Act: Bootstrap request (Installer starts)
@@ -248,6 +261,97 @@ test('end-to-end agent provisioning, key registration, challenge-response auth, 
         ]);
 
     expect($server->fresh()->status)->toBe(ServerStatus::Online->value);
+});
+
+test('one aggregated heartbeat covers every server: metrics once, partitions per server', function () {
+    [$user, $client, $server, $keys, $installationId] = setupRegisteredAgent();
+
+    // A second server monitored by the SAME installation.
+    $otherServer = Server::create([
+        'client_id' => $client->id,
+        'name' => 'Aggregated Second Server',
+        'host_name' => 'agg-second',
+        'status' => ServerStatus::PendingInstallation->value,
+    ]);
+    $this->postJson('/api/v1/register', [
+        'token' => createProvisionToken($otherServer),
+        'installation_id' => testInstallationId('001'),
+        'public_key' => $keys['public_key'],
+        'public_key_hash' => $keys['public_key_hash'],
+        'agent_version' => '3.0',
+    ])->assertStatus(200);
+
+    $agent = Agent::where('installation_uuid', $installationId)->where('status', 'active')->first();
+
+    $challengeResponse = $this->postJson('/api/v1/agent/auth/challenge', [
+        'installation_uuid' => $installationId,
+    ]);
+    $verifyResponse = $this->postJson('/api/v1/agent/auth/verify', [
+        'challenge_id' => $challengeResponse->json('challenge_id'),
+        'signature' => signChallenge($keys['private_key'], $challengeResponse->json('challenge')),
+    ])->assertStatus(200);
+    $accessToken = $verifyResponse->json('access_token');
+
+    // ONE aggregated request: agent-wide metrics once, one filtered
+    // processes/ports partition per server, plus an unknown uuid that must
+    // come back as revoked instead of erroring the whole tick.
+    $heartbeatResponse = $this->withHeaders([
+        'Authorization' => 'Bearer '.$accessToken,
+    ])->postJson('/api/v1/agent/heartbeat', [
+        'agent_version' => '3.0',
+        'configuration_version' => 1,
+        'timestamp' => now()->timestamp,
+        'metrics' => [
+            'cpu' => ['load1' => 0.5, 'load5' => 0.3, 'load15' => 0.1],
+            'memory' => ['percent' => 45.2, 'used_kb' => 1800000, 'total_kb' => 4000000],
+            'disk' => ['percent' => 30.0, 'used' => 30000000000, 'total' => 100000000000],
+            'uptime' => 3600,
+            'network' => [['interface' => 'eth0', 'rx_bytes' => 100, 'tx_bytes' => 200]],
+        ],
+        'available_processes' => [
+            ['name' => 'mysqld', 'pid' => 10, 'cpu' => 2.0, 'memory' => 10.0],
+        ],
+        'available_ports' => [
+            ['port' => 3306, 'protocol' => 'tcp', 'process' => 'mysqld', 'state' => 'listening'],
+            ['port' => 5432, 'protocol' => 'tcp', 'process' => 'postgres', 'state' => 'listening'],
+        ],
+        'servers' => [
+            [
+                'server_uuid' => $server->uuid,
+                'processes' => [['name' => 'mysqld', 'pid' => 10, 'cpu' => 1.0, 'memory' => 5.0]],
+                'open_db_ports' => [['port' => 3306, 'protocol' => 'tcp', 'process' => 'mysqld', 'state' => 'listening']],
+            ],
+            [
+                'server_uuid' => $otherServer->uuid,
+                'processes' => [],
+                'open_db_ports' => [['port' => 5432, 'protocol' => 'tcp', 'process' => 'postgres', 'state' => 'listening']],
+            ],
+            ['server_uuid' => 'unknown-uuid', 'processes' => [], 'open_db_ports' => []],
+        ],
+    ]);
+
+    $heartbeatResponse->assertStatus(200)
+        ->assertJsonStructure([
+            'heartbeat_interval',
+            'current_time',
+            'server_uuids',
+            'revoked_server_uuids',
+            'pending_commands',
+        ])
+        ->assertJsonPath('server_uuids', [$server->uuid, $otherServer->uuid])
+        ->assertJsonPath('revoked_server_uuids', ['unknown-uuid']);
+
+    expect($server->fresh()->status)->toBe(ServerStatus::Online->value)
+        ->and($otherServer->fresh()->status)->toBe(ServerStatus::Online->value)
+        // Agent-wide state applied ONCE for the whole tick...
+        ->and(Heartbeat::where('agent_id', $agent->id)->count())->toBe(1)
+        ->and(MetricBatch::where('agent_id', $agent->id)->count())->toBe(1)
+        // ...while each server still gets its own metrics rollup row.
+        ->and(ServerUpdate::whereIn('server_id', [$server->id, $otherServer->id])->count())->toBe(2)
+        // The union of both partitions is stored agent-wide (no
+        // last-server-wins overwrite between filtered views).
+        ->and(Port::where('agent_id', $agent->id)->pluck('port')->sort()->values()->all())->toBe([3306, 5432])
+        ->and(Process::where('agent_id', $agent->id)->count())->toBe(1);
 });
 
 test('a challenge can only be used once (replay protection)', function () {
@@ -568,4 +672,176 @@ test('reinstall with the same installation UUID after uninstall reactivates in p
 
     expect(Agent::where('server_id', $server->id)->count())->toBe(1);
     expect(Agent::where('server_id', $server->id)->where('status', 'active')->count())->toBe(1);
+});
+
+test('uninstall command targets the agent by installation UUID, not the provision token', function () {
+    [$user, $client, $server, $keys, $installationId] = setupRegisteredAgent();
+
+    $response = $this->actingAs($user, 'jwt')
+        ->getJson("/api/v1/clients/{$client->uuid}/servers/{$server->uuid}");
+
+    $response->assertStatus(200)
+        ->assertJsonStructure([
+            'uninstall_linux_command',
+            'uninstall_windows_command',
+        ]);
+
+    $linux = $response->json('uninstall_linux_command');
+    $windows = $response->json('uninstall_windows_command');
+
+    // Windows one-liner targets the single instance by UUID...
+    expect($windows)
+        ->toContain('-Instance')
+        ->toContain($installationId)
+        ->not->toContain('-ProvisionToken');
+
+    // ...Linux one-liner passes the UUID as the single positional argument...
+    expect($linux)
+        ->toContain('-- '.$installationId)
+        ->not->toContain('-- test_provision');
+
+    // And there is no all-host fallback baked into the command.
+    expect($windows)->not->toContain('Get-ChildItem')
+        ->and($linux)->not->toContain('for dir in');
+});
+
+test('uninstall commands are null when no agent is installed', function () {
+    $user = User::factory()->create();
+    $client = Client::factory()->create();
+    $server = Server::create([
+        'client_id' => $client->id,
+        'name' => 'No Agent Server',
+        'host_name' => 'no-agent',
+        'status' => ServerStatus::PendingInstallation->value,
+    ]);
+
+    $response = $this->actingAs($user, 'jwt')
+        ->getJson("/api/v1/clients/{$client->uuid}/servers/{$server->uuid}");
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'uninstall_linux_command' => null,
+            'uninstall_windows_command' => null,
+        ]);
+});
+
+test('detaching one server keeps the agent and its other server online', function () {
+    [$user, $client, $server, $keys, $installationId] = setupRegisteredAgent();
+
+    // Attach a second server to the SAME installation → one agent, two servers.
+    $otherServer = Server::create([
+        'client_id' => $client->id,
+        'name' => 'Other Server',
+        'host_name' => 'other',
+        'status' => ServerStatus::PendingInstallation->value,
+    ]);
+    $this->postJson('/api/v1/register', [
+        'token' => createProvisionToken($otherServer),
+        'installation_id' => $installationId,
+        'public_key' => $keys['public_key'],
+        'public_key_hash' => $keys['public_key_hash'],
+        'agent_version' => '3.0',
+    ])->assertStatus(200)->assertJson(['registered' => true]);
+
+    $agent = Agent::where('installation_uuid', $installationId)->where('status', 'active')->first();
+    expect($agent->monitoredServers->pluck('id')->all())->toContain($server->id, $otherServer->id);
+
+    // The agent authenticates.
+    $challengeResponse = $this->postJson('/api/v1/agent/auth/challenge', [
+        'installation_uuid' => $installationId,
+    ]);
+    $accessToken = $this->postJson('/api/v1/agent/auth/verify', [
+        'challenge_id' => $challengeResponse->json('challenge_id'),
+        'signature' => signChallenge($keys['private_key'], $challengeResponse->json('challenge')),
+    ])->assertStatus(200)->json('access_token');
+
+    // Detach ONLY server A.
+    $detach = $this->withHeaders(['Authorization' => 'Bearer '.$accessToken])
+        ->postJson("/api/v1/agent/servers/{$server->uuid}/uninstall", ['reason' => 'prod decommission'])
+        ->assertStatus(200)
+        ->json();
+
+    expect($detach['status'])->toBe('success')
+        ->and($detach['agent_revoked'])->toBeFalse()
+        ->and($detach['agent_remaining_servers'])->toBe(1)
+        ->and(str_contains($detach['message'], 'agent remains installed'))->toBeTrue();
+
+    // Server A is removed but the agent is NOT revoked.
+    $agent = $agent->fresh();
+    expect($agent->status)->toBe('active')
+        ->and($agent->revoked_at)->toBeNull()
+        ->and($agent->id)->toBe(Agent::where('installation_uuid', $installationId)->first()->id);
+
+    $server = $server->fresh();
+    expect($server->agent_deleted)->toBeTrue()
+        ->and($server->status)->toBe(ServerStatus::AgentUninstalled->value)
+        ->and($server->agent_id)->toBeNull();
+
+    // Server B is untouched and still owned by the live agent.
+    $otherServer = $otherServer->fresh();
+    expect($otherServer->agent_deleted)->toBeFalse()
+        ->and($otherServer->agent_id)->toBe($agent->id);
+
+    // A server the agent does not own (or a non-existent UUID) is rejected.
+    $this->withHeaders(['Authorization' => 'Bearer '.$accessToken])
+        ->postJson('/api/v1/agent/servers/00000000-0000-0000-0000-000000000001/uninstall')
+        ->assertStatus(404);
+});
+
+test('detaching from a revoked agent is rejected', function () {
+    [$user, $client, $server, $keys, $installationId] = setupRegisteredAgent();
+
+    $challengeResponse = $this->postJson('/api/v1/agent/auth/challenge', [
+        'installation_uuid' => $installationId,
+    ]);
+    $accessToken = $this->postJson('/api/v1/agent/auth/verify', [
+        'challenge_id' => $challengeResponse->json('challenge_id'),
+        'signature' => signChallenge($keys['private_key'], $challengeResponse->json('challenge')),
+    ])->json('access_token');
+
+    $agent = $server->fresh()->agent;
+    $agent->update(['status' => 'revoked', 'revoked_at' => now()]);
+
+    // A revoked agent can no longer authenticate (identity invalid), so the
+    // detach is rejected at the auth layer.
+    $this->withHeaders(['Authorization' => 'Bearer '.$accessToken])
+        ->postJson("/api/v1/agent/servers/{$server->uuid}/uninstall")
+        ->assertStatus(401);
+});
+
+test('a full-agent uninstall succeeds when the agent owns zero servers', function () {
+    [$user, $client, $server, $keys, $installationId] = setupRegisteredAgent();
+
+    // Detach the only server first, leaving the agent active but empty.
+    $challengeResponse = $this->postJson('/api/v1/agent/auth/challenge', [
+        'installation_uuid' => $installationId,
+    ]);
+    $accessToken = $this->postJson('/api/v1/agent/auth/verify', [
+        'challenge_id' => $challengeResponse->json('challenge_id'),
+        'signature' => signChallenge($keys['private_key'], $challengeResponse->json('challenge')),
+    ])->assertStatus(200)->json('access_token');
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$accessToken])
+        ->postJson("/api/v1/agent/servers/{$server->uuid}/uninstall")
+        ->assertStatus(200);
+
+    // The agent is still active with zero monitored servers.
+    $agent = Agent::where('installation_uuid', $installationId)->where('status', 'active')->first();
+    expect($agent)->not->toBeNull()
+        ->and($agent->monitoredServers)->toHaveCount(0);
+
+    // Full uninstall against an empty agent revokes the identity and reports
+    // zero detached servers — it does NOT 404.
+    $uninstall = $this->withHeaders(['Authorization' => 'Bearer '.$accessToken])
+        ->postJson('/api/v1/agent/uninstall', ['reason' => 'host decommission'])
+        ->assertStatus(200)
+        ->json();
+
+    expect($uninstall['servers_detached'])->toBe(0)
+        ->and(Agent::where('installation_uuid', $installationId)->first()->status)->toBe('revoked');
+
+    // The revoked identity can no longer authenticate.
+    $this->postJson('/api/v1/agent/auth/challenge', [
+        'installation_uuid' => $installationId,
+    ])->assertStatus(403);
 });

@@ -79,7 +79,7 @@ function IndexToolbar({
     onClearViewByClient,
 }: IndexToolbarProps) {
     return (
-        <div className="flex items-center justify-between gap-3 flex-wrap sticky top-0 z-10 bg-background pt-9 pb-3 -mt-8">
+        <div className="flex items-center justify-between gap-3 flex-wrap sticky -top-8 z-10 bg-background pt-9 pb-3 -mt-8">
             <div className="flex items-center gap-2 flex-1 min-w-0">
                 {onSearchChange && (
                     <div className="relative flex-1 max-w-xs">

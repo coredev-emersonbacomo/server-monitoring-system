@@ -34,6 +34,7 @@ import {
     ServerDetailContext,
     type CopyKey,
     type ServerDetailServer,
+    type ServerInfoForm,
 } from "./context/ServerDetailContext";
 
 import { AgentInstallationGuide } from "./components/AgentInstallationGuide";
@@ -121,8 +122,8 @@ export default function ServerDetail() {
     } = useServer(uuid!, {
         timeSubtract: timeSpanArgs?.subtract,
         timeUnit: timeSpanArgs?.unit,
-        fromTime: (timeSpanArgs as any)?.fromTime,
-        toTime: (timeSpanArgs as any)?.toTime,
+        fromTime: timeSpanArgs?.fromTime,
+        toTime: timeSpanArgs?.toTime,
     });
 
     const queryClient = useQueryClient();
@@ -143,7 +144,7 @@ export default function ServerDetail() {
 
     const store = useMemo(
         () =>
-            createFormStore({
+            createFormStore<ServerInfoForm>({
                 schema: serverInfoSchema,
                 originalData: null,
                 initialMode: "view",
@@ -170,8 +171,8 @@ export default function ServerDetail() {
             externalDirty: false,
         });
         store.setMode("view");
-    // Only run when the server uuid changes (navigating to a different server)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // Only run when the server uuid changes (navigating to a different server)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initial?.uuid, store]);
 
     useEffect(() => {
@@ -316,15 +317,15 @@ export default function ServerDetail() {
     const trail: Crumb[] = allClient
         ? [{ label: "Servers", href: "/servers" }, { label: server.name }]
         : [
-            { label: "Clients", href: "/clients" },
-            {
-                label: server.client_name ?? "Client",
-                href: server.client_uuid
-                    ? `/clients/${server.client_uuid}`
-                    : undefined,
-            },
-            { label: server.name },
-        ];
+              { label: "Clients", href: "/clients" },
+              {
+                  label: server.client_name ?? "Client",
+                  href: server.client_uuid
+                      ? `/clients/${server.client_uuid}`
+                      : undefined,
+              },
+              { label: server.name },
+          ];
     const statusKey = resolveServerStatusKey(
         server.status,
         server.record_status,
@@ -336,6 +337,8 @@ export default function ServerDetail() {
         statusKey === "warning" ||
         statusKey === "offline" ||
         statusKey === "waiting_for_first_heartbeat";
+
+    const hasMetricHistory = (server?.stats?.length ?? 0) > 0;
 
     const contextValue = {
         store,
@@ -388,22 +391,23 @@ export default function ServerDetail() {
                             <Tab.Item icon={Info} title="Info">
                                 <ServerInfoTab />
                             </Tab.Item>
-                            {isInstalled && mode === "view" && (
-                                <Tab.Item icon={BarChart3} title="Metrics">
-                                    <MetricsTab
-                                        timeSpan={timeSpan}
-                                        setTimeSpan={setTimeSpan}
-                                        timeSpanArgs={timeSpanArgs}
-                                        customFrom={customFrom}
-                                        setCustomFrom={setCustomFrom}
-                                        customTo={customTo}
-                                        setCustomTo={setCustomTo}
-                                        customUnitStr={customUnitStr}
-                                        setCustomUnitStr={setCustomUnitStr}
-                                        uuid={uuid!}
-                                    />
-                                </Tab.Item>
-                            )}
+                            {(isInstalled || hasMetricHistory) &&
+                                mode === "view" && (
+                                    <Tab.Item icon={BarChart3} title="Metrics">
+                                        <MetricsTab
+                                            timeSpan={timeSpan}
+                                            setTimeSpan={setTimeSpan}
+                                            timeSpanArgs={timeSpanArgs}
+                                            customFrom={customFrom}
+                                            setCustomFrom={setCustomFrom}
+                                            customTo={customTo}
+                                            setCustomTo={setCustomTo}
+                                            customUnitStr={customUnitStr}
+                                            setCustomUnitStr={setCustomUnitStr}
+                                            uuid={uuid!}
+                                        />
+                                    </Tab.Item>
+                                )}
 
                             {mode === "view" && (
                                 <Tab.Item icon={Bell} title="Alerts">

@@ -21,6 +21,7 @@ class Agent extends Model
         'revoked_at' => 'datetime',
         'available_processes' => 'array',
         'available_ports' => 'array',
+        'available_interfaces' => 'array',
     ];
 
     public function scopeActive($query)

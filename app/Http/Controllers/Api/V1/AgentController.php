@@ -221,8 +221,17 @@ class AgentController extends Controller
             return response()->json(['message' => 'Agent has been decommissioned.'], 403);
         }
 
-        // The agent now monitors many servers: each heartbeat targets exactly
-        // one server by uuid, and the backend verifies ownership + lifecycle.
+        // Aggregated heartbeat: ONE request per agent tick carrying agent-wide
+        // metrics once plus one filtered processes/ports partition per server.
+        if (is_array($request->input('servers'))) {
+            return response()->json(
+                $heartbeatService->processAgent($agent, $request->all()),
+                200
+            );
+        }
+
+        // Legacy per-server heartbeat: each request targets exactly one server
+        // by uuid, and the backend verifies ownership + lifecycle.
         $serverUuid = $request->input('server_uuid');
         if (! $serverUuid) {
             return response()->json(['message' => 'server_uuid is required.'], 422);
@@ -317,6 +326,79 @@ class AgentController extends Controller
     }
 
     /**
+     * Detach a single owned server from the agent. The agent stays installed and
+     * keeps monitoring its other servers; only the named server is decommissioned
+     * (status → agent_uninstalled, agent_id → null). Full agent revocation
+     * (POST /agent/uninstall) is a separate operation used only when the agent
+     * owns zero servers and the operator wants to remove the whole installation.
+     */
+    public function detachServer(Request $request, string $serverUuid): JsonResponse
+    {
+        $agent = $this->agentAuthService->authenticate($request);
+        if (! $agent) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        if ($agent->revoked_at) {
+            return response()->json(['message' => 'Agent has been decommissioned.'], 403);
+        }
+
+        // The agent may only detach a server it actually owns.
+        $server = Server::where('uuid', $serverUuid)
+            ->where('agent_id', $agent->id)
+            ->where('agent_deleted', false)
+            ->where('status', '!=', ServerStatus::Archived->value)
+            ->first();
+
+        if (! $server) {
+            return response()->json(['message' => 'Server not found or not owned by this agent.'], 404);
+        }
+
+        DB::transaction(function () use ($agent, $server) {
+            $server->update([
+                'agent_id' => null,
+                'agent_deleted' => true,
+                'status' => ServerStatus::AgentUninstalled->value,
+            ]);
+
+            event(new AgentUninstalled($server->uuid));
+
+            Activity::create([
+                'server_id' => $server->id,
+                'agent_id' => $agent->id,
+                'type' => 'server_detached',
+                'description' => "Server {$server->name} detached from agent installation {$agent->installation_uuid}; agent remains installed.",
+            ]);
+
+            CustomActivityLog::create([
+                'type' => 'agent',
+                'logable_type' => Server::class,
+                'logable_id' => (string) $server->uuid,
+                'user_id' => null,
+                'user' => 'Agent System',
+                'action' => 'Server Detached',
+                'details' => [
+                    'message' => "Server {$server->name} removed from agent; the agent remains installed for its other servers.",
+                    'server_name' => $server->name,
+                ],
+            ]);
+        });
+
+        $remaining = $agent->monitoredServers()->where('agent_deleted', false)->count();
+
+        return response()->json([
+            'status' => 'success',
+            'server_uuid' => $server->uuid,
+            'agent_revoked' => false,
+            'agent_remaining_servers' => $remaining,
+            'message' => 'Server detached from agent; the agent remains installed.'
+            .($remaining === 0
+                ? ' The agent now owns zero servers and is eligible for full uninstall.'
+                : ' The agent continues monitoring its other servers'),
+        ]);
+    }
+
+    /**
      * Uninstall is invoked BY THE AGENT ITSELF (the running service, acting
      * under the service account). The agent authenticates with its JWT session,
      * proving it still holds the identity key, then the backend revokes the
@@ -333,12 +415,17 @@ class AgentController extends Controller
             'reason' => 'nullable|string',
         ]);
 
-        $agent->loadMissing('monitoredServers');
+        $agent->loadMissing(['monitoredServers', 'server']);
         $servers = $agent->monitoredServers;
 
-        if ($servers->isEmpty()) {
-            return response()->json(['message' => 'Server not found.'], 404);
-        }
+        // Full agent uninstall is meaningful whether the agent owns zero servers
+        // (idle agent — clean removal) or many (decommission the whole computer).
+        // It always revokes the identity; the per-server detach loop is simply
+        // a no-op when there are none to mark.
+        //
+        // Activity context uses the agent's primary server row (always present
+        // on an active agent — assigned at registration and never nulled on
+        // detach), falling back to the first monitored server.
 
         DB::transaction(function () use ($agent, $servers) {
             // Revoke the agent so its identity can never authenticate again.
@@ -363,8 +450,12 @@ class AgentController extends Controller
             event(new AgentUninstalled($server->uuid));
         }
 
+        // Activity context falls back across the primary server and any
+        // remaining monitored server. An active agent always has a primary.
+        $contextServer = $agent->server ?? $servers->first();
+
         Activity::create([
-            'server_id' => $servers->first()->id,
+            'server_id' => $contextServer->id,
             'agent_id' => $agent->id,
             'type' => 'agent_uninstalled',
             'description' => 'Agent service has been uninstalled from the host.'
@@ -374,17 +465,25 @@ class AgentController extends Controller
         CustomActivityLog::create([
             'type' => 'agent',
             'logable_type' => Server::class,
-            'logable_id' => (string) $servers->first()->uuid,
+            'logable_id' => (string) $contextServer->uuid,
             'user_id' => null,
             'user' => 'Agent System',
             'action' => 'Agent Uninstalled',
             'details' => [
-                'message' => "Agent uninstalled on host: {$servers->first()->name}",
-                'server_name' => $servers->first()->name,
+                'message' => "Agent uninstalled on host: {$contextServer->name}. Servers detached: {$servers->count()}.",
+                'server_name' => $contextServer->name,
             ],
         ]);
 
-        return response()->json(['status' => 'success', 'message' => 'Agent revoked and all monitored servers marked as agent uninstalled successfully.']);
+        return response()->json([
+            'status' => 'success',
+            'revoked_agent_id' => $agent->id,
+            'servers_detached' => $servers->count(),
+            'message' => 'Agent revoked.'
+                .($servers->isNotEmpty()
+                    ? ' All monitored servers marked as agent uninstalled.'
+                    : ' No monitored servers to detach.'),
+        ]);
     }
 
     public function uninstallLinux(): Response

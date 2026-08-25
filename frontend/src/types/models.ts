@@ -250,11 +250,13 @@ export interface ServerData {
             processes?: ProcessesData[] | null;
             available_processes?: ProcessesData[] | null;
             available_ports?: PortsData[] | null;
+            available_interfaces?: { interface: string; type: string; state: string; rx_bytes?: number; tx_bytes?: number }[] | null;
             uninstall_linux_command?: string | null;
             uninstall_windows_command?: string | null;
             agent_deleted?: boolean;
             port_filter?: number[] | null;
             process_filter?: string[] | null;
+            network_filter?: string[] | null;
             activities?: {
                 type: string;
                 description: string;
@@ -314,9 +316,8 @@ export interface StatPointData {
             timestamp: number;
             cpu: number;
             memory: number;
-            netIn: number;
-            netOut: number;
             disk: number;
+            networks?: { name: string; netIn: number; netOut: number }[];
         }
 
 /** StoreUploadIntentRequest */

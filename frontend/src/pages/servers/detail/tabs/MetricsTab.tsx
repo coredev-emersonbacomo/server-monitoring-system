@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
     Cpu,
     Link2,
@@ -22,6 +22,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { ServerStatChart } from "@/pages/dashboard/components/ServerStatChart";
+import { NetworkTrafficChart } from "../components/NetworkTrafficChart";
 import { cn } from "@/lib/utils";
 import { useServerDetailContext } from "../context/ServerDetailContext";
 import { CHARTS } from "../constants/charts";
@@ -197,16 +198,16 @@ function SearchBox({
     );
 }
 
-// SecOps spotlight: which ports and processes matter for THIS server. null
+// SecOps spotlight: which ports/processes/interfaces matter for THIS server. null
 // (all checked) means "report everything the agent's noise filter allows";
 // an array is the exact set to report. Applied by the agent (what it sends)
-// and by the backend ping job (what it probes).
+// and by the backend ping job (what it probes). Network follows same pattern.
 function MonitoringFilter({
     uuid,
     kind,
 }: {
     uuid: string;
-    kind: "ports" | "processes";
+    kind: "ports" | "processes" | "interfaces";
 }) {
     const { server } = useServerDetailContext();
     const queryClient = useQueryClient();
@@ -216,6 +217,7 @@ function MonitoringFilter({
     const [sel, setSel] = useState<Set<number | string> | null>(null);
 
     const isPorts = kind === "ports";
+    const isInterfaces = kind === "interfaces";
 
     const options = useMemo(() => {
         if (isPorts) {
@@ -245,6 +247,47 @@ function MonitoringFilter({
                 }))
                 .sort((a, b) => Number(a.key) - Number(b.key));
         }
+        if (isInterfaces) {
+            // available_interfaces is agent-wide non-disconnected set; fallback to seen networks in stats
+            const seen = new Map<string, { type: string; state: string }>();
+            const availRawItf = server?.available_interfaces as unknown;
+            const availListItf: Array<{ interface?: string; name?: string; type?: string; state?: string }> = Array.isArray(availRawItf)
+                ? (availRawItf as Array<{ interface?: string; name?: string; type?: string; state?: string }>)
+                : availRawItf && typeof availRawItf === "object"
+                  ? (Object.values(availRawItf as Record<string, unknown>) as Array<{ interface?: string; name?: string; type?: string; state?: string }>)
+                  : [];
+            for (const iface of availListItf) {
+                const name = iface.interface ?? iface.name;
+                if (!name) continue;
+                seen.set(name, { type: iface.type ?? "unknown", state: iface.state ?? "unknown" });
+            }
+            if (seen.size === 0) {
+                const statsRawItf = server?.stats as unknown;
+                const statsListItf: Array<{ networks?: { name: string }[] }> = Array.isArray(statsRawItf)
+                    ? (statsRawItf as Array<{ networks?: { name: string }[] }>)
+                    : statsRawItf && typeof statsRawItf === "object"
+                      ? (Object.values(statsRawItf as Record<string, unknown>) as Array<{ networks?: { name: string }[] }>)
+                      : [];
+                for (const pt of statsListItf) {
+                    const netsRaw = (pt as unknown as { networks?: unknown }).networks;
+                    const netsArr: Array<{ name: string }> = Array.isArray(netsRaw)
+                        ? (netsRaw as Array<{ name: string }>)
+                        : netsRaw && typeof netsRaw === "object"
+                          ? (Object.values(netsRaw as Record<string, unknown>) as Array<{ name: string }>)
+                          : [];
+                    for (const n of netsArr) {
+                        if (!seen.has(n.name)) seen.set(n.name, { type: "unknown", state: "up" });
+                    }
+                }
+            }
+            return [...seen.entries()]
+                .map(([name, meta]) => ({
+                    key: name,
+                    label: name,
+                    descriptor: `${meta.type} · ${meta.state}`,
+                }))
+                .sort((a, b) => String(a.key).localeCompare(String(b.key)));
+        }
         const byName = new Map<string, number>();
         for (const p of server?.available_processes ??
             server?.processes ??
@@ -270,17 +313,20 @@ function MonitoringFilter({
         server?.ports,
         server?.available_processes,
         server?.processes,
+        server?.available_interfaces,
+        server?.stats,
         isPorts,
+        isInterfaces,
     ]);
 
-    const stored = isPorts ? server?.port_filter : server?.process_filter;
+    const stored = isPorts ? server?.port_filter : isInterfaces ? server?.network_filter : server?.process_filter;
     const allChecked = sel === null;
 
     // Re-sync from the persisted filter every time the modal opens, so a
     // discarded edit never lingers.
     useEffect(() => {
         if (!open) return;
-        setSel(stored ? new Set(stored) : null);
+        setSel(stored ? new Set(stored as unknown as (string | number)[]) : null);
     }, [open, stored]);
 
     const visibleOptions = useMemo(() => {
@@ -325,11 +371,15 @@ function MonitoringFilter({
                               ? null
                               : [...sel].map(Number).sort((a, b) => a - b),
                   }
-                : {
+                : isInterfaces
+                  ? {
+                        network_filter: sel === null ? null : [...sel].map(String).sort(),
+                    }
+                  : {
                       process_filter: sel === null ? null : [...sel].sort(),
                   };
-            const { error } = await api.PATCH(
-                "/v1/clients/{clientUuid}/servers/{serverUuid}/monitoring",
+            const { error } = await (api as unknown as { PATCH: typeof api.PATCH }).PATCH(
+                "/v1/clients/{clientUuid}/servers/{serverUuid}/monitoring" as never,
                 {
                     params: {
                         path: {
@@ -337,8 +387,8 @@ function MonitoringFilter({
                             serverUuid: uuid,
                         },
                     },
-                    body,
-                },
+                    body: body as never,
+                } as never,
             );
             if (error) {
                 toast.error("Failed to save monitoring filter.");
@@ -354,8 +404,8 @@ function MonitoringFilter({
         }
     };
 
-    const noun = isPorts ? "ports" : "processes";
-    const Noun = isPorts ? "Ports" : "Processes";
+    const noun = isPorts ? "ports" : isInterfaces ? "interfaces" : "processes";
+    const Noun = isPorts ? "Ports" : isInterfaces ? "Interfaces" : "Processes";
 
     return (
         <>
@@ -814,16 +864,24 @@ export function MetricsTab({
                 )}
                 <div className="grid grid-cols-1 gap-6">
                     {CHARTS.map((cfg) => (
-                        <ServerStatChart
-                            key={cfg.dataKey}
-                            title={cfg.title}
-                            data={server?.stats || []}
-                            dataKey={cfg.dataKey}
-                            color={cfg.color}
-                            unit={cfg.unit}
-                            yDomain={cfg.yDomain}
-                            timeSpan={timeSpan}
-                        />
+                        <Fragment key={cfg.dataKey}>
+                            {cfg.dataKey === "disk" && (
+                                <NetworkTrafficChart
+                                    data={server?.stats || []}
+                                    timeSpan={timeSpan}
+                                    uuid={uuid}
+                                />
+                            )}
+                            <ServerStatChart
+                                title={cfg.title}
+                                data={server?.stats || []}
+                                dataKey={cfg.dataKey}
+                                color={cfg.color}
+                                unit={cfg.unit}
+                                yDomain={cfg.yDomain}
+                                timeSpan={timeSpan}
+                            />
+                        </Fragment>
                     ))}
                 </div>
             </div>

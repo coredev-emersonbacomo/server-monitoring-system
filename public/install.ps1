@@ -6,22 +6,19 @@ param(
     [string]$AppUrl = "{{APP_URL}}"
 )
 
+$ErrorActionPreference = "Stop"
+
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
     Write-Host "ERROR: This script must be run as Administrator." -ForegroundColor Red
     exit 1
 }
 
-# Every installation gets a fresh, immutable UUID. It names the instance
-# directory, the keystore identity and the Windows service, so multiple agents
-# on one machine never collide.
-$InstallationId = [guid]::NewGuid().ToString()
-$ServiceName = "MonitorAgent-$InstallationId"
-$KeyName = "MonitorAgentIdentity-$InstallationId"
+# Under the one-agent-per-computer model there is exactly one service per host,
+# named "MonitorAgent" (stable -- not per-installation). Detection is by the
+# service's presence, not by files or hostname.
+$ServiceName = "MonitorAgent"
 $DataRoot = "C:\ProgramData\MonitorAgent"
-$InstanceDir = "$DataRoot\instances\$InstallationId"
-$AppDir = "C:\Program Files\MonitorAgent\$InstallationId"
-$AgentFile = "$AppDir\MonitorAgent.exe"
 $LogFile = "$env:TEMP\monitor-agent-install.log"
 
 function Log($msg) {
@@ -35,8 +32,36 @@ function Fail($msg) {
     exit 1
 }
 
-Log "Starting MonitorAgent installation (instance: $InstallationId)..."
+# ----- Detect an existing single agent installation -------------
+$ExistingService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+if ($ExistingService) {
+    # Reuse the installation UUID from the existing service's binary path.
+    $binaryPath = (Get-WmiObject Win32_Service -Filter "Name='$ServiceName'").PathName
+    $ExistingId = ""
+    if ($binaryPath -match '-instance\s+([0-9a-fA-F-]+)') {
+        $ExistingId = $matches[1]
+    }
+    if (-not $ExistingId) {
+        Fail "Service '$ServiceName' exists but its installation UUID could not be parsed from its binary path."
+    }
 
+    $InstallationId = $ExistingId
+    $KeyName = "MonitorAgentIdentity-$InstallationId"
+    $InstanceDir = "$DataRoot\instances\$InstallationId"
+    Log "Detected existing MonitorAgent service (installation: $InstallationId) -- attaching new server."
+    $Attach = $true
+} else {
+    $InstallationId = [guid]::NewGuid().ToString()
+    $KeyName = "MonitorAgentIdentity-$InstallationId"
+    $InstanceDir = "$DataRoot\instances\$InstallationId"
+    Log "No existing service found -- creating new single-agent installation (instance: $InstallationId)."
+    $Attach = $false
+}
+
+$AppDir = "C:\Program Files\MonitorAgent"
+$AgentFile = "$AppDir\MonitorAgent.exe"
+
+# ----- Contact Provision Endpoint ------------------------------
 $bootstrapUrl = "$($AppUrl.TrimEnd('/'))/api/v1/provision"
 Log "Contacting provision endpoint..."
 $body = @{
@@ -44,7 +69,7 @@ $body = @{
     hostname = [System.Net.Dns]::GetHostName()
     platform = "windows"
     architecture = $env:PROCESSOR_ARCHITECTURE
-    installer_version = "99"
+    installer_version = "3.0"
 } | ConvertTo-Json
 
 try {
@@ -61,21 +86,7 @@ if (-not $serverUrl) {
     Fail "Invalid bootstrap configuration returned by server."
 }
 
-# --- Collision prevention -------------------------------------
-if (Test-Path $InstanceDir) {
-    Fail "Installation directory already exists: $InstanceDir"
-}
-if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
-    Fail "A service named $ServiceName already exists - installation collision."
-}
-if (Test-Path $AgentFile) {
-    $keyCheck = & "$AgentFile" -has-key -key $KeyName 2>$null
-    if ($LASTEXITCODE -eq 0) {
-        Fail "Identity key $KeyName already exists in the keystore - installation collision."
-    }
-}
-
-# --- Per-installation program folder (never shared with other agents) ---
+# ----- Shared binary location (one binary, not per-installation) -
 if (-not (Test-Path $AppDir)) {
     New-Item -ItemType Directory -Path $AppDir -Force | Out-Null
 }
@@ -110,12 +121,13 @@ if ($needDownload) {
     try {
         Move-Item "$AgentFile.tmp" $AgentFile -Force
     } catch {
-        Remove-Item "$AgentFile.tmp" -Force
+        Remove-Item "$AgentFile.tmp" -Force -ErrorAction Continue
         Fail "Failed to replace agent binary (is another instance running?): $_"
     }
 }
 
-# --- Instance config ------------------------------------------
+# ----- Instance config (single, stable instance dir) -----------
+# provision_token is one-time: the agent consumes it on register and strips it.
 New-Item -ItemType Directory -Path $InstanceDir -Force | Out-Null
 $agentConfig = @{
     server_url = $serverUrl
@@ -126,12 +138,22 @@ $agentConfig = @{
 Set-Content -Path "$InstanceDir\config.json" -Value $agentConfig -Force
 Log "Instance configuration written."
 
-try {
-    & "$AgentFile" -install -instance $InstallationId | Out-Null
-    if ($LASTEXITCODE -ne 0) { Fail "Agent service registration failed." }
-    Log "Windows service $ServiceName registered and started."
-} catch {
-    Fail "Could not register Windows service: $_"
+# ----- Register / re-register the stable Windows service -------
+if (-not $Attach) {
+    # First install: register the single stable "MonitorAgent" service.
+    # The Go binary creates the service pinned to -instance <uuid>.
+    try {
+        & "$AgentFile" -install -instance $InstallationId | Out-Null
+        if ($LASTEXITCODE -ne 0) { Fail "Agent service registration failed." }
+        Log "Windows service '$ServiceName' registered and started."
+    } catch {
+        Fail "Could not register Windows service: $_"
+    }
+} else {
+    # Existing host: restart the stable service so it picks up the new token.
+    Log "Restarting existing service '$ServiceName' to pick up new provision token..."
+    Restart-Service -Name $ServiceName -Force -ErrorAction Stop
+    Log "Service restarted -- agent will register immediately on next startup (register+auth, ~3s)."
 }
 
 Log "Installation complete."

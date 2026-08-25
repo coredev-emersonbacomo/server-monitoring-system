@@ -191,11 +191,15 @@ export function DocsAgentMonitoringContent() {
         <>
             <Section title="The monitoring loop">
                 <p>
-                    Each owned server is monitored by the same agent loop. On
-                    every heartbeat tick the agent collects processes and open
-                    ports <strong>once</strong>, then sends one heartbeat per
-                    server with that server's filter applied — so adding a
-                    server costs one heartbeat request, not a second collector.
+                    Every owned server is monitored by one agent loop. On each
+                    heartbeat tick the agent collects metrics, processes and
+                    open ports <strong>once</strong>, then sends a{" "}
+                    <strong>single aggregated heartbeat</strong> for all of its
+                    servers: usage stats travel once at the top level, and each
+                    server contributes its own partition carrying that server's
+                    filtered processes and ports — so adding a server costs one
+                    extra partition inside the same request, not a second
+                    collector or a second request.
                 </p>
                 <MultiServerDemo />
             </Section>
@@ -343,13 +347,14 @@ export function DocsAgentMonitoringContent() {
                     </li>
                     <li>
                         <strong>pending_commands</strong> — backend-issued
-                        commands to execute; results are acknowledged in a
-                        follow-up heartbeat.
+                        commands to execute; results are acknowledged in the
+                        next aggregated heartbeat.
                     </li>
                     <li>
-                        <strong>HTTP 403/404/410</strong> — the server is
-                        decommissioned or reassigned; the agent removes it from
-                        its monitored set instead of retrying forever.
+                        <strong>revoked_server_uuids</strong> — servers that are
+                        decommissioned, reassigned, or no longer owned; the
+                        agent removes them from its monitored set instead of
+                        retrying forever.
                     </li>
                 </ul>
             </Section>

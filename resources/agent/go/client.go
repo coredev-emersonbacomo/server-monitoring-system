@@ -207,6 +207,7 @@ func parseAuthResponse(result map[string]interface{}) (*AuthResponse, error) {
 			}
 			assignment.PortFilter = parseIntList(m["port_filter"])
 			assignment.ProcessFilter = parseStringList(m["process_filter"])
+			assignment.NetworkFilter = parseStringList(m["network_filter"])
 			if assignment.ServerUUID != "" {
 				resp.Servers = append(resp.Servers, assignment)
 			}
@@ -362,7 +363,10 @@ func (c *AgentClient) register(req *RegisterRequest) (*RegisterResponse, error) 
 	return resp, nil
 }
 
-func (c *AgentClient) sendHeartbeat(payload *HeartbeatRequest) (*HeartbeatResponse, error) {
+// sendAgentHeartbeat sends one aggregated heartbeat covering every monitored
+// server. On a 401 the session is refreshed once and the call retried; all
+// other HTTP errors are returned for the caller to classify.
+func (c *AgentClient) sendAgentHeartbeat(payload *AgentHeartbeatRequest) (*AgentHeartbeatResponse, error) {
 	url := c.apiURL("/api/v1/agent/heartbeat")
 
 	for attempt := 0; attempt < 2; attempt++ {
@@ -383,12 +387,26 @@ func (c *AgentClient) sendHeartbeat(payload *HeartbeatRequest) (*HeartbeatRespon
 			return nil, err
 		}
 
-		resp := &HeartbeatResponse{}
+		resp := &AgentHeartbeatResponse{}
 		if hb, ok := result["heartbeat_interval"].(float64); ok {
 			resp.HeartbeatInterval = int(hb)
 		}
 		if ct, ok := result["current_time"].(float64); ok {
 			resp.CurrentTime = int64(ct)
+		}
+		if uuids, ok := result["server_uuids"].([]interface{}); ok {
+			for _, u := range uuids {
+				if s, ok := u.(string); ok {
+					resp.ServerUUIDs = append(resp.ServerUUIDs, s)
+				}
+			}
+		}
+		if rev, ok := result["revoked_server_uuids"].([]interface{}); ok {
+			for _, u := range rev {
+				if s, ok := u.(string); ok {
+					resp.RevokedServerUUIDs = append(resp.RevokedServerUUIDs, s)
+				}
+			}
 		}
 		if cfg, ok := result["configuration"].(map[string]interface{}); ok {
 			resp.Configuration = cfg
@@ -421,9 +439,6 @@ func (c *AgentClient) sendHeartbeat(payload *HeartbeatRequest) (*HeartbeatRespon
 					resp.PendingCommands = append(resp.PendingCommands, cmd)
 				}
 			}
-		}
-		if uuid, ok := result["server_uuid"].(string); ok {
-			resp.ServerUUID = uuid
 		}
 		return resp, nil
 	}

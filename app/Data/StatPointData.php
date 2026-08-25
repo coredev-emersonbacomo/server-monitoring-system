@@ -13,5 +13,7 @@ class StatPointData extends Data
         public float $netIn,
         public float $netOut,
         public float $disk,
+        /** @var array<int, array{name: string, netIn: float, netOut: float}> Per-interface MB/s rates; empty when no per-interface data exists for this point. */
+        public array $networks = [],
     ) {}
 }

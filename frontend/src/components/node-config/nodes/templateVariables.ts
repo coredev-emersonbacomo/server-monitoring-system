@@ -40,6 +40,8 @@ const LABELS: Record<TemplateVariableKey, { label: string; group: TemplateVariab
     'server.agent_deleted'          : { label: 'Agent Deleted', group: 'server', description: 'Agent Deleted (ServerData)' },
     'server.port_filter'            : { label: 'Port Filter', group: 'server', description: 'Port Filter (ServerData)' },
     'server.process_filter'         : { label: 'Process Filter', group: 'server', description: 'Process Filter (ServerData)' },
+    'server.available_interfaces'   : { label: 'Available Interfaces', group: 'server', description: 'Available Interfaces (ServerData)' },
+    'server.network_filter'         : { label: 'Network Filter', group: 'server', description: 'Network Filter (ServerData)' },
     'server.activities'             : { label: 'Activities', group: 'server', description: 'Activities (ServerData)' },
     'server.agent'                  : { label: 'Agent', group: 'server', description: 'Agent (ServerData)' },
     'server.alert_scope'            : { label: 'Alert Scope', group: 'server', description: 'Alert Scope (ServerData)' },
@@ -67,6 +69,7 @@ const LABELS: Record<TemplateVariableKey, { label: string; group: TemplateVariab
     'metric.netIn'                  : { label: 'NetIn', group: 'metric', description: 'NetIn (StatPointData)' },
     'metric.netOut'                 : { label: 'NetOut', group: 'metric', description: 'NetOut (StatPointData)' },
     'metric.disk'                   : { label: 'Disk', group: 'metric', description: 'Disk (StatPointData)' },
+    'metric.networks'               : { label: 'Networks', group: 'metric', description: 'Per-interface network traffic (StatPointData)' },
 };
 
 export const TEMPLATE_VARIABLES: TemplateVariable[] = (Object.entries(LABELS) as [TemplateVariableKey, typeof LABELS[TemplateVariableKey]][]).map(

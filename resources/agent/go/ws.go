@@ -39,6 +39,7 @@ type configUpdatePayload struct {
 	BinaryURL         string    `json:"binary_url"`
 	PortFilter        *[]int    `json:"port_filter"`
 	ProcessFilter     *[]string `json:"process_filter"`
+	NetworkFilter     *[]string `json:"network_filter"`
 }
 
 // connectControlChannel maintains a persistent WebSocket connection to Reverb.
@@ -291,16 +292,21 @@ func handleConfigUpdate(runtime *AgentRuntime, payload configUpdatePayload, hear
 		*heartbeatInterval = payload.HeartbeatInterval
 	}
 
-	if payload.ServerUUID != "" && (payload.PortFilter != nil || payload.ProcessFilter != nil) {
+	if payload.ServerUUID != "" {
 		var ports []int
+		var processes []string
+		var networks []string
 		if payload.PortFilter != nil {
 			ports = *payload.PortFilter
 		}
-		var processes []string
 		if payload.ProcessFilter != nil {
 			processes = *payload.ProcessFilter
 		}
-		runtime.Upsert(payload.ServerUUID, ports, processes)
+		if payload.NetworkFilter != nil {
+			networks = *payload.NetworkFilter
+		}
+		// nil means reset to allow-all (not preserve old)
+		runtime.Upsert(payload.ServerUUID, ports, processes, networks)
 		log.Printf("[WS] Filter updated for server %s", payload.ServerUUID)
 	}
 }

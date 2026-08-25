@@ -199,40 +199,40 @@ const PAGES: Record<
     string,
     { title: string; description: string; Content: ComponentType }
 > = {
-    "requirements": {
+    requirements: {
         title: "Requirements",
         description:
             "Software and services required to install and run the system.",
         Content: DocsRequirementsContent,
     },
-    "installation": {
+    installation: {
         title: "Installation & Setup",
         description: "From cloning the repository to a running system.",
         Content: DocsInstallationContent,
     },
-    "configuration": {
+    configuration: {
         title: "Configuration",
         description: "Environment files, key variables, and Gmail SMTP.",
         Content: DocsConfigurationContent,
     },
-    "running": {
+    running: {
         title: "Running the App",
         description: "Dev workflow, production build, and deployment.",
         Content: DocsRunningContent,
     },
-    "dashboard": {
+    dashboard: {
         title: "Dashboard",
         description:
             "Stat cards, server overview, action board, and live usage charts.",
         Content: DocsDashboardContent,
     },
-    "clients": {
+    clients: {
         title: "Clients",
         description:
             "Manage client accounts, their servers, and SecOps assignments.",
         Content: DocsClientsContent,
     },
-    "servers": {
+    servers: {
         title: "Servers",
         description: "Create servers, install the agent, and monitor metrics.",
         Content: DocsServersContent,
@@ -243,23 +243,23 @@ const PAGES: Record<
             "Install the agent on Windows or Linux, watch the server come online, and uninstall cleanly.",
         Content: DocsAgentInstallContent,
     },
-    "users": {
+    users: {
         title: "Users",
         description: "Manage accounts, credentials, and client assignments.",
         Content: DocsUsersContent,
     },
-    "logs": {
+    logs: {
         title: "Logs",
         description: "Activity, server health, and agent audit logs.",
         Content: DocsLogsContent,
     },
-    "reports": {
+    reports: {
         title: "Reports",
         description:
             "Generate PDF reports for servers, clients, and the whole system.",
         Content: DocsReportsContent,
     },
-    "settings": {
+    settings: {
         title: "Settings",
         description:
             "Profile, sessions, system settings, agent settings, and alert configs.",
@@ -271,7 +271,7 @@ const PAGES: Record<
             "The visual node editor for alerts — every node type, wiring, scopes, and templates.",
         Content: DocsAlertConfiguratorContent,
     },
-    "adrs": {
+    adrs: {
         title: "ADRs",
         description:
             "Architecture decision records — the decision log behind the system.",
@@ -313,17 +313,17 @@ const PAGES: Record<
             "Challenge-response authentication, channel authorization, and local key protection.",
         Content: DocsAgentSecurityContent,
     },
-    "credentials": {
+    credentials: {
         title: "Credentials Storage",
         description: "How secrets and credentials are stored and injected.",
         Content: DocsCredentialsContent,
     },
-    "architecture": {
+    architecture: {
         title: "Architecture",
         description: "Components, data flow, and how the pieces fit together.",
         Content: DocsArchitectureContent,
     },
-    "alerting": {
+    alerting: {
         title: "Alerting System",
         description:
             "The node-based alert engine — configuration, evaluation, and scheduling.",
@@ -334,7 +334,7 @@ const PAGES: Record<
         description: "Pluggable storage provider system for file uploads.",
         Content: DocsStorageProvidersContent,
     },
-    "scheduling": {
+    scheduling: {
         title: "Background Jobs & Scheduling",
         description: "Scheduled commands, queued jobs, and WebSocket channels.",
         Content: DocsSchedulingContent,
@@ -430,7 +430,9 @@ function DocPager({
                     <ChevronLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
                     <span>{prev.label}</span>
                 </button>
-            ) : <div />}
+            ) : (
+                <div />
+            )}
 
             {next && (
                 <button
@@ -462,9 +464,8 @@ export default function Docs() {
     const { sectionId } = useParams();
     const navigate = useNavigate();
     const [mobileOpen, setMobileOpen] = useState(false);
-    const [subSections, setSubSections] = useState<
-        Record<string, DocSubItem[]>
-    >(MANUAL_SUBS);
+    const [subSections, setSubSections] =
+        useState<Record<string, DocSubItem[]>>(MANUAL_SUBS);
     const [activeSub, setActiveSub] = useState<string | null>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const hiddenRef = useRef<HTMLDivElement>(null);
@@ -478,7 +479,7 @@ export default function Docs() {
     const current = inSidebar
         ? DOC_SECTIONS[index]
         : parentId
-          ? DOC_SECTIONS.find((s) => s.id === parentId) ?? null
+          ? (DOC_SECTIONS.find((s) => s.id === parentId) ?? null)
           : null;
 
     let prev: DocPageRef | null = null;
@@ -497,7 +498,10 @@ export default function Docs() {
             id,
             label: PAGES[id]?.title ?? id,
         });
-        prev = subPos > 0 ? ref(siblings[subPos - 1]) : DOC_SECTIONS[parentIndex] ?? null;
+        prev =
+            subPos > 0
+                ? ref(siblings[subPos - 1])
+                : (DOC_SECTIONS[parentIndex] ?? null);
         next =
             subPos >= 0 && subPos < siblings.length - 1
                 ? ref(siblings[subPos + 1])
@@ -525,8 +529,7 @@ export default function Docs() {
                             items.push({
                                 id: heading.id,
                                 label:
-                                    heading.textContent?.trim() ||
-                                    heading.id,
+                                    heading.textContent?.trim() || heading.id,
                                 level: 1,
                             });
                         });
@@ -618,7 +621,7 @@ export default function Docs() {
     return (
         <div className="flex h-full flex-col w-full bg-background text-foreground">
             {/* Top Navigation Bar */}
-            <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
                 <div className="relative flex h-14 items-center px-4 sm:px-6">
                     <div className="absolute left-4 sm:left-6">
                         <button
@@ -632,7 +635,9 @@ export default function Docs() {
                     </div>
                     <div className="flex flex-1 items-center justify-center gap-2">
                         <BookOpen className="size-5 text-foreground" />
-                        <span className="font-semibold text-base tracking-tight">Server Monitoring Documentation</span>
+                        <span className="font-semibold text-base tracking-tight">
+                            Server Monitoring Documentation
+                        </span>
                     </div>
                     <div className="absolute right-4 sm:right-6">
                         <button
@@ -686,17 +691,6 @@ export default function Docs() {
                         <div className="mx-auto flex w-full max-w-7xl justify-center px-4 sm:px-8 py-10 lg:py-12">
                             {/* Center Article Content */}
                             <div className="min-w-0 max-w-3xl flex-1 pb-16">
-                                {/* Breadcrumb */}
-                                <nav className="mb-4 flex items-center space-x-1 text-sm text-muted-foreground">
-                                    <span className="truncate">Docs</span>
-                                    <ChevronRight className="size-3.5" />
-                                    <span className="truncate">{current.group || "User Guide"}</span>
-                                    <ChevronRight className="size-3.5" />
-                                    <span className="font-medium text-foreground truncate">
-                                        {isOverview ? "Overview" : page?.title}
-                                    </span>
-                                </nav>
-
                                 {/* Header block (shadcn format) */}
                                 <div className="space-y-2 pb-6 border-b border-border/50">
                                     <h1 className="scroll-m-20 text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
@@ -730,7 +724,9 @@ export default function Docs() {
                                                     description="A walkthrough of the app: dashboard, clients, servers, users, logs, reports, and settings."
                                                     icon={Activity}
                                                     href="#dashboard"
-                                                    onClick={() => go("dashboard")}
+                                                    onClick={() =>
+                                                        go("dashboard")
+                                                    }
                                                 />
                                                 <DocCard
                                                     title="Technical Reference"
@@ -761,7 +757,12 @@ export default function Docs() {
                                                 <button
                                                     key={sub.id}
                                                     type="button"
-                                                    onClick={() => jumpToSub(current.id, sub.id)}
+                                                     onClick={() =>
+                                                         jumpToSub(
+                                                             routeId,
+                                                             sub.id,
+                                                         )
+                                                     }
                                                     className={cn(
                                                         "block w-full text-left py-1 text-xs transition-colors cursor-pointer leading-normal",
                                                         activeSub === sub.id
@@ -802,7 +803,9 @@ export default function Docs() {
                     <div className="flex items-center justify-between pb-4 mb-4 border-b border-border/50">
                         <div className="flex items-center gap-2">
                             <BookOpen className="size-4.5 text-foreground" />
-                            <span className="text-sm font-semibold">Docs Navigation</span>
+                            <span className="text-sm font-semibold">
+                                Docs Navigation
+                            </span>
                         </div>
                         <button
                             type="button"
@@ -837,10 +840,7 @@ export default function Docs() {
                                 ? DocsOverviewContent
                                 : PAGES[id].Content;
                         return (
-                            <div
-                                key={id}
-                                data-docpage={id}
-                            >
+                            <div key={id} data-docpage={id}>
                                 <Content />
                             </div>
                         );

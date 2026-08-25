@@ -364,8 +364,13 @@ class ServerController extends Controller
 
         $updates = $this->getData($server->id, $tableUnit, $subTime, $endTime);
 
+        $networkPoints = $this->getNetworkPoints($server->id, $tableUnit, $subTime, $endTime);
+        $byTimestamp = collect($networkPoints)->keyBy('timestamp')->map(fn ($p) => $p['networks']);
+
         $stats = $updates->map(
-            fn ($row) => StatPointData::from(self::computeStatPointFromAgg($row, $tableUnit))
+            fn ($row) => StatPointData::from(self::computeStatPointFromAgg($row, $tableUnit) + [
+                'networks' => $byTimestamp->get(Carbon::parse($row->timestamp)->getPreciseTimestamp(3), []),
+            ])
         )->values()->all();
 
         $data = ServerData::fromModel($server);
@@ -412,6 +417,8 @@ class ServerController extends Controller
             'port_filter.*' => ['integer', 'between:1,65535'],
             'process_filter' => ['nullable', 'array'],
             'process_filter.*' => ['string', 'max:255'],
+            'network_filter' => ['nullable', 'array'],
+            'network_filter.*' => ['string', 'max:255'],
         ]);
 
         $serverModel = Server::withTrashed()
@@ -420,7 +427,7 @@ class ServerController extends Controller
             ->firstOrFail();
 
         $update = [];
-        foreach (['port_filter', 'process_filter'] as $field) {
+        foreach (['port_filter', 'process_filter', 'network_filter'] as $field) {
             if (! $request->exists($field)) {
                 continue;
             }
@@ -429,9 +436,10 @@ class ServerController extends Controller
                 // Explicit null = reset to "monitor everything noise-filtered".
                 $update[$field] = null;
             } else {
-                $update[$field] = $field === 'port_filter'
-                    ? array_values(array_unique(array_map('intval', $value)))
-                    : array_values(array_unique($value));
+                $update[$field] = match ($field) {
+                    'port_filter' => array_values(array_unique(array_map('intval', $value))),
+                    'process_filter', 'network_filter' => array_values(array_unique($value)),
+                };
             }
         }
 
@@ -451,6 +459,7 @@ class ServerController extends Controller
                 '',
                 $serverModel->port_filter,
                 $serverModel->process_filter,
+                $serverModel->network_filter,
             ));
         }
 
@@ -492,6 +501,85 @@ class ServerController extends Controller
             }
             throw $e;
         }
+    }
+
+    /**
+     * Per-interface Network Traffic history: one point per aggregate bucket,
+     * each carrying the interfaces seen in that bucket with MB/s rates derived
+     * from deltas of their cumulative counters (same math as the live path).
+     */
+    public function getNetworkPoints(int $serverId, string $tableUnit, Carbon $subTime, ?Carbon $endTime = null): array
+    {
+        $networkTable = str_replace('server_updates_agg', 'server_network_stats_agg', $tableUnit);
+
+        try {
+            $rows = $this->queryNetworkAggTable($serverId, $networkTable, $subTime, $endTime);
+        } catch (\Throwable $e) {
+            if (str_contains($e->getMessage(), 'has not been populated')) {
+                DB::statement("REFRESH MATERIALIZED VIEW {$networkTable}");
+                $rows = $this->queryNetworkAggTable($serverId, $networkTable, $subTime, $endTime);
+            } else {
+                throw $e;
+            }
+        }
+
+        return self::computeNetworkPoints($rows);
+    }
+
+    private function queryNetworkAggTable(int $serverId, string $networkTable, Carbon $subTime, ?Carbon $endTime = null): Collection
+    {
+        $query = DB::table($networkTable)
+            ->selectRaw('timestamp, interface_name as "interfaceName", netin as "netIn", netout as "netOut"')
+            ->where('server_id', $serverId)
+            ->where('timestamp', '>=', $subTime);
+
+        if ($endTime) {
+            $query->where('timestamp', '<=', $endTime);
+        }
+
+        return $query->orderBy('timestamp')->get();
+    }
+
+    /**
+     * Convert cumulative-counter CAGG rows (one per interface per bucket) into
+     * per-bucket points with MB/s rates. A counter reset (reboot) clamps to 0.
+     *
+     * @param  Collection<int, object>  $rows
+     * @return array<int, array{timestamp: int, networks: array<int, array{name: string, netIn: float, netOut: float}>}>
+     */
+    public static function computeNetworkPoints(Collection $rows): array
+    {
+        $points = [];
+        /** @var array<string, array{ts: int, in: float, out: float}> $prev previous bucket values per interface */
+        $prevByIface = [];
+
+        foreach ($rows as $row) {
+            $tsMs = Carbon::parse($row->timestamp)->getPreciseTimestamp(3);
+            if (! isset($points[$tsMs])) {
+                $points[$tsMs] = ['timestamp' => $tsMs, 'networks' => []];
+            }
+
+            $curIn = (float) $row->netIn;
+            $curOut = (float) $row->netOut;
+            $rateIn = 0.0;
+            $rateOut = 0.0;
+
+            $name = (string) $row->interfaceName;
+            $prev = $prevByIface[$name] ?? null;
+            if ($prev !== null && ($dt = ($tsMs - $prev['ts']) / 1000) > 0) {
+                $rateIn = max(0, ($curIn - $prev['in']) / 1_000_000) / $dt;
+                $rateOut = max(0, ($curOut - $prev['out']) / 1_000_000) / $dt;
+            }
+            $prevByIface[$name] = ['ts' => $tsMs, 'in' => $curIn, 'out' => $curOut];
+
+            $points[$tsMs]['networks'][] = [
+                'name' => $name,
+                'netIn' => round($rateIn, 2),
+                'netOut' => round($rateOut, 2),
+            ];
+        }
+
+        return array_values($points);
     }
 
     private function queryAggTable(int $serverId, string $tableUnit, Carbon $subTime, ?Carbon $endTime = null): Collection
