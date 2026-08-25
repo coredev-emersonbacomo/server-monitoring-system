@@ -736,8 +736,9 @@ export default function ClientDetail() {
                                                     isEdit={showEdit}
                                                 >
                                                     <p className="text-base font-semibold text-foreground">
-                                                        {client?.contact_number ||
-                                                            ""}
+                                                        {formatContactNumber(
+                                                            client?.contact_number,
+                                                        ) || ""}
                                                     </p>
                                                 </Field>
                                             )}

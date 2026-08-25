@@ -48,3 +48,21 @@ export function toLabelCase(
 export function formatPhoneNumber(value: string): string {
     return value.replace(/\D/g, "").slice(0, 11);
 }
+
+export function formatContactNumber(value?: string | null): string {
+    if (!value) return "";
+    const digits = value.replace(/\D/g, "");
+    if (digits.length === 11) {
+        return `${digits.slice(0, 4)}-${digits.slice(4, 7)}-${digits.slice(7)}`;
+    }
+    if (digits.length === 12) {
+        return `${digits.slice(0, 4)}-${digits.slice(4, 8)}-${digits.slice(8)}`;
+    }
+    if (digits.length === 7) {
+        return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    }
+    if (digits.length === 8) {
+        return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+    }
+    return value;
+}
