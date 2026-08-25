@@ -466,6 +466,56 @@ class ServerController extends Controller
         return ServerData::fromModel($serverModel);
     }
 
+    /**
+     * User-initiated detach of a single server from its shared agent.
+     * Used by the Agent tab when the host agent monitors >1 servers — the
+     * button becomes "Detach Server" and shows that the agent will remain
+     * for the other servers.
+     */
+    public function detachFromAgent(string $clientUuid, string $serverUuid): \Illuminate\Http\JsonResponse
+    {
+        $server = Server::where('uuid', $serverUuid)
+            ->whereHas('client', fn ($q) => $q->where('uuid', $clientUuid))
+            ->where('agent_deleted', false)
+            ->where('status', '!=', ServerStatus::Archived->value)
+            ->firstOrFail();
+
+        if (! $server->agent_id || ! $server->agent) {
+            return response()->json(['message' => 'Server is not attached to an agent.'], 422);
+        }
+
+        $agent = $server->agent;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($server, $agent) {
+            $server->update([
+                'agent_id' => null,
+                'agent_deleted' => true,
+                'status' => ServerStatus::AgentUninstalled->value,
+            ]);
+
+            event(new \App\Events\AgentUninstalled($server->uuid));
+            event(new \App\Events\ServerStatusUpdated($server->uuid, ServerStatus::AgentUninstalled->value, $server->name));
+
+            \App\Models\Activity::create([
+                'server_id' => $server->id,
+                'agent_id' => $agent->id,
+                'type' => 'server_detached',
+                'description' => "Server {$server->name} detached from agent installation {$agent->installation_uuid} via dashboard; agent remains for other servers.",
+            ]);
+        });
+
+        $remaining = $agent->monitoredServers()->where('agent_deleted', false)->count();
+
+        return response()->json([
+            'status' => 'success',
+            'server_uuid' => $server->uuid,
+            'agent_remaining_servers' => $remaining,
+            'message' => $remaining > 0
+                ? "Server detached; agent remains for {$remaining} other server(s)."
+                : 'Server detached; agent now has no servers and can be fully uninstalled.',
+        ]);
+    }
+
     public static function computeStatPointFromAgg(object $row, string $tableUnit): array
     {
         $bucketSeconds = match (true) {

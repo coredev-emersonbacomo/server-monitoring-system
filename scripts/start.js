@@ -21,4 +21,8 @@ fs.cpSync(dist, target, { recursive: true, force: true });
 const envFile = path.join(root, '.env');
 const env = fs.existsSync(envFile) ? fs.readFileSync(envFile, 'utf8') : '';
 const appUrl = env.match(/^APP_URL=(.*)$/m)?.[1]?.trim() || 'http://localhost';
+const telescopeEnabled = env.match(/^TELESCOPE_ENABLED=(.*)$/m)?.[1]?.trim().toLowerCase();
+if (telescopeEnabled === 'true' || telescopeEnabled === '1') {
+    console.warn('[start] WARNING: TELESCOPE_ENABLED=true in production — Telescope exposes request/job data. Only run this in development or admin-lock it via Gate::define(\'viewTelescope\') and TELESCOPE_ADMIN_EMAILS. Set TELESCOPE_ENABLED=false for prod.');
+}
 console.log(`[start] UI built and deployed. Open ${appUrl}`);
