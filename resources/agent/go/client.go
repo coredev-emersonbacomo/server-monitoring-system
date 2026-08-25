@@ -512,3 +512,21 @@ func (c *AgentClient) revokeInstallation() error {
 	}
 	return nil
 }
+
+func (c *AgentClient) detachServer(serverUuid string) error {
+	url := c.apiURL("/api/v1/agent/servers/" + serverUuid + "/uninstall")
+	sess, err := c.ensureSession()
+	if err != nil {
+		return err
+	}
+	headers := map[string]string{"Authorization": "Bearer " + sess.AccessToken}
+	_, err = c.sendWithRetry(url, map[string]string{"reason": "detach"}, headers, 3, nil)
+	if err != nil {
+		var hse *httpStatusError
+		if errors.As(err, &hse) && hse.Status == http.StatusUnauthorized {
+			c.invalidate()
+		}
+		return err
+	}
+	return nil
+}
