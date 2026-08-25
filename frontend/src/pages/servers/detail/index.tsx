@@ -22,7 +22,6 @@ import IndexHeader, { type Crumb } from "@/components/IndexHeader";
 import { useServerSocket } from "@/hooks/useServerSocket";
 import { toast } from "sonner";
 import { createFormStore, useForm, type FormStore } from "@/components/ui/form";
-import type { ServerInfoForm } from "./context/ServerDetailContext";
 
 import { useServer } from "./hooks/useServer";
 import { useDeleteServer } from "./hooks/useDeleteServer";
