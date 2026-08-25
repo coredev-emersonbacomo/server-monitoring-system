@@ -54,5 +54,10 @@ spawnSync('php', ['artisan', 'config:clear'], { stdio: 'inherit' });
 if (mode === 'dev') {
   spawnAndPipe(process.execPath, ['scripts/dev.js', ...process.argv.slice(3)]);
 } else {
+  const prodEnv = fs.existsSync(path.join(root, '.env.production')) ? fs.readFileSync(path.join(root, '.env.production'), 'utf8') : '';
+  const telEnabled = prodEnv.match(/^TELESCOPE_ENABLED=(.*)$/m)?.[1]?.trim().toLowerCase();
+  if (telEnabled === 'true' || telEnabled === '1') {
+    console.warn('[entry] WARNING: TELESCOPE_ENABLED=true in .env.production — Telescope is dev-only. Only run this in development or admin-lock it via Gate::define(\'viewTelescope\'). Set TELESCOPE_ENABLED=false for prod.');
+  }
   spawnAndPipe(npm, ['run', 'build']);
 }

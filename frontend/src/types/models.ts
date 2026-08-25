@@ -253,6 +253,8 @@ export interface ServerData {
             available_interfaces?: { interface: string; type: string; state: string; rx_bytes?: number; tx_bytes?: number }[] | null;
             uninstall_linux_command?: string | null;
             uninstall_windows_command?: string | null;
+            detach_linux_command?: string | null;
+            detach_windows_command?: string | null;
             agent_deleted?: boolean;
             port_filter?: number[] | null;
             process_filter?: string[] | null;

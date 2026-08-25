@@ -553,6 +553,38 @@ php artisan schedule:work           # Task scheduler`}</CodeBlock>
                     start a web server — that must be handled by nginx/Apache.
                 </p>
             </Section>
+
+            <Section title="Telescope — dev-only">
+                <Callout type="warning">
+                    <strong>Only run Telescope in development</strong> or behind an
+                    admin gate. It records requests, jobs, queries, and logs — never
+                    expose <InlineCode>/telescope</InlineCode> in production.
+                </Callout>
+                <ul className="list-disc pl-5 space-y-1.5">
+                    <li>
+                        <InlineCode>TELESCOPE_ENABLED=true</InlineCode> in{" "}
+                        <InlineCode>.env.development</InlineCode> (dev) and{" "}
+                        <InlineCode>false</InlineCode> in{" "}
+                        <InlineCode>.env.production</InlineCode> (prod).{" "}
+                        <InlineCode>npm start</InlineCode> /{" "}
+                        <InlineCode>node entry.js prod</InlineCode> will print a
+                        warning and block Telescope if it is left enabled.
+                    </li>
+                    <li>
+                        Access is gated by{" "}
+                        <InlineCode>Gate::define('viewTelescope')</InlineCode> in{" "}
+                        <InlineCode>App\Providers\TelescopeServiceProvider</InlineCode>{" "}
+                        — in production it returns <InlineCode>false</InlineCode>{" "}
+                        unless you add admin emails via{" "}
+                        <InlineCode>TELESCOPE_ADMIN_EMAILS</InlineCode>.
+                    </li>
+                    <li>
+                        Dev: open <InlineCode>APP_URL/telescope</InlineCode> after{" "}
+                        <InlineCode>npm run dev</InlineCode>. Prod: request returns{" "}
+                        <InlineCode>403</InlineCode>.
+                    </li>
+                </ul>
+            </Section>
         </>
     );
 }
