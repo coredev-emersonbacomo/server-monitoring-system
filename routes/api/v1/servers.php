@@ -14,6 +14,7 @@ Route::middleware('auth:jwt')->group(function () {
         Route::patch('/servers/{serverUuid}', [ServerController::class, 'update']);
         Route::patch('/servers/{serverUuid}/alert-scope', [ServerController::class, 'updateAlertScope']);
         Route::patch('/servers/{serverUuid}/monitoring', [ServerController::class, 'updateMonitoringConfig']);
+        Route::post('/servers/{serverUuid}/detach', [ServerController::class, 'detachFromAgent']);
         Route::post('/servers/{serverUuid}/adjust-cost', [ServerController::class, 'adjustCost']);
         Route::get('/servers/{serverUuid}/cost-logs', [ServerController::class, 'costLogs']);
         Route::delete('/servers/{serverUuid}', [ServerController::class, 'destroy']);
