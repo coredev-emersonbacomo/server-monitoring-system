@@ -30,24 +30,26 @@ export default function ServerLayout() {
                 <Outlet key={uuid} />
             </div>
 
-            <aside className="w-72 shrink-0 flex flex-col max-h-[80vh] border-l border-border/40 pl-6 overflow-hidden">
-                <h2 className="text-sm font-semibold text-muted-foreground mb-3 tracking-tight shrink-0">
-                    All Servers
-                </h2>
+            <aside className="w-72 shrink-0 flex flex-col max-h-[calc(100vh-6rem)] sticky top-6 self-start border-l border-border/40 pl-6 overflow-hidden">
+                <div className="sticky top-0 bg-background/80 backdrop-blur-sm z-10 pb-3 -mx-1 px-1">
+                    <h2 className="text-sm font-semibold text-muted-foreground mb-3 tracking-tight">
+                        All Servers
+                    </h2>
 
-                {/* Search */}
-                <div className="relative mb-3 shrink-0">
-                    <Search
-                        size={13}
-                        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                    />
-                    <input
-                        type="text"
-                        placeholder="Search servers…"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-7 pr-3 py-1.5 text-xs border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
-                    />
+                    {/* Search */}
+                    <div className="relative shrink-0">
+                        <Search
+                            size={13}
+                            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Search servers…"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full pl-7 pr-3 py-1.5 text-xs border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
+                        />
+                    </div>
                 </div>
 
                 {/* Scrollable list */}

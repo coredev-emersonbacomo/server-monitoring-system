@@ -505,4 +505,22 @@ class AgentController extends Controller
 
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }
+
+    public function detachLinux(): Response
+    {
+        $scriptPath = public_path('detach.sh');
+        $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
+        $script = str_replace('{{APP_URL}}', url('/'), $script);
+
+        return response($script, 200, ['Content-Type' => 'text/plain']);
+    }
+
+    public function detachWindows(): Response
+    {
+        $scriptPath = public_path('detach.ps1');
+        $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
+        $script = str_replace('{{APP_URL}}', url('/'), $script);
+
+        return response($script, 200, ['Content-Type' => 'text/plain']);
+    }
 }
