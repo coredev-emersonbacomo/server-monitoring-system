@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
@@ -26,6 +26,7 @@ import {
     ChevronRight,
     Menu,
     X,
+    Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DocCard from "@/components/docs/DocCard";
@@ -461,6 +462,14 @@ function loadDocsLayout(): Record<string, number> {
     return { "docs-sidebar": 20, "docs-content": 80 };
 }
 
+interface SearchIndexEntry {
+    id: string;
+    title: string;
+    description: string;
+    contentText: string;
+    group: string;
+}
+
 export default function Docs() {
     useDocumentTitle("Docs");
     const { sectionId } = useParams();
@@ -474,6 +483,35 @@ export default function Docs() {
     const pendingScroll = useRef<string | null>(null);
     const overrideSubRef = useRef(false);
     const userScrolledRef = useRef(false);
+
+    // Search state
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [activeResultIndex, setActiveResultIndex] = useState(0);
+    const searchIndexRef = useRef<SearchIndexEntry[]>([]);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
+    // Build search index from hidden content renderer on mount
+    useEffect(() => {
+        const hidden = hiddenRef.current;
+        if (!hidden) return;
+        const entries: SearchIndexEntry[] = [];
+        hidden.querySelectorAll<HTMLElement>("[data-docpage]").forEach((el) => {
+            const id = el.dataset.docpage;
+            if (!id) return;
+            const page = PAGES[id];
+            const section = DOC_SECTIONS.find((s) => s.id === id);
+            entries.push({
+                id,
+                title: page?.title ?? section?.label ?? id,
+                description: page?.description ?? "",
+                contentText: el.textContent ?? "",
+                group: section?.group ?? "Sub-page",
+            });
+        });
+        searchIndexRef.current = entries;
+    }, []);
+
     const routeId = sectionId ?? "";
     const index = DOC_SECTIONS.findIndex((s) => s.id === routeId);
     const inSidebar = index >= 0;
@@ -540,6 +578,61 @@ export default function Docs() {
             setSubSections(map);
         }
     }, []);
+
+    // Search results
+    const searchResults = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q || q.length < 2) return [];
+        return searchIndexRef.current
+            .map((entry) => {
+                let score = 0;
+                if (entry.title.toLowerCase().includes(q)) score += 10;
+                if (entry.description.toLowerCase().includes(q)) score += 5;
+                if (entry.contentText.toLowerCase().includes(q)) score += 1;
+                return { ...entry, score };
+            })
+            .filter((r) => r.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 8);
+    }, [searchQuery]);
+
+    // Cmd/Ctrl+K to focus search
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+                setSearchOpen(true);
+            }
+            if (e.key === "Escape" && searchOpen) {
+                setSearchOpen(false);
+                searchInputRef.current?.blur();
+            }
+        };
+        window.addEventListener("keydown", handler);
+        return () => window.removeEventListener("keydown", handler);
+    }, [searchOpen]);
+
+    const navigateToResult = useCallback(
+        (entry: SearchIndexEntry) => {
+            const isSidebar = DOC_SECTIONS.some((s) => s.id === entry.id);
+            if (isSidebar) {
+                navigate(`/docs/${entry.id}`);
+            } else {
+                const parent = PARENT_SECTION[entry.id];
+                if (parent) {
+                    navigate(`/docs/${parent}`);
+                    pendingScroll.current = entry.id;
+                } else {
+                    navigate(`/docs/${entry.id}`);
+                }
+            }
+            setSearchOpen(false);
+            setSearchQuery("");
+            setMobileOpen(false);
+        },
+        [navigate],
+    );
 
     useEffect(() => {
         contentRef.current?.scrollTo(0, 0);
@@ -622,10 +715,12 @@ export default function Docs() {
 
     return (
         <div className="flex h-full flex-col w-full bg-background text-foreground">
+            <div className="relative">
             {/* Top Navigation Bar */}
             <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-                <div className="relative flex h-14 items-center px-4 sm:px-6">
-                    <div className="absolute left-4 sm:left-6">
+                <div className="relative flex h-14 items-center justify-between px-4 sm:px-6">
+                    {/* Left Side: Back Button */}
+                    <div className="flex items-center gap-2">
                         <button
                             type="button"
                             onClick={() => navigate("/")}
@@ -635,13 +730,53 @@ export default function Docs() {
                             <span>Back</span>
                         </button>
                     </div>
-                    <div className="flex flex-1 items-center justify-center gap-2">
+
+                    {/* Center: Title (Absolutely Centered) */}
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
                         <BookOpen className="size-5 text-foreground" />
-                        <span className="font-semibold text-base tracking-tight">
+                        <span className="font-semibold text-base tracking-tight whitespace-nowrap">
                             Server Monitoring Documentation
                         </span>
                     </div>
-                    <div className="absolute right-4 sm:right-6">
+
+                    {/* Right Side: Search & Mobile Menu */}
+                    <div className="flex items-center gap-2">
+                        <div className="relative w-full max-w-xs sm:max-w-md">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+                            <input
+                                ref={searchInputRef}
+                                type="text"
+                                placeholder="Search docs..."
+                                value={searchQuery}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    setSearchOpen(true);
+                                    setActiveResultIndex(0);
+                                }}
+                                onFocus={() => {
+                                    if (searchQuery.length >= 2) setSearchOpen(true);
+                                }}
+                                onBlur={() => {
+                                    setTimeout(() => setSearchOpen(false), 150);
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === "ArrowDown") {
+                                        e.preventDefault();
+                                        setActiveResultIndex((i) => Math.min(i + 1, searchResults.length - 1));
+                                    } else if (e.key === "ArrowUp") {
+                                        e.preventDefault();
+                                        setActiveResultIndex((i) => Math.max(i - 1, 0));
+                                    } else if (e.key === "Enter" && searchResults[activeResultIndex]) {
+                                        navigateToResult(searchResults[activeResultIndex]);
+                                    }
+                                }}
+                                className="w-full h-9 rounded-lg border border-border/60 bg-muted/30 pl-9 pr-16 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-border transition-colors"
+                            />
+                            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border/60 bg-background px-1.5 text-[10px] font-medium text-muted-foreground">
+                                <span className="text-xs">⌘</span>K
+                            </kbd>
+                        </div>
+
                         <button
                             type="button"
                             aria-label="Toggle docs navigation"
@@ -653,6 +788,48 @@ export default function Docs() {
                     </div>
                 </div>
             </header>
+
+            {/* Search Dropdown */}
+            {searchOpen && searchResults.length > 0 && (
+                <div className="absolute top-14 right-5 z-50 flex justify-center pointer-events-none">
+                    <div className="w-full max-w-md mx-4 sm:mx-auto mt-1 rounded-lg border border-border/60 bg-popover shadow-xl overflow-hidden pointer-events-auto">
+                        {searchResults.map((result, i) => (
+                            <button
+                                key={result.id}
+                                type="button"
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    navigateToResult(result);
+                                }}
+                                onMouseEnter={() => setActiveResultIndex(i)}
+                                className={cn(
+                                    "w-full text-left px-4 py-3 flex flex-col gap-0.5 transition-colors cursor-pointer",
+                                    i === activeResultIndex
+                                        ? "bg-accent text-accent-foreground"
+                                        : "hover:bg-muted/50",
+                                )}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <FileText className="size-3.5 text-muted-foreground shrink-0" />
+                                    <span className="text-sm font-medium truncate">
+                                        {result.title}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground ml-auto shrink-0">
+                                        {result.group}
+                                    </span>
+                                </div>
+                                {result.description && (
+                                    <p className="text-xs text-muted-foreground truncate pl-5.5">
+                                        {result.description}
+                                    </p>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            </div>
 
             <ResizablePanelGroup
                 defaultLayout={loadDocsLayout()}
