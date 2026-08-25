@@ -299,7 +299,7 @@ export function DocsServersContent() {
                     step.
                 </p>
                 <DocImage
-                    src="/images/createserver.gif"
+                    src="/images/screate.gif"
                     alt="Create server walkthrough"
                 />
             </Section>
@@ -343,8 +343,8 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1'
                     before you finish installing, generate a new one.
                 </Callout>
                 <DocImage
-                    src="/images/screate.gif"
-                    alt="Install agent walkthrough"
+                    src="/images/sinstall.gif"
+                    alt="Agent installation walkthrough"
                 />
             </Section>
 
@@ -376,6 +376,10 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1'
                         flag, first registration, and last heartbeat.
                     </li>
                 </ul>
+                <DocImage
+                    src="/images/sdetails.gif"
+                    alt="Server details walkthrough"
+                />
             </Section>
 
             <Section title="Deleting a server">
