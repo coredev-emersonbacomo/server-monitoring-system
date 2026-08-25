@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
     UserCircle,
     Monitor,
@@ -15,6 +16,7 @@ import IndexHeader from "@/components/IndexHeader";
 import PageLayout from "@/components/PageLayout";
 
 function Settings() {
+    useDocumentTitle("Settings");
     const { user, isLoading: authLoading } = useJwtAuth();
 
     if (authLoading) {

@@ -55,7 +55,9 @@ export default function ServerCard({ server }: { server: ServerData }) {
                     {server.ram && (
                         <span className="flex items-center gap-1">
                             <MemoryStick size={11} />
-                            {server.ram} GB
+                            {server.ram.toUpperCase().includes("B")
+                                ? server.ram
+                                : `${server.ram} GB`}
                         </span>
                     )}
                 </div>

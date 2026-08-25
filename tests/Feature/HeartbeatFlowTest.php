@@ -2,12 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Enums\ServerHealth;
 use App\Enums\ServerStatus;
 use App\Models\Agent;
 use App\Models\AgentIdentity;
 use App\Models\Client;
-use App\Models\Heartbeat;
 use App\Models\MetricBatch;
 use App\Models\MetricSample;
 use App\Models\Server;
@@ -16,7 +14,13 @@ use App\NodeConfig\Cache\NodeConfigCache;
 use App\NodeConfig\Engine\NodeConfigEngine;
 use App\NodeConfig\Engine\NodeRegistry;
 use App\NodeConfig\Models\NodeConfig;
-use App\Services\HeartbeatService;
+use App\NodeConfig\NodeTypes\CheckAfterNode;
+use App\NodeConfig\NodeTypes\ConditionNode;
+use App\NodeConfig\NodeTypes\LogicNode;
+use App\NodeConfig\NodeTypes\MetricNode;
+use App\NodeConfig\NodeTypes\NotificationNode;
+use App\NodeConfig\NodeTypes\RepeatNode;
+use App\NodeConfig\NodeTypes\SustainedNode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -27,9 +31,13 @@ class HeartbeatFlowTest extends TestCase
     use RefreshDatabase;
 
     private Client $client;
+
     private Server $server;
+
     private Agent $agent;
+
     private AgentIdentity $identity;
+
     private NodeConfig $alertsConfig;
 
     protected function setUp(): void
@@ -65,7 +73,7 @@ class HeartbeatFlowTest extends TestCase
 
         $this->identity = AgentIdentity::create([
             'agent_id' => $this->agent->id,
-            'identity_hash' => hash('sha256', 'test-identity-' . uniqid()),
+            'identity_hash' => hash('sha256', 'test-identity-'.uniqid()),
             'status' => 'active',
         ]);
 
@@ -118,14 +126,15 @@ class HeartbeatFlowTest extends TestCase
 
     private function createRegistry(): NodeRegistry
     {
-        $registry = new NodeRegistry();
-        $registry->register(new \App\NodeConfig\NodeTypes\MetricNode);
-        $registry->register(new \App\NodeConfig\NodeTypes\ConditionNode);
-        $registry->register(new \App\NodeConfig\NodeTypes\LogicNode);
-        $registry->register(new \App\NodeConfig\NodeTypes\CheckAfterNode);
-        $registry->register(new \App\NodeConfig\NodeTypes\SustainedNode);
-        $registry->register(new \App\NodeConfig\NodeTypes\RepeatNode);
-        $registry->register(new \App\NodeConfig\NodeTypes\NotificationNode);
+        $registry = new NodeRegistry;
+        $registry->register(new MetricNode);
+        $registry->register(new ConditionNode);
+        $registry->register(new LogicNode);
+        $registry->register(new CheckAfterNode);
+        $registry->register(new SustainedNode);
+        $registry->register(new RepeatNode);
+        $registry->register(new NotificationNode);
+
         return $registry;
     }
 
@@ -213,7 +222,7 @@ class HeartbeatFlowTest extends TestCase
             'metric_type' => 'cpu_usage',
         ]);
 
-        Log::info("[TEST] Engine result:", [
+        Log::info('[TEST] Engine result:', [
             'success' => $result['success'],
             'actions_count' => count($result['actions']),
             'timers_count' => count($result['timers']),
@@ -225,9 +234,9 @@ class HeartbeatFlowTest extends TestCase
 
         $firedResults = [];
 
-        if (!empty($result['timers'])) {
+        if (! empty($result['timers'])) {
             foreach ($result['timers'] as $timer) {
-                Log::info("[TEST] Timer scheduled:", [
+                Log::info('[TEST] Timer scheduled:', [
                     'node_id' => $timer['node_id'],
                     'delay_ms' => $timer['delay_ms'],
                 ]);
@@ -239,7 +248,7 @@ class HeartbeatFlowTest extends TestCase
                     'metric_type' => 'cpu_usage',
                 ]));
 
-                Log::info("[TEST] Timer fire result:", [
+                Log::info('[TEST] Timer fire result:', [
                     'success' => $timerResult['success'],
                     'propagated' => $timerResult['propagated'] ?? false,
                     'actions_count' => count($timerResult['actions'] ?? []),
@@ -247,9 +256,9 @@ class HeartbeatFlowTest extends TestCase
 
                 $firedResults[] = $timerResult;
 
-                if (!empty($timerResult['actions'])) {
+                if (! empty($timerResult['actions'])) {
                     foreach ($timerResult['actions'] as $action) {
-                        Log::info("[TEST] Timer action:", [
+                        Log::info('[TEST] Timer action:', [
                             'node_id' => $action['node_id'],
                             'type' => $action['type'],
                             'channel' => $action['settings']['channel'] ?? 'unknown',
@@ -259,9 +268,9 @@ class HeartbeatFlowTest extends TestCase
             }
         }
 
-        $firedActions = collect($firedResults)->flatMap(fn($r) => $r['actions'] ?? []);
+        $firedActions = collect($firedResults)->flatMap(fn ($r) => $r['actions'] ?? []);
         $this->assertNotEmpty($firedActions, 'Sustain timer fire should emit the email notification');
-        $emailAction = $firedActions->first(fn($a) => ($a['settings']['channel'] ?? '') === 'email');
+        $emailAction = $firedActions->first(fn ($a) => ($a['settings']['channel'] ?? '') === 'email');
         $this->assertNotNull($emailAction, 'Should have an email notification action');
         $this->assertEquals('email_10', $emailAction['node_id']);
     }
@@ -286,7 +295,7 @@ class HeartbeatFlowTest extends TestCase
             'metric_type' => 'cpu_usage',
         ]);
 
-        Log::info("[TEST] CPU 45.0 result:", [
+        Log::info('[TEST] CPU 45.0 result:', [
             'success' => $result['success'],
             'actions_count' => count($result['actions']),
         ]);
@@ -326,14 +335,14 @@ class HeartbeatFlowTest extends TestCase
             'metric_type' => 'server_status',
         ]);
 
-        Log::info("[TEST] Offline trigger result:", [
+        Log::info('[TEST] Offline trigger result:', [
             'success' => $result['success'],
             'actions_count' => count($result['actions']),
             'timers_count' => count($result['timers']),
         ]);
 
         foreach ($result['actions'] as $action) {
-            Log::info("[TEST] Offline action:", [
+            Log::info('[TEST] Offline action:', [
                 'node_id' => $action['node_id'],
                 'type' => $action['type'],
                 'channel' => $action['settings']['channel'] ?? 'unknown',
@@ -342,7 +351,7 @@ class HeartbeatFlowTest extends TestCase
         }
 
         foreach ($result['timers'] as $timer) {
-            Log::info("[TEST] Offline timer:", [
+            Log::info('[TEST] Offline timer:', [
                 'node_id' => $timer['node_id'],
                 'delay_ms' => $timer['delay_ms'],
             ]);
@@ -351,15 +360,15 @@ class HeartbeatFlowTest extends TestCase
         $this->assertTrue($result['success']);
         $this->assertNotEmpty($result['actions'], 'Offline should trigger immediate email');
 
-        $emailAction = collect($result['actions'])->first(fn($a) => $a['node_id'] === 'email_offline');
+        $emailAction = collect($result['actions'])->first(fn ($a) => $a['node_id'] === 'email_offline');
         $this->assertNotNull($emailAction, 'Should have email_offline action');
         $this->assertEquals('email', $emailAction['settings']['channel']);
 
-        $checkTimer = collect($result['timers'])->first(fn($t) => $t['node_id'] === 'check_after_10m');
+        $checkTimer = collect($result['timers'])->first(fn ($t) => $t['node_id'] === 'check_after_10m');
         $this->assertNotNull($checkTimer, 'Should schedule check_after_10m timer');
         $this->assertEquals(600000, $checkTimer['delay_ms'], 'Timer should be 10 minutes (600000ms)');
 
-        Log::info("[TEST] Firing check_after_10m timer...");
+        Log::info('[TEST] Firing check_after_10m timer...');
 
         $timerResult = $engine->fireTimer($config, 'check_after_10m', array_merge($checkTimer['context'], [
             'server_id' => $this->server->id,
@@ -368,16 +377,16 @@ class HeartbeatFlowTest extends TestCase
             'metric_type' => 'server_status',
         ]));
 
-        Log::info("[TEST] check_after_10m fire result:", [
+        Log::info('[TEST] check_after_10m fire result:', [
             'success' => $timerResult['success'],
             'propagated' => $timerResult['propagated'] ?? false,
             'actions_count' => count($timerResult['actions'] ?? []),
             'timers_count' => count($timerResult['timers'] ?? []),
         ]);
 
-        if (!empty($timerResult['actions'])) {
+        if (! empty($timerResult['actions'])) {
             foreach ($timerResult['actions'] as $action) {
-                Log::info("[TEST] check_after action:", [
+                Log::info('[TEST] check_after action:', [
                     'node_id' => $action['node_id'],
                     'type' => $action['type'],
                     'channel' => $action['settings']['channel'] ?? 'unknown',
@@ -385,9 +394,9 @@ class HeartbeatFlowTest extends TestCase
             }
         }
 
-        if (!empty($timerResult['timers'])) {
+        if (! empty($timerResult['timers'])) {
             foreach ($timerResult['timers'] as $innerTimer) {
-                Log::info("[TEST] check_after downstream timer:", [
+                Log::info('[TEST] check_after downstream timer:', [
                     'node_id' => $innerTimer['node_id'],
                     'delay_ms' => $innerTimer['delay_ms'],
                 ]);
@@ -399,16 +408,16 @@ class HeartbeatFlowTest extends TestCase
                     'metric_type' => 'server_status',
                 ]));
 
-                Log::info("[TEST] repeat fire result:", [
+                Log::info('[TEST] repeat fire result:', [
                     'success' => $repeatResult['success'],
                     'propagated' => $repeatResult['propagated'] ?? false,
                     'actions_count' => count($repeatResult['actions'] ?? []),
                     'timers_count' => count($repeatResult['timers'] ?? []),
                 ]);
 
-                if (!empty($repeatResult['timers'])) {
+                if (! empty($repeatResult['timers'])) {
                     foreach ($repeatResult['timers'] as $repeatTimer) {
-                        Log::info("[TEST] repeat_5m next timer scheduled:", [
+                        Log::info('[TEST] repeat_5m next timer scheduled:', [
                             'node_id' => $repeatTimer['node_id'],
                             'delay_ms' => $repeatTimer['delay_ms'],
                         ]);
@@ -428,13 +437,13 @@ class HeartbeatFlowTest extends TestCase
     public function test_server_online_does_not_trigger(): void
     {
         Log::info('[TEST] === Server Online Test ===');
-        Log::info("[TEST] Cache store: " . config('cache.default'));
+        Log::info('[TEST] Cache store: '.config('cache.default'));
 
         $registry = $this->createRegistry();
         $engine = new NodeConfigEngine($registry);
 
         $config = NodeConfigCache::findBySlug('alerts');
-        Log::info("[TEST] Config loaded: " . ($config ? $config->name : 'null'));
+        Log::info('[TEST] Config loaded: '.($config ? $config->name : 'null'));
 
         $result = $engine->trigger($config, 'metric_status', 'online', [
             'server_id' => $this->server->id,
@@ -443,12 +452,12 @@ class HeartbeatFlowTest extends TestCase
             'metric_type' => 'server_status',
         ]);
 
-        Log::info("[TEST] Server online result:", [
+        Log::info('[TEST] Server online result:', [
             'success' => $result['success'],
             'actions_count' => count($result['actions']),
         ]);
 
-        if (!empty($result['actions'])) {
+        if (! empty($result['actions'])) {
             foreach ($result['actions'] as $i => $action) {
                 Log::info("[TEST] Action[$i]:", [
                     'node_id' => $action['node_id'],
@@ -459,8 +468,8 @@ class HeartbeatFlowTest extends TestCase
             }
         }
 
-        if (!empty($result['outputs'])) {
-            Log::info("[TEST] Outputs:", $result['outputs']);
+        if (! empty($result['outputs'])) {
+            Log::info('[TEST] Outputs:', $result['outputs']);
         }
 
         $this->assertTrue($result['success']);
@@ -485,8 +494,8 @@ class HeartbeatFlowTest extends TestCase
         Log::info("[TEST] resolveForServer returned config: {$resolved->name} (ID: {$resolved->id})");
 
         $nodes = $resolved->getParsedConfig()['nodes'] ?? [];
-        $metricNodes = array_filter($nodes, fn($n) => ($n['type'] ?? '') === 'metric');
-        Log::info("[TEST] Config has " . count($metricNodes) . " metric nodes");
+        $metricNodes = array_filter($nodes, fn ($n) => ($n['type'] ?? '') === 'metric');
+        Log::info('[TEST] Config has '.count($metricNodes).' metric nodes');
 
         foreach ($metricNodes as $mn) {
             Log::info("[TEST]   - {$mn['id']}: {$mn['settings']['metric_type']}");

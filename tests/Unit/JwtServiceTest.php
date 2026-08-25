@@ -2,8 +2,9 @@
 
 use App\Services\JwtService;
 use Illuminate\Support\Str;
+use Tests\TestCase;
 
-uses(\Tests\TestCase::class);
+uses(TestCase::class);
 
 beforeEach(function () {
     config(['jwt.secret' => 'test-secret-key-32-chars-long-for-testing!']);
@@ -48,7 +49,7 @@ test('rejects a tampered token', function () {
     $token = $jwtService->generateAccessToken($userId, $sessionUuid);
     $parts = explode('.', $token);
     $tamperedPayload = base64_encode('{"sub":2,"sid":"fake","iat":123,"exp":9999999999}');
-    $tamperedToken = $parts[0] . '.' . $tamperedPayload . '.' . $parts[2];
+    $tamperedToken = $parts[0].'.'.$tamperedPayload.'.'.$parts[2];
 
     $payload = $jwtService->validateAccessToken($tamperedToken);
     expect($payload)->toBeNull();

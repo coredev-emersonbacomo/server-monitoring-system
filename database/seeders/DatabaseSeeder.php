@@ -29,7 +29,7 @@ class DatabaseSeeder extends Seeder
         $admin = User::where('username', 'admin')->first();
         if ($admin) {
             foreach (Client::all() as $client) {
-                if (!$client->secopclients()->where('user_id', $admin->id)->exists()) {
+                if (! $client->secopclients()->where('user_id', $admin->id)->exists()) {
                     $client->secopclients()->attach($admin->id, [
                         'uuid' => (string) Str::uuid7(),
                         'record_status' => 'active',

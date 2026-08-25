@@ -13,7 +13,18 @@ export const useClients = (params?: {
         queryFn: async () => {
             const { data, error } = await api.GET("/v1/clients", {
                 params: {
-                    query: params,
+                    query: (params
+                        ? {
+                            ...params,
+                            ...(params.available_only !== undefined
+                                ? {
+                                    available_only: params.available_only
+                                        ? 1
+                                        : 0,
+                                }
+                                : {}),
+                        }
+                        : undefined) as never,
                 },
             });
             if (error) throw error;

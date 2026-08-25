@@ -53,7 +53,7 @@ class DashboardController extends Controller
             }
 
             if ($agentDeleted) {
-                $pendingDeletionCount++;
+                $offlineCount++;
 
                 continue;
             }

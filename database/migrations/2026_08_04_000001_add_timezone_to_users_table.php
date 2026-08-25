@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasColumn('users', 'timezone')) {
+        if (! Schema::hasColumn('users', 'timezone')) {
             Schema::table('users', function (Blueprint $table) {
                 $table->string('timezone', 64)->nullable()->after('phone_number');
             });

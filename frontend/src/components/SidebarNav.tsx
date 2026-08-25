@@ -85,8 +85,14 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                 </button>
                 <label className="text-xl font-extrabold tracking-tight translate-x-[0.4rem]">
                     <div className="flex items-center justify-center gap-3">
-                        <img src="/images/coreDevlogo.png" alt="CoreDev Logo" className="w-10 h-10 object-contain" />
-                        <span className="font-bold text-xl tracking-wide">Server Monitoring</span>
+                        <img
+                            src="/images/coreDevlogo.png"
+                            alt="CoreDev Logo"
+                            className="w-10 h-10 object-contain"
+                        />
+                        <span className="font-bold text-xl tracking-wide">
+                            Server Monitoring
+                        </span>
                     </div>
                 </label>
                 <Menu className="size-sidebar-icon opacity-0" />
@@ -169,6 +175,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                         <Link
                             to="/profile"
                             onClick={() => setPopoverProfileOpen(false)}
+                            className="w-full block"
                         >
                             <ProfileBar user={user} asNavigation />
                         </Link>
@@ -176,10 +183,10 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                         <Link
                             to="/profile"
                             onClick={() => setPopoverProfileOpen(false)}
-                            className="flex gap-3 items-center px-4 py-2 rounded-lg transition-colors w-full hover:bg-muted cursor-pointer"
+                            className="flex gap-3 items-center px-4 py-2.5 rounded-lg transition-colors w-full hover:bg-muted cursor-pointer group text-sm"
                         >
-                            <CircleUser className="size-5" />
-                            <span>Profile</span>
+                            <CircleUser className="size-5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                            <span className="font-medium text-foreground">Profile</span>
                         </Link>
                     )}
                     <ThemeToggle />
@@ -213,26 +220,52 @@ const ProfileBar = ({
 }) => {
     if (!user) return null;
 
-    const firstName = user.first_name;
-    const lastName = user.last_name;
-    const username = user.username || user.email?.split("@")[0] || "";
+    const firstName = user.first_name || "";
+    const lastName = user.last_name || "";
+    const username = user.username
+        ? `@${user.username}`
+        : user.email
+          ? `@${user.email.split("@")[0]}`
+          : "";
     const avatarSrc =
         user.profile_picture_url ||
         import.meta.env.VITE_DEFAULT_PROFILE_PICTURE ||
         "";
 
+    if (asNavigation) {
+        return (
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors w-full hover:bg-muted cursor-pointer group text-sm">
+                <div className="size-8 rounded-full overflow-hidden bg-foreground/10 shrink-0">
+                    <img
+                        src={avatarSrc}
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                    />
+                </div>
+                <div className="flex-1 flex flex-col text-left min-w-0">
+                    <div className="font-semibold text-foreground/90 group-hover:text-foreground text-sm truncate">
+                        {firstName} {lastName}
+                    </div>
+                    {username && (
+                        <div className="text-xs text-muted-foreground truncate">
+                            {username}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div
             className={twMerge(
-                "rounded-xl text-lg transition-all duration-300 ease-in-out overflow-hidden cursor-pointer",
+                "rounded-xl transition-all duration-300 ease-in-out overflow-hidden cursor-pointer",
                 isCollapsed ? "w-sidebar-button-collapsed" : "w-sidebar-button",
                 "text-muted-foreground hover:bg-sidebar-hover",
-                asNavigation &&
-                    "cursor-pointer rounded-lg py-2 hover:bg-foreground/2 hover:ring-transparent",
             )}
         >
             <div className="flex items-center gap-sidebar-item-gap p-sidebar-item-padding w-sidebar-button cursor-pointer">
-                <div className="size-sidebar-icon p-sidebar-icon-padding-profile">
+                <div className="size-sidebar-icon p-sidebar-icon-padding-profile shrink-0">
                     <div className="w-full h-full relative rounded-full overflow-hidden bg-foreground/10">
                         <img
                             src={avatarSrc}
@@ -241,17 +274,17 @@ const ProfileBar = ({
                         />
                     </div>
                 </div>
-                <div className="leading-6 flex-1 w-full flex flex-col text-left min-w-0">
-                    <div className="font-semibold text-foreground/80 group-hover:text-foreground text-base truncate">
+                <div className="leading-5 flex-1 w-full flex flex-col text-left min-w-0">
+                    <div className="font-semibold text-foreground/80 group-hover:text-foreground text-sm truncate">
                         {firstName} {lastName}
                     </div>
-                    <span className="text-foreground/40 text-sm truncate">
-                        @{username}
-                    </span>
+                    {username && (
+                        <div className="text-xs text-muted-foreground truncate font-normal">
+                            {username}
+                        </div>
+                    )}
                 </div>
-                {!asNavigation && (
-                    <EllipsisVertical className="ml-auto text-gray-400 size-5" />
-                )}
+                <EllipsisVertical className="ml-auto text-gray-400 size-5 shrink-0" />
             </div>
         </div>
     );

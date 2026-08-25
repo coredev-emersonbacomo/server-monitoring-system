@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\CustomActivityLog;
+use Illuminate\Database\Eloquent\Collection;
 
 class ActivityLogController extends Controller
 {
@@ -29,8 +30,10 @@ class ActivityLogController extends Controller
         return $this->formatLogs(CustomActivityLog::where('type', 'billing')->latest()->get());
     }
 
-    private function formatLogs($logs)
+    private function formatLogs(Collection $logs): Collection
     {
+        $logs->load('PerformerUser');
+
         $logs->transform(function ($log) {
             if ($log->logable_type && class_exists($log->logable_type)) {
                 try {
@@ -41,6 +44,8 @@ class ActivityLogController extends Controller
                 } catch (\Exception $e) {
                     // fallback
                 }
+
+                $log->setAttribute('user_uuid', $log->PerformerUser?->uuid);
             }
 
             return $log;

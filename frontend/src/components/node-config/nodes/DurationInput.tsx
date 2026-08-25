@@ -95,9 +95,15 @@ export const DurationInput = memo(function DurationInput({
     }, [commitValue]);
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        setDisplayValue(e.target.value);
-        setParseError(null);
-    }, []);
+        const val = e.target.value;
+        setDisplayValue(val);
+        const result = parseDuration(val);
+        if (result.valid) {
+            setParseError(null);
+            previousValue.current = formatDuration(result.milliseconds);
+            onChange(result.milliseconds);
+        }
+    }, [onChange]);
 
     const hasError = !!externalError || !!parseError;
     const errorMessage = externalError || parseError;
