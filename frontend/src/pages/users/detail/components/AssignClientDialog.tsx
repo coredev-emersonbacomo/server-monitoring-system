@@ -15,7 +15,9 @@ interface AssignClientDialogProps {
         name: string;
         location?: string;
         banner_image_url?: string;
+        secops_count?: number;
     }>;
+    secopLimit?: number;
     isAdding: boolean;
     onAssignClient: (clientUuid: string, clientName: string) => void;
 }
@@ -24,6 +26,7 @@ export function AssignClientDialog({
     open,
     onOpenChange,
     availableClients,
+    secopLimit,
     isAdding,
     onAssignClient,
 }: AssignClientDialogProps) {
@@ -98,8 +101,13 @@ export function AssignClientDialog({
                                     <p className="text-sm font-medium text-foreground truncate">
                                         {client.name}
                                     </p>
-                                    <p className="text-xs text-muted-foreground truncate">
-                                        {client.location}
+                                    <p className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
+                                        <span>{client.location || "No location"}</span>
+                                        {typeof client.secops_count === "number" && !!secopLimit && (
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted font-medium text-muted-foreground">
+                                                {client.secops_count}/{secopLimit} SecOps
+                                            </span>
+                                        )}
                                     </p>
                                 </div>
                                 {selectedClientToAdd === client.uuid && isAdding && (

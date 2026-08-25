@@ -1,7 +1,7 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\ClientController;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:jwt')->group(function () {
     Route::get('/clients', [ClientController::class, 'index']);

@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AgentBroadcastAuthController;
+use App\Http\Middleware\JwtAuthenticate;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 
-// File Path: routes/api.php 
+// File Path: routes/api.php
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -15,12 +17,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Standard dashboard Broadcast auth (JWT users)
-Broadcast::routes(['middleware' => [\App\Http\Middleware\JwtAuthenticate::class]]);
+Broadcast::routes(['middleware' => [JwtAuthenticate::class]]);
 
 // Agent Broadcast auth — accepts agent identity tokens for private channel subscriptions
-Route::post('/broadcasting/auth/agent', [\App\Http\Controllers\Api\V1\AgentBroadcastAuthController::class, 'authorize']);
-
-
+Route::post('/broadcasting/auth/agent', [AgentBroadcastAuthController::class, 'authorize']);
 
 Route::prefix('v1')->group(function () {
     Route::group([], base_path('routes/api/v1/auth.php'));
@@ -32,8 +32,8 @@ Route::prefix('v1')->group(function () {
     Route::group([], base_path('routes/api/v1/uploads.php'));
     Route::group([], base_path('routes/api/v1/activity-logs.php'));
     Route::group([], base_path('routes/api/v1/agent.php'));
-Route::group([], base_path('routes/api/v1/node-configs.php'));
-Route::group([], base_path('routes/api/v1/reports.php'));
+    Route::group([], base_path('routes/api/v1/node-configs.php'));
+    Route::group([], base_path('routes/api/v1/reports.php'));
     Route::group([], base_path('routes/api/v1/reports.php'));
 });
 

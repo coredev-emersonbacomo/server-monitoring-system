@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
     BookOpen,
     Bell,
@@ -461,6 +462,7 @@ function loadDocsLayout(): Record<string, number> {
 }
 
 export default function Docs() {
+    useDocumentTitle("Docs");
     const { sectionId } = useParams();
     const navigate = useNavigate();
     const [mobileOpen, setMobileOpen] = useState(false);
