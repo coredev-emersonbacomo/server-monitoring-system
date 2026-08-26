@@ -63,8 +63,8 @@
     (label: "Disk", value: if item.at("disk", default: "") != "" { item.disk } else { "—" }),
     (
       label: "Subscription Fee",
-      value: text(fill: green, weight: "bold")[₱#str(item.at("subscription_fee"))]
-    )
+      value: text(fill: green, weight: "bold")[₱#str(item.at("subscription_fee"))],
+    ),
   ))
 
   if metrics.len() > 0 {
@@ -107,25 +107,25 @@
       stroke: 0.3pt + border-clr,
       inset: (x: 10pt, y: 8pt),
       align: (left + horizon, left + horizon),
-    table.cell(fill: bg-light)[
-      #set text(size: 8.5pt, weight: "bold", fill: text-dark)
-      Uptime
-    ],
-    table.cell()[
-      #progress-bar(uptime.uptime_percentage)
-    ],
-    table.cell(fill: bg-light)[
-      #set text(size: 8.5pt, weight: "bold", fill: text-dark)
-      Uptime (hrs)
-    ],
-    table.cell()[
-      #set text(size: 9pt, fill: text-dark)
-      #uptime-text(uptime.uptime_hours, uptime.range_hours)
-    ],
-    table.cell(fill: bg-light)[
-      #set text(size: 8.5pt, weight: "bold", fill: text-dark)
-      Outages
-    ],
+      table.cell(fill: bg-light)[
+        #set text(size: 8.5pt, weight: "bold", fill: text-dark)
+        Uptime
+      ],
+      table.cell()[
+        #progress-bar(uptime.uptime_percentage)
+      ],
+      table.cell(fill: bg-light)[
+        #set text(size: 8.5pt, weight: "bold", fill: text-dark)
+        Uptime (hrs)
+      ],
+      table.cell()[
+        #set text(size: 9pt, fill: text-dark)
+        #uptime-text(uptime.uptime_hours, uptime.range_hours)
+      ],
+      table.cell(fill: bg-light)[
+        #set text(size: 8.5pt, weight: "bold", fill: text-dark)
+        Outages
+      ],
       table.cell()[
         #set text(size: 9pt, fill: text-dark)
         #str(uptime.at("outage_count", default: 0))
@@ -134,7 +134,7 @@
           #h(0.4em)
           #text(size: 8pt, fill: text-muted)[(Last: #last)]
         ]
-      ]
+      ],
     )
   }
 
@@ -156,34 +156,48 @@
     section-title("Metrics Trends (" + range-label(d.at("hours", default: 24)) + ")")
     let x-span = if trend_x.len() >= 2 { (trend_x.last() - trend_x.first()).hours() } else { 0 }
     let is-daily = d.at("hours", default: 24) >= 168
-    let trend-xaxis = if trend_x.len() > 0 and type(trend_x.first()) == datetime and (trend_x.len() <= 12 or x-span < 30 or is-daily) {
+    let trend-xaxis = if (
+      trend_x.len() > 0 and type(trend_x.first()) == datetime and (trend_x.len() <= 12 or x-span < 30 or is-daily)
+    ) {
       let step = if trend_x.len() <= 12 { 1 } else { calc.ceil(trend_x.len() / 8) }
-      (ticks: range(0, trend_x.len(), step: step).map(i => (trend_x.at(i), trend-point-label(trend_x.at(i), trend_x, is-daily: is-daily))))
+      (
+        ticks: range(0, trend_x.len(), step: step).map(i => (
+          trend_x.at(i),
+          trend-point-label(trend_x.at(i), trend_x, is-daily: is-daily),
+        )),
+      )
     } else if trend_x.len() > 0 and type(trend_x.first()) == datetime {
       (tick-args: (density: 40%), format-ticks: lq.format-ticks-datetime.with(format: trend-tick-format))
     } else {
       (tick-args: (density: 40%))
     }
+
+    // Move the legend a bit on the top, so that it won't hinder the plots
+    show lq.selector(lq.legend): leg => move(dy: -23pt, leg)
+    show lq.selector(lq.legend): set grid(columns: 6)
+
     lq.diagram(
       width: 100%,
       height: 160pt,
       xaxis: trend-xaxis,
       xlabel: [#text(size: 8pt)[Time]],
       ylabel: [#text(size: 8pt)[Usage (%)]],
-      legend: (position: (100% + .5em, 0%)),
       grid: stroke(0.2pt + border-clr),
       lq.plot(
-        trend_x, cpu_7d,
+        trend_x,
+        cpu_7d,
         stroke: brand,
         label: [CPU],
       ),
       lq.plot(
-        trend_x, memory_7d,
+        trend_x,
+        memory_7d,
         stroke: rgb("#1565c0"),
         label: [Memory],
       ),
       lq.plot(
-        trend_x, disk_7d,
+        trend_x,
+        disk_7d,
         stroke: green,
         label: [Disk],
       ),
