@@ -8,7 +8,7 @@ import {
     Callout,
 } from "@/components/docs/Section";
 
-// ── Static graph data (mirrors NodeConfigSeeder) ──────────────────
+// ── Static graph data (mirrors NodeConfigSeeder — 2026-08-25 single-agent + per-interface network) ──
 
 const alertGraph: NodeConfigGraph = {
     nodes: [
@@ -109,7 +109,7 @@ const alertGraph: NodeConfigGraph = {
                 severity: "critical",
                 message:
                     ":rotating_light: [{server.client.name}] {server.name}'s {runtime.metricName} has been above 85% for {runtime.sustainValue}!\n\nEvent: <t:{runtime.eventTimestampUnix}:f>\n<if-repeat>\nFirst Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>\n</if-repeat>\n<if-repeat>\n<discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>\n</if-repeat>\n" +
-                        '<discord-button url="{server.url}">View Server Details</discord-button>',
+                    '<discord-button url="{server.url}">View Server Details</discord-button>',
             },
         },
         {
@@ -126,8 +126,7 @@ const alertGraph: NodeConfigGraph = {
                 label: "Email Offline",
                 channel: "email",
                 severity: "warning",
-                subject:
-                    "[{server.client.name}] {server.name} - Offline Alert",
+                subject: "[{server.client.name}] {server.name} - Offline Alert",
                 message:
                     "[{server.client.name}] {server.name} has been offline for {runtime.offlineDuration}!\nAlert Trigger: <t:{runtime.eventTimestampUnix}:f>",
             },
@@ -153,7 +152,7 @@ const alertGraph: NodeConfigGraph = {
                 severity: "critical",
                 message:
                     ":rotating_light: [{server.client.name}] {server.name} is still offline! (for {runtime.offlineDuration})\n\nEvent: <t:{runtime.eventTimestampUnix}:f>\n<if-repeat>\nFirst Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>\n</if-repeat>\n<if-repeat>\n<discord-footer>Server Monitoring System · repeat: {runtime.repeat.countOfMessage} of {runtime.repeat.max} ({runtime.repeat.interval})</discord-footer>\n</if-repeat>\n" +
-                        '<discord-button url="{server.url}">View Server Details</discord-button>',
+                    '<discord-button url="{server.url}">View Server Details</discord-button>',
             },
         },
         {
@@ -364,41 +363,45 @@ const alertGraph: NodeConfigGraph = {
     ],
 };
 
-// ── Content ───────────────────────────────────────────────────────
-
 export function DocsAlertsContent() {
     return (
         <>
-            <Section title="Overview">
+            <Section title="Overview — what the alert engine is">
                 <p>
-                    This is the engine behind the alert configs you build in
-                    the visual editor. For how to use the editor itself —
-                    every node type, wiring, scopes, and template variables —
-                    see the <strong>Alert Config Editor</strong> section in the
-                    User Guide. Here we look at how the engine evaluates a
-                    graph, how timers fire, and how state persists across
-                    polls.
+                    Alerts are a <strong>visual node graph</strong> compiled to
+                    branches. Each branch is{" "}
+                    <InlineCode>
+                        metric → condition → timing → action → post_action
+                    </InlineCode>{" "}
+                    where <InlineCode>timing</InlineCode> is{" "}
+                    <InlineCode>sustained</InlineCode>/
+                    <InlineCode>check_after</InlineCode> and{" "}
+                    <InlineCode>post_action</InlineCode> is{" "}
+                    <InlineCode>repeat</InlineCode>. The engine is poll-driven
+                    and per-server: every heartbeat and every offline check
+                    triggers the branches that watch that metric for that
+                    server, with a latch so each incident fires once.
                 </p>
                 <p>
-                    The engine is poll-driven. The{" "}
-                    <InlineCode>system:monitor</InlineCode> scheduled command
-                    runs every minute and dispatches a{" "}
-                    <InlineCode>MonitorServer</InlineCode> job per server. Each
-                    job resolves the server's config and calls{" "}
-                    <InlineCode>NodeConfigEngine::trigger()</InlineCode> for
-                    every metric source node (server_status, cpu, memory, disk,
-                    ports ping).
+                    See the editor for node types and wiring —{" "}
+                    <InlineCode>NodeConfigEditor</InlineCode> +{" "}
+                    <InlineCode>NodePalette</InlineCode> +{" "}
+                    <InlineCode>NodeSettingsPanel</InlineCode> — and the code
+                    map below for where each piece lives.
                 </p>
             </Section>
 
-            <Section title="Default Alert Graph">
+            <Section title="Default Alert Graph — seeded">
                 <p className="mb-4">
-                    This is the default alert pipeline seeded into the system.
-                    It has three branches: metrics above 85% (chained sustained
-                    gates at 10s / 20s / 30s with a repeat on the last one), a
-                    server-offline branch, and a ports-ping branch.
+                    <InlineCode>NodeConfigSeeder</InlineCode> seeds one global
+                    config with three families:{" "}
+                    <strong>metrics ≥85% chained 10s→20s→30s+repeat</strong>,{" "}
+                    <strong>server_status offline</strong>, and{" "}
+                    <strong>ports_ping</strong> (slow vs unreachable). It
+                    mirrors the <InlineCode>alertGraph</InlineCode> below — drag
+                    to explore.
                 </p>
-                <div className="h-100 rounded-xl border border-border/60 bg-card overflow-hidden">
+                <div className="h-[520px] rounded-xl border border-border/60 bg-card overflow-hidden">
                     <NodeConfigEditor
                         config={alertGraph}
                         previewOnly
@@ -408,347 +411,460 @@ export function DocsAlertsContent() {
                         showNodeTypesSidebar={false}
                     />
                 </div>
-            </Section>
-
-            <Section title="Alert Flow Walkthrough">
-                <p>
-                    Here is what happens when CPU usage hits 92% on a server
-                    (using the default seeded graph):
-                </p>
-                <ol className="list-decimal list-inside ml-2 space-y-2">
-                    <li>
-                        <strong>t=0 (poll):</strong>{" "}
-                        <InlineCode>system:monitor</InlineCode> runs.
-                        <InlineCode>MonitorServer</InlineCode> fetches the
-                        latest CPU sample (92.5) and calls{" "}
-                        <InlineCode>engine::trigger()</InlineCode>.
-                    </li>
-                    <li>
-                        <strong>Condition node:</strong> 92.5 ≥ 85 → true.
-                    </li>
-                    <li>
-                        <strong>Chained sustained stack:</strong> the first
-                        sustained node (10s) receives true and dispatches a{" "}
-                        <InlineCode>FireNodeTimer</InlineCode>; the 20s and 30s
-                        nodes are chained behind it via Chain In / Chain Out and
-                        arm sequentially.
-                    </li>
-                    <li>
-                        <strong>t=10s:</strong> 10s timer fires → re-checks the
-                        historical condition against the database → still true →{" "}
-                        <InlineCode>email_10</InlineCode> fires and the 20s node
-                        arms.
-                    </li>
-                    <li>
-                        <strong>t=20s:</strong> 20s timer fires →{" "}
-                        <InlineCode>email_20</InlineCode> fires and the 30s node
-                        arms.
-                    </li>
-                    <li>
-                        <strong>t=30s:</strong> 30s timer fires →{" "}
-                        <InlineCode>discord_30</InlineCode> fires. Because the
-                        30s node has the Repeat capability (every 10s, infinite),
-                        its repeat timer starts.
-                    </li>
-                    <li>
-                        <strong>t=40s, 50s, 60s…:</strong> the repeat fires every
-                        10s. Each time,{" "}
-                        <InlineCode>retriggerFromSource()</InlineCode> re-evaluates
-                        the full graph with an expanding sustain window (40s, 50s,
-                        60s…). If CPU drops below 85%, the historical check fails
-                        and the repeat stops.
-                    </li>
-                </ol>
-                <p>
-                    In parallel, the server-status branch watches heartbeats:
-                    when the server goes offline, <InlineCode>email_offline</InlineCode>{" "}
-                    fires immediately and a Check After node starts a 10s timer
-                    before the <InlineCode>discord_offline</InlineCode> message —
-                    debouncing flapping.
-                </p>
-            </Section>
-
-            <Section title="Config Resolution">
-                <p>
-                    Alerts can be scoped at three levels. When evaluating, the
-                    system picks the most specific config:
-                </p>
-                <ol className="list-decimal list-inside ml-2 space-y-1">
-                    <li>
-                        <strong>Server-scoped</strong> — applies to one specific
-                        server.
-                    </li>
-                    <li>
-                        <strong>Client-scoped</strong> — applies to all servers
-                        in a client.
-                    </li>
-                    <li>
-                        <strong>Global</strong> — fallback for all servers.
-                    </li>
-                </ol>
                 <Callout>
-                    <strong>Tip:</strong> Create a global config with default
-                    thresholds, then override per-server for machines that need
-                    tighter or looser alerts.
+                    <InlineCode>metric_network</InlineCode> now feeds the same{" "}
+                    <InlineCode>compare_85</InlineCode> as CPU/memory/disk —
+                    network is per-interface (
+                    <InlineCode>networks_dict</InlineCode> +{" "}
+                    <InlineCode>available_interfaces</InlineCode>) but the alert
+                    metric <InlineCode>network_usage</InlineCode> is the host’s
+                    aggregate <InlineCode>rx_bytes</InlineCode> sum, so one
+                    threshold covers all interfaces.
                 </Callout>
             </Section>
 
-            <Section title="Code Architecture">
+            <Section title="Full Flow — install to alert to detach/uninstall">
+                <ol className="list-decimal pl-5 space-y-2">
+                    <li>
+                        <strong>Install:</strong> dashboard →{" "}
+                        <InlineCode>Generate Installation Command</InlineCode>{" "}
+                        (one-time <InlineCode>ProvisionToken</InlineCode> 30
+                        min) → run on host — installer creates{" "}
+                        <InlineCode>config.json</InlineCode> with{" "}
+                        <InlineCode>installation_id</InlineCode> + token → agent
+                        registers (
+                        <InlineCode>POST /api/v1/register</InlineCode> with
+                        public key) → token stripped.
+                    </li>
+                    <li>
+                        <strong>Auth:</strong> challenge-response (
+                        <InlineCode>/auth/challenge</InlineCode> → sign →{" "}
+                        <InlineCode>/auth/verify</InlineCode> → JWT 900s, memory
+                        only). Auth response carries{" "}
+                        <InlineCode>
+                            servers: [
+                            {`{server_uuid, port_filter, process_filter, network_filter}`}
+                            ]
+                        </InlineCode>{" "}
+                        and <InlineCode>heartbeat_interval</InlineCode> — builds{" "}
+                        <InlineCode>runtime.go</InlineCode> in-memory per-server
+                        filters.
+                    </li>
+                    <li>
+                        <strong>Heartbeat (at once):</strong> every{" "}
+                        <InlineCode>5s</InlineCode> one{" "}
+                        <InlineCode>POST /api/v1/agent/heartbeat</InlineCode>{" "}
+                        with top-level{" "}
+                        <InlineCode>
+                            cpu/memory/disk/uptime/agent_config
+                        </InlineCode>{" "}
+                        + deduped{" "}
+                        <InlineCode>
+                            processes_dict/ports_dict/networks_dict
+                        </InlineCode>{" "}
+                        and per-server key lists (
+                        <InlineCode>
+                            servers: [
+                            {`{server_uuid, processes:[names], open_db_ports:["tcp:5432"], network:["Wi-Fi"]}`}
+                            ]
+                        </InlineCode>
+                        ).{" "}
+                        <InlineCode>
+                            available_processes/ports/interfaces
+                        </InlineCode>{" "}
+                        (details-only, no live data) are sent only on signature
+                        change.
+                    </li>
+                    <li>
+                        <strong>Backend ingest:</strong>{" "}
+                        <InlineCode>AgentController::heartbeat</InlineCode> →{" "}
+                        <InlineCode>HeartbeatService::processAgent</InlineCode>{" "}
+                        — one <InlineCode>Heartbeat</InlineCode> row per tick
+                        (not per server), <InlineCode>MetricSample</InlineCode>{" "}
+                        + <InlineCode>ServerUpdate</InlineCode> per server
+                        (totals + <InlineCode>server_network_stats</InlineCode>{" "}
+                        per-interface), <InlineCode>available_*</InlineCode>{" "}
+                        stored on <InlineCode>Agent</InlineCode> for filter UI,
+                        then per-server{" "}
+                        <InlineCode>EvaluateNodeConfig</InlineCode> dispatched
+                        per metric.
+                    </li>
+                    <li>
+                        <strong>Alert trigger:</strong>{" "}
+                        <InlineCode>EvaluateNodeConfig</InlineCode> job →{" "}
+                        <InlineCode>
+                            NodeConfigEngine::trigger(metricNodeId, value,{" "}
+                            {`{server_id, metric_type}`})
+                        </InlineCode>{" "}
+                        → edge-triggered latch + timing chain → timers.
+                    </li>
+                    <li>
+                        <strong>Timers → notifications:</strong>{" "}
+                        <InlineCode>NodeTaskScheduler</InlineCode> inserts{" "}
+                        <InlineCode>node_config_tasks</InlineCode> (`run_at =
+                        now+delay`), <InlineCode>FireNodeTimer</InlineCode>{" "}
+                        (queue) re-evaluates with{" "}
+                        <InlineCode>timer_fire:true</InlineCode> and historical
+                        DB check, then <InlineCode>SendNotification</InlineCode>{" "}
+                        (`MUTE_NOTIFICATION` check, template rendering).
+                    </li>
+                    <li>
+                        <strong>Detach vs uninstall:</strong> host command{" "}
+                        <InlineCode>
+                            detach.ps1/sh -Instance &lt;uuid&gt; -Server
+                            &lt;server-uuid&gt;
+                        </InlineCode>{" "}
+                        → <InlineCode>detach.flag</InlineCode> →{" "}
+                        <InlineCode>
+                            POST
+                            /api/v1/agent/servers/&#123;uuid&#125;/uninstall
+                        </InlineCode>{" "}
+                        (agent JWT, one server) →{" "}
+                        <InlineCode>AgentUninstalled</InlineCode> for that
+                        server only, agent stays for others (until last server
+                        detached, then it idles with zero servers). Full
+                        uninstall{" "}
+                        <InlineCode>
+                            uninstall.ps1/sh -Instance &lt;uuid&gt;
+                        </InlineCode>{" "}
+                        → <InlineCode>uninstall.flag</InlineCode> →{" "}
+                        <InlineCode>POST /api/v1/agent/uninstall</InlineCode> →
+                        revokes agent + all servers. Both are marker-based and
+                        host-validated (service account keystore).
+                    </li>
+                    <li>
+                        <strong>Who sends what:</strong> the{" "}
+                        <strong>agent</strong> initiates{" "}
+                        <InlineCode>detach</InlineCode>/
+                        <InlineCode>uninstall</InlineCode> POSTs (proving the
+                        key); the <strong>dashboard</strong>’s{" "}
+                        <InlineCode>DeleteModal</InlineCode> and{" "}
+                        <InlineCode>AgentTab</InlineCode> for multi-server only
+                        show the host commands for validation — direct dashboard{" "}
+                        <InlineCode>DELETE</InlineCode> without host is blocked
+                        (<InlineCode>422</InlineCode> until the host flag is
+                        handled). After detach/uninstall the server flips to{" "}
+                        <InlineCode>Agent Uninstalled</InlineCode> in real time
+                        via <InlineCode>AgentUninstalled</InlineCode> +{" "}
+                        <InlineCode>ServerStatusUpdated</InlineCode> WebSocket.
+                    </li>
+                </ol>
+                <Callout type="warning">
+                    Detaching the last server does <strong>not</strong>{" "}
+                    auto-revoke the agent — it stays installed with zero servers
+                    until a full <InlineCode>uninstall</InlineCode>. The UI
+                    shows <InlineCode>Agent Uninstalled</InlineCode> for the
+                    detached server but keeps last agent data (via{" "}
+                    <InlineCode>ServerData</InlineCode> fallback) until
+                    re-provisioned.
+                </Callout>
+            </Section>
+
+            <Section title="Alert Flow Walkthrough — CPU 92% (chained 10s→20s→30s+repeat)">
+                <ol className="list-decimal list-inside ml-2 space-y-2">
+                    <li>
+                        <strong>t=0 poll:</strong>{" "}
+                        <InlineCode>MonitorServer</InlineCode> (every minute via{" "}
+                        <InlineCode>system:monitor</InlineCode>) fetches latest{" "}
+                        <InlineCode>cpu.load1=92.5</InlineCode> →{" "}
+                        <InlineCode>
+                            engine.trigger("metric_cpu", 92.5, {`{server_id}`})
+                        </InlineCode>
+                        .
+                    </li>
+                    <li>
+                        <strong>Condition:</strong>{" "}
+                        <InlineCode>compare_85</InlineCode> `92.5 ≥ 85` → true →
+                        latch `cpu:output` armed.
+                    </li>
+                    <li>
+                        <strong>Timing chain arm:</strong>{" "}
+                        <InlineCode>sustained_10</InlineCode> receives true →
+                        <InlineCode>NodeTaskScheduler</InlineCode> inserts
+                        `delayMs=10000` for `sustained_10` (chain root).
+                    </li>
+                    <li>
+                        <strong>t=10s FireNodeTimer:</strong> re-checks DB
+                        `MetricSample` window `now-10s` still `≥85` →{" "}
+                        <InlineCode>email_10</InlineCode> fires, cascades to
+                        `sustained_20` timer `10000` (cumulative 20s).
+                    </li>
+                    <li>
+                        <strong>t=20s:</strong> `sustained_20` DB check still
+                        true → `email_20` fires, arms `sustained_30` (`30000`
+                        cumulative).
+                    </li>
+                    <li>
+                        <strong>t=30s:</strong> `sustained_30` fires →
+                        `discord_30` fires and, because it has{" "}
+                        <InlineCode>
+                            repeat_interval:10000 repeat_max:-1
+                        </InlineCode>
+                        , schedules repeat timer.
+                    </li>
+                    <li>
+                        <strong>t=40s,50s…:</strong> `fireChainRepeat` re-checks
+                        only the last step’s DB window (expanding sustain) →{" "}
+                        `discord_30` repeats every `10s` until
+                        `liveConditionStillHolds` fails (CPU drops), then
+                        `resetChain` to `idle`.
+                    </li>
+                </ol>
+                <p>
+                    Server-status branch is separate:{" "}
+                    <InlineCode>metric_status:offline</InlineCode> →{" "}
+                    <InlineCode>email_offline</InlineCode> immediately +{" "}
+                    <InlineCode>check_after 10s</InlineCode> →{" "}
+                    <InlineCode>discord_offline</InlineCode> (debounce), and{" "}
+                    <InlineCode>ports_ping</InlineCode> branch uses{" "}
+                    <InlineCode>
+                        metric_ports:timing → compare_ping (threshold via
+                        TemplateNode)
+                    </InlineCode>{" "}
+                    → <InlineCode>sustained_ping 10s</InlineCode> →{" "}
+                    <InlineCode>discord_ping</InlineCode>.
+                </p>
+            </Section>
+
+            <Section title="Config Resolution (global → client → server)">
+                <p>
+                    `NodeConfigCache::resolveForServer(uuid)` picks the most
+                    specific config: <InlineCode>server</InlineCode> →{" "}
+                    <InlineCode>client</InlineCode> →{" "}
+                    <InlineCode>global</InlineCode>{" "}
+                    (`scope_type`/`scope_id`/`slug`). The editor saves via{" "}
+                    <InlineCode>NodeConfigController::update</InlineCode> →{" "}
+                    <InlineCode>NodeConfigValidator</InlineCode> (no cycles,
+                    valid edges) →{" "}
+                    <InlineCode>NodeConfigCompiler::compile</InlineCode> →{" "}
+                    <InlineCode>compiled_config.branches</InlineCode> cached and
+                    `warm`.
+                </p>
+            </Section>
+
+            <Section title="Code Architecture — Engine">
                 <SubSection title="Entry Points">
                     <p>
-                        The scheduled command{" "}
-                        <InlineCode>system:monitor</InlineCode> (defined in{" "}
-                        <InlineCode>routes/console.php</InlineCode>) runs every
-                        minute and dispatches{" "}
-                        <InlineCode>MonitorServer</InlineCode> jobs.
+                        <InlineCode>system:monitor</InlineCode>{" "}
+                        (`routes/console.php` everyMinute) →{" "}
+                        <InlineCode>MonitorServer</InlineCode> per server →{" "}
+                        <InlineCode>
+                            NodeConfigCache::resolveForServer
+                        </InlineCode>{" "}
+                        → <InlineCode>engine.trigger</InlineCode> per metric (
+                        <InlineCode>
+                            server_status, cpu, memory, disk, network_usage,
+                            ports_ping
+                        </InlineCode>
+                        ). Heartbeat path does the same via{" "}
+                        <InlineCode>
+                            HeartbeatService::evaluateMetricsForNodeConfig
+                        </InlineCode>{" "}
+                        + <InlineCode>CheckServerOffline</InlineCode> (`delay
+                        offline_threshold+2s`).
                     </p>
                     <CodeBlock>{`// routes/console.php
 Schedule::command('system:monitor')->everyMinute();
 
-// app/Console/Commands/SystemMonitor.php
-public function handle(): int
-{
-    $servers = Server::all();
-    foreach ($servers as $server) {
-        MonitorServer::dispatch($server->uuid);
-    }
-    return 0;
+// MonitorServer::handle()
+$config = NodeConfigCache::resolveForServer($server->uuid);
+foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage','ports_ping'] as $metric) {
+    $nodeId = $engine->findMetricNode($config, $metric);
+    EvaluateNodeConfig::dispatch($config->id, $nodeId, $value, ['server_id'=>$server->id]);
 }`}</CodeBlock>
-                    <p>
-                        <InlineCode>MonitorServer</InlineCode> resolves the
-                        config via{" "}
-                        <InlineCode>
-                            NodeConfigCache::resolveForServer()
-                        </InlineCode>
-                        , then calls{" "}
-                        <InlineCode>engine::trigger()</InlineCode> for each
-                        metric (server_status, cpu, memory, disk).
-                    </p>
                 </SubSection>
 
-                <SubSection title="Engine: trigger()">
-                    <p>
-                        <InlineCode>
-                            NodeConfigEngine::trigger()
-                        </InlineCode>{" "}
-                        at{" "}
-                        <InlineCode>
-                            app/NodeConfig/Engine/NodeConfigEngine.php:42
-                        </InlineCode>{" "}
-                        is the core. It:
-                    </p>
+                <SubSection title="Engine: trigger() — app/NodeConfig/Engine/NodeConfigEngine.php:49">
                     <ol className="list-decimal list-inside ml-2 space-y-1">
-                        <li>Validates the graph (no cycles, valid edges).</li>
-                        <li>Topologically sorts nodes.</li>
                         <li>
-                            Builds condition and repeat contexts (maps
-                            SustainedNode → upstream ConditionNode settings,
-                            RepeatNode → SustainedNode ancestor info).
+                            Find `branches` where `metric_node_id ==
+                            sourceNodeId` + `metric_source_handle` (`output` vs
+                            `timing` for `ports_ping`).
                         </li>
                         <li>
-                            Evaluates each node in order, passing upstream
-                            outputs as inputs.
+                            `evaluateBranch`: `MetricNode` → `ConditionNode`
+                            (once, with `template_refs` override for
+                            `threshold/min/max`) → branch latch `branch:
+                            {`{metric:handle}`}` `armed` in `NodeConfigState`
+                            (edge-triggered, no implicit repeat; clears only
+                            when `condition==false &&
+                            !branchHasActiveEvaluation`).
                         </li>
                         <li>
-                            Collects timers (delayed callbacks) and actions
-                            (notifications) from results.
+                            `evaluateSubBranch`: `timing` (`SustainedNode`
+                            state-machine `idle→pending→firing`) → `action`
+                            (`NotificationNode`) → `post_action`
+                            (`RepeatNode`/`CheckAfterNode`) — each returns
+                            `NodeResult {"{"}shouldPropagate, value, timer,
+                            state{"}"}`.
+                        </li>
+                        <li>
+                            Collect `timers[]` (`node_config_tasks`) +
+                            `actions[]` (`ActionItem` via `NotificationNode`).
                         </li>
                     </ol>
-                    <CodeBlock>{`// Simplified evaluation loop
-foreach ($order as $nodeId) {
-    $handler = $this->registry->get($node['type']);
-    $result = $handler->evaluate($inputValues, $node['settings'], $currentState);
-
-    NodeConfigState::updateOrCreate(
-        ['node_config_id' => $config->id, 'node_id' => $nodeId],
-        ['context' => $result->state],
-    );
-
-    if ($result->timer !== null) {
-        $timers[] = ['node_id' => $nodeId, 'delay_ms' => $result->timer->delayMs];
-    }
-}`}</CodeBlock>
                 </SubSection>
 
-                <SubSection title="Timer-Based Scheduling">
+                <SubSection title="Timer Scheduling">
                     <p>
-                        Both SustainedNode and RepeatNode use the same
-                        mechanism: they return a{" "}
-                        <InlineCode>NodeResult::withTimer()</InlineCode>{" "}
-                        containing a{" "}
-                        <InlineCode>NodeTimer(delayMs, context)</InlineCode>.
-                    </p>
-                    <p>
-                        The caller (
-                        <InlineCode>MonitorServer</InlineCode> or{" "}
-                        <InlineCode>EvaluateNodeConfig</InlineCode>) dispatches{" "}
-                        <InlineCode>FireNodeTimer</InlineCode> as a delayed
-                        Laravel queue job:
-                    </p>
-                    <CodeBlock>{`// MonitorServer.php / EvaluateNodeConfig.php
-foreach ($result['timers'] as $timer) {
-    FireNodeTimer::dispatch(
-        $timer['node_config_id'],
-        $timer['node_id'],
-        $timer['context'],
-    )->delay(now()->addMilliseconds($timer['delay_ms']));
-}`}</CodeBlock>
-                    <p>
-                        <InlineCode>FireNodeTimer</InlineCode> calls{" "}
-                        <InlineCode>engine::fireTimer()</InlineCode>, which
-                        re-evaluates the node with{" "}
-                        <InlineCode>timer_fire = true</InlineCode> in state. If
-                        the node propagates, downstream nodes are processed. For
-                        RepeatNodes with a Sustained ancestor, it calls{" "}
-                        <InlineCode>retriggerFromSource()</InlineCode> instead,
-                        which re-evaluates the entire graph from the metric
-                        source with accumulated sustain time.
-                    </p>
-                    <CodeBlock>{`// FireNodeTimer.php
-public function handle(NodeRegistry $registry, NodeConfigNotificationService $notifications): void
-{
-    $config = NodeConfigCache::findById($this->configId);
-    $engine = new NodeConfigEngine($registry);
-    $result = $engine->fireTimer($config, $this->nodeId, $this->context);
-
-    // Chain next timer
-    foreach ($result['timers'] ?? [] as $timer) {
-        FireNodeTimer::dispatch(...)
-            ->delay(now()->addMilliseconds($timer['delay_ms']));
-    }
-
-    $notifications->dispatchActions($result['actions'] ?? []);
-}`}</CodeBlock>
-                </SubSection>
-
-                <SubSection title="SustainedNode Timer Flow">
-                    <p>
-                        The SustainedNode uses a{" "}
-                        <InlineCode>timer_pending</InlineCode> flag (persisted
-                        in <InlineCode>NodeConfigState</InlineCode>) to track
-                        whether a timer has been dispatched:
-                    </p>
-                    <CodeBlock>{`// SustainedNode::evaluate() — timer-based path
-if ($conditionMet && !$timerPending) {
-    // First time true: dispatch timer for sustain duration
-    $delayMs = $requiredSeconds * 1000;
-    return NodeResult::withTimer(true,
-        new NodeTimer($delayMs, ['sustain_fire' => true]),
-        ['timer_pending' => true, 'already_fired' => false]
-    );
-}
-
-if ($conditionMet && $timerPending) {
-    // Timer already dispatched, skip
-    return NodeResult::noPropagate(null, $state);
-}
-
-// Timer fire: re-check historical DB condition
-if ($isTimerFire) {
-    $conditionMet = $this->checkHistoricalCondition(...);
-    if ($conditionMet) {
-        return NodeResult::propagate(true, ['timer_pending' => false, 'already_fired' => true]);
-    }
-    return NodeResult::propagate(false, ['timer_pending' => false]);
-}`}</CodeBlock>
-                </SubSection>
-
-                <SubSection title="Historical Condition Check">
-                    <p>
-                        When the SustainedNode's timer fires, it queries the{" "}
-                        <InlineCode>metric_samples</InlineCode> table for all
-                        samples within the sustain window and checks what
-                        percentage violate the threshold:
-                    </p>
-                    <CodeBlock>{`// SustainedNode::checkMetricCondition()
-$since = now()->subSeconds($requiredSeconds);
-
-$sampleCount = MetricSample::whereHas('batch', fn($q) =>
-    $q->where('agent_id', $agent->id)
-      ->where('recorded_at', '>=', $since)
-)->count();
-
-$violatingCount = MetricSample::whereHas('batch', fn($q) =>
-    $q->where('agent_id', $agent->id)
-      ->where('recorded_at', '>=', $since)
-)->where(fn($q) => match ($operator) {
-    'greater_than' => $q->where('value', '>', $threshold),
-    'less_than'    => $q->where('value', '<', $threshold),
-    // ...
-})->count();
-
-return ($violatingCount / $sampleCount) * 100 >= $minMatchPercent;`}</CodeBlock>
-                </SubSection>
-
-                <SubSection title="Repeat + Sustained Interaction">
-                    <p>
-                        When a RepeatNode has a SustainedNode ancestor, the
-                        engine's{" "}
-                        <InlineCode>buildRepeatContexts()</InlineCode> walks
-                        backward through edges to find it and stores{" "}
+                        `SustainedNode`/`RepeatNode`/`CheckAfterNode` return{" "}
                         <InlineCode>
-                            has_sustained_ancestor = true
-                        </InlineCode>{" "}
-                        and{" "}
-                        <InlineCode>
-                            sustain_duration_seconds
-                        </InlineCode>{" "}
-                        in the RepeatNode's context.
-                    </p>
-                    <p>
-                        Each repeat fire then calls{" "}
-                        <InlineCode>retriggerFromSource()</InlineCode>, which
-                        re-runs <InlineCode>trigger()</InlineCode> from the
-                        metric source node with{" "}
-                        <InlineCode>
-                            extra_sustain_seconds = interval × repeatCount
+                            NodeResult::withTimer(NodeTimer{"{"}delayMs, context
+                            {"}"})
                         </InlineCode>
-                        . This means the SustainedNode re-checks an expanding
-                        time window. If the condition breaks, the repeat stops.
+                        . Caller (`MonitorServer`/`EvaluateNodeConfig`) does:
                     </p>
-                    <CodeBlock>{`// NodeConfigEngine::fireTimer() — repeat with sustained ancestor
-$hasSustainedAncestor = $state['has_sustained_ancestor'] ?? false;
-$accumulatedExtra = $result->state['accumulated_extra_seconds'] ?? 0;
-
-if ($hasSustainedAncestor && $result->shouldPropagate && $accumulatedExtra > 0) {
-    return $this->retriggerFromSource($config, $nodeMap, $edges, $accumulatedExtra, $context);
-}
-
-// retriggerFromSource() passes extra_sustain_seconds into trigger()
-$extraState = array_merge($context, [
-    'extra_sustain_seconds' => $accumulatedExtraSeconds,
-]);
-return $this->trigger($config, $sourceNodeId, $metricValue, $extraState);`}</CodeBlock>
+                    <CodeBlock>{`foreach ($result['timers'] as $timer) {
+    FireNodeTimer::dispatch($timer['node_config_id'], $timer['node_id'], $timer['context'])
+        ->delay(now()->addMilliseconds($timer['delay_ms']));
+}`}</CodeBlock>
+                    <p>
+                        `FireNodeTimer::handle` calls{" "}
+                        <InlineCode>
+                            engine.fireTimer(config, nodeId, context, serverId)
+                        </InlineCode>{" "}
+                        with <InlineCode>timer_fire:true</InlineCode>. For
+                        `repeat` with `sustained` ancestor it calls{" "}
+                        <InlineCode>retriggerFromSource</InlineCode> —
+                        re-triggers the metric source with{" "}
+                        <InlineCode>extra_sustain_seconds</InlineCode> so the
+                        window expands.
+                    </p>
                 </SubSection>
 
-                <SubSection title="State Persistence">
+                <SubSection title="Node Types — app/NodeConfig/NodeTypes/*">
+                    <table className="w-full text-sm border border-border/40 rounded-lg overflow-hidden">
+                        <thead className="bg-muted/30">
+                            <tr>
+                                <th className="text-left px-3 py-2">type</th>
+                                <th className="text-left px-3 py-2">
+                                    evaluate
+                                </th>
+                                <th className="text-left px-3 py-2">timer</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/30">
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    metric
+                                </td>
+                                <td className="px-3 py-1.5">
+                                    passthrough `metric_value`
+                                </td>
+                                <td className="px-3 py-1.5">—</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    condition / severity
+                                </td>
+                                <td className="px-3 py-1.5">
+                                    `value {(">", "<", "between")} threshold` →
+                                    `bool` / severity string
+                                </td>
+                                <td className="px-3 py-1.5">—</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    sustained
+                                </td>
+                                <td className="px-3 py-1.5">
+                                    `phase idle→pending→firing`; DB check
+                                    `MetricSample` window `now-duration` %
+                                    violating ≥ `minMatch`
+                                </td>
+                                <td className="px-3 py-1.5">
+                                    delay `duration`
+                                </td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    check_after
+                                </td>
+                                <td className="px-3 py-1.5">
+                                    immediate `false` → timer, on fire re-check
+                                    live condition
+                                </td>
+                                <td className="px-3 py-1.5">delay</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    repeat
+                                </td>
+                                <td className="px-3 py-1.5">
+                                    interval `repeat_interval` until
+                                    `repeat_max` (-1 infinite), `cancelTimers`
+                                    on `value==false`
+                                </td>
+                                <td className="px-3 py-1.5">interval</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    notification
+                                </td>
+                                <td className="px-3 py-1.5">
+                                    `value==true` → `ActionItem` with
+                                    `upstream_context` (sustain_value,
+                                    repeat_count)
+                                </td>
+                                <td className="px-3 py-1.5">—</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    logic / template
+                                </td>
+                                <td className="px-3 py-1.5">
+                                    `and/or/not`; template resolves `
+                                    {"{server.name}"}` via `extra_state`
+                                </td>
+                                <td className="px-3 py-1.5">—</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </SubSection>
+
+                <SubSection title="State Persistence — node_config_states">
                     <p>
-                        Each node's state is persisted in the{" "}
-                        <InlineCode>node_config_states</InlineCode> table via{" "}
-                        <InlineCode>NodeConfigState</InlineCode>. This includes:
+                        Each `NodeResult.state` is `updateOrCreate` on{" "}
+                        <InlineCode>{`{node_config_id, node_id[:metric], server_id}`}</InlineCode>{" "}
+                        via <InlineCode>NodeConfigState</InlineCode>. Scoped
+                        keys <InlineCode>sustained_10:memory_usage</InlineCode>{" "}
+                        win over bare <InlineCode>sustained_10</InlineCode>{" "}
+                        (two-pass `loadStates`). Branch latch{" "}
+                        <InlineCode>branch:{`{metric:handle}`}</InlineCode>{" "}
+                        `armed` prevents re-fire until condition clears.
                     </p>
-                    <ul className="list-disc list-inside ml-2 space-y-1">
+                </SubSection>
+
+                <SubSection title="Jobs & Notifications">
+                    <ul className="list-disc pl-5 space-y-1.5">
                         <li>
-                            <InlineCode>context</InlineCode> — JSON blob with
-                            node-specific state (timer_pending, already_fired,
-                            repeat_count, accumulated_seconds, etc.)
+                            <InlineCode>EvaluateNodeConfig</InlineCode> —
+                            triggered per metric, schedules timers + dispatches{" "}
+                            <InlineCode>SendNotification</InlineCode> for
+                            `actions`.
                         </li>
                         <li>
-                            <InlineCode>output_value</InlineCode> — the last
-                            propagated value (used to pass data between nodes
-                            across evaluation cycles).
+                            <InlineCode>FireNodeTimer</InlineCode> — delayed
+                            queue job, `liveConditionStillHolds` re-check, then
+                            `SendNotification` with expanded sustain.
+                        </li>
+                        <li>
+                            <InlineCode>SendNotification</InlineCode> —
+                            `MUTE_NOTIFICATION` guard, `TemplateNode` rendering
+                            (`server.name`, `metricName`, `sustainValue`,
+                            `repeat.countOfMessage`), `mail`/`discord` via{" "}
+                            <InlineCode>
+                                NodeConfigNotificationService
+                            </InlineCode>
+                            .
+                        </li>
+                        <li>
+                            <InlineCode>CheckServerOffline</InlineCode> — per
+                            heartbeat `delay(offline+2s)`, on offline triggers{" "}
+                            <InlineCode>server_status:offline</InlineCode>{" "}
+                            branch.
                         </li>
                     </ul>
-                    <p>
-                        State is read at the start of each{" "}
-                        <InlineCode>trigger()</InlineCode> call and written
-                        after each node evaluation. This enables SustainedNode
-                        to track{" "}
-                        <InlineCode>timer_pending</InlineCode> across polls and
-                        RepeatNode to track{" "}
-                        <InlineCode>repeat_count</InlineCode> across timer
-                        fires.
-                    </p>
                 </SubSection>
 
                 <SubSection title="Key Files">
@@ -756,10 +872,10 @@ return $this->trigger($config, $sourceNodeId, $metricValue, $extraState);`}</Cod
                         <table className="w-full text-sm border border-border/40 rounded-lg overflow-hidden">
                             <thead className="bg-muted/30">
                                 <tr>
-                                    <th className="text-left px-3 py-2 font-medium text-foreground">
+                                    <th className="text-left px-3 py-2">
                                         File
                                     </th>
-                                    <th className="text-left px-3 py-2 font-medium text-foreground">
+                                    <th className="text-left px-3 py-2">
                                         Role
                                     </th>
                                 </tr>
@@ -767,74 +883,51 @@ return $this->trigger($config, $sourceNodeId, $metricValue, $extraState);`}</Cod
                             <tbody className="divide-y divide-border/30">
                                 <tr>
                                     <td className="px-3 py-1.5 font-mono text-xs">
-                                        NodeConfigEngine.php
+                                        NodeConfigEngine.php:49 / fireTimer:382
                                     </td>
                                     <td className="px-3 py-1.5">
-                                        Core evaluation engine — trigger,
-                                        fireTimer, retriggerFromSource
+                                        trigger, latch, chain, repeat
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className="px-3 py-1.5 font-mono text-xs">
-                                        SustainedNode.php
+                                        NodeConfigCompiler.php
                                     </td>
                                     <td className="px-3 py-1.5">
-                                        Timer-based sustain check with
-                                        historical DB validation
+                                        nodes/edges → branches + timing_chain
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className="px-3 py-1.5 font-mono text-xs">
-                                        RepeatNode.php
+                                        SustainedNode.php / RepeatNode.php
                                     </td>
                                     <td className="px-3 py-1.5">
-                                        Interval-based repeat with sustained
-                                        ancestor integration
+                                        phase state-machine + DB window
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className="px-3 py-1.5 font-mono text-xs">
-                                        CheckAfterNode.php
+                                        NodeTaskScheduler.php
                                     </td>
                                     <td className="px-3 py-1.5">
-                                        Delay node — schedules timer, cancels on
-                                        false input
+                                        node_config_tasks run_at
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className="px-3 py-1.5 font-mono text-xs">
-                                        FireNodeTimer.php
+                                        MonitorServer.php /
+                                        HeartbeatService.php:783
                                     </td>
                                     <td className="px-3 py-1.5">
-                                        Delayed queue job — fires timers and
-                                        chains next iteration
+                                        per-server trigger entry points
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className="px-3 py-1.5 font-mono text-xs">
-                                        MonitorServer.php
+                                        NodeConfigEditor.tsx / NodeSettingsPanel
                                     </td>
                                     <td className="px-3 py-1.5">
-                                        Per-server job — resolves config,
-                                        evaluates all metrics
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className="px-3 py-1.5 font-mono text-xs">
-                                        NodeConfigState.php
-                                    </td>
-                                    <td className="px-3 py-1.5">
-                                        Persists per-node evaluation state
-                                        across cycles
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className="px-3 py-1.5 font-mono text-xs">
-                                        NodeConfigCache.php
-                                    </td>
-                                    <td className="px-3 py-1.5">
-                                        Resolves config with server &gt; client
-                                        &gt; global cascade
+                                        visual editor, template vars, validation
                                     </td>
                                 </tr>
                             </tbody>

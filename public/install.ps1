@@ -14,8 +14,23 @@ $ErrorActionPreference = "Stop"
 
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    Write-Host "ERROR: This script must be run as Administrator." -ForegroundColor Red
-    exit 1
+    # Not elevated: ask the user, then relaunch self elevated through a UAC
+    # prompt. The file is already on disk (downloaded by the irm step), so
+    # -File re-runs it with the same arguments as Administrator. We pass the
+    # full powershell.exe path because Start-Process -Verb RunAs cannot resolve
+    # a bare "powershell" command.
+    $choice = Read-Host "This shell does not have Administrator privileges. Relaunch as Administrator? (Y/N)"
+    if ($choice -and $choice -notmatch '^[Yy]') {
+        Write-Host "Aborted. Please re-run this script as Administrator." -ForegroundColor Yellow
+        exit 1
+    }
+    $pwsh = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    $relaunch = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $MyInvocation.MyCommand.Path)
+    if ($ProvisionToken) { $relaunch += "-ProvisionToken"; $relaunch += $ProvisionToken }
+    if ($AppUrl -and $AppUrl -ne "{{APP_URL}}") { $relaunch += "-AppUrl"; $relaunch += $AppUrl }
+    if ($InstallationId) { $relaunch += "-InstallationId"; $relaunch += $InstallationId }
+    Start-Process -FilePath $pwsh -Verb RunAs -ArgumentList $relaunch -Wait
+    exit
 }
 
 # Under the one-agent-per-computer model there is exactly one service per host,
@@ -179,4 +194,8 @@ if (-not $Attach) {
     Log "Service restarted -- agent will register immediately on next startup (register+auth, ~3s)."
 }
 
-Log "Installation complete."
+    Log "Installation complete."
+
+    Write-Host ""
+    Write-Host "Press any key to close this window..." -ForegroundColor Cyan
+    try { [void][System.Console]::ReadKey($true) } catch { }

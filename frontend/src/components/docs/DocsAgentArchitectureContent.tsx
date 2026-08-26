@@ -14,12 +14,16 @@ export function DocsAgentArchitectureContent() {
                 </p>
                 <p>
                     Everything about an installation is scoped to an{" "}
-                    <strong>installation UUID</strong>: the instance directory,
-                    the identity key name, and the service name all derive from
-                    it. This makes installations <strong>per-machine and
-                    isolated</strong> — multiple agents on one host never
-                    collide, and one agent installation can monitor{" "}
-                    <strong>multiple servers</strong> simultaneously.
+                    <strong>installation UUID</strong>: the instance directory
+                    and the identity key name derive from it. The OS service is{" "}
+                    <strong>stable and single per host</strong>{" "}
+                    <InlineCode>MonitorAgent</InlineCode> /{" "}
+                    <InlineCode>monitor-agent.service</InlineCode> — it is not
+                    per-UUID. One agent installation monitors{" "}
+                    <strong>multiple servers</strong> on that host; additional
+                    servers are attached by re-running the installer with a new
+                    <InlineCode>ProvisionToken</InlineCode> for the same
+                    installation.
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
@@ -111,9 +115,13 @@ export function DocsAgentArchitectureContent() {
                         keypair in the OS keystore on first run.
                     </li>
                     <li>
-                        <strong>Handle a pending uninstall</strong> — if{" "}
-                        <InlineCode>uninstall.flag</InlineCode> is present, the
-                        agent revokes itself, deletes its key, and exits.
+                        <strong>Handle pending uninstall / detach</strong> — if{" "}
+                        <InlineCode>uninstall.flag</InlineCode> is present the
+                        agent revokes itself, deletes its key and exits; if{" "}
+                        <InlineCode>detach.flag</InlineCode> (containing a{" "}
+                        <InlineCode>server_uuid</InlineCode>) is present it{" "}
+                        <InlineCode>POST /api/v1/agent/servers/&#123;uuid&#125;/uninstall</InlineCode>{" "}
+                        for that server (keeps the service for remaining servers).
                     </li>
                     <li>
                         <strong>Register</strong> — if a{" "}
@@ -127,13 +135,24 @@ export function DocsAgentArchitectureContent() {
                     </li>
                     <li>
                         <strong>Build the runtime</strong> — the auth response
-                        carries the list of owned servers and their filters;
-                        these are held in memory.
+                        carries the list of owned servers and their per-server
+                        filters (<InlineCode>port_filter</InlineCode>,{" "}
+                        <InlineCode>process_filter</InlineCode>,{" "}
+                        <InlineCode>network_filter</InlineCode>); these are held
+                        in <InlineCode>runtime.go</InlineCode> in memory.
                     </li>
                     <li>
-                        <strong>Run the heartbeat loop</strong> — one heartbeat
-                        per owned server on the configured interval, plus a
-                        WebSocket control-channel goroutine.
+                        <strong>Run the heartbeat loop</strong> — one{" "}
+                        <strong>aggregated</strong> heartbeat per tick (≈{" "}
+                        <InlineCode>5s</InlineCode>) covering every owned server:
+                        CPU, memory, disk, uptime and{" "}
+                        <InlineCode>agent_config</InlineCode> travel once, and
+                        each server contributes its own filtered partition; live
+                        data is deduped via top-level{" "}
+                        <InlineCode>processes_dict</InlineCode>/
+                        <InlineCode>ports_dict</InlineCode>/
+                        <InlineCode>networks_dict</InlineCode> plus per-server
+                        key lists.
                     </li>
                 </ol>
             </Section>
@@ -145,8 +164,9 @@ export function DocsAgentArchitectureContent() {
                     <InlineCode>-instance &lt;uuid&gt;</InlineCode>; the other
                     flags are used by the installers and by operators:
                 </p>
-                <CodeBlock>{`monitor-agent -install -instance <uuid>     # register the OS service
-monitor-agent -uninstall -instance <uuid>   # marker-based uninstall
+                <CodeBlock>{`monitor-agent -install -instance <uuid>     # register the single stable OS service
+monitor-agent -uninstall -instance <uuid>   # host-whole uninstall (marker-based)
+monitor-agent -detach -instance <uuid> -server <server-uuid>  # per-server detach (marker-based)
 monitor-agent -has-key -key <keyName>       # exit 0 if the keystore key exists
 monitor-agent -selftest                     # key-store round-trip self-test`}</CodeBlock>
                 <ul className="list-disc pl-5 space-y-1.5">
@@ -162,11 +182,11 @@ monitor-agent -selftest                     # key-store round-trip self-test`}</
                         check for the OS keystore integration.
                     </li>
                     <li>
-                        The service name is derived from the instance:{" "}
-                        <InlineCode>MonitorAgent-&lt;uuid&gt;</InlineCode> on
-                        Windows,{" "}
-                        <InlineCode>monitor-agent@&lt;uuid&gt;.service</InlineCode>{" "}
-                        (systemd template) on Linux.
+                        The service is single and stable:{" "}
+                        <InlineCode>MonitorAgent</InlineCode> on Windows,{" "}
+                        <InlineCode>monitor-agent.service</InlineCode> on Linux
+                        — the installation UUID is an argument, not part of the
+                        service name.
                     </li>
                 </ul>
             </Section>
@@ -178,22 +198,54 @@ monitor-agent -selftest                     # key-store round-trip self-test`}</
                         open ports <strong>once</strong>, then sends a single
                         aggregated heartbeat covering every owned server:
                         CPU, memory, disk, network, uptime and the current
-                        agent configuration travel once, and each server
-                        contributes its own partition with that server's filter
-                        applied. The interval is adjustable from Settings →
-                        Agent Settings and is pushed to running agents
-                        immediately.
+                        agent configuration travel once. Per-server data is
+                        deduped: the top-level{" "}
+                        <InlineCode>processes_dict</InlineCode>/
+                        <InlineCode>ports_dict</InlineCode>/
+                        <InlineCode>networks_dict</InlineCode> hold the union of
+                        filtered objects and each server partition carries only
+                        keys (process names, <InlineCode>protocol:port</InlineCode>
+                        , interface names). Available sets (
+                        <InlineCode>available_processes</InlineCode>/
+                        <InlineCode>available_ports</InlineCode>/
+                        <InlineCode>available_interfaces</InlineCode> with state{" "}
+                        <InlineCode>up</InlineCode> for non-disconnected) are
+                        sent only on change (signature via{" "}
+                        <InlineCode>processSetSignature</InlineCode> etc.), so{" "}
+                        <InlineCode>available_*</InlineCode> is details-only — the
+                        live data lives in the per-server partitions.
+                    </p>
+                    <p>
+                        The interval is adjustable from Settings → Agent Settings
+                        and is pushed to running agents immediately.
+                    </p>
+                    <p>
+                        If the agent’s distinct networks, ports or processes are
+                        empty for a server (e.g.{" "}
+                        <InlineCode>network_filter=[]</InlineCode>), the per-server
+                        network/ports/processes list is empty and the chart shows
+                        no lines — the Y-axis stays at <InlineCode>MB/s</InlineCode>
+                        .
                     </p>
                 </SubSection>
                 <SubSection title="Control channel">
                     <p>
                         A WebSocket connection (authenticated over{" "}
                         <InlineCode>private-agent.&lt;serverUuid&gt;</InlineCode>{" "}
-                        channels) receives configuration updates and binary
+                        channels, one per owned server) receives per-server
+                        filter updates (<InlineCode>port_filter</InlineCode>,{" "}
+                        <InlineCode>process_filter</InlineCode>,{" "}
+                        <InlineCode>network_filter</InlineCode>) and binary
                         update notifications. On (re)connect the agent refreshes
-                        its session, which restores the freshest server filters
-                        from the auth response — so nothing is missed while the
-                        socket is down.
+                        its session via{" "}
+                        <InlineCode>runtime.SyncFromSession</InlineCode>, which
+                        restores the freshest server filters from the auth
+                        response — so nothing is missed while the socket is down.
+                        Filter updates are applied via{" "}
+                        <InlineCode>runtime.Upsert</InlineCode> ({" "}
+                        <InlineCode>nil</InlineCode> = allow all,{" "}
+                        <InlineCode>[]</InlineCode> = block all) and the next
+                        heartbeat is already filtered.
                     </p>
                 </SubSection>
                 <SubSection title="Self-update">

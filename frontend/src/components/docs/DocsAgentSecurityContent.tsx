@@ -161,32 +161,54 @@ export function DocsAgentSecurityContent() {
                 </p>
             </Section>
 
-            <Section title="Uninstall & revocation security">
+            <Section title="Uninstall, detach & revocation">
                 <p>
-                    Removing an agent is deliberately the one operation an
-                    unprivileged operator <em>cannot</em> fake:
+                    Removing an agent — or detaching one server from a shared
+                    host — is deliberately the one operation an unprivileged
+                    operator <em>cannot</em> fake. Both are marker-based and
+                    host-validated:
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        Revocation calls{" "}
+                        <strong>Full uninstall</strong> —{" "}
                         <InlineCode>/api/v1/agent/uninstall</InlineCode>{" "}
-                        authenticated with the agent's own session token —
-                        proving the caller still holds the identity key. Only
-                        the installation itself can revoke itself.
+                        (agent JWT). Revokes the whole installation, deletes the
+                        identity key, all servers on that host become{" "}
+                        <em>agent uninstalled</em>. Marker{" "}
+                        <InlineCode>uninstall.flag</InlineCode> → service
+                        restart → <InlineCode>handleUninstallMarker</InlineCode>.
                     </li>
                     <li>
-                        Because the key lives in the service account's keystore,
-                        the uninstaller delegates deletion to the running
-                        service via the marker flow: write{" "}
-                        <InlineCode>uninstall.flag</InlineCode>, stop/restart the
-                        service, and the service revokes + deletes the key, then
-                        records <InlineCode>done</InlineCode>.
+                        <strong>Per-server detach</strong> —{" "}
+                        <InlineCode>
+                            /api/v1/agent/servers/&#123;uuid&#125;/uninstall
+                        </InlineCode>{" "}
+                        (agent JWT, one server). Only that server is detached (
+                        <InlineCode>agent_id→null</InlineCode>,{" "}
+                        <InlineCode>AgentUninstalled</InlineCode> for that server);
+                        the agent stays for its other servers. Marker{" "}
+                        <InlineCode>detach.flag</InlineCode> containing the{" "}
+                        <InlineCode>server_uuid</InlineCode> is written by{" "}
+                        <InlineCode>detach.ps1/sh -Instance … -Server …</InlineCode>{" "}
+                        and handled by{" "}
+                        <InlineCode>handleDetachMarker</InlineCode> (immediate{" "}
+                        <InlineCode>POST</InlineCode> try, else next heartbeat,
+                        then <InlineCode>done</InlineCode>). When the last server
+                        is detached the agent remains with zero servers until a
+                        full uninstall — it does <em>not</em> auto-revoke.
                     </li>
                     <li>
-                        After revocation the backend refuses authentication and
-                        heartbeats for the agent, and its servers become{" "}
-                        <em>agent uninstalled</em> — the agent cannot silently
-                        resurrect itself.
+                        Both delegate the key operation to the running service
+                        account (LocalSystem/<InlineCode>monitor</InlineCode>) via
+                        the marker, so an admin without the service account cannot
+                        delete the key.
+                    </li>
+                    <li>
+                        After revocation the backend refuses{" "}
+                        <InlineCode>/api/v1/agent/auth/*</InlineCode> and{" "}
+                        <InlineCode>/heartbeat</InlineCode> for that agent, and
+                        its servers stay <em>agent uninstalled</em> until a fresh
+                        provision token re-registers the host.
                     </li>
                 </ul>
             </Section>

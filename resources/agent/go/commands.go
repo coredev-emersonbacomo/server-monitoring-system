@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os/exec"
 	"strings"
 	"time"
 )
@@ -20,10 +19,8 @@ func executeCommand(cmd AgentCommand) CommandResult {
 		if cmdStr == "" {
 			result.Output = ""
 		} else {
-			var shell, flag string
-			shell = "sh"
-			flag = "-c"
-			out, err := exec.Command(shell, flag, cmdStr).CombinedOutput()
+			runAs, _ := cmd.Payload["runAs"].(bool)
+			out, err := runShellCommand(cmdStr, runAs)
 			output := strings.TrimSpace(string(out))
 			if err != nil {
 				result.Error = err.Error()

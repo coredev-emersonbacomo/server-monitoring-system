@@ -5,8 +5,16 @@ param(
 
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    Write-Host "ERROR: This script must be run as Administrator." -ForegroundColor Red
-    exit 1
+    # Not elevated: ask, then relaunch self elevated through a UAC prompt.
+    $choice = Read-Host "This shell does not have Administrator privileges. Relaunch as Administrator? (Y/N)"
+    if ($choice -and $choice -notmatch '^[Yy]') {
+        Write-Host "Aborted. Please re-run this script as Administrator." -ForegroundColor Yellow
+        exit 1
+    }
+    $pwsh = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    $relaunch = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $MyInvocation.MyCommand.Path, "-Instance", $Instance)
+    Start-Process -FilePath $pwsh -Verb RunAs -ArgumentList $relaunch -Wait
+    exit
 }
 
 # An instance is targeted by its immutable installation UUID only — this is the
@@ -66,4 +74,8 @@ if (Test-Path $InstanceDir) {
     }
 }
 
-Log "Uninstallation complete."
+    Log "Uninstallation complete."
+
+    Write-Host ""
+    Write-Host "Press any key to close this window..." -ForegroundColor Cyan
+    try { [void][System.Console]::ReadKey($true) } catch { }

@@ -177,10 +177,13 @@ function MultiServerDemo() {
                 ))}
             </div>
             <p className="mt-3 text-[11px] text-muted-foreground">
-                One agent installation owns all of its servers. Each server has
-                its own filter; the agent applies each server's filter to a
-                single per-cycle collection, and the backend ping job probes
-                only the checked (filter-included) TCP ports.
+                One agent owns all its servers. Each server has its own{" "}
+                <InlineCode>port_filter</InlineCode>/
+                <InlineCode>process_filter</InlineCode>/
+                <InlineCode>network_filter</InlineCode>; the agent collects
+                once and applies each server's filter to that single collection
+                (deduped via dicts). The backend ping job probes only checked
+                ports; network charts show only checked interfaces.
             </p>
         </div>
     );
@@ -207,42 +210,60 @@ export function DocsAgentMonitoringContent() {
             <Section title="What is collected">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>CPU, memory, disk, network, uptime</strong> —
-                        current usage stats sent with every heartbeat.
+                        <strong>CPU, memory, disk, uptime</strong> — current
+                        usage stats sent once per tick at the top level.
+                    </li>
+                    <li>
+                        <strong>Network — per-interface</strong> — every
+                        non-loopback interface (Wi-Fi, Ethernet, VPN, etc.) with{" "}
+                        <InlineCode>interface</InlineCode>,{" "}
+                        <InlineCode>type</InlineCode>,{" "}
+                        <InlineCode>state</InlineCode>,{" "}
+                        <InlineCode>rx_bytes</InlineCode>/
+                        <InlineCode>tx_bytes</InlineCode> — deduped via{" "}
+                        <InlineCode>networks_dict</InlineCode> plus per-server{" "}
+                        <InlineCode>network: ["Wi-Fi"]</InlineCode> keys.
                     </li>
                     <li>
                         <strong>Processes</strong> — grouped by name (Task
-                        Manager style): CPU and memory summed across instances,
-                        PIDs collected and sorted, lowest PID kept as the
-                        representative row. The list is capped and sorted by CPU
-                        descending.
+                        Manager style): CPU and memory summed, PIDs collected.
+                        Sent deduped via{" "}
+                        <InlineCode>processes_dict</InlineCode> + per-server key
+                        lists.
                     </li>
                     <li>
                         <strong>Open database ports</strong> — listening TCP/UDP
-                        ports.
+                        ports, deduped via <InlineCode>ports_dict</InlineCode>.
                     </li>
                     <li>
-                        <strong>Agent config</strong> — current heartbeat
-                        interval and agent version, so the backend can detect
-                        drift.
+                        <strong>Agent config</strong> — heartbeat interval and
+                        version.
                     </li>
                 </ul>
                 <p>
-                    The full discoverable set ({" "}
+                    The full discoverable sets (
                     <InlineCode>available_processes</InlineCode> /{" "}
-                    <InlineCode>available_ports</InlineCode>) is sent{" "}
-                    <strong>only when it changes</strong> — the agent keeps a
-                    signature of the last set and skips re-sending it otherwise.
-                    This is the noise-filtered inventory the backend shows in
-                    the monitoring filter UI.
+                    <InlineCode>available_ports</InlineCode> /{" "}
+                    <InlineCode>available_interfaces</InlineCode> with{" "}
+                    <InlineCode>state==up</InlineCode> for non-disconnected) are
+                    sent <strong>only when they change</strong> (signatures{" "}
+                    <InlineCode>processSetSignature</InlineCode> etc.). They are
+                    details-only (e.g.{" "}
+                    <InlineCode>available_processes: [{`{name,pids}`}]</InlineCode>{" "}
+                    without <InlineCode>cpu/memory</InlineCode>;{" "}
+                    <InlineCode>available_interfaces: [{`{interface,type,state}`}]</InlineCode>{" "}
+                    without <InlineCode>rx/tx</InlineCode>) — the live data lives
+                    in the per-server partitions.
                 </p>
             </Section>
 
-            <Section title="Port & process filters">
+            <Section title="Port, process & network filters">
                 <p>
-                    Each server has a <InlineCode>port_filter</InlineCode> and{" "}
-                    <InlineCode>process_filter</InlineCode> on its record. The
-                    semantics are:
+                    Each server has{" "}
+                    <InlineCode>port_filter</InlineCode>,{" "}
+                    <InlineCode>process_filter</InlineCode> and{" "}
+                    <InlineCode>network_filter</InlineCode> (array of interface names)
+                    on its record. Semantics:
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>

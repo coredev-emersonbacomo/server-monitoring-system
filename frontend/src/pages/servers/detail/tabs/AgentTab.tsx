@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Cpu, Copy, Check, Trash2, AlertTriangle, Unplug, RotateCcw, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -85,6 +85,13 @@ export function AgentTab() {
     };
 
     const isMultiServer = (server?.agent_server_count ?? 0) > 1;
+
+    useEffect(() => {
+        if (server?.status === "agent_uninstalled") {
+            setModalOpen(false);
+            setDetachOpen(false);
+        }
+    }, [server?.status]);
 
     return (
         <>
