@@ -366,6 +366,40 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/uninstall/windows.ps
                 </Callout>
             </Section>
 
+            <Section title="Agent recovery and force reinstall">
+                <p>
+                    If agent files were accidentally deleted, corrupted, or removed
+                    on the host server while database records remained hanging (leaving
+                    the server in an unlinked or stale state), you can run a{" "}
+                    <strong>Force Reinstall</strong>.
+                </p>
+                <p>
+                    In the server detail page's <strong>Agent</strong> tab, locate the{" "}
+                    <strong>Agent Recovery & Force Reinstall</strong> card and click{" "}
+                    <strong>Force Reinstall Agent</strong>.
+                </p>
+                <ol className="list-decimal pl-5 space-y-1.5">
+                    <li>
+                        The backend generates a new one-time provision token linked to the server's{" "}
+                        <strong>existing installation UUID</strong> stored in the database.
+                    </li>
+                    <li>
+                        The modal provides OS-specific commands with the installation UUID embedded:
+                    </li>
+                </ol>
+                <CodeBlock language="bash" filename="Linux (as root)">{`sudo curl -fsSL {APP_URL}/install/linux | sudo bash -s -- <TOKEN> <INSTALLATION_UUID>`}</CodeBlock>
+                <CodeBlock language="powershell" filename="Windows PowerShell (as Administrator)">{`powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1' -OutFile $env:TEMP\\monitor-install.ps1; & $env:TEMP\\monitor-install.ps1 -ProvisionToken '<TOKEN>' -InstallationId '<INSTALLATION_UUID>'"`}</CodeBlock>
+                <p>
+                    When executed on the host, the installer downloads a fresh agent binary,
+                    restores the configuration directory with the existing installation UUID,
+                    and registers/restarts the OS service cleanly without creating orphaned server records.
+                </p>
+                <Callout>
+                    Force reinstall preserves historical server metrics and database associations
+                    by binding the freshly installed agent back to the same installation ID.
+                </Callout>
+            </Section>
+
             <Section title="Troubleshooting">
                 <p>
                     When an agent is not showing up online, check the logs in

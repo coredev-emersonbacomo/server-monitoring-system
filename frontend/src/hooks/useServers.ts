@@ -16,9 +16,13 @@ export const useServers = (clientUuid?: string) => {
             };
 
             channel.listen(".ServerStatusUpdated", handler);
+            channel.listen(".RegistrationCompleted", handler);
+            channel.listen(".AgentUninstalled", handler);
 
             return () => {
                 channel.stopListening(".ServerStatusUpdated", handler);
+                channel.stopListening(".RegistrationCompleted", handler);
+                channel.stopListening(".AgentUninstalled", handler);
             };
         } catch {
             // Echo not available yet

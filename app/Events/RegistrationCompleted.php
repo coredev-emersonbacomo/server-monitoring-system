@@ -25,6 +25,7 @@ class RegistrationCompleted implements ShouldBroadcastNow
     {
         return [
             new PrivateChannel('server.'.$this->server_uuid),
+            new PrivateChannel('dashboard'),
         ];
     }
 

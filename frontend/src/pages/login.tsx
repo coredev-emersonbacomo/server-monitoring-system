@@ -58,6 +58,10 @@ export default function Login() {
                 setErrors((err as { errors: Record<string, string[]> }).errors);
             } else if (err && typeof err === "object" && "message" in err) {
                 setErrors({ email: [(err as { message: string }).message] });
+            } else {
+                setErrors({
+                    email: ["Invalid email/username or password. Please try again."],
+                });
             }
         }
     };

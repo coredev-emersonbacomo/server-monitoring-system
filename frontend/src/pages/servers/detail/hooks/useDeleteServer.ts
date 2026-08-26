@@ -20,9 +20,21 @@ export const useDeleteServer = () => {
             );
             if (error) throw error;
         },
-        onSuccess: (_, { clientUuid }) => {
+        onSuccess: (_, { clientUuid, serverUuid }) => {
             queryClient.invalidateQueries({
                 queryKey: ["clients", clientUuid, "servers"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["servers"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["server", serverUuid],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["clients"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["dashboard"],
             });
         },
     });
