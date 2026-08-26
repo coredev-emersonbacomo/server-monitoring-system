@@ -228,7 +228,7 @@
 ))
 
 #let trend-point-label = (dt, all, is-daily: false) => {
-  if is-daily {
+  let label-text = if is-daily {
     dt.display("[month repr:short] [day]")
   } else {
     let span = (all.last() - all.first()).hours()
@@ -242,6 +242,9 @@
       dt.display("[hour repr:12][period]")
     }
   }
+
+  // Applied smaller text size here
+  text(size: 7pt, label-text)
 }
 
 #let page-header(title) = context {
