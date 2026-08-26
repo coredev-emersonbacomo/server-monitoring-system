@@ -365,10 +365,9 @@ export function DocsConfigurationContent() {
                         config.
                     </li>
                     <li>
-                        <InlineCode>.env.credentials</InlineCode> — gitignored,
-                        secrets (Gmail SMTP) injected into the process
-                        environment at runtime by{" "}
-                        <InlineCode>scripts/dev.js</InlineCode> — see Gmail SMTP
+                        <InlineCode>.env</InlineCode> — gitignored, local secrets
+                        (e.g. Gmail SMTP) loaded directly by Laravel and overriding{" "}
+                        <InlineCode>.env.development</InlineCode> — see Gmail SMTP
                         below.
                     </li>
                     <li>
