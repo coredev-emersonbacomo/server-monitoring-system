@@ -7,15 +7,14 @@ use App\NodeConfig\Data\NodeConfigRequestData;
 use App\NodeConfig\Engine\NodeConfigCompiler;
 use App\NodeConfig\Engine\NodeConfigEngine;
 use App\NodeConfig\Engine\NodeRegistry;
-use App\NodeConfig\Engine\NodeTaskScheduler;
 use App\NodeConfig\Models\NodeConfig;
 use App\NodeConfig\Models\NodeConfigState;
+use App\NodeConfig\Services\TelemetrySnapshot;
 use App\NodeConfig\Validation\NodeConfigValidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 
 class NodeConfigController extends Controller
 {
@@ -240,52 +239,14 @@ class NodeConfigController extends Controller
 
     public function telemetryState(): JsonResponse
     {
-        $activeTasks = NodeTaskScheduler::getAllActiveTasks();
-        $states = NodeConfigState::all();
-        $serverNow = microtime(true);
+        // Visual debugger is opt-in; keep the backend silent when disabled.
+        if (! config('telemetry.enabled')) {
+            abort(404, 'Alert visual debugger is disabled.');
+        }
 
-        // Real last sweep time anchored from cache (set by SystemMonitor command)
-        $lastSweepAt = Cache::get('last_monitor_sweep_at');
+        $snapshot = (new TelemetrySnapshot)->build();
+        SystemTelemetryEvent::emit('state_snapshot', $snapshot['broadcast']);
 
-        $snapshot = [
-            'server_now' => $serverNow,
-            'active_tasks' => array_values($activeTasks),
-            'states' => $states,
-            'last_monitor_sweep_at' => $lastSweepAt,   // microtime float or null
-            'monitor_interval_seconds' => 60,             // everyMinute() in console.php
-        ];
-
-        // Broadcast a trimmed snapshot — omit heavy context blobs to stay under
-        // Pusher/Reverb's 10 KB per-message limit. The HTTP response keeps full data.
-        $broadcastStates = $states->map(fn ($s) => [
-            'node_id' => $s->node_id,
-            'server_id' => $s->server_id,
-            'output_value' => $s->output_value,
-        ])->values();
-
-        $broadcastTasks = array_values(array_map(fn ($t) => [
-            'task_id' => $t['task_id'],
-            'node_id' => $t['node_id'],
-            'server_id' => $t['server_id'],
-            'fire_at' => $t['fire_at'],
-            'delay_ms' => $t['delay_ms'],
-            'live_stats' => $t['live_stats'] ?? null,
-            'context' => [
-                'chain_steps_meta' => $t['context']['chain_steps_meta'] ?? null,
-                'repeat_count' => $t['context']['repeat_count'] ?? 0,
-                'repeat_fire' => $t['context']['repeat_fire'] ?? false,
-                'metric_type' => $t['context']['metric_type'] ?? null,
-            ],
-        ], $activeTasks));
-
-        SystemTelemetryEvent::emit('state_snapshot', [
-            'server_now' => $serverNow,
-            'active_tasks' => $broadcastTasks,
-            'states' => $broadcastStates,
-            'last_monitor_sweep_at' => $lastSweepAt,
-            'monitor_interval_seconds' => 60,
-        ]);
-
-        return response()->json($snapshot);
+        return response()->json($snapshot['http']);
     }
 }

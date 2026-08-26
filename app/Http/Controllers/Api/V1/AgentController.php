@@ -200,13 +200,14 @@ class AgentController extends Controller
             return response()->json(['message' => 'Agent is revoked or disabled.'], 403);
         }
 
-        // A decommissioned server must never accept a session, even from a
-        // still-active agent row — the no-resurrection guarantee.
-        $server = $agent->server;
-        if ($server && ($server->agent_deleted || $server->status === ServerStatus::Archived->value)) {
-            return response()->json(['message' => 'Server has been decommissioned.'], 403);
-        }
-
+        // Per ADR-0002 §4, detaching a server keeps the agent and its identity
+        // alive so its other servers keep monitoring. The per-server lifecycle
+        // (unknown/unowned/deleted/archived) is enforced on the heartbeat path,
+        // not at session issuance — otherwise detaching the agent's primary
+        // server would lock every still-owned server offline (no session, so
+        // no heartbeat, so shared `last_seen_at` freezes and all servers go
+        // Offline). The session's `servers` list only carries servers this
+        // agent still owns.
         $der = base64_decode($agent->public_key);
         $publicKeyPem = "-----BEGIN PUBLIC KEY-----\n".chunk_split(base64_encode($der), 64, "\n")."-----END PUBLIC KEY-----\n";
         $publicKey = openssl_pkey_get_public($publicKeyPem);

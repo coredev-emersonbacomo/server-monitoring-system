@@ -265,54 +265,104 @@ Get-Content "C:\\ProgramData\\MonitorAgent\\instances\\<uuid>\\agent.log"`}</Cod
                 </SubSection>
             </Section>
 
-            <Section title="Uninstalling the agent">
+            <Section title="Uninstalling vs. detaching — one agent, many servers">
                 <p>
-                    Uninstallation is <strong>marker-based</strong>: the
-                    uninstall script writes a marker file, then asks the running
-                    service to clean up its own identity — the one thing only
-                    the service account can do.
+                    One <InlineCode>MonitorAgent</InlineCode> monitors{" "}
+                    <strong>all servers on one host</strong>. Two different removals exist:
+                </p>
+                <ul className="list-disc pl-5 space-y-1.5">
+                    <li>
+                        <strong>Detach a single server</strong> — the agent stays
+                        installed and keeps monitoring its other servers. The dashboard
+                        detaches via the <strong>Agent tab → Detach Server</strong>{" "}
+                        (when the host has &gt;1 servers) or the Delete flow for that
+                        server; both require the host command for validation and send{" "}
+                        <InlineCode>POST /api/v1/agent/servers/&#123;uuid&#125;/uninstall</InlineCode>{" "}
+                        (agent JWT) — <InlineCode>AgentUninstalled</InlineCode> for that
+                        server only.
+                    </li>
+                    <li>
+                        <strong>Uninstall the whole agent</strong> — removes the single
+                        stable service and the shared binary. Use when the host has one
+                        server or you want to wipe the host completely.
+                    </li>
+                </ul>
+                <p>
+                    Both are <strong>marker-based</strong> and must be run on the host
+                    (validation — only the machine holding the key can revoke). The script
+                    writes a flag, the running service (LocalSystem/
+                    <InlineCode>monitor</InlineCode>) does the authenticated revoke/delete.
                 </p>
                 <ol className="list-decimal pl-5 space-y-1.5">
                     <li>
-                        The script writes <InlineCode>uninstall.flag</InlineCode>{" "}
-                        (<InlineCode>pending</InlineCode>) into the instance
-                        directory.
+                        <InlineCode>uninstall.flag</InlineCode> /{" "}
+                        <InlineCode>detach.flag</InlineCode> (<InlineCode>pending</InlineCode>) written
+                        into{" "}
+                        <InlineCode>
+                            C:\ProgramData\MonitorAgent\instances\&lt;uuid&gt;
+                        </InlineCode>{" "}
+                        or{" "}
+                        <InlineCode>
+                            /var/lib/monitor-agent/instances/&lt;uuid&gt;
+                        </InlineCode>
+                        .
                     </li>
                     <li>
-                        The service is stopped (Windows) or restarted (Linux).
-                        On the next loop the agent sees the marker, revokes
-                        itself on the backend using its own session token, and
-                        deletes its identity key from the OS keystore.
+                        Service sees the flag on the next loop (or next startup) and{" "}
+                        <InlineCode>POST</InlineCode>s —{" "}
+                        <InlineCode>/api/v1/agent/uninstall</InlineCode> (whole agent) or{" "}
+                        <InlineCode>/api/v1/agent/servers/&#123;uuid&#125;/uninstall</InlineCode>{" "}
+                        (one server) — using its short-lived session. Detach keeps the
+                        service for remaining servers; uninstall deletes the identity key.
                     </li>
                     <li>
-                        The agent records <InlineCode>done</InlineCode> in the
-                        marker and exits.
+                        Agent writes <InlineCode>done</InlineCode> to the flag and the
+                        service exits (uninstall) or continues (detach).
                     </li>
                     <li>
-                        The script confirms the marker, then removes the service
-                        registration, the instance directory, and the program
-                        directory.
+                        The script confirms <InlineCode>done</InlineCode>, then (uninstall
+                        only) removes the stable service{" "}
+                        <InlineCode>MonitorAgent</InlineCode>/
+                        <InlineCode>monitor-agent.service</InlineCode>, the instance
+                        directory and the shared binary.
                     </li>
                 </ol>
                 <p>
-                    Uninstall targets one agent by its immutable installation UUID — the
-                    same id the installer gave the instance directory, service, and
-                    identity key. The server detail page's Agent tab emits the exact
-                    command for this server, so copy it instead of typing the UUID:
+                    Detach <strong>immediately</strong> tries the{" "}
+                    <InlineCode>POST</InlineCode> in the short-lived{" "}
+                    <InlineCode>MonitorAgent.exe -detach</InlineCode> helper too, so the
+                    server flips to <em>Agent Uninstalled</em> without waiting for the
+                    next <InlineCode>5s</InlineCode> heartbeat — fallback is the marker
+                    for the next loop. Uninstall always waits for the service loop.
                 </p>
-                <CodeBlock language="bash">{`sudo curl -fsSL {APP_URL}/uninstall/linux | sudo bash -s -- <INSTALLATION_UUID>`}</CodeBlock>
-                <CodeBlock language="powershell">{`powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/uninstall/windows.ps1' -OutFile $env:TEMP\\monitor-uninstall.ps1; & $env:TEMP\\monitor-uninstall.ps1 -Instance '<INSTALLATION_UUID>'"`}</CodeBlock>
+                <p>
+                    Commands are emitted per-server by the detail page — copy them, don’t
+                    type the UUIDs:
+                </p>
+                <CodeBlock language="bash">{`# Detach one server (host stays, other servers keep monitoring)
+sudo curl -fsSL {APP_URL}/detach/linux | sudo bash -s -- <INSTALLATION_UUID> <SERVER_UUID>
+
+# Uninstall whole agent (all servers on this host)
+sudo curl -fsSL {APP_URL}/uninstall/linux | sudo bash -s -- <INSTALLATION_UUID>`}</CodeBlock>
+                <CodeBlock language="powershell">{`# Detach one server
+powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/detach/windows.ps1' -OutFile $env:TEMP\\monitor-detach.ps1; & $env:TEMP\\monitor-detach.ps1 -Instance '<INSTALLATION_UUID>' -Server '<SERVER_UUID>'"
+
+# Uninstall whole agent
+powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/uninstall/windows.ps1' -OutFile $env:TEMP\\monitor-uninstall.ps1; & $env:TEMP\\monitor-uninstall.ps1 -Instance '<INSTALLATION_UUID>'"`}</CodeBlock>
                 <Callout type="warning">
-                    The uninstaller takes <strong>exactly one</strong> installation UUID
-                    and never touches other agents on the same host. If the UUID is
-                    wrong or missing, the script fails rather than guessing.
+                    Detach takes <strong>exactly one</strong> server UUID and never touches
+                    the other servers’ data; uninstall takes one installation UUID and wipes
+                    the whole host. Wrong UUIDs fail — nothing is guessed. When an agent
+                    detaches its last server, it stays installed with zero servers until a
+                    full uninstall — it does <strong>not</strong> auto-revoke.
                 </Callout>
                 <Callout>
-                    Because revocation is authenticated by the agent's own short-lived
-                    session, only the machine that holds the identity key can remove the
-                    agent from the backend. The server's status flips to{" "}
-                    <em>Agent Uninstalled</em> and the installation guide reappears for
-                    reinstallation.
+                    Both are authenticated by the agent’s own session — only the host holding
+                    the key can revoke/detach. The dashboard’s Delete flow for a shared host
+                    also requires the host detach command for validation (no direct DB detach).
+                    Status flips to <em>Agent Uninstalled</em> in real time via{" "}
+                    <InlineCode>AgentUninstalled</InlineCode> +{" "}
+                    <InlineCode>ServerStatusUpdated</InlineCode> and the guide reappears.
                 </Callout>
             </Section>
 

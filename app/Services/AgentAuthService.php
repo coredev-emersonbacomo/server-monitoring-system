@@ -39,9 +39,14 @@ class AgentAuthService
      */
     public function issueSession(Agent $agent): array
     {
-        $agent->loadMissing(['server', 'monitoredServers']);
+        $agent->loadMissing('monitoredServers');
         $servers = $agent->monitoredServers;
-        $primary = $agent->server ?: $servers->first();
+        // Prefer the legacy primary pointer only while it is still an owned,
+        // active server (monitoredServers already excludes deleted/archived);
+        // otherwise fall back to the first server the agent still owns so the
+        // legacy server_uuid / JWT `svr` claim never points at a decommissioned
+        // server.
+        $primary = $servers->firstWhere('id', $agent->server_id) ?: $servers->first();
 
         $heartbeatInterval = (int) $agent->currentConfiguration?->heartbeat_interval;
         if ($heartbeatInterval <= 0) {

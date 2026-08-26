@@ -47,6 +47,26 @@ const spawnAndPipe = (cmd, args) => {
   child.on('exit', (code) => process.exit(code ?? 0));
 };
 
+// Surface the visual debugger flag before dropping the config cache, so it's
+// visible in startup logs whether telemetry will be emitted. .env overrides
+// .env.development (mirrors bootstrap/app.php load order).
+const alertDebugger = (() => {
+  const read = (p) => {
+    if (!fs.existsSync(p)) return null;
+    for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
+      const t = line.trim();
+      if (t.startsWith('#') || !t.startsWith('ALERTS_VISUAL_DEBUGGER=')) continue;
+      return t.slice('ALERTS_VISUAL_DEBUGGER='.length).trim();
+    }
+    return null;
+  };
+  return read(path.join(root, '.env')) ?? read(path.join(root, '.env.development'));
+})();
+const alertOn = alertDebugger === 'true' || alertDebugger === '1';
+console.log(
+  `[entry] ALERTS_VISUAL_DEBUGGER=${alertDebugger ?? 'false'} (visual debugger ${alertOn ? 'ENABLED' : 'disabled'})`,
+);
+
 // Recompile/drop the Laravel config cache so the swapped .env takes effect.
 // Avoid optimize:clear — its cache:clear step needs Redis, which starts later.
 spawnSync('php', ['artisan', 'config:clear'], { stdio: 'inherit' });
@@ -58,6 +78,10 @@ if (mode === 'dev') {
   const telEnabled = prodEnv.match(/^TELESCOPE_ENABLED=(.*)$/m)?.[1]?.trim().toLowerCase();
   if (telEnabled === 'true' || telEnabled === '1') {
     console.warn('[entry] WARNING: TELESCOPE_ENABLED=true in .env.production — Telescope is dev-only. Only run this in development or admin-lock it via Gate::define(\'viewTelescope\'). Set TELESCOPE_ENABLED=false for prod.');
+  }
+  const muted = prodEnv.match(/^MUTE_NOTIFICATION=(.*)$/m)?.[1]?.trim().toLowerCase();
+  if (muted === 'true' || muted === '1') {
+    console.warn('[entry] WARNING: MUTE_NOTIFICATION=true in .env.production — alerts will be logged, never sent. Set MUTE_NOTIFICATION=false for prod.');
   }
   spawnAndPipe(npm, ['run', 'build']);
 }

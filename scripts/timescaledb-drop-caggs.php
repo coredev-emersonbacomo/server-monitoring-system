@@ -16,32 +16,29 @@
 use Illuminate\Support\Facades\DB;
 
 try {
-    // A half-broken install can leave some caggs as MATERIALIZED VIEWs (relkind 'm')
-    // and others as plain VIEWs ('v'). DROP ... IF EXISTS does NOT skip when the
-    // name is taken by a different object type, so look up the type first.
-    $caggs = [
-        'server_updates_agg_minute',
-        'server_updates_agg_hour',
-        'server_updates_agg_day',
-        'server_updates_agg_week',
-        'server_updates_agg_month',
-    ];
+    // Discover every cagg in public from the catalog instead of hardcoding
+    // names — new migrations adding caggs stay covered automatically.
+    $caggs = DB::select("
+        SELECT view_name
+        FROM timescaledb_information.continuous_aggregates
+        WHERE view_schema = 'public'
+    ");
 
-    $existing = DB::select("
-        SELECT c.relname, c.relkind
-        FROM pg_class c
-        JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE n.nspname = 'public' AND c.relname IN (".implode(', ', array_fill(0, count($caggs), '?')).')
-    ', $caggs);
-
-    foreach ($existing as $cagg) {
-        if ($cagg->relkind === 'm') {
-            DB::statement('DROP MATERIALIZED VIEW IF EXISTS "'.$cagg->relname.'" CASCADE');
-        } else {
-            DB::statement('DROP VIEW IF EXISTS "'.$cagg->relname.'" CASCADE');
+    foreach ($caggs as $cagg) {
+        // Realtime caggs show relkind 'v' in pg_class, but TimescaleDB only
+        // accepts DROP MATERIALIZED VIEW for them (plain DROP VIEW throws
+        // "cannot drop continuous aggregate using DROP VIEW"). Try matview
+        // first, fall back to plain view.
+        try {
+            DB::statement('DROP MATERIALIZED VIEW IF EXISTS "'.$cagg->view_name.'" CASCADE');
+        } catch (Throwable) {
+            DB::statement('DROP VIEW IF EXISTS "'.$cagg->view_name.'" CASCADE');
         }
     }
 
+    // Sweep orphaned materialization hypertables the cagg drops above did not
+    // remove. Per-table try/catch: a table still owned by a live cagg will be
+    // handled by `migrate:fresh` dropping public tables with CASCADE.
     $hypertables = DB::select("
         SELECT tablename
         FROM pg_tables
@@ -50,10 +47,14 @@ try {
     ");
 
     foreach ($hypertables as $ht) {
-        DB::statement("DROP TABLE IF EXISTS _timescaledb_internal.{$ht->tablename} CASCADE");
+        try {
+            DB::statement("DROP TABLE IF EXISTS _timescaledb_internal.{$ht->tablename} CASCADE");
+        } catch (Throwable $e) {
+            echo "[resetdb] Skipped {$ht->tablename}: ".$e->getMessage()."\n";
+        }
     }
 
-    echo "[resetdb] Cleaned TimescaleDB continuous aggregates and internal hypertables.\n";
+    echo '[resetdb] Cleaned '.count($caggs).' continuous aggregate(s)'.(count($hypertables) > 0 ? ' and '.count($hypertables).' orphaned hypertable(s)' : '')."\n";
 } catch (Throwable $e) {
     // Not PostgreSQL or TimescaleDB not present — safe to ignore.
     echo '[resetdb] TimescaleDB cleanup skipped: '.$e->getMessage()."\n";

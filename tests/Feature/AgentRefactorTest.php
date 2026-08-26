@@ -12,6 +12,7 @@ use App\Models\Server;
 use App\Models\ServerUpdate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -786,6 +787,54 @@ test('detaching one server keeps the agent and its other server online', functio
     $this->withHeaders(['Authorization' => 'Bearer '.$accessToken])
         ->postJson('/api/v1/agent/servers/00000000-0000-0000-0000-000000000001/uninstall')
         ->assertStatus(404);
+
+    // Detaching the agent's PRIMARY server must not lock the agent out of
+    // re-authentication: its identity persists, so the surviving server must
+    // keep coming online instead of going Offline from a frozen last_seen_at.
+    $rechallenge = $this->postJson('/api/v1/agent/auth/challenge', [
+        'installation_uuid' => $installationId,
+    ]);
+    $reverify = $this->postJson('/api/v1/agent/auth/verify', [
+        'challenge_id' => $rechallenge->json('challenge_id'),
+        'signature' => signChallenge($keys['private_key'], $rechallenge->json('challenge')),
+    ])->assertStatus(200)
+        ->json();
+
+    // The decommissioned primary is dropped from the session; only the server
+    // the agent still owns survives, and it becomes the fallback primary.
+    expect(collect($reverify['servers'])->pluck('server_uuid')->toArray())->toBe([$otherServer->uuid])
+        ->and($reverify['server_uuid'])->toBe($otherServer->uuid)
+        ->and($reverify['access_token'])->not->toBeNull();
+
+    Log::spy();
+
+    // A heartbeat still referencing the detached server ignores (revokes) that
+    // partition while keeping the surviving server online — the POST is not
+    // refused.
+    $this->withHeaders(['Authorization' => 'Bearer '.$reverify['access_token']])
+        ->postJson('/api/v1/agent/heartbeat', [
+            'agent_version' => '3.0',
+            'configuration_version' => 1,
+            'timestamp' => now()->timestamp,
+            'metrics' => ['cpu' => ['load1' => 0.1], 'memory' => ['percent' => 12.0], 'disk' => ['percent' => 7.0], 'uptime' => 50, 'network' => []],
+            'servers' => [
+                ['server_uuid' => $server->uuid, 'processes' => [], 'open_db_ports' => []],
+                ['server_uuid' => $otherServer->uuid, 'processes' => [], 'open_db_ports' => []],
+            ],
+        ])->assertStatus(200)
+        ->assertJsonPath('revoked_server_uuids', [$server->uuid])
+        ->assertJsonPath('server_uuids', [$otherServer->uuid]);
+
+    Log::shouldHaveReceived('info')
+        ->withArgs(function (string $message, array $context) use ($server): bool {
+            return $message === 'Agent heartbeat: server partition ignored'
+                && ($context['server_uuid'] ?? null) === $server->uuid
+                && ($context['reason'] ?? null) === 'decommissioned';
+        })
+        ->once();
+
+    expect($otherServer->fresh()->status)->toBe(ServerStatus::Online->value)
+        ->and($server->fresh()->status)->toBe(ServerStatus::AgentUninstalled->value);
 });
 
 test('detaching from a revoked agent is rejected', function () {

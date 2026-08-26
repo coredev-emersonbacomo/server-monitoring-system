@@ -7,8 +7,16 @@ param(
 
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
-    Write-Host "ERROR: This script must be run as Administrator." -ForegroundColor Red
-    exit 1
+    # Not elevated: ask, then relaunch self elevated through a UAC prompt.
+    $choice = Read-Host "This shell does not have Administrator privileges. Relaunch as Administrator? (Y/N)"
+    if ($choice -and $choice -notmatch '^[Yy]') {
+        Write-Host "Aborted. Please re-run this script as Administrator." -ForegroundColor Yellow
+        exit 1
+    }
+    $pwsh = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+    $relaunch = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $MyInvocation.MyCommand.Path, "-Instance", $Instance, "-Server", $Server)
+    Start-Process -FilePath $pwsh -Verb RunAs -ArgumentList $relaunch -Wait
+    exit
 }
 
 $ServiceName = "MonitorAgent"
@@ -46,4 +54,8 @@ if (Test-Path $AgentFile) {
     Fail "Agent binary not found at $AgentFile"
 }
 
-Log "Detach complete for server $Server - agent remains for other servers."
+    Log "Detach complete for server $Server - agent remains for other servers."
+
+    Write-Host ""
+    Write-Host "Press any key to close this window..." -ForegroundColor Cyan
+    try { [void][System.Console]::ReadKey($true) } catch { }

@@ -79,7 +79,7 @@ function Settings() {
             description:
                 "Real-time ecosystem map showing agent heartbeats, metrics flow particles, backend FSM evaluations, and exact scheduled timers.",
             icon: Activity,
-            href: "/settings/alerts/visualizer",
+            href: "/settings/alerts/debugger",
         },
         {
             title: "Docs",
