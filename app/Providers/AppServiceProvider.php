@@ -11,11 +11,13 @@ use App\NodeConfig\NodeTypes\NotificationNode;
 use App\NodeConfig\NodeTypes\SeverityNode;
 use App\NodeConfig\NodeTypes\SustainedNode;
 use App\NodeConfig\NodeTypes\TemplateNode;
+use App\Services\Database\AppPostgresConnection;
 use App\Services\MediaUrlService;
 use App\Services\StorageProviderFactory;
 use App\Services\UploadIntentService;
 use Illuminate\Broadcasting\Broadcasters\PusherBroadcaster;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
@@ -76,6 +78,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Connection::resolverFor('pgsql', function ($pdo, $database, $tablePrefix, array $config) {
+            return new AppPostgresConnection($pdo, $database, $tablePrefix, $config);
+        });
+
         $this->app->afterResolving(Schedule::class, function (Schedule $schedule) {
             $schedule->command('uploads:cleanup')->hourly();
             $schedule->command('uploads:consistency-check')->daily();

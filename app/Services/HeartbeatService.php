@@ -216,9 +216,26 @@ class HeartbeatService
             $server = Server::where('uuid', $uuid)->first();
 
             // No-resurrection guard mirrors the legacy path: unknown, unowned,
-            // deleted or archived servers come back as revoked so the agent
-            // drops them locally instead of retrying forever.
+            // deleted/archived servers come back as revoked so the agent drops
+            // them from its runtime instead of retrying forever.
             if (! $server || $server->agent_id !== $agent->id || $server->agent_deleted || $server->status === ServerStatus::Archived->value) {
+                if (! $server) {
+                    $reason = 'unknown';
+                } elseif ($server->agent_deleted) {
+                    $reason = 'decommissioned';
+                } elseif ($server->status === ServerStatus::Archived->value) {
+                    $reason = 'archived';
+                } else {
+                    $reason = 'unowned';
+                }
+
+                Log::info('Agent heartbeat: server partition ignored', [
+                    'agent_id' => $agent->id,
+                    'installation_uuid' => $agent->installation_uuid,
+                    'server_uuid' => $uuid,
+                    'reason' => $reason,
+                ]);
+
                 $revoked[] = $uuid;
 
                 continue;

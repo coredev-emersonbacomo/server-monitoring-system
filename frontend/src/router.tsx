@@ -122,7 +122,7 @@ const router = createBrowserRouter([
                         ),
                     },
                     {
-                        path: "/settings/alerts/visualizer",
+                        path: "/settings/alerts/debugger",
                         element: <AlertVisualizer />,
                     },
                     {

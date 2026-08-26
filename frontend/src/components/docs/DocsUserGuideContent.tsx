@@ -773,6 +773,32 @@ export function DocsSettingsContent() {
                     pause/resume the pipeline and sync state — useful for
                     debugging alert timing.
                 </p>
+                <p>
+                    The visualizer is <strong>opt-in and off by default</strong>{" "}
+                    so the backend emits no telemetry in normal operation. To
+                    enable it locally, set{" "}
+                    <InlineCode>ALERTS_VISUAL_DEBUGGER=true</InlineCode> in the
+                    root <InlineCode>.env.development</InlineCode> (backend: gates
+                    the <InlineCode>/node-configs/telemetry-state</InlineCode>{" "}
+                    endpoint and all realtime broadcasts) and{" "}
+                    <InlineCode>VITE_ALERTS_VISUAL_DEBUGGER=true</InlineCode> in{" "}
+                    <InlineCode>frontend/.env</InlineCode> (frontend: reveals the{" "}
+                    <InlineCode>/settings/alerts/debugger</InlineCode> route).
+                </p>
+                <p>
+                    The feature is modular: the frontend is split into{" "}
+                    <InlineCode>useTelemetry</InlineCode> (state + realtime
+                    wiring), <InlineCode>PipelineBoard</InlineCode>,{" "}
+                    <InlineCode>ParticleCanvas</InlineCode>,{" "}
+                    <InlineCode>StatsBar</InlineCode>,{" "}
+                    <InlineCode>EventStreamPanel</InlineCode>,{" "}
+                    <InlineCode>OfflineServersPanel</InlineCode>, and{" "}
+                    <InlineCode>EventDetailsModal</InlineCode> under{" "}
+                    <InlineCode>pages/settings/alerts/</InlineCode>; the backend
+                    snapshot is built by{" "}
+                    <InlineCode>TelemetrySnapshot</InlineCode> and gated through{" "}
+                    <InlineCode>config("telemetry.enabled")</InlineCode>.
+                </p>
             </Section>
         </>
     );

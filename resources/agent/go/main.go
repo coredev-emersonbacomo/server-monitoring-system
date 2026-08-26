@@ -218,11 +218,27 @@ func uninstallWithMarker(instance string) error {
 	if err := deleteService(serviceName); err != nil {
 		return fmt.Errorf("failed to delete service: %w", err)
 	}
-	if err := os.RemoveAll(dir); err != nil {
+	// The stopped service may still hold agent.log open for a moment after the
+	// SCM reports Stopped, so retry the removal to avoid a spurious
+	// "file in use" error.
+	if err := removeAllWithRetry(dir, 20, 250*time.Millisecond); err != nil {
 		return fmt.Errorf("failed to remove instance directory: %w", err)
 	}
 	fmt.Println("Uninstall complete.")
 	return nil
+}
+
+// removeAllWithRetry removes a directory tree, retrying for transient errors
+// such as a file still held by a just-exited process on Windows.
+func removeAllWithRetry(path string, attempts int, delay time.Duration) error {
+	var err error
+	for i := 0; i < attempts; i++ {
+		if err = os.RemoveAll(path); err == nil {
+			return nil
+		}
+		time.Sleep(delay)
+	}
+	return err
 }
 
 // handleUninstallMarker runs at agent startup. If an uninstall.flag is present,
@@ -263,31 +279,38 @@ func detachWithMarker(instance, serverUuid string) error {
 	if err := os.WriteFile(marker, []byte(serverUuid), 0644); err != nil {
 		return fmt.Errorf("failed to write detach marker: %w", err)
 	}
-	fmt.Printf("Detach marker written for server %s; sending immediate detach request...\n", serverUuid)
-	// Try immediate POST via the agent's own identity (like handleDetachMarker) so it
-	// doesn't wait for the next 5s heartbeat. Fallback is the marker for the
-	// running service to pick up.
-	if cfg, _, err := loadConfig(dir); err == nil {
-		if keystore := newKeyStore(); keystore != nil {
-			if keyName := keyIDForInstallation(instance); keyName != "" {
+	fmt.Printf("Detach marker written for server %s; signalling running agent...\n", serverUuid)
+	// Try an immediate POST only when THIS process can reach the agent's
+	// identity key. The key lives in the installed service's per-user key store
+	// (LocalSystem on Windows), so a human running this script from their own
+	// account cannot open it — GetOrCreateKey would mint a brand-new key and
+	// signature verification would fail (HTTP 403), with the single-use
+	// challenge then returning 401 on retry. In that common case the marker is
+	// enough: the running service picks it up on its next tick. (Like
+	// handleDetachMarker, which always runs in the service's own context.)
+	if keystore := newKeyStore(); keystore != nil {
+		if keyName := keyIDForInstallation(instance); keyName != "" {
+			if ok, _ := keystore.HasKey(context.Background(), keyName); ok {
 				if key, err := keystore.GetOrCreateKey(context.Background(), keyName); err == nil {
 					if pub, err := keystore.PublicKey(context.Background(), key); err == nil {
-						client := NewAgentClient(keystore, key, cfg.ServerURL, instance)
-						client.SetPublicKeyHash(publicKeyHashHex(pub))
-						if err := client.detachServer(serverUuid); err != nil {
-							fmt.Printf("Warning: immediate detach failed (will retry on next heartbeat): %v\n", err)
-						} else {
-							fmt.Println("Server detached immediately.")
-							_ = os.WriteFile(marker, []byte("done"), 0644)
-							go func() { time.Sleep(2 * time.Second); os.Remove(marker) }()
-							return nil
+						if cfg, _, err := loadConfig(dir); err == nil {
+							client := NewAgentClient(keystore, key, cfg.ServerURL, instance)
+							client.SetPublicKeyHash(publicKeyHashHex(pub))
+							if err := client.detachServer(serverUuid); err != nil {
+								fmt.Printf("Warning: immediate detach failed (will retry on next heartbeat): %v\n", err)
+							} else {
+								fmt.Println("Server detached immediately.")
+								_ = os.WriteFile(marker, []byte("done"), 0644)
+								go func() { time.Sleep(2 * time.Second); os.Remove(marker) }()
+								return nil
+							}
 						}
 					}
 				}
 			}
 		}
 	}
-	fmt.Println("Detach signal queued — will be sent on next heartbeat if immediate failed.")
+	fmt.Println("Detach signal queued — the running agent will detach on its next heartbeat.")
 	return nil
 }
 
