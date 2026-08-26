@@ -406,8 +406,7 @@ export function DashboardChartsSection() {
     const { data: serversData } = useServers();
     const servers = serversData ?? [];
 
-    const isAll = selected.length === 0;
-    const compareUuids = isAll ? undefined : selected.join(",");
+    const compareUuids = selected.join(",") || undefined;
 
     useEffect(() => {
         if (view === "perServer" && servers.length > 0 && selected.length === 0) {
@@ -458,13 +457,6 @@ export function DashboardChartsSection() {
                     >
                         Select Servers
                     </Button>
-                    <Button
-                        variant={isAll ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSelected([])}
-                    >
-                        All Servers
-                    </Button>
                     {selected.length > 0 && (
                         <span className="text-xs text-muted-foreground ml-1">
                             {selected.length} selected
@@ -494,7 +486,7 @@ export function DashboardChartsSection() {
                         unit={cfg.unit}
                         yDomain={cfg.yDomain}
                         timeSpan={timeSpan}
-                        scope={isAll ? "all" : "server"}
+                        scope={selected.length > 0 ? "server" : "all"}
                         serverUuid={compareUuids}
                     />
                 ))}
