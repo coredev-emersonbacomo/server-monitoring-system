@@ -35,8 +35,8 @@ export function DocsAgentInstallContent() {
                 <p>
                     Click <strong>Generate Installation Command</strong>. The
                     backend creates a one-time <strong>provision token</strong>{" "}
-                    (valid for 30 minutes) and returns two one-liner commands — one
-                    for Linux, one for Windows. Copy the one for the target
+                    (valid for 30 minutes) and returns two one-liner commands —
+                    one for Linux, one for Windows. Copy the one for the target
                     machine's OS and run it there.
                 </p>
                 <ol className="list-decimal pl-5 space-y-1.5">
@@ -61,32 +61,43 @@ export function DocsAgentInstallContent() {
             </Section>
 
             <Section title="Linux install">
-                <CodeBlock language="bash" filename="Linux terminal (as root)">{`sudo curl -fsSL {APP_URL}/install/linux | sudo bash -s -- <TOKEN>`}</CodeBlock>
+                <CodeBlock
+                    language="bash"
+                    filename="Linux terminal (as root)"
+                >{`sudo curl -fsSL {APP_URL}/install/linux | sudo bash -s -- <TOKEN>`}</CodeBlock>
                 <p>
                     The script contacts the provision endpoint, downloads the
-                    agent binary, verifies its SHA-256 checksum, and installs it:
+                    agent binary, verifies its SHA-256 checksum, and installs
+                    it:
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
                         Binary at{" "}
-                        <InlineCode>/opt/monitor-agent/monitor-agent</InlineCode>{" "}
+                        <InlineCode>
+                            /opt/monitor-agent/monitor-agent
+                        </InlineCode>{" "}
                         (shared location, root-owned, read-only at runtime).
                     </li>
                     <li>
                         Instance config at{" "}
-                        <InlineCode>/var/lib/monitor-agent/instances/&lt;uuid&gt;/config.json</InlineCode>{" "}
+                        <InlineCode>
+                            /var/lib/monitor-agent/instances/&lt;uuid&gt;/config.json
+                        </InlineCode>{" "}
                         (owned by the <InlineCode>monitor</InlineCode> service
                         user, mode 0600).
                     </li>
                     <li>
                         A dedicated <InlineCode>monitor</InlineCode> system user
                         is created if missing, and a hardened systemd unit{" "}
-                        <InlineCode>monitor-agent.service</InlineCode>{" "}
-                        (stable, one per host) is enabled and started.
+                        <InlineCode>monitor-agent.service</InlineCode> (stable,
+                        one per host) is enabled and started.
                     </li>
                     <li>
                         The install log is written to{" "}
-                        <InlineCode>/var/log/monitor-agent-install.log</InlineCode>.
+                        <InlineCode>
+                            /var/log/monitor-agent-install.log
+                        </InlineCode>
+                        .
                     </li>
                 </ul>
                 <p>Useful checks after install:</p>
@@ -94,9 +105,10 @@ export function DocsAgentInstallContent() {
 journalctl -u monitor-agent.service -f
 cat /var/log/monitor-agent-install.log`}</CodeBlock>
                 <Callout>
-                    There is exactly one <InlineCode>monitor-agent.service</InlineCode>{" "}
-                    per physical computer, named by the host (not the server). When
-                    the installer finds an existing service it reuses the same
+                    There is exactly one{" "}
+                    <InlineCode>monitor-agent.service</InlineCode> per physical
+                    computer, named by the host (not the server). When the
+                    installer finds an existing service it reuses the same
                     installation UUID, service, and identity key — it only
                     attaches the new server to the already-running agent, so
                     installing a second server on the same host creates no
@@ -106,10 +118,14 @@ cat /var/log/monitor-agent-install.log`}</CodeBlock>
             </Section>
 
             <Section title="Windows install">
-                <CodeBlock language="powershell" filename="PowerShell (as Administrator)">{`powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1' -OutFile $env:TEMP\\monitor-install.ps1; & $env:TEMP\\monitor-install.ps1 -ProvisionToken '<TOKEN>'"`}</CodeBlock>
+                <CodeBlock
+                    language="powershell"
+                    filename="PowerShell (as Administrator)"
+                >{`powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1' -OutFile $env:TEMP\\monitor-install.ps1; & $env:TEMP\\monitor-install.ps1 -ProvisionToken '<TOKEN>'"`}</CodeBlock>
                 <p>
                     The script contacts the provision endpoint, downloads the
-                    agent binary, verifies its SHA-256 checksum, and installs it:
+                    agent binary, verifies its SHA-256 checksum, and installs
+                    it:
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
@@ -117,7 +133,8 @@ cat /var/log/monitor-agent-install.log`}</CodeBlock>
                         <InlineCode>
                             C:\Program Files\MonitorAgent\MonitorAgent.exe
                         </InlineCode>{" "}
-                        (shared location, the agent never writes here at runtime).
+                        (shared location, the agent never writes here at
+                        runtime).
                     </li>
                     <li>
                         Instance config at{" "}
@@ -128,11 +145,11 @@ cat /var/log/monitor-agent-install.log`}</CodeBlock>
                         writable state lives.
                     </li>
                     <li>
-                        A Windows service{" "}
-                        <InlineCode>MonitorAgent</InlineCode>{" "}
-                        (stable, one per host) running as <strong>LocalSystem</strong> is
-                        created and started. Installing a second server on the
-                        same host reuses this service and identity.
+                        A Windows service <InlineCode>MonitorAgent</InlineCode>{" "}
+                        (stable, one per host) running as{" "}
+                        <strong>LocalSystem</strong> is created and started.
+                        Installing a second server on the same host reuses this
+                        service and identity.
                     </li>
                     <li>
                         The install log is written to{" "}
@@ -166,10 +183,10 @@ Get-Content "C:\\ProgramData\\MonitorAgent\\instances\\<uuid>\\agent.log"`}</Cod
                         memory only.
                     </li>
                     <li>
-                        <strong>Heartbeat</strong> — the agent starts sending one
-                        aggregated heartbeat (all monitored servers in a single
-                        request) on the heartbeat interval (default 5 seconds).
-                        The server moves to{" "}
+                        <strong>Heartbeat</strong> — the agent starts sending
+                        one aggregated heartbeat (all monitored servers in a
+                        single request) on the heartbeat interval (default 5
+                        seconds). The server moves to{" "}
                         <em>waiting for first heartbeat</em>, then{" "}
                         <em>online</em> once the first heartbeat lands.
                     </li>
@@ -245,9 +262,9 @@ Get-Content "C:\\ProgramData\\MonitorAgent\\instances\\<uuid>\\agent.log"`}</Cod
                 <SubSection title="Installed Agent Properties">
                     <p>
                         Agent version and heartbeat interval (the interval the
-                        agent actually polls on, kept on the agent row and pushed
-                        via the backend's configuration endpoint), plus the
-                        per-collector scan intervals, update channel, and
+                        agent actually polls on, kept on the agent row and
+                        pushed via the backend's configuration endpoint), plus
+                        the per-collector scan intervals, update channel, and
                         auto-update setting, with first-registration and last
                         heartbeat times.
                     </p>
@@ -268,36 +285,45 @@ Get-Content "C:\\ProgramData\\MonitorAgent\\instances\\<uuid>\\agent.log"`}</Cod
             <Section title="Uninstalling vs. detaching — one agent, many servers">
                 <p>
                     One <InlineCode>MonitorAgent</InlineCode> monitors{" "}
-                    <strong>all servers on one host</strong>. Two different removals exist:
+                    <strong>all servers on one host</strong>. Two different
+                    removals exist:
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Detach a single server</strong> — the agent stays
-                        installed and keeps monitoring its other servers. The dashboard
-                        detaches via the <strong>Agent tab → Detach Server</strong>{" "}
-                        (when the host has &gt;1 servers) or the Delete flow for that
-                        server; both require the host command for validation and send{" "}
-                        <InlineCode>POST /api/v1/agent/servers/&#123;uuid&#125;/uninstall</InlineCode>{" "}
-                        (agent JWT) — <InlineCode>AgentUninstalled</InlineCode> for that
-                        server only.
+                        <strong>Detach a single server</strong> — the agent
+                        stays installed and keeps monitoring its other servers.
+                        The dashboard detaches via the{" "}
+                        <strong>Agent tab → Detach Server</strong> (when the
+                        host has &gt;1 servers) or the Delete flow for that
+                        server; both require the host command for validation and
+                        send{" "}
+                        <InlineCode>
+                            POST
+                            /api/v1/agent/servers/&#123;uuid&#125;/uninstall
+                        </InlineCode>{" "}
+                        (agent JWT) — <InlineCode>AgentUninstalled</InlineCode>{" "}
+                        for that server only.
                     </li>
                     <li>
-                        <strong>Uninstall the whole agent</strong> — removes the single
-                        stable service and the shared binary. Use when the host has one
-                        server or you want to wipe the host completely.
+                        <strong>Uninstall the whole agent</strong> — removes the
+                        single stable service and the shared binary. Use when
+                        the host has one server or you want to wipe the host
+                        completely.
                     </li>
                 </ul>
                 <p>
-                    Both are <strong>marker-based</strong> and must be run on the host
-                    (validation — only the machine holding the key can revoke). The script
-                    writes a flag, the running service (LocalSystem/
-                    <InlineCode>monitor</InlineCode>) does the authenticated revoke/delete.
+                    Both are <strong>marker-based</strong> and must be run on
+                    the host (validation — only the machine holding the key can
+                    revoke). The script writes a flag, the running service
+                    (LocalSystem/
+                    <InlineCode>monitor</InlineCode>) does the authenticated
+                    revoke/delete.
                 </p>
                 <ol className="list-decimal pl-5 space-y-1.5">
                     <li>
                         <InlineCode>uninstall.flag</InlineCode> /{" "}
-                        <InlineCode>detach.flag</InlineCode> (<InlineCode>pending</InlineCode>) written
-                        into{" "}
+                        <InlineCode>detach.flag</InlineCode> (
+                        <InlineCode>pending</InlineCode>) written into{" "}
                         <InlineCode>
                             C:\ProgramData\MonitorAgent\instances\&lt;uuid&gt;
                         </InlineCode>{" "}
@@ -308,36 +334,41 @@ Get-Content "C:\\ProgramData\\MonitorAgent\\instances\\<uuid>\\agent.log"`}</Cod
                         .
                     </li>
                     <li>
-                        Service sees the flag on the next loop (or next startup) and{" "}
-                        <InlineCode>POST</InlineCode>s —{" "}
-                        <InlineCode>/api/v1/agent/uninstall</InlineCode> (whole agent) or{" "}
-                        <InlineCode>/api/v1/agent/servers/&#123;uuid&#125;/uninstall</InlineCode>{" "}
-                        (one server) — using its short-lived session. Detach keeps the
-                        service for remaining servers; uninstall deletes the identity key.
+                        Service sees the flag on the next loop (or next startup)
+                        and <InlineCode>POST</InlineCode>s —{" "}
+                        <InlineCode>/api/v1/agent/uninstall</InlineCode> (whole
+                        agent) or{" "}
+                        <InlineCode>
+                            /api/v1/agent/servers/&#123;uuid&#125;/uninstall
+                        </InlineCode>{" "}
+                        (one server) — using its short-lived session. Detach
+                        keeps the service for remaining servers; uninstall
+                        deletes the identity key.
                     </li>
                     <li>
-                        Agent writes <InlineCode>done</InlineCode> to the flag and the
-                        service exits (uninstall) or continues (detach).
+                        Agent writes <InlineCode>done</InlineCode> to the flag
+                        and the service exits (uninstall) or continues (detach).
                     </li>
                     <li>
-                        The script confirms <InlineCode>done</InlineCode>, then (uninstall
-                        only) removes the stable service{" "}
+                        The script confirms <InlineCode>done</InlineCode>, then
+                        (uninstall only) removes the stable service{" "}
                         <InlineCode>MonitorAgent</InlineCode>/
-                        <InlineCode>monitor-agent.service</InlineCode>, the instance
-                        directory and the shared binary.
+                        <InlineCode>monitor-agent.service</InlineCode>, the
+                        instance directory and the shared binary.
                     </li>
                 </ol>
                 <p>
                     Detach <strong>immediately</strong> tries the{" "}
                     <InlineCode>POST</InlineCode> in the short-lived{" "}
-                    <InlineCode>MonitorAgent.exe -detach</InlineCode> helper too, so the
-                    server flips to <em>Agent Uninstalled</em> without waiting for the
-                    next <InlineCode>5s</InlineCode> heartbeat — fallback is the marker
-                    for the next loop. Uninstall always waits for the service loop.
+                    <InlineCode>MonitorAgent.exe -detach</InlineCode> helper
+                    too, so the server flips to <em>Agent Uninstalled</em>{" "}
+                    without waiting for the next <InlineCode>5s</InlineCode>{" "}
+                    heartbeat — fallback is the marker for the next loop.
+                    Uninstall always waits for the service loop.
                 </p>
                 <p>
-                    Commands are emitted per-server by the detail page — copy them, don’t
-                    type the UUIDs:
+                    Commands are emitted per-server by the detail page — copy
+                    them, don’t type the UUIDs:
                 </p>
                 <CodeBlock language="bash">{`# Detach one server (host stays, other servers keep monitoring)
 sudo curl -fsSL {APP_URL}/detach/linux | sudo bash -s -- <INSTALLATION_UUID> <SERVER_UUID>
@@ -350,53 +381,67 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/detach/windows.ps1' 
 # Uninstall whole agent
 powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/uninstall/windows.ps1' -OutFile $env:TEMP\\monitor-uninstall.ps1; & $env:TEMP\\monitor-uninstall.ps1 -Instance '<INSTALLATION_UUID>'"`}</CodeBlock>
                 <Callout type="warning">
-                    Detach takes <strong>exactly one</strong> server UUID and never touches
-                    the other servers’ data; uninstall takes one installation UUID and wipes
-                    the whole host. Wrong UUIDs fail — nothing is guessed. When an agent
-                    detaches its last server, it stays installed with zero servers until a
-                    full uninstall — it does <strong>not</strong> auto-revoke.
+                    Detach takes <strong>exactly one</strong> server UUID and
+                    never touches the other servers’ data; uninstall takes one
+                    installation UUID and wipes the whole host. Wrong UUIDs fail
+                    — nothing is guessed. When an agent detaches its last
+                    server, it stays installed with zero servers until a full
+                    uninstall — it does <strong>not</strong> auto-revoke.
                 </Callout>
                 <Callout>
-                    Both are authenticated by the agent’s own session — only the host holding
-                    the key can revoke/detach. The dashboard’s Delete flow for a shared host
-                    also requires the host detach command for validation (no direct DB detach).
-                    Status flips to <em>Agent Uninstalled</em> in real time via{" "}
+                    Both are authenticated by the agent’s own session — only the
+                    host holding the key can revoke/detach. The dashboard’s
+                    Delete flow for a shared host also requires the host detach
+                    command for validation (no direct DB detach). Status flips
+                    to <em>Agent Uninstalled</em> in real time via{" "}
                     <InlineCode>AgentUninstalled</InlineCode> +{" "}
-                    <InlineCode>ServerStatusUpdated</InlineCode> and the guide reappears.
+                    <InlineCode>ServerStatusUpdated</InlineCode> and the guide
+                    reappears.
                 </Callout>
             </Section>
 
             <Section title="Agent recovery and force reinstall">
                 <p>
-                    If agent files were accidentally deleted, corrupted, or removed
-                    on the host server while database records remained hanging (leaving
-                    the server in an unlinked or stale state), you can run a{" "}
-                    <strong>Force Reinstall</strong>.
+                    If agent files were accidentally deleted, corrupted, or
+                    removed on the host server while database records remained
+                    hanging (leaving the server in an unlinked or stale state),
+                    you can run a <strong>Force Reinstall</strong>.
                 </p>
                 <p>
-                    In the server detail page's <strong>Agent</strong> tab, locate the{" "}
-                    <strong>Agent Recovery & Force Reinstall</strong> card and click{" "}
-                    <strong>Force Reinstall Agent</strong>.
+                    In the server detail page's <strong>Agent</strong> tab,
+                    locate the <strong>Agent Recovery & Force Reinstall</strong>{" "}
+                    card and click <strong>Force Reinstall Agent</strong>.
                 </p>
                 <ol className="list-decimal pl-5 space-y-1.5">
                     <li>
-                        The backend generates a new one-time provision token linked to the server's{" "}
-                        <strong>existing installation UUID</strong> stored in the database.
+                        The backend generates a new one-time provision token
+                        linked to the server's{" "}
+                        <strong>existing installation UUID</strong> stored in
+                        the database.
                     </li>
                     <li>
-                        The modal provides OS-specific commands with the installation UUID embedded:
+                        The modal provides OS-specific commands with the
+                        installation UUID embedded:
                     </li>
                 </ol>
-                <CodeBlock language="bash" filename="Linux (as root)">{`sudo curl -fsSL {APP_URL}/install/linux | sudo bash -s -- <TOKEN> <INSTALLATION_UUID>`}</CodeBlock>
-                <CodeBlock language="powershell" filename="Windows PowerShell (as Administrator)">{`powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1' -OutFile $env:TEMP\\monitor-install.ps1; & $env:TEMP\\monitor-install.ps1 -ProvisionToken '<TOKEN>' -InstallationId '<INSTALLATION_UUID>'"`}</CodeBlock>
+                <CodeBlock
+                    language="bash"
+                    filename="Linux (as root)"
+                >{`sudo curl -fsSL {APP_URL}/install/linux | sudo bash -s -- <TOKEN> <INSTALLATION_UUID>`}</CodeBlock>
+                <CodeBlock
+                    language="powershell"
+                    filename="Windows PowerShell (as Administrator)"
+                >{`powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1' -OutFile $env:TEMP\\monitor-install.ps1; & $env:TEMP\\monitor-install.ps1 -ProvisionToken '<TOKEN>' -InstallationId '<INSTALLATION_UUID>'"`}</CodeBlock>
                 <p>
-                    When executed on the host, the installer downloads a fresh agent binary,
-                    restores the configuration directory with the existing installation UUID,
-                    and registers/restarts the OS service cleanly without creating orphaned server records.
+                    When executed on the host, the installer downloads a fresh
+                    agent binary, restores the configuration directory with the
+                    existing installation UUID, and registers/restarts the OS
+                    service cleanly without creating orphaned server records.
                 </p>
                 <Callout>
-                    Force reinstall preserves historical server metrics and database associations
-                    by binding the freshly installed agent back to the same installation ID.
+                    Force reinstall preserves historical server metrics and
+                    database associations by binding the freshly installed agent
+                    back to the same installation ID.
                 </Callout>
             </Section>
 
@@ -409,40 +454,45 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/uninstall/windows.ps
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
                         <strong>Install log</strong> —{" "}
-                        <InlineCode>%TEMP%\monitor-agent-install.log</InlineCode>{" "}
+                        <InlineCode>
+                            %TEMP%\monitor-agent-install.log
+                        </InlineCode>{" "}
                         (Windows) or{" "}
-                        <InlineCode>/var/log/monitor-agent-install.log</InlineCode>{" "}
+                        <InlineCode>
+                            /var/log/monitor-agent-install.log
+                        </InlineCode>{" "}
                         (Linux). If the installer failed, the reason is here
                         (bad token, checksum mismatch, collision).
                     </li>
                     <li>
-                        <strong>
-                            startup.log — always at the data root
-                        </strong>{" "}
-                        —{" "}
+                        <strong>startup.log — always at the data root</strong> —{" "}
                         <InlineCode>
                             C:\ProgramData\MonitorAgent\startup.log
                         </InlineCode>{" "}
                         or{" "}
-                        <InlineCode>/var/lib/monitor-agent/startup.log</InlineCode>
+                        <InlineCode>
+                            /var/lib/monitor-agent/startup.log
+                        </InlineCode>
                         . One-line early-startup records: "loadConfig failed",
                         "GetOrCreateKey failed", "agent.log open failed". This
                         is the first place to look when the agent produces
                         nothing.
                     </li>
                     <li>
-                        <strong>agent.log — in the instance directory</strong>{" "}
-                        — the runtime log once the instance directory exists.
+                        <strong>agent.log — in the instance directory</strong> —
+                        the runtime log once the instance directory exists.
                         Registration failures, auth failures, and heartbeat
                         errors all land here.
                     </li>
                     <li>
-                        <strong>crash.log — in the instance directory</strong>{" "}
-                        — a last-gasp panic stack if the agent crashed.
+                        <strong>crash.log — in the instance directory</strong> —
+                        a last-gasp panic stack if the agent crashed.
                     </li>
                     <li>
                         <strong>System logs</strong> —{" "}
-                        <InlineCode>journalctl -u monitor-agent@&lt;uuid&gt;.service</InlineCode>{" "}
+                        <InlineCode>
+                            journalctl -u monitor-agent@&lt;uuid&gt;.service
+                        </InlineCode>{" "}
                         on Linux, or the Windows Services snap-in for the{" "}
                         <InlineCode>MonitorAgent-&lt;uuid&gt;</InlineCode>{" "}
                         service.
@@ -451,13 +501,16 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/uninstall/windows.ps
                 <SubSection title="Common causes">
                     <ul className="list-disc pl-5 space-y-1.5">
                         <li>
-                            <strong>Agent stays in waiting for installation</strong>{" "}
-                            — the provision token expired or was never generated.
-                            Regenerate it from the guide.
+                            <strong>
+                                Agent stays in waiting for installation
+                            </strong>{" "}
+                            — the provision token expired or was never
+                            generated. Regenerate it from the guide.
                         </li>
                         <li>
-                            <strong>Missing config.json in the instance
-                            directory</strong>{" "}
+                            <strong>
+                                Missing config.json in the instance directory
+                            </strong>{" "}
                             — the installer never ran successfully. The agent
                             now self-creates a minimal default config and logs
                             clearly in startup.log instead of exiting silently;
@@ -467,12 +520,16 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/uninstall/windows.ps
                         <li>
                             <strong>Identity key missing</strong> — the private
                             key lives in the OS keystore (Windows) or at{" "}
-                            <InlineCode>/var/lib/monitor-agent/identity-&lt;uuid&gt;.pem</InlineCode>{" "}
-                            (Linux). If it is gone, the agent cannot authenticate
-                            — reinstall to mint a fresh identity.
+                            <InlineCode>
+                                /var/lib/monitor-agent/identity-&lt;uuid&gt;.pem
+                            </InlineCode>{" "}
+                            (Linux). If it is gone, the agent cannot
+                            authenticate — reinstall to mint a fresh identity.
                         </li>
                         <li>
-                            <strong>Server flips between online and offline</strong>{" "}
+                            <strong>
+                                Server flips between online and offline
+                            </strong>{" "}
                             — check the offline threshold (Settings → Agent
                             Settings) is ≥ the heartbeat interval, and that the
                             machine has a stable connection to the backend.

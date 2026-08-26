@@ -11,16 +11,15 @@ export function DocsGmailSmtpContent() {
             <Section title="How it works">
                 <p>
                     Secrets never live in the tracked base config. The transport
-                    config lives in <InlineCode>.env.development</InlineCode>{" "}
-                    (tracked), the credentials live in{" "}
-                    <InlineCode>.env.credentials</InlineCode> (gitignored), and{" "}
-                    <InlineCode>scripts/dev.js</InlineCode> injects them into the
-                    process environment at runtime before starting Laravel. Laravel
-                    prefers injected env vars over{" "}
-                    <InlineCode>.env.development</InlineCode> values.
+                    config (host, port, mailer) lives in{" "}
+                    <InlineCode>.env.development</InlineCode> (tracked), and the
+                    credentials live in <InlineCode>.env</InlineCode> (gitignored,
+                    overrides <InlineCode>.env.development</InlineCode>). Laravel
+                    loads <InlineCode>.env</InlineCode> directly via its normal env
+                    loading — no runtime injection step is needed.
                 </p>
-                <CodeBlock>{`scripts/dev.js -> reads .env.credentials -> sets process.env -> php artisan (queue:work)
-                                                              -> php artisan (schedule:work)`}</CodeBlock>
+                <CodeBlock>{`.env.development  -> MAIL_HOST, MAIL_PORT, MAIL_MAILER (tracked, non-secret)
+.env             -> MAIL_USERNAME, MAIL_PASSWORD, MAIL_FROM_ADDRESS (gitignored, secret)`}</CodeBlock>
             </Section>
 
             <Section title="1. Get a Gmail App Password">
@@ -38,33 +37,27 @@ export function DocsGmailSmtpContent() {
                         <InlineCode>https://myaccount.google.com/apppasswords</InlineCode>{" "}
                         and create one for "Mail".
                     </li>
+                </ol>
+                <Callout type="warning">
+                    <strong>Notes:</strong> If "The setting you are looking for is
+                    not available for your account" appears: 2FA (2-Step
+                    Verification) is off, a passkey/security key is enrolled (remove
+                    it), Google Workspace admin disabled app passwords, or Advanced
+                    Protection is on.
+                </Callout>
+                <ol start={3} className="list-decimal list-inside ml-2 space-y-1">
                     <li>
                         You get a 16-character password — use that, with spaces
                         removed.
                     </li>
                 </ol>
-                <Callout type="warning">
-                    <strong>Notes:</strong>
-                    <ul className="list-disc list-inside ml-2 space-y-1 mt-1">
-                        <li>
-                            If "The setting you are looking for is not available for
-                            your account" appears: 2SV is off, a passkey/security
-                            key is enrolled (remove it), Google Workspace admin
-                            disabled app passwords, or Advanced Protection is on.
-                        </li>
-                        <li>
-                            The app password can act as full account access. Never
-                            commit it, and delete it from Google when it's no longer
-                            needed.
-                        </li>
-                    </ul>
-                </Callout>
             </Section>
 
             <Section title="2. Configure the credentials file">
                 <p>
-                    Create <InlineCode>.env.credentials</InlineCode> (gitignored) in
-                    the project root:
+                    Put your secrets in <InlineCode>.env</InlineCode> (gitignored,
+                    in the project root) — it overrides the tracked{" "}
+                    <InlineCode>.env.development</InlineCode> values:
                 </p>
                 <CodeBlock>{`MAIL_USERNAME="you@gmail.com"
 MAIL_PASSWORD="the16characterapppassword"
@@ -86,19 +79,27 @@ MAIL_FROM_ADDRESS="hello@example.com"`}</CodeBlock>
                     <InlineCode>MAIL_PORT=465</InlineCode> and{" "}
                     <InlineCode>MAIL_SCHEME=smtps</InlineCode>.
                 </p>
+                <Callout type="warning">
+                    After editing mail config, clear the cache:{" "}
+                    <InlineCode>php artisan config:clear</InlineCode> (the dev stack
+                    also restarts the workers automatically when{" "}
+                    <InlineCode>.env</InlineCode> changes).
+                </Callout>
+                <Callout type="warning">
+                    The app password acts as full account access. Never commit it
+                    (it lives in the gitignored <InlineCode>.env</InlineCode>), and
+                    delete it from Google when it's no longer needed.
+                </Callout>
             </Section>
 
-            <Section title="3. Run through dev.js">
+            <Section title="3. Run">
                 <p>
-                    Credentials are only injected by the dev script. Start everything
-                    with:
+                    Credentials live in <InlineCode>.env</InlineCode>, which Laravel
+                    loads directly — both the dev stack and manual{" "}
+                    <InlineCode>php artisan</InlineCode> commands pick them up. Start
+                    everything with:
                 </p>
                 <CodeBlock>{`npm run dev`}</CodeBlock>
-                <Callout type="warning">
-                    When running <InlineCode>php artisan</InlineCode> commands
-                    manually, credentials are not injected — the send will fail or
-                    fall back to the <InlineCode>.env</InlineCode> values.
-                </Callout>
             </Section>
 
             <Section title="4. Verify recipients">
@@ -130,7 +131,7 @@ MAIL_FROM_ADDRESS="hello@example.com"`}</CodeBlock>
                     <InlineCode>MAIL_PORT</InlineCode>,{" "}
                     <InlineCode>MAIL_USERNAME</InlineCode>,{" "}
                     <InlineCode>MAIL_PASSWORD</InlineCode> in{" "}
-                    <InlineCode>.env.credentials</InlineCode>.
+                    <InlineCode>.env</InlineCode>.
                 </p>
             </Section>
         </>

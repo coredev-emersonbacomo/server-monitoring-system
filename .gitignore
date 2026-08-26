@@ -17,6 +17,7 @@ frontend/src/api/api.json
 /.zed
 /auth.json
 /database/schema/*.sql
+/database/schema/pgsql-schema.sql
 /node_modules
 /public/build
 /public/fonts-manifest.dev.json

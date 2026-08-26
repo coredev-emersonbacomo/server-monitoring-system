@@ -377,10 +377,9 @@ export function DocsCredentialsContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <InlineCode>.env.credentials</InlineCode> (gitignored)
-                        — Gmail SMTP app credentials injected into{" "}
-                        <InlineCode>process.env</InlineCode> at runtime by{" "}
-                        <InlineCode>scripts/dev.js</InlineCode>.
+                        <InlineCode>.env</InlineCode> (gitignored) — Gmail SMTP
+                        app credentials and other local secrets, loaded directly by
+                        Laravel (overrides <InlineCode>.env.development</InlineCode>).
                     </li>
                     <li>
                         <InlineCode>.env.production</InlineCode> (gitignored) —
@@ -528,10 +527,11 @@ php artisan reverb:start            # WebSocket broadcaster
 php artisan queue:work -q           # Queue worker
 php artisan schedule:work           # Task scheduler`}</CodeBlock>
                 <p>
-                    <InlineCode>scripts/dev.js</InlineCode> also loads{" "}
-                    <InlineCode>.env.credentials</InlineCode> (gitignored) so
-                    Gmail SMTP overrides work during development. The Vite dev
-                    server proxies <InlineCode>/api</InlineCode> and{" "}
+                    Secrets (e.g. Gmail SMTP credentials) live in{" "}
+                    <InlineCode>.env</InlineCode> (gitignored), which Laravel loads
+                    directly and which overrides the tracked{" "}
+                    <InlineCode>.env.development</InlineCode>. The Vite dev server
+                    proxies <InlineCode>/api</InlineCode> and{" "}
                     <InlineCode>/sanctum</InlineCode> to the backend at{" "}
                     <InlineCode>APP_URL</InlineCode>. The SPA connects to Reverb
                     using <InlineCode>VITE_REVERB_*</InlineCode> values from{" "}

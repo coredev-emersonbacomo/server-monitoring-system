@@ -10,6 +10,10 @@ param(
     [string]$InstallationId = ""
 )
 
+# Shared log path: the elevated child writes progress here, and the waiting
+# non-elevated parent reads it back so results surface in the original shell.
+$LogFile = "$env:TEMP\monitor-agent-install.log"
+
 $ErrorActionPreference = "Stop"
 
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -30,6 +34,15 @@ if (-not $isAdmin) {
     if ($AppUrl -and $AppUrl -ne "{{APP_URL}}") { $relaunch += "-AppUrl"; $relaunch += $AppUrl }
     if ($InstallationId) { $relaunch += "-InstallationId"; $relaunch += $InstallationId }
     Start-Process -FilePath $pwsh -Verb RunAs -ArgumentList $relaunch -Wait
+
+    # The elevated child wrote its progress to $LogFile; surface it here so the
+    # results appear in this (non-elevated) shell once the child closes.
+    if (Test-Path $LogFile) {
+        Write-Host ""
+        Write-Host "=== Install log (elevated) ===" -ForegroundColor Cyan
+        [System.IO.File]::ReadAllLines($LogFile) | ForEach-Object { Write-Host $_ }
+        Write-Host "=== End of log ===" -ForegroundColor Cyan
+    }
     exit
 }
 
@@ -38,15 +51,16 @@ if (-not $isAdmin) {
 # service's presence, not by files or hostname.
 $ServiceName = "MonitorAgent"
 $DataRoot = "C:\ProgramData\MonitorAgent"
-$LogFile = "$env:TEMP\monitor-agent-install.log"
+# Start each elevated run with a fresh log so the parent shows only this run.
+[System.IO.File]::WriteAllText($LogFile, "")
 
 function Log($msg) {
-    "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [INFO] $msg" | Out-File -FilePath $LogFile -Append
+    [System.IO.File]::AppendAllText($LogFile, "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [INFO] $msg`r`n")
     Write-Host $msg
 }
 
 function Fail($msg) {
-    "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [ERROR] $msg" | Out-File -FilePath $LogFile -Append
+    [System.IO.File]::AppendAllText($LogFile, "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [ERROR] $msg`r`n")
     Write-Error $msg
     exit 1
 }
