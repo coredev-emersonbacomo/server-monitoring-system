@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Download } from "lucide-react";
 import jwtClient from "@/api/jwtClient";
 import { useOutletContext } from "react-router-dom";
 import type { ReportOrientation, ReportOutletContext } from "@/layouts/ReportsLayout";
@@ -22,11 +23,13 @@ interface TypstPreviewProps {
 interface CachedPdf {
     url: string;
     generatedAt: string | null;
+    filename: string;
 }
 
 interface PdfResult {
     blob: Blob;
     generatedAt: string | null;
+    filename: string;
 }
 
 const pdfCache = new Map<string, CachedPdf>();
@@ -63,6 +66,7 @@ export function TypstPreview({
     const { refreshToken } = useOutletContext<ReportOutletContext>();
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
     const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+    const [filename, setFilename] = useState<string>("report.pdf");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const prevUrlRef = useRef<string | null>(null);
@@ -80,6 +84,7 @@ export function TypstPreview({
             if (hit) {
                 setPdfUrl(hit.url);
                 setGeneratedAt(hit.generatedAt);
+                setFilename(hit.filename);
                 setLoading(false);
                 setError(null);
                 return;
@@ -114,6 +119,8 @@ export function TypstPreview({
                     blob: new Blob([response.data], { type: "application/pdf" }),
                     generatedAt:
                         (response.headers["x-generated-at"] as string | undefined) ?? null,
+                    filename:
+                        (response.headers["x-filename"] as string | undefined) ?? "report.pdf",
                 }));
 
             inflight.set(cacheKey, pending);
@@ -128,7 +135,7 @@ export function TypstPreview({
         setError(null);
 
         pending
-            .then(({ blob, generatedAt }) => {
+            .then(({ blob, generatedAt, filename: fname }) => {
                 if (cancelled) return;
 
                 // Revoke the previously displayed blob URL
@@ -139,9 +146,10 @@ export function TypstPreview({
                 const url = URL.createObjectURL(blob);
                 prevUrlRef.current = url;
 
-                pdfCache.set(cacheKey, { url, generatedAt });
+                pdfCache.set(cacheKey, { url, generatedAt, filename: fname });
                 setPdfUrl(url);
                 setGeneratedAt(generatedAt);
+                setFilename(fname);
                 setLoading(false);
             })
             .catch((err: unknown) => {
@@ -167,6 +175,16 @@ export function TypstPreview({
             cancelled = true;
         };
     }, [cacheKey, template, data, uuid, uuids, paper, orientation, hours, refreshToken]);
+
+    const handleDownload = useCallback(() => {
+        if (!pdfUrl) return;
+        const a = document.createElement("a");
+        a.href = pdfUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }, [pdfUrl, filename]);
 
     if (loading) {
         return (
@@ -201,13 +219,22 @@ export function TypstPreview({
     return (
         <div className="w-full flex flex-col gap-2">
             {generatedAt && (
-                <p className="text-xs text-muted-foreground text-right">
-                    Generated{" "}
-                    {new Date(generatedAt).toLocaleString([], {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                    })}
-                </p>
+                <div className="flex items-center justify-between">
+                    <button
+                        onClick={handleDownload}
+                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline cursor-pointer"
+                    >
+                        <Download size={12} />
+                        Download PDF
+                    </button>
+                    <p className="text-xs text-muted-foreground">
+                        Generated{" "}
+                        {new Date(generatedAt).toLocaleString([], {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                        })}
+                    </p>
+                </div>
             )}
             <div className="w-full bg-muted/30 rounded-xl overflow-hidden">
                 <object
@@ -220,7 +247,7 @@ export function TypstPreview({
                         Your browser doesn't support PDF viewing.
                         <a
                             href={pdfUrl}
-                            download
+                            download={filename}
                             className="text-primary underline ml-1"
                         >
                             Download the PDF
