@@ -90,6 +90,23 @@ class ReportController extends Controller
         $data['paper'] = $paper;
         $data['hours'] = $hours;
 
+        // Build human-readable filename
+        $dateStr = now()->format('m-d-Y');
+        $entityName = $data['name'] ?? null;
+        $filename = match ($template) {
+            'server' => $entityName
+                ? "Server - {$entityName} - {$dateStr}.pdf"
+                : "Server Report - {$dateStr}.pdf",
+            'client' => $entityName
+                ? "Client - {$entityName} - {$dateStr}.pdf"
+                : "Client Report - {$dateStr}.pdf",
+            'general' => "System Report - {$dateStr}.pdf",
+            'multi-server' => "Servers Report - {$dateStr}.pdf",
+            'multi-client' => "Clients Report - {$dateStr}.pdf",
+            default => "Report - {$dateStr}.pdf",
+        };
+        $filename = preg_replace('/[^\w\s\-\.]/', '', $filename);
+
         // Stable entity reference — determines which DB records feed the report
         $entityRef = match (true) {
             $template === 'general' => 'general',
@@ -118,8 +135,9 @@ class ReportController extends Controller
         if (! $refresh && File::exists($cachedPdf)) {
             return response(file_get_contents($cachedPdf), 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="report.pdf"',
+                'Content-Disposition' => "inline; filename=\"{$filename}\"",
                 'X-Generated-At' => gmdate('c', filemtime($cachedPdf)),
+                'X-Filename' => $filename,
             ]);
         }
 
@@ -180,8 +198,9 @@ class ReportController extends Controller
 
             return response($pdfBytes, 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="report.pdf"',
+                'Content-Disposition' => "inline; filename=\"{$filename}\"",
                 'X-Generated-At' => now()->toIso8601String(),
+                'X-Filename' => $filename,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -220,7 +239,7 @@ class ReportController extends Controller
      */
     private function buildServerData(string $uuid, int $hours = 24): ServerReportData
     {
-        $server = Server::with('client', 'agent')->where('uuid', $uuid)->firstOrFail();
+        $server = Server::with('client', 'agent')->withTrashed()->where('uuid', $uuid)->firstOrFail();
 
         $offlineThresholdSec = (int) Setting::get('offline_threshold', '15');
         if ($offlineThresholdSec >= 1000) {
@@ -311,7 +330,11 @@ class ReportController extends Controller
      */
     private function buildClientData(string $uuid): ClientReportData
     {
-        $client = Client::with(['servers.agent', 'servers.latestUpdate'])->where('uuid', $uuid)->firstOrFail();
+        $client = Client::with([
+            'servers' => fn ($q) => $q->withTrashed(),
+            'servers.agent',
+            'servers.latestUpdate',
+        ])->where('uuid', $uuid)->firstOrFail();
 
         $offlineThresholdSec = (int) Setting::get('offline_threshold', '15');
         if ($offlineThresholdSec >= 1000) {
