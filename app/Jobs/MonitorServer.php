@@ -113,25 +113,29 @@ class MonitorServer implements ShouldQueue
             } catch (\Throwable $e) {
                 Log::warning('[broadcast] Failed to push offline update', ['error' => $e->getMessage()]);
             }
-        }
 
-        if ($statusChanged && $config && $engine) {
-            $this->evaluateServerAlerts($server, $config, $engine, $notifications);
-        }
+            if ($config && $engine) {
+                $this->evaluateServerAlerts($server, $config, $engine, $notifications);
+            }
 
-        ActionItem::updateOrCreate(
-            [
-                'action_type' => 'server_offline',
-                'server_id' => $server->id,
-                'client_id' => $server->client_id,
-            ],
-            [
-                'message' => "{$server->name} is offline",
-                'severity' => 'critical',
-                'client_name' => $server->client?->name ?? 'Unknown',
-                'server_name' => $server->name,
-            ]
-        );
+            ActionItem::updateOrCreate(
+                [
+                    'action_type' => 'server_offline',
+                    'server_id' => $server->id,
+                    'client_id' => $server->client_id,
+                ],
+                [
+                    'status' => 'open',
+                    'assigned_to' => null,
+                    'completed_at' => null,
+                    'created_at' => now(),
+                    'message' => "{$server->name} is offline",
+                    'severity' => 'critical',
+                    'client_name' => $server->client?->name ?? 'Unknown',
+                    'server_name' => $server->name,
+                ]
+            );
+        }
     }
 
     private function handleOnlineRecovery(Server $server, string $previousStatus): void
@@ -177,10 +181,19 @@ class MonitorServer implements ShouldQueue
             ]);
         }
 
+        // If claimed by a user, mark as completed (so it appears in their completed history).
+        // If unclaimed, delete it so it clears cleanly without cluttering completed records.
         ActionItem::where('action_type', 'server_offline')
             ->where('server_id', $server->id)
             ->where('status', 'open')
+            ->whereNotNull('assigned_to')
             ->update(['status' => 'completed', 'completed_at' => now()]);
+
+        ActionItem::where('action_type', 'server_offline')
+            ->where('server_id', $server->id)
+            ->where('status', 'open')
+            ->whereNull('assigned_to')
+            ->delete();
     }
 
     private function resetGraphStates(Server $server): void

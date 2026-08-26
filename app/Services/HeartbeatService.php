@@ -500,11 +500,20 @@ class HeartbeatService
                 ]),
             ]);
 
-            // Resolve server offline problems on the Action Board
+            // Resolve server offline problems on the Action Board:
+            // If claimed by a user, mark as completed (so it appears in their completed history).
+            // If unclaimed, delete it so it clears cleanly without cluttering completed records.
             ActionItem::where('action_type', 'server_offline')
                 ->where('server_id', $server->id)
                 ->where('status', 'open')
+                ->whereNotNull('assigned_to')
                 ->update(['status' => 'completed', 'completed_at' => now()]);
+
+            ActionItem::where('action_type', 'server_offline')
+                ->where('server_id', $server->id)
+                ->where('status', 'open')
+                ->whereNull('assigned_to')
+                ->delete();
 
             // Real-time push so UI immediately reflects online status (failsafe if Reverb is offline)
             try {

@@ -387,6 +387,10 @@ class ServerData extends Data
                                 'client_id' => $server->client_id,
                             ],
                             [
+                                'status' => 'open',
+                                'assigned_to' => null,
+                                'completed_at' => null,
+                                'created_at' => now(),
                                 'message' => "{$server->name} is offline",
                                 'severity' => 'critical',
                                 'client_name' => $server->client?->name ?? 'Unknown',

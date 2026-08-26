@@ -441,11 +441,7 @@ export function DocsAlertsContent() {
                         <InlineCode>/auth/challenge</InlineCode> → sign →{" "}
                         <InlineCode>/auth/verify</InlineCode> → JWT 900s, memory
                         only). Auth response carries{" "}
-                        <InlineCode>
-                            servers: [
-                            {`{server_uuid, port_filter, process_filter, network_filter}`}
-                            ]
-                        </InlineCode>{" "}
+                        <InlineCode>{"servers: [{server_uuid, port_filter, process_filter, network_filter}]"}</InlineCode>{" "}
                         and <InlineCode>heartbeat_interval</InlineCode> — builds{" "}
                         <InlineCode>runtime.go</InlineCode> in-memory per-server
                         filters.
@@ -463,11 +459,7 @@ export function DocsAlertsContent() {
                             processes_dict/ports_dict/networks_dict
                         </InlineCode>{" "}
                         and per-server key lists (
-                        <InlineCode>
-                            servers: [
-                            {`{server_uuid, processes:[names], open_db_ports:["tcp:5432"], network:["Wi-Fi"]}`}
-                            ]
-                        </InlineCode>
+                        <InlineCode>{"servers: [{server_uuid, processes:[names], open_db_ports:['tcp:5432'], network:['Wi-Fi']}]"}</InlineCode>
                         ).{" "}
                         <InlineCode>
                             available_processes/ports/interfaces
@@ -492,10 +484,7 @@ export function DocsAlertsContent() {
                     <li>
                         <strong>Alert trigger:</strong>{" "}
                         <InlineCode>EvaluateNodeConfig</InlineCode> job →{" "}
-                        <InlineCode>
-                            NodeConfigEngine::trigger(metricNodeId, value,{" "}
-                            {`{server_id, metric_type}`})
-                        </InlineCode>{" "}
+                        <InlineCode>{"NodeConfigEngine::trigger(metricNodeId, value, {server_id, metric_type})"}</InlineCode>{" "}
                         → edge-triggered latch + timing chain → timers.
                     </li>
                     <li>
@@ -567,9 +556,7 @@ export function DocsAlertsContent() {
                         <InlineCode>MonitorServer</InlineCode> (every minute via{" "}
                         <InlineCode>system:monitor</InlineCode>) fetches latest{" "}
                         <InlineCode>cpu.load1=92.5</InlineCode> →{" "}
-                        <InlineCode>
-                            engine.trigger("metric_cpu", 92.5, {`{server_id}`})
-                        </InlineCode>
+                        <InlineCode>{"engine.trigger('metric_cpu', 92.5, {server_id})"}</InlineCode>
                         .
                     </li>
                     <li>
@@ -684,19 +671,42 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                         <li>
                             `evaluateBranch`: `MetricNode` → `ConditionNode`
                             (once, with `template_refs` override for
-                            `threshold/min/max`) → branch latch `branch:
-                            {`{metric:handle}`}` `armed` in `NodeConfigState`
-                            (edge-triggered, no implicit repeat; clears only
-                            when `condition==false &&
-                            !branchHasActiveEvaluation`).
+                            `threshold/min/max`) → branch latch{" "}
+                            <InlineCode>{"branch:{metric:handle}"}</InlineCode>{" "}
+                            `armed` in `NodeConfigState` (edge-triggered, no
+                            implicit repeat; clears only when `condition==false
+                            && !branchHasActiveEvaluation`).
                         </li>
                         <li>
                             `evaluateSubBranch`: `timing` (`SustainedNode`
                             state-machine `idle→pending→firing`) → `action`
                             (`NotificationNode`) → `post_action`
                             (`RepeatNode`/`CheckAfterNode`) — each returns
-                            `NodeResult {"{"}shouldPropagate, value, timer,
-                            state{"}"}`.
+                            `NodeResult`.
+                        </li>
+                    </ol>
+                </SubSection>
+            </Section>
+
+            <Section title="Backend Execution Architecture">
+                <SubSection title="Engine Pipeline">
+                    <ol className="list-decimal list-inside ml-2 space-y-1.5 text-sm">
+                        <li>
+                            `NodeConfig::resolveForServer($uuid)` (hierarchical
+                            resolution).
+                        </li>
+                        <li>
+                            `NodeConfigEngine::trigger($metricNodeId, $value, $ctx)`
+                            traverses the DAG from the triggered metric node.
+                        </li>
+                        <li>
+                            Loads state from `NodeConfigState` (`scope` aware:
+                            `sustained_10:memory_usage` for metric-scoped state).
+                        </li>
+                        <li>
+                            Executes node handlers via `NodeRegistry`:
+                            `MetricNode` → `ConditionNode` / `SeverityNode` →
+                            `SustainedNode` → `NotificationNode` / `ActionNode`.
                         </li>
                         <li>
                             Collect `timers[]` (`node_config_tasks`) +
@@ -708,10 +718,7 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                 <SubSection title="Timer Scheduling">
                     <p>
                         `SustainedNode`/`RepeatNode`/`CheckAfterNode` return{" "}
-                        <InlineCode>
-                            NodeResult::withTimer(NodeTimer{"{"}delayMs, context
-                            {"}"})
-                        </InlineCode>
+                        <InlineCode>{"NodeResult::withTimer(NodeTimer{delayMs, context})"}</InlineCode>
                         . Caller (`MonitorServer`/`EvaluateNodeConfig`) does:
                     </p>
                     <CodeBlock>{`foreach ($result['timers'] as $timer) {
@@ -723,24 +730,17 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                         <InlineCode>
                             engine.fireTimer(config, nodeId, context, serverId)
                         </InlineCode>{" "}
-                        with <InlineCode>timer_fire:true</InlineCode>. For
-                        `repeat` with `sustained` ancestor it calls{" "}
-                        <InlineCode>retriggerFromSource</InlineCode> —
-                        re-triggers the metric source with{" "}
-                        <InlineCode>extra_sustain_seconds</InlineCode> so the
-                        window expands.
+                        which checks condition window in DB and cascades.
                     </p>
                 </SubSection>
 
-                <SubSection title="Node Types — app/NodeConfig/NodeTypes/*">
-                    <table className="w-full text-sm border border-border/40 rounded-lg overflow-hidden">
-                        <thead className="bg-muted/30">
+                <SubSection title="Node Types & Handlers">
+                    <table className="w-full text-xs text-left border border-border/40 rounded-lg overflow-hidden my-3">
+                        <thead className="bg-muted/50 border-b border-border/40 text-muted-foreground">
                             <tr>
-                                <th className="text-left px-3 py-2">type</th>
-                                <th className="text-left px-3 py-2">
-                                    evaluate
-                                </th>
-                                <th className="text-left px-3 py-2">timer</th>
+                                <th className="px-3 py-2 font-medium">Node</th>
+                                <th className="px-3 py-2 font-medium">Logic</th>
+                                <th className="px-3 py-2 font-medium">DB Window Check</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/30">
@@ -748,9 +748,7 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                                 <td className="px-3 py-1.5 font-mono text-xs">
                                     metric
                                 </td>
-                                <td className="px-3 py-1.5">
-                                    passthrough `metric_value`
-                                </td>
+                                <td className="px-3 py-1.5">passthrough `metric_value`</td>
                                 <td className="px-3 py-1.5">—</td>
                             </tr>
                             <tr>
@@ -758,7 +756,7 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                                     condition / severity
                                 </td>
                                 <td className="px-3 py-1.5">
-                                    `value {(">", "<", "between")} threshold` →
+                                    {"value {>, <, between} threshold"} →
                                     `bool` / severity string
                                 </td>
                                 <td className="px-3 py-1.5">—</td>
@@ -773,7 +771,19 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                                     violating ≥ `minMatch`
                                 </td>
                                 <td className="px-3 py-1.5">
-                                    delay `duration`
+                                    `checkHistoricalCondition`
+                                </td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    repeat
+                                </td>
+                                <td className="px-3 py-1.5">
+                                    re-arms timer every `interval` until
+                                    condition falsy / max repeats
+                                </td>
+                                <td className="px-3 py-1.5">
+                                    re-evaluates incoming condition
                                 </td>
                             </tr>
                             <tr>
@@ -781,40 +791,19 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                                     check_after
                                 </td>
                                 <td className="px-3 py-1.5">
-                                    immediate `false` → timer, on fire re-check
-                                    live condition
-                                </td>
-                                <td className="px-3 py-1.5">delay</td>
-                            </tr>
-                            <tr>
-                                <td className="px-3 py-1.5 font-mono text-xs">
-                                    repeat
+                                    delays execution by `delay`, re-checks DB
+                                    condition at `fireTimer`
                                 </td>
                                 <td className="px-3 py-1.5">
-                                    interval `repeat_interval` until
-                                    `repeat_max` (-1 infinite), `cancelTimers`
-                                    on `value==false`
+                                    `checkHistoricalCondition`
                                 </td>
-                                <td className="px-3 py-1.5">interval</td>
                             </tr>
                             <tr>
                                 <td className="px-3 py-1.5 font-mono text-xs">
                                     notification
                                 </td>
                                 <td className="px-3 py-1.5">
-                                    `value==true` → `ActionItem` with
-                                    `upstream_context` (sustain_value,
-                                    repeat_count)
-                                </td>
-                                <td className="px-3 py-1.5">—</td>
-                            </tr>
-                            <tr>
-                                <td className="px-3 py-1.5 font-mono text-xs">
-                                    logic / template
-                                </td>
-                                <td className="px-3 py-1.5">
-                                    `and/or/not`; template resolves `
-                                    {"{server.name}"}` via `extra_state`
+                                    email, webhook, log, action_item
                                 </td>
                                 <td className="px-3 py-1.5">—</td>
                             </tr>
@@ -825,12 +814,12 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                 <SubSection title="State Persistence — node_config_states">
                     <p>
                         Each `NodeResult.state` is `updateOrCreate` on{" "}
-                        <InlineCode>{`{node_config_id, node_id[:metric], server_id}`}</InlineCode>{" "}
+                        <InlineCode>{"{node_config_id, node_id[:metric], server_id}"}</InlineCode>{" "}
                         via <InlineCode>NodeConfigState</InlineCode>. Scoped
                         keys <InlineCode>sustained_10:memory_usage</InlineCode>{" "}
                         win over bare <InlineCode>sustained_10</InlineCode>{" "}
                         (two-pass `loadStates`). Branch latch{" "}
-                        <InlineCode>branch:{`{metric:handle}`}</InlineCode>{" "}
+                        <InlineCode>{"branch:{metric:handle}"}</InlineCode>{" "}
                         `armed` prevents re-fire until condition clears.
                     </p>
                 </SubSection>

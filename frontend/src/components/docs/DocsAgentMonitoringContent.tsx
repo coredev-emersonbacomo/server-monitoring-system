@@ -249,9 +249,9 @@ export function DocsAgentMonitoringContent() {
                     sent <strong>only when they change</strong> (signatures{" "}
                     <InlineCode>processSetSignature</InlineCode> etc.). They are
                     details-only (e.g.{" "}
-                    <InlineCode>available_processes: [{`{name,pids}`}]</InlineCode>{" "}
+                    <InlineCode>{"available_processes: [{name,pids}]"}</InlineCode>{" "}
                     without <InlineCode>cpu/memory</InlineCode>;{" "}
-                    <InlineCode>available_interfaces: [{`{interface,type,state}`}]</InlineCode>{" "}
+                    <InlineCode>{"available_interfaces: [{interface,type,state}]"}</InlineCode>{" "}
                     without <InlineCode>rx/tx</InlineCode>) — the live data lives
                     in the per-server partitions.
                 </p>

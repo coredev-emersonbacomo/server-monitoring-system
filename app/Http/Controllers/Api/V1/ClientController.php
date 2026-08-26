@@ -11,6 +11,7 @@ use App\Data\ServerData;
 use App\Data\UpdateClientData;
 use App\Http\Controllers\Controller;
 use App\Jobs\DeleteStorageAsset;
+use App\Models\ActionItem;
 use App\Models\Client;
 use App\Models\CustomActivityLog;
 use App\Models\Server;
@@ -359,6 +360,19 @@ class ClientController extends Controller
             ],
         ]);
 
+        // Resolve any open no_secops action items for this client
+        ActionItem::where('action_type', 'no_secops')
+            ->where('client_id', $client->id)
+            ->where('status', 'open')
+            ->whereNotNull('assigned_to')
+            ->update(['status' => 'completed', 'completed_at' => now()]);
+
+        ActionItem::where('action_type', 'no_secops')
+            ->where('client_id', $client->id)
+            ->where('status', 'open')
+            ->whereNull('assigned_to')
+            ->delete();
+
         return response()->json(['message' => 'SecOps added successfully'], 201);
     }
 
@@ -389,6 +403,26 @@ class ClientController extends Controller
         ]);
 
         $client->secopclients()->detach($user->id);
+
+        if ($client->secopclients()->count() === 0) {
+            ActionItem::updateOrCreate(
+                [
+                    'action_type' => 'no_secops',
+                    'server_id' => null,
+                    'client_id' => $client->id,
+                ],
+                [
+                    'status' => 'open',
+                    'assigned_to' => null,
+                    'completed_at' => null,
+                    'created_at' => now(),
+                    'message' => "{$client->name} has no SecOps assigned",
+                    'severity' => 'warning',
+                    'client_name' => $client->name,
+                    'server_name' => null,
+                ]
+            );
+        }
 
         return response()->json(null, 204);
     }

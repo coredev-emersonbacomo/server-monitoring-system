@@ -1078,7 +1078,7 @@ export default function UserDetail() {
                                                 ))}
                                             </div>
                                         ) : userClients.length > 0 ? (
-                                            <div className="space-y-2">
+                                            <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
                                                 {userClients.map((client) => (
                                                     <div
                                                         key={client.uuid}
