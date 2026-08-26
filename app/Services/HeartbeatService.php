@@ -279,8 +279,8 @@ class HeartbeatService
 
             // Ports/processes: union across partitions -> one agent-wide state.
             // 2.7+ sends top-level dicts + per-server lists of keys (deduped); older agents sent full objects per partition.
-            \Illuminate\Support\Facades\Log::info('[heartbeat:debug2] per-server network', [
-                'servers' => array_map(fn($p) => ['uuid' => substr($p['server_uuid'] ?? '', 0, 8), 'net' => $p['network'] ?? null, 'net_is_string' => isset($p['network'][0]) ? is_string($p['network'][0]) : null], $payload['servers'] ?? []),
+            Log::info('[heartbeat:debug2] per-server network', [
+                'servers' => array_map(fn ($p) => ['uuid' => substr($p['server_uuid'] ?? '', 0, 8), 'net' => $p['network'] ?? null, 'net_is_string' => isset($p['network'][0]) ? is_string($p['network'][0]) : null], $payload['servers'] ?? []),
                 'net_dict_keys' => is_array($payload['networks_dict'] ?? null) ? array_keys($payload['networks_dict']) : null,
             ]);
             $procDict = $payload['processes_dict'] ?? null;
@@ -291,7 +291,7 @@ class HeartbeatService
                 $rawPorts = (array) ($partition['open_db_ports'] ?? []);
                 $rawProcs = (array) ($partition['processes'] ?? []);
                 // New: list of keys referencing top-level dicts
-                if (!empty($rawPorts) && is_string($rawPorts[0] ?? null) && is_array($portDict)) {
+                if (! empty($rawPorts) && is_string($rawPorts[0] ?? null) && is_array($portDict)) {
                     foreach ($rawPorts as $key) {
                         if (isset($portDict[$key])) {
                             $unionPorts[] = $portDict[$key];
@@ -305,7 +305,7 @@ class HeartbeatService
                         $unionPorts[] = $port;
                     }
                 }
-                if (!empty($rawProcs) && is_string($rawProcs[0] ?? null) && is_array($procDict)) {
+                if (! empty($rawProcs) && is_string($rawProcs[0] ?? null) && is_array($procDict)) {
                     foreach ($rawProcs as $name) {
                         if (isset($procDict[$name])) {
                             $unionProcesses[] = $procDict[$name];
@@ -367,7 +367,7 @@ class HeartbeatService
                 $netDict = $payload['networks_dict'] ?? null;
                 if (array_key_exists('network', $partition)) {
                     $rawNet = $partition['network'];
-                    if (is_array($rawNet) && !empty($rawNet) && is_string($rawNet[0] ?? null) && is_array($netDict)) {
+                    if (is_array($rawNet) && ! empty($rawNet) && is_string($rawNet[0] ?? null) && is_array($netDict)) {
                         $resolved = [];
                         foreach ($rawNet as $iface) {
                             if (isset($netDict[$iface])) {

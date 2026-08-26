@@ -129,6 +129,76 @@ class ProvisioningService
         return $this->generateToken($server, $user);
     }
 
+    public function forceReinstallToken(Server $server, ?User $user = null): array
+    {
+        if ($server->status === ServerStatus::Archived->value) {
+            throw new \InvalidArgumentException('Cannot force reinstall for archived servers.');
+        }
+
+        $installationId = $server->agent?->installation_uuid
+            ?? $server->agents()->latest()->first()?->installation_uuid
+            ?? (string) Str::uuid();
+
+        // Revoke any previous active tokens
+        ProvisionToken::where('server_id', $server->id)
+            ->where('status', 'active')
+            ->update([
+                'status' => 'revoked',
+                'revoked_at' => now(),
+            ]);
+
+        $rawToken = Str::random(64);
+        $expiresAt = now()->addMinutes(30);
+
+        ProvisionToken::create([
+            'server_id' => $server->id,
+            'token' => $rawToken,
+            'status' => 'active',
+            'expires_at' => $expiresAt,
+            'created_by' => $user?->id,
+        ]);
+
+        $server->update([
+            'agent_deleted' => false,
+        ]);
+
+        Activity::create([
+            'server_id' => $server->id,
+            'type' => 'force_reinstall_token_generated',
+            'description' => 'Force reinstall token generated.',
+            'performed_by' => $user?->id,
+        ]);
+
+        CustomActivityLog::create([
+            'type' => 'agent',
+            'logable_type' => Server::class,
+            'logable_id' => (string) $server->uuid,
+            'user_id' => $user?->id,
+            'user' => $user ? "{$user->first_name} {$user->last_name}" : 'System',
+            'action' => 'Force Reinstall Command',
+            'details' => json_encode([
+                'message' => "Generated force reinstall command for server: {$server->name} (Installation UUID: {$installationId})",
+                'server_name' => $server->name,
+                'installation_id' => $installationId,
+                'token_expires_at' => $expiresAt->toIso8601String(),
+            ]),
+        ]);
+
+        event(new ProvisionTokenGenerated($server->uuid, $expiresAt->toIso8601String()));
+
+        $appUrl = rtrim(url('/'), '/');
+
+        return [
+            'conflict' => false,
+            'token' => $rawToken,
+            'installation_id' => $installationId,
+            'expires_at' => $expiresAt->toIso8601String(),
+            'linux_command' => 'sudo curl -fsSL '.url('/install/linux').' | sudo bash -s -- '.$rawToken.' '.$installationId,
+            'windows_command' => WindowsCommand::make('/install/windows.ps1', '-ProvisionToken', $rawToken, $appUrl, '-InstallationId', $installationId),
+            'token_expires_in' => $expiresAt->timestamp,
+        ];
+    }
+
     public function bootstrap(string $rawToken, array $metadata): array
     {
         $token = ProvisionToken::where('token', $rawToken)->first();

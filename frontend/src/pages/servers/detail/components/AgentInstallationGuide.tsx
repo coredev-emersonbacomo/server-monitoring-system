@@ -36,7 +36,7 @@ export function AgentInstallationGuide({
                     <h2>Agent Installation Guide</h2>
                 </div>
 
-                {status === "agent_uninstalled" && (
+                {status === "agent_uninstalled" && !provisionDetails && (
                     <div className="space-y-4">
                         <p className="text-sm text-muted-foreground">
                             The agent was uninstalled from the machine. To
@@ -80,7 +80,9 @@ export function AgentInstallationGuide({
                     provisionDetails) && (
                     <div className="space-y-5">
                         <p className="text-sm text-muted-foreground">
-                            Run the appropriate command directly on your server.
+                            {status === "agent_uninstalled"
+                                ? "Run the command below on your server to reinstall the agent."
+                                : "Run the appropriate command directly on your server."}
                         </p>
 
                         <div className="space-y-4">

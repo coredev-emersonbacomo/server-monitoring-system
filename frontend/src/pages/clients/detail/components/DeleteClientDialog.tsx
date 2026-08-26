@@ -30,7 +30,13 @@ export function DeleteClientDialog({
 }: DeleteClientDialogProps) {
     const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
-    const hasRunningAgents = servers.some((s) => !s.agent_deleted && s.agent);
+    const hasRunningAgents = servers.some(
+        (s) =>
+            !s.agent_deleted &&
+            s.agent &&
+            s.status !== "agent_uninstalled" &&
+            s.agent.status !== "revoked",
+    );
 
     return (
         <Dialog

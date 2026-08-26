@@ -55,7 +55,7 @@ class ClientController extends Controller
             });
         }
 
-        if ($data->available_only) {
+        if ($data->isAvailableOnly()) {
             $limit = (int) Setting::get('secop_limit_per_client', 2);
 
             $query->has('secopclients', '<', $limit);

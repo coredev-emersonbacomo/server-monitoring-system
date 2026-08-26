@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Cpu, Copy, Trash2, AlertTriangle, Unplug } from "lucide-react";
+import { Cpu, Copy, Check, Trash2, AlertTriangle, Unplug, RotateCcw, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -8,14 +9,58 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import api from "@/api/api";
 import { useServerDetailContext } from "../context/ServerDetailContext";
+
+interface ForceReinstallResponse {
+    token: string;
+    installation_id: string;
+    expires_at: string;
+    linux_command: string;
+    windows_command: string;
+    token_expires_in: number;
+}
 
 export function AgentTab() {
     const { server, initial, copyToClipboard } = useServerDetailContext();
     const [modalOpen, setModalOpen] = useState(false);
     const [detachOpen, setDetachOpen] = useState(false);
-    const [detaching, setDetaching] = useState(false);
+    const [reinstallOpen, setReinstallOpen] = useState(false);
+    const [reinstallLoading, setReinstallLoading] = useState(false);
+    const [reinstallData, setReinstallData] = useState<ForceReinstallResponse | null>(null);
     const [copied, setCopied] = useState<string | null>(null);
+
+    const handleForceReinstall = async () => {
+        if (!server?.uuid) return;
+        setReinstallLoading(true);
+        try {
+            const { data, error } = await (api.POST as any)(
+                `/v1/servers/${server.uuid}/force-reinstall`,
+            );
+            if (error || !data) {
+                toast.error(error?.message || "Failed to generate force reinstall command.");
+            } else {
+                setReinstallData(data as ForceReinstallResponse);
+                setReinstallOpen(true);
+                toast.success("Force reinstall command generated.");
+            }
+        } catch {
+            toast.error("Failed to generate force reinstall command.");
+        } finally {
+            setReinstallLoading(false);
+        }
+    };
+
+    const handleCopyReinstall = (text: string, type: string) => {
+        try {
+            navigator.clipboard.writeText(text);
+            setCopied(`reinstall_${type}`);
+            toast.success("Copied to clipboard");
+            setTimeout(() => setCopied(null), 2000);
+        } catch {
+            toast.error("Failed to copy");
+        }
+    };
 
     const handleCopy = (text: string, type: "uninstall_linux" | "uninstall_windows") => {
         try {
@@ -136,6 +181,27 @@ export function AgentTab() {
                 )}
             </div>
 
+            {/* Force Reinstall Agent Card */}
+            <div className="mt-6 p-4 rounded-xl border border-border/70 bg-card/60">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                    <p className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        <RotateCcw size={14} className="text-primary" /> Agent Recovery & Force Reinstall
+                    </p>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                    If agent files were accidentally deleted, corrupted, or removed on the host server while leaving this server hanging in the database, generate a force reinstall command to re-download the agent binary and restore the configuration using its existing installation UUID.
+                </p>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<RotateCcw size={13} />}
+                    label={reinstallLoading ? "Generating Command..." : "Force Reinstall Agent"}
+                    onClick={handleForceReinstall}
+                    disabled={reinstallLoading}
+                    className="w-fit"
+                />
+            </div>
+
             {server?.agent && server.status !== 'agent_uninstalled' && !server.agent_deleted && server?.agent?.status !== 'revoked' && (
                 <div className="mt-6 p-4 rounded-xl border border-destructive/20 bg-destructive/5">
                     <p className="text-xs font-semibold text-destructive uppercase tracking-wider mb-3">
@@ -180,6 +246,84 @@ export function AgentTab() {
                     )}
                 </div>
             )}
+
+            <Dialog open={reinstallOpen} onOpenChange={setReinstallOpen}>
+                <DialogContent className="sm:max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-foreground">
+                            <RotateCcw size={16} className="text-primary" />
+                            Force Reinstall Agent
+                        </DialogTitle>
+                        <DialogDescription>
+                            Run the command below on <strong className="text-foreground">{initial.name}</strong> to download a fresh agent binary, restore configuration, and re-register the service using this server's existing installation UUID (<code className="font-mono text-foreground font-semibold">{reinstallData?.installation_id || "..."}</code>).
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {reinstallData && (
+                        <div className="flex flex-col gap-4 text-xs">
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                        Linux (cURL + bash)
+                                    </label>
+                                    <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
+                                        <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
+                                            {reinstallData.linux_command}
+                                        </span>
+                                        <button
+                                            onClick={() => handleCopyReinstall(reinstallData.linux_command, "linux")}
+                                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                            title="Copy command"
+                                        >
+                                            {copied === "reinstall_linux" ? (
+                                                <Check className="size-4 text-emerald-400" />
+                                            ) : (
+                                                <Copy className="size-4" />
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                                        Windows (PowerShell as Administrator)
+                                    </label>
+                                    <div className="flex items-center gap-2 bg-muted/60 p-2.5 rounded-lg border border-border/80 font-mono text-xs overflow-x-auto select-all">
+                                        <span className="flex-1 whitespace-pre-wrap break-all text-foreground">
+                                            {reinstallData.windows_command}
+                                        </span>
+                                        <button
+                                            onClick={() => handleCopyReinstall(reinstallData.windows_command, "windows")}
+                                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                            title="Copy command"
+                                        >
+                                            {copied === "reinstall_windows" ? (
+                                                <Check className="size-4 text-emerald-400" />
+                                            ) : (
+                                                <Copy className="size-4" />
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2 border-t border-border/40 text-muted-foreground">
+                                <span>
+                                    Token expires at: <strong className="text-foreground">{new Date(reinstallData.expires_at).toLocaleTimeString()}</strong>
+                                </span>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    icon={<RefreshCw size={12} />}
+                                    label="Regenerate"
+                                    onClick={handleForceReinstall}
+                                    disabled={reinstallLoading}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={detachOpen} onOpenChange={setDetachOpen}>
                 <DialogContent className="sm:max-w-md">

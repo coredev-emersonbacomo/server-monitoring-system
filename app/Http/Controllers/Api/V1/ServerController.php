@@ -8,9 +8,11 @@ use App\Data\ServerDataRequest;
 use App\Data\StatPointData;
 use App\Data\UpdateServerData;
 use App\Events\AgentConfigUpdated;
+use App\Events\AgentUninstalled;
 use App\Events\ServerStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\ActionItem;
+use App\Models\Activity;
 use App\Models\Client;
 use App\Models\CustomActivityLog;
 use App\Models\Server;
@@ -19,11 +21,13 @@ use App\Models\Setting;
 use App\NodeConfig\Engine\NodeTaskScheduler;
 use App\NodeConfig\Models\NodeConfigState;
 use App\NodeConfig\Services\NodeConfigService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Spatie\LaravelData\Optional;
 
 class ServerController extends Controller
@@ -78,7 +82,8 @@ class ServerController extends Controller
 
             return ServerData::fromModel($server);
         } catch (\RuntimeException $e) {
-            abort(500, 'Installation failed: '.$e->getMessage());
+            Log::error('Server creation failed', ['message' => $e->getMessage()]);
+            abort(500, 'Server creation failed. Please try again.');
         }
     }
 
@@ -472,7 +477,7 @@ class ServerController extends Controller
      * button becomes "Detach Server" and shows that the agent will remain
      * for the other servers.
      */
-    public function detachFromAgent(string $clientUuid, string $serverUuid): \Illuminate\Http\JsonResponse
+    public function detachFromAgent(string $clientUuid, string $serverUuid): JsonResponse
     {
         $server = Server::where('uuid', $serverUuid)
             ->whereHas('client', fn ($q) => $q->where('uuid', $clientUuid))
@@ -486,17 +491,17 @@ class ServerController extends Controller
 
         $agent = $server->agent;
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($server, $agent) {
+        DB::transaction(function () use ($server, $agent) {
             $server->update([
                 'agent_id' => null,
                 'agent_deleted' => true,
                 'status' => ServerStatus::AgentUninstalled->value,
             ]);
 
-            event(new \App\Events\AgentUninstalled($server->uuid));
-            event(new \App\Events\ServerStatusUpdated($server->uuid, ServerStatus::AgentUninstalled->value, $server->name));
+            event(new AgentUninstalled($server->uuid));
+            event(new ServerStatusUpdated($server->uuid, ServerStatus::AgentUninstalled->value, $server->name));
 
-            \App\Models\Activity::create([
+            Activity::create([
                 'server_id' => $server->id,
                 'agent_id' => $agent->id,
                 'type' => 'server_detached',

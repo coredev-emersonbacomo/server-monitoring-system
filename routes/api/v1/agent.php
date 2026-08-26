@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:jwt')->group(function () {
     Route::post('servers/{uuid}/provision', [AgentController::class, 'provision']);
     Route::post('servers/{uuid}/provision/regenerate', [AgentController::class, 'regenerate']);
+    Route::post('servers/{uuid}/force-reinstall', [AgentController::class, 'forceReinstall']);
 });
 
 // Public / Agent endpoints

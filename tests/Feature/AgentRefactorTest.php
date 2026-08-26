@@ -845,3 +845,28 @@ test('a full-agent uninstall succeeds when the agent owns zero servers', functio
         'installation_uuid' => $installationId,
     ])->assertStatus(403);
 });
+
+test('force reinstall generates a provision token with the existing installation UUID in commands', function () {
+    [$user, $client, $server, $keys, $installationId] = setupRegisteredAgent();
+
+    $response = $this->actingAs($user, 'jwt')
+        ->postJson("/api/v1/servers/{$server->uuid}/force-reinstall");
+
+    $response->assertStatus(201)
+        ->assertJsonStructure([
+            'token',
+            'installation_id',
+            'expires_at',
+            'linux_command',
+            'windows_command',
+            'token_expires_in',
+        ]);
+
+    expect($response->json('installation_id'))->toBe($installationId)
+        ->and($response->json('windows_command'))
+        ->toContain('-ProvisionToken')
+        ->toContain('-InstallationId')
+        ->toContain($installationId)
+        ->and($response->json('linux_command'))
+        ->toContain($installationId);
+});

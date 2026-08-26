@@ -2,7 +2,11 @@
 -- PostgreSQL database dump
 --
 
+<<<<<<< Updated upstream
 \restrict 40SP2iiUa0SWwUvycrEkoMVB465f1od1peuRW8IvJKbHluB0UmZUS5lDfEDiMKn
+=======
+\restrict o9TERDHj1lbIt71dodprnIVigMMcC6UwJJNa9zMmtF705WaoQfhUA2Xmf2qjoWd
+>>>>>>> Stashed changes
 
 -- Dumped from database version 18.4
 -- Dumped by pg_dump version 18.4
@@ -200,10 +204,17 @@ CREATE TABLE public.server_updates (
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _direct_view_281; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_281 AS
+=======
+-- Name: _direct_view_74; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_74 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('00:01:00'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -216,10 +227,17 @@ CREATE VIEW _timescaledb_internal._direct_view_281 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _direct_view_283; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_283 AS
+=======
+-- Name: _direct_view_75; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_75 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('01:00:00'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -232,10 +250,17 @@ CREATE VIEW _timescaledb_internal._direct_view_283 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _direct_view_285; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_285 AS
+=======
+-- Name: _direct_view_76; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_76 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('1 day'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -248,10 +273,17 @@ CREATE VIEW _timescaledb_internal._direct_view_285 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _direct_view_287; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_287 AS
+=======
+-- Name: _direct_view_77; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_77 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('7 days'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -264,10 +296,17 @@ CREATE VIEW _timescaledb_internal._direct_view_287 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _direct_view_289; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_289 AS
+=======
+-- Name: _direct_view_78; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_78 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('1 mon'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -297,10 +336,17 @@ CREATE TABLE public.server_network_stats (
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _direct_view_293; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_293 AS
+=======
+-- Name: _direct_view_80; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_80 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('00:01:00'::interval, created_at) AS "timestamp",
     server_id,
     interface_name,
@@ -311,10 +357,17 @@ CREATE VIEW _timescaledb_internal._direct_view_293 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _direct_view_295; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_295 AS
+=======
+-- Name: _direct_view_81; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_81 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('01:00:00'::interval, created_at) AS "timestamp",
     server_id,
     interface_name,
@@ -325,10 +378,17 @@ CREATE VIEW _timescaledb_internal._direct_view_295 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _direct_view_297; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_297 AS
+=======
+-- Name: _direct_view_82; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_82 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('1 day'::interval, created_at) AS "timestamp",
     server_id,
     interface_name,
@@ -339,10 +399,17 @@ CREATE VIEW _timescaledb_internal._direct_view_297 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _direct_view_299; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_299 AS
+=======
+-- Name: _direct_view_83; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_83 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('7 days'::interval, created_at) AS "timestamp",
     server_id,
     interface_name,
@@ -353,10 +420,17 @@ CREATE VIEW _timescaledb_internal._direct_view_299 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _direct_view_301; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._direct_view_301 AS
+=======
+-- Name: _direct_view_84; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._direct_view_84 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('1 mon'::interval, created_at) AS "timestamp",
     server_id,
     interface_name,
@@ -367,10 +441,17 @@ CREATE VIEW _timescaledb_internal._direct_view_301 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _materialized_hypertable_281; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_281 (
+=======
+-- Name: _materialized_hypertable_74; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_74 (
+>>>>>>> Stashed changes
     "timestamp" timestamp with time zone,
     server_id bigint,
     cpu double precision,
@@ -382,10 +463,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_281 (
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _materialized_hypertable_283; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_283 (
+=======
+-- Name: _materialized_hypertable_75; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_75 (
+>>>>>>> Stashed changes
     "timestamp" timestamp with time zone,
     server_id bigint,
     cpu double precision,
@@ -397,10 +485,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_283 (
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _materialized_hypertable_285; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_285 (
+=======
+-- Name: _materialized_hypertable_76; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_76 (
+>>>>>>> Stashed changes
     "timestamp" timestamp with time zone,
     server_id bigint,
     cpu double precision,
@@ -412,10 +507,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_285 (
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _materialized_hypertable_287; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_287 (
+=======
+-- Name: _materialized_hypertable_77; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_77 (
+>>>>>>> Stashed changes
     "timestamp" timestamp with time zone,
     server_id bigint,
     cpu double precision,
@@ -427,10 +529,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_287 (
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _materialized_hypertable_289; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_289 (
+=======
+-- Name: _materialized_hypertable_78; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_78 (
+>>>>>>> Stashed changes
     "timestamp" timestamp with time zone,
     server_id bigint,
     cpu double precision,
@@ -442,10 +551,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_289 (
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _materialized_hypertable_293; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_293 (
+=======
+-- Name: _materialized_hypertable_80; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_80 (
+>>>>>>> Stashed changes
     "timestamp" timestamp with time zone,
     server_id bigint,
     interface_name character varying(255),
@@ -455,10 +571,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_293 (
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _materialized_hypertable_295; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_295 (
+=======
+-- Name: _materialized_hypertable_81; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_81 (
+>>>>>>> Stashed changes
     "timestamp" timestamp with time zone,
     server_id bigint,
     interface_name character varying(255),
@@ -468,10 +591,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_295 (
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _materialized_hypertable_297; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_297 (
+=======
+-- Name: _materialized_hypertable_82; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_82 (
+>>>>>>> Stashed changes
     "timestamp" timestamp with time zone,
     server_id bigint,
     interface_name character varying(255),
@@ -481,10 +611,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_297 (
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _materialized_hypertable_299; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_299 (
+=======
+-- Name: _materialized_hypertable_83; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_83 (
+>>>>>>> Stashed changes
     "timestamp" timestamp with time zone,
     server_id bigint,
     interface_name character varying(255),
@@ -494,10 +631,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_299 (
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _materialized_hypertable_301; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE TABLE _timescaledb_internal._materialized_hypertable_301 (
+=======
+-- Name: _materialized_hypertable_84; Type: TABLE; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE TABLE _timescaledb_internal._materialized_hypertable_84 (
+>>>>>>> Stashed changes
     "timestamp" timestamp with time zone,
     server_id bigint,
     interface_name character varying(255),
@@ -507,10 +651,17 @@ CREATE TABLE _timescaledb_internal._materialized_hypertable_301 (
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _partial_view_281; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_281 AS
+=======
+-- Name: _partial_view_74; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_74 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('00:01:00'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -523,10 +674,17 @@ CREATE VIEW _timescaledb_internal._partial_view_281 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _partial_view_283; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_283 AS
+=======
+-- Name: _partial_view_75; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_75 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('01:00:00'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -539,10 +697,17 @@ CREATE VIEW _timescaledb_internal._partial_view_283 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _partial_view_285; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_285 AS
+=======
+-- Name: _partial_view_76; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_76 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('1 day'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -555,10 +720,17 @@ CREATE VIEW _timescaledb_internal._partial_view_285 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _partial_view_287; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_287 AS
+=======
+-- Name: _partial_view_77; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_77 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('7 days'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -571,10 +743,17 @@ CREATE VIEW _timescaledb_internal._partial_view_287 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _partial_view_289; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_289 AS
+=======
+-- Name: _partial_view_78; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_78 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('1 mon'::interval, created_at) AS "timestamp",
     server_id,
     avg(cpu_usage) AS cpu,
@@ -587,10 +766,17 @@ CREATE VIEW _timescaledb_internal._partial_view_289 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _partial_view_293; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_293 AS
+=======
+-- Name: _partial_view_80; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_80 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('00:01:00'::interval, created_at) AS "timestamp",
     server_id,
     interface_name,
@@ -601,10 +787,17 @@ CREATE VIEW _timescaledb_internal._partial_view_293 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _partial_view_295; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_295 AS
+=======
+-- Name: _partial_view_81; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_81 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('01:00:00'::interval, created_at) AS "timestamp",
     server_id,
     interface_name,
@@ -615,10 +808,17 @@ CREATE VIEW _timescaledb_internal._partial_view_295 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _partial_view_297; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_297 AS
+=======
+-- Name: _partial_view_82; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_82 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('1 day'::interval, created_at) AS "timestamp",
     server_id,
     interface_name,
@@ -629,10 +829,17 @@ CREATE VIEW _timescaledb_internal._partial_view_297 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _partial_view_299; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_299 AS
+=======
+-- Name: _partial_view_83; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_83 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('7 days'::interval, created_at) AS "timestamp",
     server_id,
     interface_name,
@@ -643,10 +850,17 @@ CREATE VIEW _timescaledb_internal._partial_view_299 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _partial_view_301; Type: VIEW; Schema: _timescaledb_internal; Owner: -
 --
 
 CREATE VIEW _timescaledb_internal._partial_view_301 AS
+=======
+-- Name: _partial_view_84; Type: VIEW; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE VIEW _timescaledb_internal._partial_view_84 AS
+>>>>>>> Stashed changes
  SELECT public.time_bucket('1 mon'::interval, created_at) AS "timestamp",
     server_id,
     interface_name,
@@ -657,6 +871,7 @@ CREATE VIEW _timescaledb_internal._partial_view_301 AS
 
 
 --
+<<<<<<< Updated upstream
 -- Name: compress_hyper_202_27_chunk; Type: TABLE; Schema: _timescaledb_internal; Owner: -
 --
 
@@ -703,6 +918,8 @@ ALTER TABLE ONLY _timescaledb_internal.compress_hyper_202_27_chunk ALTER COLUMN 
 
 
 --
+=======
+>>>>>>> Stashed changes
 -- Name: action_items; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1907,6 +2124,7 @@ ALTER SEQUENCE public.server_logs_id_seq OWNED BY public.server_logs.id;
 --
 
 CREATE VIEW public.server_network_stats_agg_day AS
+<<<<<<< Updated upstream
  SELECT _materialized_hypertable_297."timestamp",
     _materialized_hypertable_297.server_id,
     _materialized_hypertable_297.interface_name,
@@ -1914,6 +2132,15 @@ CREATE VIEW public.server_network_stats_agg_day AS
     _materialized_hypertable_297.netout
    FROM _timescaledb_internal._materialized_hypertable_297
   WHERE (_materialized_hypertable_297."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(297)), '-infinity'::timestamp with time zone))
+=======
+ SELECT _materialized_hypertable_82."timestamp",
+    _materialized_hypertable_82.server_id,
+    _materialized_hypertable_82.interface_name,
+    _materialized_hypertable_82.netin,
+    _materialized_hypertable_82.netout
+   FROM _timescaledb_internal._materialized_hypertable_82
+  WHERE (_materialized_hypertable_82."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(82)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
 UNION ALL
  SELECT public.time_bucket('1 day'::interval, server_network_stats.created_at) AS "timestamp",
     server_network_stats.server_id,
@@ -1921,7 +2148,11 @@ UNION ALL
     avg(server_network_stats.rx_bytes) AS netin,
     avg(server_network_stats.tx_bytes) AS netout
    FROM public.server_network_stats
+<<<<<<< Updated upstream
   WHERE (server_network_stats.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(297)), '-infinity'::timestamp with time zone))
+=======
+  WHERE (server_network_stats.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(82)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
   GROUP BY (public.time_bucket('1 day'::interval, server_network_stats.created_at)), server_network_stats.server_id, server_network_stats.interface_name;
 
 
@@ -1930,6 +2161,7 @@ UNION ALL
 --
 
 CREATE VIEW public.server_network_stats_agg_hour AS
+<<<<<<< Updated upstream
  SELECT _materialized_hypertable_295."timestamp",
     _materialized_hypertable_295.server_id,
     _materialized_hypertable_295.interface_name,
@@ -1937,6 +2169,15 @@ CREATE VIEW public.server_network_stats_agg_hour AS
     _materialized_hypertable_295.netout
    FROM _timescaledb_internal._materialized_hypertable_295
   WHERE (_materialized_hypertable_295."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(295)), '-infinity'::timestamp with time zone))
+=======
+ SELECT _materialized_hypertable_81."timestamp",
+    _materialized_hypertable_81.server_id,
+    _materialized_hypertable_81.interface_name,
+    _materialized_hypertable_81.netin,
+    _materialized_hypertable_81.netout
+   FROM _timescaledb_internal._materialized_hypertable_81
+  WHERE (_materialized_hypertable_81."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(81)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
 UNION ALL
  SELECT public.time_bucket('01:00:00'::interval, server_network_stats.created_at) AS "timestamp",
     server_network_stats.server_id,
@@ -1944,7 +2185,11 @@ UNION ALL
     avg(server_network_stats.rx_bytes) AS netin,
     avg(server_network_stats.tx_bytes) AS netout
    FROM public.server_network_stats
+<<<<<<< Updated upstream
   WHERE (server_network_stats.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(295)), '-infinity'::timestamp with time zone))
+=======
+  WHERE (server_network_stats.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(81)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
   GROUP BY (public.time_bucket('01:00:00'::interval, server_network_stats.created_at)), server_network_stats.server_id, server_network_stats.interface_name;
 
 
@@ -1953,6 +2198,7 @@ UNION ALL
 --
 
 CREATE VIEW public.server_network_stats_agg_minute AS
+<<<<<<< Updated upstream
  SELECT _materialized_hypertable_293."timestamp",
     _materialized_hypertable_293.server_id,
     _materialized_hypertable_293.interface_name,
@@ -1960,6 +2206,15 @@ CREATE VIEW public.server_network_stats_agg_minute AS
     _materialized_hypertable_293.netout
    FROM _timescaledb_internal._materialized_hypertable_293
   WHERE (_materialized_hypertable_293."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(293)), '-infinity'::timestamp with time zone))
+=======
+ SELECT _materialized_hypertable_80."timestamp",
+    _materialized_hypertable_80.server_id,
+    _materialized_hypertable_80.interface_name,
+    _materialized_hypertable_80.netin,
+    _materialized_hypertable_80.netout
+   FROM _timescaledb_internal._materialized_hypertable_80
+  WHERE (_materialized_hypertable_80."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(80)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
 UNION ALL
  SELECT public.time_bucket('00:01:00'::interval, server_network_stats.created_at) AS "timestamp",
     server_network_stats.server_id,
@@ -1967,7 +2222,11 @@ UNION ALL
     avg(server_network_stats.rx_bytes) AS netin,
     avg(server_network_stats.tx_bytes) AS netout
    FROM public.server_network_stats
+<<<<<<< Updated upstream
   WHERE (server_network_stats.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(293)), '-infinity'::timestamp with time zone))
+=======
+  WHERE (server_network_stats.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(80)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
   GROUP BY (public.time_bucket('00:01:00'::interval, server_network_stats.created_at)), server_network_stats.server_id, server_network_stats.interface_name;
 
 
@@ -1976,6 +2235,7 @@ UNION ALL
 --
 
 CREATE VIEW public.server_network_stats_agg_month AS
+<<<<<<< Updated upstream
  SELECT _materialized_hypertable_301."timestamp",
     _materialized_hypertable_301.server_id,
     _materialized_hypertable_301.interface_name,
@@ -1983,6 +2243,15 @@ CREATE VIEW public.server_network_stats_agg_month AS
     _materialized_hypertable_301.netout
    FROM _timescaledb_internal._materialized_hypertable_301
   WHERE (_materialized_hypertable_301."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(301)), '-infinity'::timestamp with time zone))
+=======
+ SELECT _materialized_hypertable_84."timestamp",
+    _materialized_hypertable_84.server_id,
+    _materialized_hypertable_84.interface_name,
+    _materialized_hypertable_84.netin,
+    _materialized_hypertable_84.netout
+   FROM _timescaledb_internal._materialized_hypertable_84
+  WHERE (_materialized_hypertable_84."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(84)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
 UNION ALL
  SELECT public.time_bucket('1 mon'::interval, server_network_stats.created_at) AS "timestamp",
     server_network_stats.server_id,
@@ -1990,7 +2259,11 @@ UNION ALL
     avg(server_network_stats.rx_bytes) AS netin,
     avg(server_network_stats.tx_bytes) AS netout
    FROM public.server_network_stats
+<<<<<<< Updated upstream
   WHERE (server_network_stats.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(301)), '-infinity'::timestamp with time zone))
+=======
+  WHERE (server_network_stats.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(84)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
   GROUP BY (public.time_bucket('1 mon'::interval, server_network_stats.created_at)), server_network_stats.server_id, server_network_stats.interface_name;
 
 
@@ -1999,6 +2272,7 @@ UNION ALL
 --
 
 CREATE VIEW public.server_network_stats_agg_week AS
+<<<<<<< Updated upstream
  SELECT _materialized_hypertable_299."timestamp",
     _materialized_hypertable_299.server_id,
     _materialized_hypertable_299.interface_name,
@@ -2006,6 +2280,15 @@ CREATE VIEW public.server_network_stats_agg_week AS
     _materialized_hypertable_299.netout
    FROM _timescaledb_internal._materialized_hypertable_299
   WHERE (_materialized_hypertable_299."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(299)), '-infinity'::timestamp with time zone))
+=======
+ SELECT _materialized_hypertable_83."timestamp",
+    _materialized_hypertable_83.server_id,
+    _materialized_hypertable_83.interface_name,
+    _materialized_hypertable_83.netin,
+    _materialized_hypertable_83.netout
+   FROM _timescaledb_internal._materialized_hypertable_83
+  WHERE (_materialized_hypertable_83."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(83)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
 UNION ALL
  SELECT public.time_bucket('7 days'::interval, server_network_stats.created_at) AS "timestamp",
     server_network_stats.server_id,
@@ -2013,7 +2296,11 @@ UNION ALL
     avg(server_network_stats.rx_bytes) AS netin,
     avg(server_network_stats.tx_bytes) AS netout
    FROM public.server_network_stats
+<<<<<<< Updated upstream
   WHERE (server_network_stats.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(299)), '-infinity'::timestamp with time zone))
+=======
+  WHERE (server_network_stats.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(83)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
   GROUP BY (public.time_bucket('7 days'::interval, server_network_stats.created_at)), server_network_stats.server_id, server_network_stats.interface_name;
 
 
@@ -2041,6 +2328,7 @@ ALTER SEQUENCE public.server_network_stats_id_seq OWNED BY public.server_network
 --
 
 CREATE VIEW public.server_updates_agg_day AS
+<<<<<<< Updated upstream
  SELECT _materialized_hypertable_285."timestamp",
     _materialized_hypertable_285.server_id,
     _materialized_hypertable_285.cpu,
@@ -2050,6 +2338,17 @@ CREATE VIEW public.server_updates_agg_day AS
     _materialized_hypertable_285.netout
    FROM _timescaledb_internal._materialized_hypertable_285
   WHERE (_materialized_hypertable_285."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(285)), '-infinity'::timestamp with time zone))
+=======
+ SELECT _materialized_hypertable_76."timestamp",
+    _materialized_hypertable_76.server_id,
+    _materialized_hypertable_76.cpu,
+    _materialized_hypertable_76.memory,
+    _materialized_hypertable_76.disk,
+    _materialized_hypertable_76.netin,
+    _materialized_hypertable_76.netout
+   FROM _timescaledb_internal._materialized_hypertable_76
+  WHERE (_materialized_hypertable_76."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(76)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
 UNION ALL
  SELECT public.time_bucket('1 day'::interval, server_updates.created_at) AS "timestamp",
     server_updates.server_id,
@@ -2059,7 +2358,11 @@ UNION ALL
     avg(server_updates.network_rbytes) AS netin,
     avg(server_updates.network_tbytes) AS netout
    FROM public.server_updates
+<<<<<<< Updated upstream
   WHERE (server_updates.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(285)), '-infinity'::timestamp with time zone))
+=======
+  WHERE (server_updates.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(76)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
   GROUP BY (public.time_bucket('1 day'::interval, server_updates.created_at)), server_updates.server_id;
 
 
@@ -2068,6 +2371,7 @@ UNION ALL
 --
 
 CREATE VIEW public.server_updates_agg_hour AS
+<<<<<<< Updated upstream
  SELECT _materialized_hypertable_283."timestamp",
     _materialized_hypertable_283.server_id,
     _materialized_hypertable_283.cpu,
@@ -2077,6 +2381,17 @@ CREATE VIEW public.server_updates_agg_hour AS
     _materialized_hypertable_283.netout
    FROM _timescaledb_internal._materialized_hypertable_283
   WHERE (_materialized_hypertable_283."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(283)), '-infinity'::timestamp with time zone))
+=======
+ SELECT _materialized_hypertable_75."timestamp",
+    _materialized_hypertable_75.server_id,
+    _materialized_hypertable_75.cpu,
+    _materialized_hypertable_75.memory,
+    _materialized_hypertable_75.disk,
+    _materialized_hypertable_75.netin,
+    _materialized_hypertable_75.netout
+   FROM _timescaledb_internal._materialized_hypertable_75
+  WHERE (_materialized_hypertable_75."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(75)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
 UNION ALL
  SELECT public.time_bucket('01:00:00'::interval, server_updates.created_at) AS "timestamp",
     server_updates.server_id,
@@ -2086,7 +2401,11 @@ UNION ALL
     avg(server_updates.network_rbytes) AS netin,
     avg(server_updates.network_tbytes) AS netout
    FROM public.server_updates
+<<<<<<< Updated upstream
   WHERE (server_updates.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(283)), '-infinity'::timestamp with time zone))
+=======
+  WHERE (server_updates.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(75)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
   GROUP BY (public.time_bucket('01:00:00'::interval, server_updates.created_at)), server_updates.server_id;
 
 
@@ -2095,6 +2414,7 @@ UNION ALL
 --
 
 CREATE VIEW public.server_updates_agg_minute AS
+<<<<<<< Updated upstream
  SELECT _materialized_hypertable_281."timestamp",
     _materialized_hypertable_281.server_id,
     _materialized_hypertable_281.cpu,
@@ -2104,6 +2424,17 @@ CREATE VIEW public.server_updates_agg_minute AS
     _materialized_hypertable_281.netout
    FROM _timescaledb_internal._materialized_hypertable_281
   WHERE (_materialized_hypertable_281."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(281)), '-infinity'::timestamp with time zone))
+=======
+ SELECT _materialized_hypertable_74."timestamp",
+    _materialized_hypertable_74.server_id,
+    _materialized_hypertable_74.cpu,
+    _materialized_hypertable_74.memory,
+    _materialized_hypertable_74.disk,
+    _materialized_hypertable_74.netin,
+    _materialized_hypertable_74.netout
+   FROM _timescaledb_internal._materialized_hypertable_74
+  WHERE (_materialized_hypertable_74."timestamp" < COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(74)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
 UNION ALL
  SELECT public.time_bucket('00:01:00'::interval, server_updates.created_at) AS "timestamp",
     server_updates.server_id,
@@ -2113,7 +2444,11 @@ UNION ALL
     avg(server_updates.network_rbytes) AS netin,
     avg(server_updates.network_tbytes) AS netout
    FROM public.server_updates
+<<<<<<< Updated upstream
   WHERE (server_updates.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(281)), '-infinity'::timestamp with time zone))
+=======
+  WHERE (server_updates.created_at >= COALESCE(_timescaledb_functions.to_timestamp(_timescaledb_functions.cagg_watermark(74)), '-infinity'::timestamp with time zone))
+>>>>>>> Stashed changes
   GROUP BY (public.time_bucket('00:01:00'::interval, server_updates.created_at)), server_updates.server_id;
 
 
@@ -2129,7 +2464,11 @@ CREATE VIEW public.server_updates_agg_month AS
     disk,
     netin,
     netout
+<<<<<<< Updated upstream
    FROM _timescaledb_internal._materialized_hypertable_289;
+=======
+   FROM _timescaledb_internal._materialized_hypertable_78;
+>>>>>>> Stashed changes
 
 
 --
@@ -2144,7 +2483,11 @@ CREATE VIEW public.server_updates_agg_week AS
     disk,
     netin,
     netout
+<<<<<<< Updated upstream
    FROM _timescaledb_internal._materialized_hypertable_287;
+=======
+   FROM _timescaledb_internal._materialized_hypertable_77;
+>>>>>>> Stashed changes
 
 
 --
@@ -3306,6 +3649,7 @@ ALTER TABLE ONLY public.users
 
 
 --
+<<<<<<< Updated upstream
 -- Name: _materialized_hypertable_281_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
@@ -3380,76 +3724,185 @@ CREATE INDEX _materialized_hypertable_301_timestamp_idx ON _timescaledb_internal
 --
 
 CREATE INDEX compress_hyper_202_27_chunk__ts_meta_v2_first_timestamp__ts_idx ON _timescaledb_internal.compress_hyper_202_27_chunk USING btree (_ts_meta_v2_first_timestamp, _ts_meta_v2_last_timestamp, _ts_meta_v2_first_server_id, _ts_meta_v2_last_server_id);
+=======
+-- Name: _materialized_hypertable_74_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_74_timestamp_idx ON _timescaledb_internal._materialized_hypertable_74 USING btree ("timestamp" DESC);
+
+
+--
+-- Name: _materialized_hypertable_75_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_75_timestamp_idx ON _timescaledb_internal._materialized_hypertable_75 USING btree ("timestamp" DESC);
+
+
+--
+-- Name: _materialized_hypertable_76_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_76_timestamp_idx ON _timescaledb_internal._materialized_hypertable_76 USING btree ("timestamp" DESC);
+
+
+--
+-- Name: _materialized_hypertable_77_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_77_timestamp_idx ON _timescaledb_internal._materialized_hypertable_77 USING btree ("timestamp" DESC);
+
+
+--
+-- Name: _materialized_hypertable_78_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_78_timestamp_idx ON _timescaledb_internal._materialized_hypertable_78 USING btree ("timestamp" DESC);
+
+
+--
+-- Name: _materialized_hypertable_80_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_80_timestamp_idx ON _timescaledb_internal._materialized_hypertable_80 USING btree ("timestamp" DESC);
+
+
+--
+-- Name: _materialized_hypertable_81_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_81_timestamp_idx ON _timescaledb_internal._materialized_hypertable_81 USING btree ("timestamp" DESC);
+
+
+--
+-- Name: _materialized_hypertable_82_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_82_timestamp_idx ON _timescaledb_internal._materialized_hypertable_82 USING btree ("timestamp" DESC);
+
+
+--
+-- Name: _materialized_hypertable_83_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_83_timestamp_idx ON _timescaledb_internal._materialized_hypertable_83 USING btree ("timestamp" DESC);
+
+
+--
+-- Name: _materialized_hypertable_84_timestamp_idx; Type: INDEX; Schema: _timescaledb_internal; Owner: -
+--
+
+CREATE INDEX _materialized_hypertable_84_timestamp_idx ON _timescaledb_internal._materialized_hypertable_84 USING btree ("timestamp" DESC);
+>>>>>>> Stashed changes
 
 
 --
 -- Name: server_network_stats_agg_day_server_id_interface_name_timestamp; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< Updated upstream
 CREATE INDEX server_network_stats_agg_day_server_id_interface_name_timestamp ON _timescaledb_internal._materialized_hypertable_297 USING btree (server_id, interface_name, "timestamp");
+=======
+CREATE INDEX server_network_stats_agg_day_server_id_interface_name_timestamp ON _timescaledb_internal._materialized_hypertable_82 USING btree (server_id, interface_name, "timestamp");
+>>>>>>> Stashed changes
 
 
 --
 -- Name: server_network_stats_agg_hour_server_id_interface_name_timestam; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< Updated upstream
 CREATE INDEX server_network_stats_agg_hour_server_id_interface_name_timestam ON _timescaledb_internal._materialized_hypertable_295 USING btree (server_id, interface_name, "timestamp");
+=======
+CREATE INDEX server_network_stats_agg_hour_server_id_interface_name_timestam ON _timescaledb_internal._materialized_hypertable_81 USING btree (server_id, interface_name, "timestamp");
+>>>>>>> Stashed changes
 
 
 --
 -- Name: server_network_stats_agg_minute_server_id_interface_name_timest; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< Updated upstream
 CREATE INDEX server_network_stats_agg_minute_server_id_interface_name_timest ON _timescaledb_internal._materialized_hypertable_293 USING btree (server_id, interface_name, "timestamp");
+=======
+CREATE INDEX server_network_stats_agg_minute_server_id_interface_name_timest ON _timescaledb_internal._materialized_hypertable_80 USING btree (server_id, interface_name, "timestamp");
+>>>>>>> Stashed changes
 
 
 --
 -- Name: server_network_stats_agg_month_server_id_interface_name_timesta; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< Updated upstream
 CREATE INDEX server_network_stats_agg_month_server_id_interface_name_timesta ON _timescaledb_internal._materialized_hypertable_301 USING btree (server_id, interface_name, "timestamp");
+=======
+CREATE INDEX server_network_stats_agg_month_server_id_interface_name_timesta ON _timescaledb_internal._materialized_hypertable_84 USING btree (server_id, interface_name, "timestamp");
+>>>>>>> Stashed changes
 
 
 --
 -- Name: server_network_stats_agg_week_server_id_interface_name_timestam; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< Updated upstream
 CREATE INDEX server_network_stats_agg_week_server_id_interface_name_timestam ON _timescaledb_internal._materialized_hypertable_299 USING btree (server_id, interface_name, "timestamp");
+=======
+CREATE INDEX server_network_stats_agg_week_server_id_interface_name_timestam ON _timescaledb_internal._materialized_hypertable_83 USING btree (server_id, interface_name, "timestamp");
+>>>>>>> Stashed changes
 
 
 --
 -- Name: server_updates_agg_day_server_id_timestamp_index; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< Updated upstream
 CREATE INDEX server_updates_agg_day_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_285 USING btree (server_id, "timestamp");
+=======
+CREATE INDEX server_updates_agg_day_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_76 USING btree (server_id, "timestamp");
+>>>>>>> Stashed changes
 
 
 --
 -- Name: server_updates_agg_hour_server_id_timestamp_index; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< Updated upstream
 CREATE INDEX server_updates_agg_hour_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_283 USING btree (server_id, "timestamp");
+=======
+CREATE INDEX server_updates_agg_hour_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_75 USING btree (server_id, "timestamp");
+>>>>>>> Stashed changes
 
 
 --
 -- Name: server_updates_agg_minute_server_id_timestamp_index; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< Updated upstream
 CREATE INDEX server_updates_agg_minute_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_281 USING btree (server_id, "timestamp");
+=======
+CREATE INDEX server_updates_agg_minute_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_74 USING btree (server_id, "timestamp");
+>>>>>>> Stashed changes
 
 
 --
 -- Name: server_updates_agg_month_server_id_timestamp_index; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< Updated upstream
 CREATE INDEX server_updates_agg_month_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_289 USING btree (server_id, "timestamp");
+=======
+CREATE INDEX server_updates_agg_month_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_78 USING btree (server_id, "timestamp");
+>>>>>>> Stashed changes
 
 
 --
 -- Name: server_updates_agg_week_server_id_timestamp_index; Type: INDEX; Schema: _timescaledb_internal; Owner: -
 --
 
+<<<<<<< Updated upstream
 CREATE INDEX server_updates_agg_week_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_287 USING btree (server_id, "timestamp");
+=======
+CREATE INDEX server_updates_agg_week_server_id_timestamp_index ON _timescaledb_internal._materialized_hypertable_77 USING btree (server_id, "timestamp");
+>>>>>>> Stashed changes
 
 
 --
@@ -4092,13 +4545,21 @@ ALTER TABLE ONLY public.user_sessions
 -- PostgreSQL database dump complete
 --
 
+<<<<<<< Updated upstream
 \unrestrict 40SP2iiUa0SWwUvycrEkoMVB465f1od1peuRW8IvJKbHluB0UmZUS5lDfEDiMKn
+=======
+\unrestrict o9TERDHj1lbIt71dodprnIVigMMcC6UwJJNa9zMmtF705WaoQfhUA2Xmf2qjoWd
+>>>>>>> Stashed changes
 
 --
 -- PostgreSQL database dump
 --
 
+<<<<<<< Updated upstream
 \restrict 5HDfiM7evMgsCwKSn5iEl7vJfWzFRl0dvErrrDF3qH4fpPhQ4TGU8m0ttUKGJ2U
+=======
+\restrict ekEJOikXwfLd8UYHiet0VRPIFlqbUY4BztBdqDrD9BcnOEsEXHPmExC892Tk1vf
+>>>>>>> Stashed changes
 
 -- Dumped from database version 18.4
 -- Dumped by pg_dump version 18.4
@@ -4189,5 +4650,9 @@ SELECT pg_catalog.setval('public.migrations_id_seq', 55, true);
 -- PostgreSQL database dump complete
 --
 
+<<<<<<< Updated upstream
 \unrestrict 5HDfiM7evMgsCwKSn5iEl7vJfWzFRl0dvErrrDF3qH4fpPhQ4TGU8m0ttUKGJ2U
+=======
+\unrestrict ekEJOikXwfLd8UYHiet0VRPIFlqbUY4BztBdqDrD9BcnOEsEXHPmExC892Tk1vf
+>>>>>>> Stashed changes
 

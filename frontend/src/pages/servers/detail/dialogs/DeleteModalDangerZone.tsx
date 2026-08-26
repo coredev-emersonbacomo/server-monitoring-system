@@ -57,7 +57,7 @@ export function DeleteModalDangerZone() {
                             undone.
                         </p>
 
-                        {initial && initial.agent && !initial.agent_deleted && (
+                        {initial && initial.agent && !initial.agent_deleted && initial.status !== "agent_uninstalled" && initial.agent?.status !== "revoked" && (
                             <>
                                 {(
                                     initial as unknown as {

@@ -10,6 +10,7 @@ use App\Models\Activity;
 use App\Models\Agent;
 use App\Models\CustomActivityLog;
 use App\Models\Server;
+use App\Models\ServerUpdate;
 use App\Models\Setting;
 use App\Services\WindowsCommand;
 use Illuminate\Support\Facades\Cache;
@@ -155,7 +156,7 @@ class ServerData extends Data
             // (ports/processes or server_updates). Otherwise leave as "No agent data".
             if ($fallbackAgent && $fallbackAgent->processes()->count() === 0 && $fallbackAgent->ports()->count() === 0) {
                 // Check if server has any historical ServerUpdate
-                $hasHistory = \App\Models\ServerUpdate::where('server_id', $server->id)->exists();
+                $hasHistory = ServerUpdate::where('server_id', $server->id)->exists();
                 if (! $hasHistory) {
                     $fallbackAgent = null;
                 }

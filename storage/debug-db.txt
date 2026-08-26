@@ -1,5 +1,5 @@
 APP_ENV(app)= testing
-ENV_FILE= C:\Users\User\Herd\server-monitoring-system\.env.testing
+ENV_FILE= C:\Users\Yowan\Herd\server-monitoring-system\.env.testing
 DEFAULT_CONN= pgsql
 CONFIG_DB= server_monitoring_test
 CONNECTED_DB= server_monitoring_test

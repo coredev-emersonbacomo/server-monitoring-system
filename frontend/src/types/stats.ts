@@ -9,5 +9,7 @@ export interface StatPoint {
     cpu: number
     memory: number
     disk: number
+    netIn?: number
+    netOut?: number
     networks?: NetworkPoint[]
 }

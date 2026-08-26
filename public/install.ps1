@@ -3,7 +3,11 @@ param(
     [string]$ProvisionToken,
 
     [Parameter(Mandatory=$false)]
-    [string]$AppUrl = "{{APP_URL}}"
+    [string]$AppUrl = "{{APP_URL}}",
+
+    [Parameter(Mandatory=$false)]
+    [Alias("Instance")]
+    [string]$InstallationId = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -34,22 +38,41 @@ function Fail($msg) {
 
 # ----- Detect an existing single agent installation -------------
 $ExistingService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-if ($ExistingService) {
-    # Reuse the installation UUID from the existing service's binary path.
-    $binaryPath = (Get-WmiObject Win32_Service -Filter "Name='$ServiceName'").PathName
-    $ExistingId = ""
-    if ($binaryPath -match '-instance\s+([0-9a-fA-F-]+)') {
-        $ExistingId = $matches[1]
-    }
-    if (-not $ExistingId) {
-        Fail "Service '$ServiceName' exists but its installation UUID could not be parsed from its binary path."
-    }
+$ExistingId = ""
+$Attach = $false
 
-    $InstallationId = $ExistingId
+if ($InstallationId) {
+    # Force reinstall / specified installation UUID: use this exact UUID from DB
     $KeyName = "MonitorAgentIdentity-$InstallationId"
     $InstanceDir = "$DataRoot\instances\$InstallationId"
-    Log "Detected existing MonitorAgent service (installation: $InstallationId) -- attaching new server."
-    $Attach = $true
+    Log "Using specified installation UUID ($InstallationId) for installation/reinstallation."
+    $Attach = $false
+} elseif ($ExistingService) {
+    # Reuse the installation UUID from the existing service's binary path.
+    $binaryPath = (Get-WmiObject Win32_Service -Filter "Name='$ServiceName'").PathName
+    if ($binaryPath -match '-instance\s+([0-9a-fA-F-]+)') {
+        $ExistingId = $matches[1]
+    } elseif (Test-Path "$DataRoot\instances") {
+        $foundInstances = Get-ChildItem "$DataRoot\instances" -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^[0-9a-fA-F-]+$' }
+        if ($foundInstances.Count -eq 1) {
+            $ExistingId = $foundInstances[0].Name
+            Log "Recovered installation UUID ($ExistingId) from instance directory."
+        }
+    }
+
+    if ($ExistingId) {
+        $InstallationId = $ExistingId
+        $KeyName = "MonitorAgentIdentity-$InstallationId"
+        $InstanceDir = "$DataRoot\instances\$InstallationId"
+        Log "Detected existing MonitorAgent service (installation: $InstallationId) -- attaching new server."
+        $Attach = $true
+    } else {
+        Log "Warning: Existing service '$ServiceName' does not have a valid installation UUID in binary path or instance directory. Re-registering service as a new installation."
+        $InstallationId = [guid]::NewGuid().ToString()
+        $KeyName = "MonitorAgentIdentity-$InstallationId"
+        $InstanceDir = "$DataRoot\instances\$InstallationId"
+        $Attach = $false
+    }
 } else {
     $InstallationId = [guid]::NewGuid().ToString()
     $KeyName = "MonitorAgentIdentity-$InstallationId"
