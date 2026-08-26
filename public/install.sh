@@ -8,7 +8,16 @@ if [[ "$#" -lt 1 ]]; then
 fi
 
 TOKEN="$1"
-APP_URL="${2:-http://127.0.0.1:8000}"
+ARG2="${2:-}"
+ARG3="${3:-}"
+
+if [[ "$ARG2" =~ ^https?:// ]]; then
+    APP_URL="$ARG2"
+    EXPLICIT_INSTALLATION_ID=""
+else
+    EXPLICIT_INSTALLATION_ID="$ARG2"
+    APP_URL="${ARG3:-{{APP_URL}}}"
+fi
 
 # ─── Constants ───────────────────────────────────────────────
 readonly APP_ROOT="/opt/monitor-agent"            # shared binary location
@@ -34,14 +43,14 @@ for cmd in curl systemctl python3 sha256sum useradd; do
 done
 
 # ─── Detect an existing single agent installation ───────────
-# Detection is by the stable service name — NOT by hostname, process name, or
-# directory contents. If the service exists, we reuse its installation UUID
-# (parsed from the service's ExecStart) and ATTACH this server to the existing
-# agent instead of creating a new one.
 ATTACH=0
 INSTALLATION_ID=""
 
-if systemctl list-unit-files | grep -q "^${STABLE_UNIT} "; then
+if [[ -n "$EXPLICIT_INSTALLATION_ID" ]]; then
+    INSTALLATION_ID="$EXPLICIT_INSTALLATION_ID"
+    log "Using specified installation UUID (${INSTALLATION_ID}) for installation/reinstallation."
+    ATTACH=0
+elif systemctl list-unit-files | grep -q "^${STABLE_UNIT} "; then
     # The stable service already exists on this host: reuse its installation UUID,
     # parsed from the service's ExecStart ("-instance <uuid>") using bash
     # parameter expansion so there is no grep|head pipeline under pipefail.
@@ -52,22 +61,32 @@ if systemctl list-unit-files | grep -q "^${STABLE_UNIT} "; then
         INSTALLATION_ID="${TAIL%% *}"
     fi
 
-    if [[ -z "$INSTALLATION_ID" ]]; then
-        fail "Stable service ${STABLE_UNIT} exists but its installation UUID could not be parsed from ExecStart."
+    if [[ -z "$INSTALLATION_ID" ]] && [[ -d "${DATA_ROOT}/instances" ]]; then
+        INSTANCES=($(find "${DATA_ROOT}/instances" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null || true))
+        if [[ ${#INSTANCES[@]} -eq 1 ]]; then
+            INSTALLATION_ID="${INSTANCES[0]}"
+            log "Recovered installation UUID (${INSTALLATION_ID}) from instance directory."
+        fi
     fi
 
-    # Legacy sanity check: warn (but do not block) if old per-instance template
-    # units are still present — those require an explicit operator consolidation
-    # (see ADR-0002 migration note) and are out of scope for a fresh attach.
-    if systemctl list-unit-files | grep -q '^monitor-agent@'; then
-        warn "Legacy per-instance units (monitor-agent@*) are present alongside the stable service."
-        warn "Consolidate them manually before relying on the single-agent model."
-    fi
+    if [[ -n "$INSTALLATION_ID" ]]; then
+        # Legacy sanity check: warn (but do not block) if old per-instance template
+        # units are still present — those require an explicit operator consolidation
+        # (see ADR-0002 migration note) and are out of scope for a fresh attach.
+        if systemctl list-unit-files | grep -q '^monitor-agent@'; then
+            warn "Legacy per-instance units (monitor-agent@*) are present alongside the stable service."
+            warn "Consolidate them manually before relying on the single-agent model."
+        fi
 
-    log "Detected existing MonitorAgent service (installation: ${INSTALLATION_ID}) — attaching new server."
-    ATTACH=1
+        log "Detected existing MonitorAgent service (installation: ${INSTALLATION_ID}) — attaching new server."
+        ATTACH=1
+    else
+        warn "Stable service ${STABLE_UNIT} exists without a valid installation UUID in ExecStart or instance directory. Re-registering service as a new installation."
+        INSTALLATION_ID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || tr -dc 'a-f0-9' < /dev/urandom | head -c 32)
+        ATTACH=0
+    fi
 else
-    INSTALLATION_ID=$(cat /proc/sys/kernel/random/uuid)
+    INSTALLATION_ID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || tr -dc 'a-f0-9' < /dev/urandom | head -c 32)
     log "No existing service found — creating new single-agent installation (instance: ${INSTALLATION_ID})."
 fi
 

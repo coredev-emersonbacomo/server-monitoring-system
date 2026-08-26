@@ -37,16 +37,19 @@ class ActivityLogController extends Controller
         $logs->transform(function ($log) {
             if ($log->logable_type && class_exists($log->logable_type)) {
                 try {
-                    $subject = $log->logable_type::find($log->logable_id);
+                    $subject = is_numeric($log->logable_id)
+                        ? $log->logable_type::find($log->logable_id)
+                        : $log->logable_type::where('uuid', $log->logable_id)->first();
+
                     if ($subject && isset($subject->uuid)) {
                         $log->logable_id = $subject->uuid;
                     }
-                } catch (\Exception $e) {
+                } catch (\Throwable $e) {
                     // fallback
                 }
-
-                $log->setAttribute('user_uuid', $log->PerformerUser?->uuid);
             }
+
+            $log->setAttribute('user_uuid', $log->PerformerUser?->uuid);
 
             return $log;
         });

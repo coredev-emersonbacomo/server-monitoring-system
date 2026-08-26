@@ -73,8 +73,8 @@ test('can retrieve available clients while excluding a user', function () {
     $token = loginAsUser($this->admin);
 
     $response = $this->withHeaders([
-        'Authorization' => 'Bearer ' . $token,
-    ])->getJson('/api/v1/clients?exclude_user_uuid=' . $this->secop->uuid . '&available_only=true');
+        'Authorization' => 'Bearer '.$token,
+    ])->getJson('/api/v1/clients?exclude_user_uuid='.$this->secop->uuid.'&available_only=true');
 
     $response->assertOk();
 });

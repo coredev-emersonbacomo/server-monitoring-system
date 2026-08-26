@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\ServerStatus;
 use App\Events\AgentUninstalled;
+use App\Events\ServerStatusUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Activity;
 use App\Models\Agent;
@@ -49,6 +50,20 @@ class AgentController extends Controller
 
         try {
             $result = $this->provisioningService->regenerateToken($server, $user);
+
+            return response()->json($result, 201);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function forceReinstall(string $uuid, Request $request): JsonResponse
+    {
+        $server = Server::where('uuid', $uuid)->firstOrFail();
+        $user = $request->user();
+
+        try {
+            $result = $this->provisioningService->forceReinstallToken($server, $user);
 
             return response()->json($result, 201);
         } catch (\InvalidArgumentException $e) {

@@ -265,6 +265,7 @@ export interface ServerData {
                 created_at: string;
             }[] | null;
             agent?: AgentData | null;
+            agent_server_count?: number | null;
             alert_scope?: string;
             uptime_seconds?: number;
             subscription_fee?: number;
@@ -319,6 +320,8 @@ export interface StatPointData {
             cpu: number;
             memory: number;
             disk: number;
+            netIn?: number;
+            netOut?: number;
             networks?: { name: string; netIn: number; netOut: number }[];
         }
 

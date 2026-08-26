@@ -179,10 +179,8 @@ export default function ServerDetail() {
     }, [initial?.uuid, store]);
 
     useEffect(() => {
-        if (initial?.activeProvisionDetails) {
-            setProvisionDetails(initial.activeProvisionDetails);
-        }
-    }, [initial?.activeProvisionDetails]);
+        setProvisionDetails(initial?.activeProvisionDetails ?? null);
+    }, [initial?.activeProvisionDetails, initial?.uuid]);
 
     // Format remaining time for provision token
     useEffect(() => {
