@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
     LineChart,
     Line,
@@ -14,8 +14,8 @@ import { useServers } from "@/hooks/useServers";
 import type { MetricKey, TimeUnit, UsageScope } from "@/types/dashboard";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useQueryClient } from "@tanstack/react-query";
+import { EntityPickerModal } from "@/pages/reports/EntityPickerModal";
 
 type TimeSpan = "1H" | "1D" | "1W";
 
@@ -91,7 +91,6 @@ interface DashboardMetricChartInnerProps {
     timeSpan: TimeSpan;
     scope?: UsageScope;
     serverUuid?: string;
-    nameFilter?: string;
 }
 
 function DashboardMetricChartInner({
@@ -101,7 +100,6 @@ function DashboardMetricChartInner({
     timeSpan,
     scope = "all",
     serverUuid,
-    nameFilter,
 }: DashboardMetricChartInnerProps) {
     const apiUnit = TIME_SPAN_TO_UNIT[timeSpan];
 
@@ -119,12 +117,8 @@ function DashboardMetricChartInner({
 
     const series = useMemo(() => {
         if (!allSeries.length) return [];
-        const q = nameFilter?.trim().toLowerCase();
-        if (!q) return allSeries;
-        return allSeries.filter((s) =>
-            s.server_name.toLowerCase().includes(q),
-        );
-    }, [allSeries, nameFilter]);
+        return allSeries;
+    }, [allSeries]);
 
     // Merge all series into [{timestamp, uuid1: val, uuid2: val, ...}] via a
     // Map-keyed timestamp lookup instead of O(points²) nested finds
@@ -314,7 +308,6 @@ interface DashboardMetricChartProps {
     timeSpan: TimeSpan;
     scope?: UsageScope;
     serverUuid?: string;
-    nameFilter?: string;
 }
 
 export function DashboardMetricChart({
@@ -325,7 +318,6 @@ export function DashboardMetricChart({
     timeSpan,
     scope,
     serverUuid,
-    nameFilter,
 }: DashboardMetricChartProps) {
     return (
         <div className="rounded-lg border border-border/60 bg-card/40 p-3 py-4 flex flex-col gap-3">
@@ -339,7 +331,6 @@ export function DashboardMetricChart({
                 timeSpan={timeSpan}
                 scope={scope}
                 serverUuid={serverUuid}
-                nameFilter={nameFilter}
             />
         </div>
     );
@@ -410,27 +401,19 @@ export function DashboardChartsSection() {
     const [timeSpan, setTimeSpan] = useState<TimeSpan>("1H");
     const [view, setView] = useState<ChartView>("overview");
     const [selected, setSelected] = useState<string[]>([]);
-    const [search, setSearch] = useState("");
+    const [pickerOpen, setPickerOpen] = useState(false);
     const queryClient = useQueryClient();
     const { data: serversData } = useServers();
     const servers = serversData ?? [];
 
-    const q = search.trim().toLowerCase();
-    const filteredServers = q
-        ? servers.filter((s) => s.name.toLowerCase().includes(q))
-        : servers;
-
-    // Empty selection = show every server; checked servers = compare view
     const isAll = selected.length === 0;
     const compareUuids = isAll ? undefined : selected.join(",");
 
-    const toggleServer = (uuid: string) => {
-        setSelected((prev) =>
-            prev.includes(uuid)
-                ? prev.filter((u) => u !== uuid)
-                : [...prev, uuid],
-        );
-    };
+    useEffect(() => {
+        if (view === "perServer" && servers.length > 0 && selected.length === 0) {
+            setSelected([servers[0].uuid]);
+        }
+    }, [view, servers]);
 
     return (
         <div>
@@ -467,40 +450,26 @@ export function DashboardChartsSection() {
             </div>
 
             {view === "perServer" && (
-                <div className="flex flex-wrap items-start gap-2 mb-4">
-                    <Input
-                        placeholder="Search servers…"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="h-8 w-56 text-xs"
-                    />
-                    <div className="flex flex-col border border-border/60 rounded-lg bg-card/40 p-2 max-h-52 overflow-y-auto min-w-56 flex-1 max-w-xs gap-0.5">
-                        <label className="flex items-center gap-2 text-xs cursor-pointer py-0.5">
-                            <input
-                                type="checkbox"
-                                checked={isAll}
-                                onClick={() => setSelected([])}
-                                onChange={() => {}}
-                                className="accent-violet-500 cursor-pointer"
-                            />
-                            All servers
-                        </label>
-                        <div className="h-px bg-border/60 my-1" />
-                        {filteredServers.map((s) => (
-                            <label
-                                key={s.uuid}
-                                className="flex items-center gap-2 text-xs cursor-pointer py-0.5"
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={selected.includes(s.uuid)}
-                                    onChange={() => toggleServer(s.uuid)}
-                                    className="accent-violet-500 cursor-pointer"
-                                />
-                                <span className="truncate">{s.name}</span>
-                            </label>
-                        ))}
-                    </div>
+                <div className="flex items-center gap-2 mb-4">
+                    <Button
+                        variant={selected.length > 0 ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setPickerOpen(true)}
+                    >
+                        Select Servers
+                    </Button>
+                    <Button
+                        variant={isAll ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelected([])}
+                    >
+                        All Servers
+                    </Button>
+                    {selected.length > 0 && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                            {selected.length} selected
+                        </span>
+                    )}
                 </div>
             )}
 
@@ -527,10 +496,20 @@ export function DashboardChartsSection() {
                         timeSpan={timeSpan}
                         scope={isAll ? "all" : "server"}
                         serverUuid={compareUuids}
-                        nameFilter={isAll ? q || undefined : undefined}
                     />
                 ))}
             </div>
+
+            {pickerOpen && (
+                <EntityPickerModal
+                    type="servers"
+                    onSelect={(uuids) => {
+                        setSelected(uuids);
+                        setPickerOpen(false);
+                    }}
+                    onClose={() => setPickerOpen(false)}
+                />
+            )}
         </div>
     );
 }
