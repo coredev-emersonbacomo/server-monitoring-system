@@ -206,8 +206,8 @@ export function DocsClientsContent() {
                     uninstall the agent on those servers first.
                 </p>
                 <DocImage
-                    src="/images/cdelete1.gif"
-                    alt="Delete client walkthrough"
+                    src="/images/cdetails.gif"
+                    alt="Client details walkthrough"
                 />
             </Section>
         </>
@@ -373,7 +373,12 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1'
                         <strong>Agent</strong> — the installed agent's
                         properties: version, heartbeat/metrics/port/service/
                         process scan intervals, update channel, auto-update
-                        flag, first registration, and last heartbeat.
+                        flag, first registration, and last heartbeat. Also
+                        includes{" "}
+                        <strong>Agent Recovery & Force Reinstall</strong> to
+                        re-provision and restore agent services with the
+                        existing installation UUID if files were deleted on the
+                        host.
                     </li>
                 </ul>
                 <DocImage
@@ -391,6 +396,10 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1'
                     and requires you to uninstall the agent before deletion is
                     allowed. You must type the server name to confirm.
                 </p>
+                <DocImage
+                    src="/images/cdelete.gif"
+                    alt="Client delete walkthrough"
+                />
             </Section>
         </>
     );

@@ -323,6 +323,13 @@ class ServerController extends Controller
         ]);
         $serverModel->delete();
 
+        ServerStatusUpdated::dispatch(
+            $serverModel->uuid,
+            'archived',
+            $serverModel->name
+        );
+        event(new ActionItemsUpdated);
+
         // Sync client's stored total_subscription_fee after server removal
         $clientModel = Client::where('uuid', $clientUuid)->first();
         if ($clientModel) {

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import PageLayout from "@/components/PageLayout";
@@ -102,6 +102,17 @@ const SEVERITY_BORDER: Record<ActionItem["severity"], string> = {
     critical: "text-red-400 bg-red-500/10 border-red-500/20",
 };
 
+function formatTimeAgo(dateStr: string): string {
+    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+    if (diff < 60) return "just now";
+    const minutes = Math.floor(diff / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+}
+
 // ─── Completed Modal ──────────────────────────────────────────────────────────
 
 function CompletedModal({
@@ -188,6 +199,9 @@ export default function Dashboard() {
     useDocumentTitle("Dashboard");
     const { user } = useAuthContext();
     const [completedOpen, setCompletedOpen] = useState(false);
+    const [actionFilter, setActionFilter] = useState<
+        "all" | "mine" | "unassigned" | "critical"
+    >("all");
 
     const {
         data: stats,
@@ -198,6 +212,23 @@ export default function Dashboard() {
     const { data: actions, isLoading: actionsLoading } = useDashboardActions();
     const claimMutation = useClaimAction();
     const statusMutation = useUpdateActionStatus();
+
+    const displayedActions = useMemo(() => {
+        if (!actions) return [];
+        switch (actionFilter) {
+            case "mine":
+                return actions.filter(
+                    (a) => user && a.assigned_to_uuid === user.uuid,
+                );
+            case "unassigned":
+                return actions.filter((a) => !a.assigned_to_uuid);
+            case "critical":
+                return actions.filter((a) => a.severity === "critical");
+            case "all":
+            default:
+                return actions;
+        }
+    }, [actions, actionFilter, user]);
 
     const leftDivRef = useRef<HTMLDivElement>(null);
     const [leftDivHeight, setLeftDivHeight] = useState(0);
@@ -431,41 +462,93 @@ export default function Dashboard() {
                             height: leftDivHeight ? leftDivHeight : undefined,
                         }}
                     >
-                        <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
-                            <div className="flex items-center gap-6">
-                                <h2 className="text-sm font-semibold text-foreground">
-                                    Action Board
-                                </h2>
-                                {actions && actions.length > 0 && (
-                                    <span className="text-xs text-muted-foreground">
-                                        {actions.length} active
-                                    </span>
-                                )}
+                        <div className="flex flex-col border-b border-border/60 px-5 py-3.5 gap-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <h2 className="text-sm font-semibold text-foreground">
+                                        Action Board
+                                    </h2>
+                                    {actions && actions.length > 0 && (
+                                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                                            {actions.length} active
+                                        </span>
+                                    )}
+                                </div>
+
+                                <Button
+                                    className="cursor-pointer"
+                                    variant="ghost"
+                                    size="sm"
+                                    icon={<ScrollText size={14} />}
+                                    label="Completed"
+                                    onClick={() => setCompletedOpen(true)}
+                                />
                             </div>
 
-                            <Button
-                                className="cursor-pointer"
-                                variant="ghost"
-                                size="sm"
-                                icon={<ScrollText size={14} />}
-                                label="Completed"
-                                onClick={() => setCompletedOpen(true)}
-                            />
+                            {/* Action filter tabs */}
+                            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                                {[
+                                    { key: "all", label: "All", count: actions?.length ?? 0 },
+                                    {
+                                        key: "mine",
+                                        label: "My Actions",
+                                        count: actions?.filter((a) => user && a.assigned_to_uuid === user.uuid).length ?? 0,
+                                    },
+                                    {
+                                        key: "unassigned",
+                                        label: "Unassigned",
+                                        count: actions?.filter((a) => !a.assigned_to_uuid).length ?? 0,
+                                    },
+                                    {
+                                        key: "critical",
+                                        label: "Critical",
+                                        count: actions?.filter((a) => a.severity === "critical").length ?? 0,
+                                    },
+                                ].map((tab) => (
+                                    <button
+                                        key={tab.key}
+                                        onClick={() => setActionFilter(tab.key as typeof actionFilter)}
+                                        className={cn(
+                                            "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0",
+                                            actionFilter === tab.key
+                                                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                                                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+                                        )}
+                                    >
+                                        <span>{tab.label}</span>
+                                        <span
+                                            className={cn(
+                                                "text-[10px] px-1.5 py-0.2 rounded-full font-mono font-semibold",
+                                                actionFilter === tab.key
+                                                    ? "bg-primary-foreground/20 text-primary-foreground"
+                                                    : "bg-muted-foreground/15 text-muted-foreground",
+                                            )}
+                                        >
+                                            {tab.count}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto min-h-0 p-4 pt-3 space-y-1">
+                        <div className="flex-1 overflow-y-auto min-h-0 p-4 pt-3 space-y-2">
                             {actionsLoading ? (
                                 Array.from({ length: 4 }).map((_, i) => (
                                     <ActionCardSkeleton key={i} />
                                 ))
-                            ) : !actions?.length ? (
-                                <p className="text-sm text-muted-foreground text-center py-8">
-                                    No pending actions.
-                                </p>
+                            ) : !displayedActions.length ? (
+                                <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-1.5 text-center">
+                                    <p className="text-sm font-medium">No actions found</p>
+                                    <p className="text-xs text-muted-foreground/70">
+                                        {actionFilter === "all"
+                                            ? "All systems operating normally."
+                                            : `No matching ${actionFilter} actions.`}
+                                    </p>
+                                </div>
                             ) : (
-                                actions.map((action) => {
+                                displayedActions.map((action: ActionItem) => {
                                     const Icon =
-                                        ACTION_ICONS[action.action_type];
+                                        ACTION_ICONS[action.action_type] ?? ShieldX;
                                     const border =
                                         SEVERITY_BORDER[action.severity];
                                     const isMine =
@@ -476,16 +559,16 @@ export default function Dashboard() {
                                         <div
                                             key={action.id}
                                             className={cn(
-                                                "rounded-lg border p-4 transition-colors",
+                                                "rounded-lg border p-3.5 transition-all",
                                                 isMine
-                                                    ? "border-primary/30 bg-primary/5"
-                                                    : "border-border/60 hover:bg-muted/20",
+                                                    ? "border-primary/40 bg-primary/5 shadow-xs"
+                                                    : "border-border/60 bg-card hover:border-border hover:bg-muted/10",
                                             )}
                                         >
                                             <div className="flex items-start gap-3">
                                                 <div
                                                     className={cn(
-                                                        "p-1.5 rounded-lg border shrink-0 mt-0.5",
+                                                        "p-2 rounded-lg border shrink-0 mt-0.5",
                                                         border,
                                                     )}
                                                 >
@@ -493,7 +576,7 @@ export default function Dashboard() {
                                                 </div>
 
                                                 <Link
-                                                    className="flex-1 min-w-0 cursor-pointer"
+                                                    className="flex-1 min-w-0 cursor-pointer group"
                                                     to={
                                                         action.server_uuid
                                                             ? `/servers/${action.server_uuid}`
@@ -502,45 +585,43 @@ export default function Dashboard() {
                                                               : "#"
                                                     }
                                                 >
-                                                    <p className="text-sm font-medium text-foreground truncate">
-                                                        {action.message}
-                                                    </p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                                                            {action.message}
+                                                        </p>
+                                                    </div>
                                                     <p className="text-xs text-muted-foreground truncate mt-0.5">
                                                         {action.client_name}
                                                         {action.server_name &&
                                                             ` · ${action.server_name}`}
                                                     </p>
-                                                    {action.assigned_to_name && (
-                                                        <div className="flex items-center gap-1 mt-1.5">
-                                                            <Circle className="size-2.5 fill-primary text-primary" />
-                                                            <span className="text-[11px] text-muted-foreground">
-                                                                {
-                                                                    action.assigned_to_name
-                                                                }
+
+                                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
+                                                        {action.assigned_to_name ? (
+                                                            <div className="flex items-center gap-1">
+                                                                <Circle className="size-2 fill-primary text-primary" />
+                                                                <span className="text-[11px] font-medium text-foreground">
+                                                                    {action.assigned_to_name}
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-[10px] font-semibold uppercase px-1.5 py-0.2 rounded bg-muted text-muted-foreground">
+                                                                Unassigned
                                                             </span>
-                                                        </div>
-                                                    )}
-                                                    {action.created_at && (
-                                                        <div className="flex items-center gap-1 mt-1.5">
-                                                            <Clock className="size-3 text-muted-foreground/60" />
-                                                            <span className="text-[11px] text-muted-foreground/70">
-                                                                {new Date(
-                                                                    action.created_at,
-                                                                ).toLocaleString(
-                                                                    undefined,
-                                                                    {
-                                                                        month: "short",
-                                                                        day: "numeric",
-                                                                        hour: "2-digit",
-                                                                        minute: "2-digit",
-                                                                    },
-                                                                )}
-                                                            </span>
-                                                        </div>
-                                                    )}
+                                                        )}
+
+                                                        {action.created_at && (
+                                                            <div className="flex items-center gap-1">
+                                                                <Clock className="size-3 text-muted-foreground/60" />
+                                                                <span className="text-[11px] text-muted-foreground/80">
+                                                                    {formatTimeAgo(action.created_at)}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </Link>
 
-                                                <div className="flex items-center gap-1 shrink-0">
+                                                <div className="flex items-center gap-1 shrink-0 self-center">
                                                     {action.status ===
                                                     "completed" ? null : isMine ? (
                                                         <>
@@ -551,7 +632,7 @@ export default function Dashboard() {
                                                                         action.id,
                                                                     )
                                                                 }
-                                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
                                                             >
                                                                 <Link2Off className="size-4" />
                                                             </button>
@@ -566,7 +647,7 @@ export default function Dashboard() {
                                                                         },
                                                                     )
                                                                 }
-                                                                className="p-1.5 rounded-md hover:bg-muted transition-colors text-emerald-400 hover:text-emerald-300"
+                                                                className="p-1.5 rounded-md hover:bg-emerald-500/10 transition-colors text-emerald-500 hover:text-emerald-400 cursor-pointer"
                                                             >
                                                                 <CircleCheckBig className="size-4" />
                                                             </button>
@@ -579,9 +660,10 @@ export default function Dashboard() {
                                                                     action.id,
                                                                 )
                                                             }
-                                                            className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                                                            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                                                         >
-                                                            <CircleEllipsis className="size-4" />
+                                                            <CircleEllipsis className="size-3.5" />
+                                                            <span>Claim</span>
                                                         </button>
                                                     )}
                                                 </div>

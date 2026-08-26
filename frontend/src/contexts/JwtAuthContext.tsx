@@ -129,7 +129,7 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
     const login = useCallback(async (credentials: JwtAuthLoginPayload) => {
         setIsLoggingIn(true);
         try {
-            const response = await api.POST("/v1/login", {
+            const { data, error } = await api.POST("/v1/login", {
                 body: {
                     email: credentials.email,
                     password: credentials.password,
@@ -137,13 +137,21 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
                 },
             });
 
-            const { access_token } = response.data as {
+            if (error || !data || !("access_token" in (data as Record<string, unknown>))) {
+                throw (
+                    error ?? {
+                        message: "Invalid email/username or password. Please try again.",
+                    }
+                );
+            }
+
+            const { access_token } = data as {
                 access_token: string;
             };
             setAccessToken(access_token);
 
             const meResponse = await api.GET("/v1/me");
-            if (mountedRef.current) {
+            if (mountedRef.current && meResponse.data) {
                 setUser(meResponse.data as AuthUserData);
             }
         } catch (error) {
