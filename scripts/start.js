@@ -25,4 +25,8 @@ const telescopeEnabled = env.match(/^TELESCOPE_ENABLED=(.*)$/m)?.[1]?.trim().toL
 if (telescopeEnabled === 'true' || telescopeEnabled === '1') {
     console.warn('[start] WARNING: TELESCOPE_ENABLED=true in production — Telescope exposes request/job data. Only run this in development or admin-lock it via Gate::define(\'viewTelescope\') and TELESCOPE_ADMIN_EMAILS. Set TELESCOPE_ENABLED=false for prod.');
 }
+const muteNotifications = env.match(/^MUTE_NOTIFICATION=(.*)$/m)?.[1]?.trim().toLowerCase();
+if (muteNotifications === 'true' || muteNotifications === '1') {
+    console.warn('[start] WARNING: MUTE_NOTIFICATION=true in production — alerts will be logged, never sent. Set MUTE_NOTIFICATION=false for prod.');
+}
 console.log(`[start] UI built and deployed. Open ${appUrl}`);

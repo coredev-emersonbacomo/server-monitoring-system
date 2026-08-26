@@ -585,6 +585,33 @@ php artisan schedule:work           # Task scheduler`}</CodeBlock>
                     </li>
                 </ul>
             </Section>
+
+            <Section title="Alert visual debugger — dev-only">
+                <p>
+                    The System Pipeline &amp; Telemetry Visualizer is an opt-in
+                    debugging tool. It is <strong>off by default</strong> so the
+                    backend emits no telemetry in normal operation.
+                </p>
+                <ul className="list-disc pl-5 space-y-1.5">
+                    <li>
+                        <InlineCode>ALERTS_VISUAL_DEBUGGER=true</InlineCode> in{" "}
+                        <InlineCode>.env.development</InlineCode> enables the
+                        backend: the{" "}
+                        <InlineCode>/node-configs/telemetry-state</InlineCode>{" "}
+                        endpoint returns a snapshot and all realtime telemetry
+                        broadcasts fire. When unset (or <InlineCode>false</InlineCode>
+                        ), the endpoint returns <InlineCode>404</InlineCode> and
+                        nothing is broadcast.
+                    </li>
+                    <li>
+                        <InlineCode>VITE_ALERTS_VISUAL_DEBUGGER=true</InlineCode> in{" "}
+                        <InlineCode>frontend/.env</InlineCode> reveals the{" "}
+                        <InlineCode>/settings/alerts/debugger</InlineCode> route.
+                        Without it the route redirects to{" "}
+                        <InlineCode>/settings</InlineCode>.
+                    </li>
+                </ul>
+            </Section>
         </>
     );
 }

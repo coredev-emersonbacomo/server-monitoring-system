@@ -236,26 +236,28 @@ export function DocsAgentStorageContent() {
                     installation's config and logs. The binary lives separately
                     in the program directory and is read-only at runtime.
                 </p>
-                <CodeBlock>{`# Windows
-C:\\Program Files\\MonitorAgent\\<uuid>\\MonitorAgent.exe    # binary (read-only)
+                <CodeBlock>{`# Windows — single stable service per host
+C:\\Program Files\\MonitorAgent\\MonitorAgent.exe     # shared binary (read-only)
 C:\\ProgramData\\MonitorAgent\\
   startup.log                                        # early-startup log
-  instances\\<uuid>\\
+  instances\\<uuid>\\                                 # one dir per host (same UUID reused for extra servers)
     config.json                                      # bootstrap config
     agent.log                                        # runtime log
     crash.log                                        # last-gasp panic stack
-    uninstall.flag                                   # uninstall marker
+    uninstall.flag                                   # whole-host uninstall marker
+    detach.flag                                      # per-server detach (contains server_uuid)
 
-# Linux
-/opt/monitor-agent/<uuid>/monitor-agent               # binary (read-only)
+# Linux — single stable unit per host
+/opt/monitor-agent/monitor-agent                     # shared binary (read-only)
 /var/lib/monitor-agent/
   startup.log                                        # early-startup log
   identity-<uuid>.pem                                # private key (0600)
-  instances\\<uuid>\\
+  instances/<uuid>/
     config.json                                      # bootstrap config
     agent.log                                        # runtime log
     crash.log                                        # last-gasp panic stack
-    uninstall.flag                                   # uninstall marker`}</CodeBlock>
+    uninstall.flag                                   # whole-host marker
+    detach.flag                                      # per-server detach`}</CodeBlock>
                 <Callout type="warning">
                     Diagnose the agent in the data-root instance directory ({" "}
                     <InlineCode>ProgramData</InlineCode> /{" "}
@@ -327,21 +329,23 @@ C:\\ProgramData\\MonitorAgent\\
                         — the first place to look when an agent produces nothing.
                     </p>
                 </SubSection>
-                <SubSection title="crash.log & uninstall.flag">
+                <SubSection title="crash.log, uninstall.flag & detach.flag">
                     <p>
                         <InlineCode>crash.log</InlineCode> is a last-gasp panic
-                        stack written by the global recovery in{" "}
-                        <InlineCode>main()</InlineCode> — it lives in the
-                        instance directory when the instance is known, else at
-                        the data root. <InlineCode>uninstall.flag</InlineCode>{" "}
-                        drives the marker-based uninstall (see{" "}
+                        stack — instance dir when known, else data root.{" "}
+                        <InlineCode>uninstall.flag</InlineCode> (
+                        <InlineCode>pending</InlineCode> →{" "}
+                        <InlineCode>done</InlineCode>) drives whole-host
+                        uninstall; <InlineCode>detach.flag</InlineCode>{" "}
+                        (containing a <InlineCode>server_uuid</InlineCode>) drives
+                        per-server detach (see{" "}
                         <Link
                             to="/docs/agent-setup"
                             className="text-primary hover:underline"
                         >
                             Agent Installation &amp; Lifecycle
                         </Link>
-                        ).
+                        ). Both are `pending` → service handles → `done`.
                     </p>
                 </SubSection>
             </Section>
