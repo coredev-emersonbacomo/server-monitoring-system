@@ -79,10 +79,14 @@ class SystemMonitor extends Command
                 foreach ($actions as $action) {
                     $key = $action->action_type.'-null-'.$action->client_id;
                     if (! isset($seenKeys[$key])) {
-                        $action->update([
-                            'status' => 'completed',
-                            'completed_at' => now(),
-                        ]);
+                        if ($action->assigned_to) {
+                            $action->update([
+                                'status' => 'completed',
+                                'completed_at' => now(),
+                            ]);
+                        } else {
+                            $action->delete();
+                        }
                     }
                 }
             });
