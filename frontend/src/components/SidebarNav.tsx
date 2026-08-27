@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { useOutletLayout } from "@/hooks/useOutletLayout";
@@ -71,6 +71,64 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
         setSidebarCollapsed(!isCollapsed);
     };
 
+    const navLinks = useMemo(() => links.map((link) => {
+        const isActive =
+            link.href === "/"
+                ? location.pathname === "/"
+                : location.pathname.startsWith(link.href);
+
+        return (
+            <Tooltip key={link.name}>
+                <TooltipTrigger asChild>
+                    <Link
+                        to={link.href}
+                        className={twMerge(
+                            "rounded-xl transition-all duration-300 ease-in-out overflow-hidden cursor-pointer",
+                            isCollapsed
+                                ? "w-sidebar-button-collapsed"
+                                : "w-full",
+                            isActive
+                                ? "bg-sidebar-active font-bold"
+                                : "text-muted-foreground hover:bg-sidebar-hover",
+                        )}
+                    >
+                        <div className="flex items-center gap-sidebar-item-gap p-sidebar-item-padding w-sidebar-button cursor-pointer">
+                            {
+                                <link.icon
+                                    variant={
+                                        isActive
+                                            ? "fill"
+                                            : "outline"
+                                    }
+                                    className={twMerge(
+                                        "size-sidebar-icon p-sidebar-icon-padding",
+                                        isActive
+                                            ? "text-sidebar-foreground"
+                                            : "text-foreground",
+                                    )}
+                                />
+                            }
+                            <label className="cursor-pointer text-[16px]">
+                                {link.name}
+                            </label>
+                        </div>
+                    </Link>
+                </TooltipTrigger>
+                <TooltipContent
+                    side="right"
+                    align="center"
+                    hidden={!isCollapsed}
+                    className={twMerge(
+                        "relative bg-foreground text-background ring-transparent text-md font-semibold z-9999",
+                        "[&>svg]:hidden",
+                    )}
+                >
+                    <p>{link.name}</p>
+                </TooltipContent>
+            </Tooltip>
+        );
+    }), [links, location.pathname, isCollapsed]);
+
     return (
         <>
             {/* Top-Right Floating Burger on Mobile (ONLY THE BURGER SHOWN ON MOBILE TOP-RIGHT) */}
@@ -86,12 +144,10 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
             </div>
 
             {/* Mobile Backdrop */}
-            {isMobileOpen && (
-                <div
-                    className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-60 transition-opacity"
-                    onClick={() => setIsMobileOpen(false)}
-                />
-            )}
+            <div
+                className={`md:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-60 transition-opacity duration-300 ${isMobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+                onClick={() => setIsMobileOpen(false)}
+            />
 
             {/* Sidebar Aside Container */}
             <aside
@@ -107,15 +163,13 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
             >
                 <div className="flex items-center justify-between p-sidebar-item-padding w-full cursor-pointer">
                     {/* Close button on mobile sidebar header (left side, since sidebar is on right) */}
-                    {isMobileOpen && (
-                        <button
-                            type="button"
-                            onClick={() => setIsMobileOpen(false)}
-                            className="md:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                        >
-                            <Menu className="size-5 rotate-90" />
-                        </button>
-                    )}
+                    <button
+                        type="button"
+                        onClick={() => setIsMobileOpen(false)}
+                        className={`md:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer ${isMobileOpen ? "block" : "hidden"}`}
+                    >
+                        <Menu className="size-5 rotate-90" />
+                    </button>
                     <div className="flex items-center gap-sidebar-item-gap">
                         <button
                             className="cursor-pointer hidden md:block"
@@ -133,12 +187,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                             isCollapsed && !isMobileOpen ? "hidden" : "block",
                         )}>
                             <div className="flex items-center justify-center gap-3">
-                                <img
-                                    src="/images/coreDevlogo.png"
-                                    alt="CoreDev Logo"
-                                    className="w-10 h-10 object-contain"
-                                />
-                                <span className="font-bold text-xl tracking-wide">
+                                <span className="font-bold text-sm tracking-wide">
                                     Server Monitoring
                                 </span>
                             </div>
@@ -147,63 +196,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                 </div>
 
             <nav className="flex flex-col gap-1 mb-auto">
-                {links.map((link) => {
-                    const isActive =
-                        link.href === "/"
-                            ? location.pathname === "/"
-                            : location.pathname.startsWith(link.href);
-
-                    return (
-                        <Tooltip key={link.name}>
-                            <TooltipTrigger asChild>
-                                <Link
-                                    to={link.href}
-                                    className={twMerge(
-                                        "rounded-xl transition-all duration-300 ease-in-out overflow-hidden cursor-pointer",
-                                        isCollapsed
-                                            ? "w-sidebar-button-collapsed"
-                                            : "w-full",
-                                        isActive
-                                            ? "bg-sidebar-active font-bold"
-                                            : "text-muted-foreground hover:bg-sidebar-hover",
-                                    )}
-                                >
-                                    <div className="flex items-center gap-sidebar-item-gap p-sidebar-item-padding w-sidebar-button cursor-pointer">
-                                        {
-                                            <link.icon
-                                                variant={
-                                                    isActive
-                                                        ? "fill"
-                                                        : "outline"
-                                                }
-                                                className={twMerge(
-                                                    "size-sidebar-icon p-sidebar-icon-padding",
-                                                    isActive
-                                                        ? "text-sidebar-foreground"
-                                                        : "text-foreground",
-                                                )}
-                                            />
-                                        }
-                                        <label className="cursor-pointer text-[16px]">
-                                            {link.name}
-                                        </label>
-                                    </div>
-                                </Link>
-                            </TooltipTrigger>
-                            <TooltipContent
-                                side="right"
-                                align="center"
-                                hidden={!isCollapsed}
-                                className={twMerge(
-                                    "relative bg-foreground text-background ring-transparent text-md font-semibold z-9999",
-                                    "[&>svg]:hidden",
-                                )}
-                            >
-                                <p>{link.name}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    );
-                })}
+                {navLinks}
             </nav>
 
             <Popover
