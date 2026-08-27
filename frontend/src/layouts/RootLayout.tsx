@@ -1,17 +1,19 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { JwtAuthProvider } from "@/contexts/JwtAuthContext";
 import { OutletLayoutProvider } from "@/contexts/OutletLayoutContext";
 import { Outlet, ScrollRestoration } from "react-router-dom";
+import { FloatingChaosOverlay } from "@/components/FloatingChaosOverlay";
 
 export default function RootLayout() {
     const portalRef = useRef<HTMLDivElement>(null);
+    const [bringItOn, setBringItOn] = useState(false);
 
     useEffect(() => {
-        const cheatCode = "HESOYAM";
         let buffer = "";
+        const maxLen = 15;
 
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Ignore if typing inside text input fields or textareas
+            // Ignore if typing inside inputs, textareas, or contentEditable
             const target = e.target as HTMLElement | null;
             if (
                 target &&
@@ -23,13 +25,14 @@ export default function RootLayout() {
             }
 
             if (e.key && e.key.length === 1) {
-                buffer += e.key.toUpperCase();
-                if (buffer.length > cheatCode.length) {
-                    buffer = buffer.slice(-cheatCode.length);
-                }
-                if (buffer === cheatCode) {
+                buffer = (buffer + e.key.toUpperCase()).slice(-maxLen);
+
+                if (buffer.endsWith("BUFFMEUP")) {
                     buffer = "";
-                    window.location.reload();
+                    document.documentElement.classList.toggle("buffed");
+                } else if (buffer.endsWith("BRINGITON")) {
+                    buffer = "";
+                    setBringItOn((prev) => !prev);
                 }
             }
         };
@@ -43,6 +46,7 @@ export default function RootLayout() {
             <JwtAuthProvider>
                 <ScrollRestoration getKey={(loc) => loc.pathname} />
                 <Outlet />
+                {bringItOn && <FloatingChaosOverlay />}
             </JwtAuthProvider>
         </OutletLayoutProvider>
     );
