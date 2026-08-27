@@ -291,16 +291,16 @@ export default function ServersIndex() {
                 />
 
                 {isLoading ? (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3 sm:gap-4 pt-2 sm:pt-4">
                         {Array.from({ length: 6 }).map((_, i) => (
                             <div
                                 key={i}
-                                className="h-48 bg-card border border-border rounded-lg animate-pulse"
+                                className="h-44 sm:h-48 bg-card border border-border rounded-lg animate-pulse"
                             />
                         ))}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4 pt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3 sm:gap-4 pt-2 sm:pt-4">
                         {filtered.map((server) => {
                             const effectiveStatus = resolveServerStatusKey(
                                 server.status,
@@ -319,7 +319,7 @@ export default function ServersIndex() {
                                 >
                                     <div
                                         className={cn(
-                                            "relative size-full rounded-lg border p-6 shadow-xs flex flex-col items-center font-sans gap-3 transition-all hover:shadow-md",
+                                            "relative size-full rounded-lg border p-4 sm:p-6 shadow-xs flex flex-col items-center font-sans gap-2.5 sm:gap-3 transition-all hover:shadow-md",
                                             isAssigned
                                                 ? "bg-card border-primary/50 shadow-primary/5 ring-1 ring-primary/20"
                                                 : "bg-card border-border hover:border-border/80",

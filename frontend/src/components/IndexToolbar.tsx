@@ -79,10 +79,10 @@ function IndexToolbar({
     onClearViewByClient,
 }: IndexToolbarProps) {
     return (
-        <div className="flex items-center justify-between gap-3 flex-wrap sticky -top-8 z-10 bg-background pt-9 pb-3 -mt-8">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2.5 sm:gap-3 flex-wrap sticky -top-8 z-10 bg-background pt-8 sm:pt-9 pb-3 -mt-8 pr-12 md:pr-0">
+            <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
                 {onSearchChange && (
-                    <div className="relative flex-1 max-w-xs">
+                    <div className="relative flex-1 min-w-[140px] sm:max-w-xs">
                         <Search
                             size={14}
                             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
@@ -92,7 +92,7 @@ function IndexToolbar({
                             placeholder={searchPlaceholder}
                             value={search ?? ""}
                             onChange={(e) => onSearchChange(e.target.value)}
-                            className="w-full pl-8 pr-3 py-2 h-9 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground transition-colors"
+                            className="w-full pl-8 pr-3 py-2 h-9 text-xs sm:text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground transition-colors"
                         />
                     </div>
                 )}
@@ -102,12 +102,12 @@ function IndexToolbar({
                         <Button
                             variant="outline"
                             icon={<Filter size={14} />}
-                            className="gap-1 cursor-pointer"
+                            className="gap-1 cursor-pointer shrink-0 text-xs sm:text-sm"
                         >
-                            <span className="flex items-center gap-1.5  ">
-                                {filterLabel}
+                            <span className="flex items-center gap-1 sm:gap-1.5 max-w-[140px] sm:max-w-none truncate">
+                                <span className="truncate">{filterLabel}</span>
                                 <span className="text-muted-foreground">·</span>
-                                <span className="font-normal">{sortLabel}</span>
+                                <span className="font-normal truncate">{sortLabel}</span>
                                 {sortDir === "desc" ? (
                                     <ArrowDownWideNarrow
                                         size={12}

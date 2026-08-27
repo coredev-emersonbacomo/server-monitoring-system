@@ -37,7 +37,7 @@ const IndexHeader: React.FC<IndexHeaderProps> = ({
     }
 
     return (
-        <header className="min-w-0 h-10.5">
+        <header className="min-w-0 h-10.5 pr-12 md:pr-0">
             <div className="h-full flex gap-4 items-center">
                 {Icon && (
                     <div className="p-2 bg-primary/10 rounded-lg shrink-0">

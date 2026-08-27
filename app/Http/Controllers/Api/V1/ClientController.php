@@ -277,18 +277,26 @@ class ClientController extends Controller
     {
         $client = Client::where('uuid', $clientUuid)->firstOrFail();
 
-        $runningAgentServer = $client->servers()
+        $runningAgentServers = $client->servers()
             ->where(function ($q) {
                 $q->whereNull('agent_deleted')->orWhere('agent_deleted', false);
             })
             ->whereHas('agent', function ($q) {
                 $q->whereNotNull('registered_at');
             })
-            ->first();
+            ->get();
 
-        if ($runningAgentServer) {
+        if ($runningAgentServers->isNotEmpty()) {
+            $count = $runningAgentServers->count();
+            if ($count === 1) {
+                $serverName = $runningAgentServers->first()->name;
+                $message = "Cannot delete client while server '{$serverName}' still has an active agent running. Please uninstall the server agent first.";
+            } else {
+                $message = "Cannot delete client while there are still {$count} servers with active agents running. Please uninstall all server agents first.";
+            }
+
             return response()->json([
-                'message' => "Cannot delete client while server '{$runningAgentServer->name}' still has an active agent running. Please uninstall all server agents first.",
+                'message' => $message,
             ], 422);
         }
 

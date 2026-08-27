@@ -30,7 +30,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
             to={`/users/${uuid}`}
             className="block rounded-lg transition-transform duration-200 hover:-translate-y-1"
         >
-            <div className="relative w-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans transition-shadow hover:shadow-md">
+            <div className="relative w-full bg-card rounded-lg border border-border p-4 sm:p-6 shadow-sm flex flex-col items-center font-sans transition-shadow hover:shadow-md">
                 <div className="absolute top-3 right-3">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>

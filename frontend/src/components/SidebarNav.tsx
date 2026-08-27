@@ -30,8 +30,14 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
         useOutletLayout();
 
     const [popoverProfileOpen, setPopoverProfileOpen] = useState(false);
+    const [isMobileOpen, setIsMobileOpen] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Close mobile overlay on route change
+    useEffect(() => {
+        setIsMobileOpen(false);
+    }, [location.pathname]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -66,37 +72,79 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
     };
 
     return (
-        <aside
-            className={twMerge(
-                "flex flex-col bg-background text-foreground py-5 px-sidebar-padding gap-5",
-                isCollapsed ? "w-sidebar-collapsed" : "w-sidebar",
-                "transition-all duration-300 ease-in-out overflow-x-hidden fixed top-0 left-0 h-screen! overflow-y-auto z-60",
-                !isFullScreen && "border-r border-border/90",
-            )}
-        >
-            <div className="flex items-center gap-sidebar-item-gap p-sidebar-item-padding w-sidebar-button cursor-pointer">
-                <button className="cursor-pointer" onClick={toggleSidebar}>
-                    <Menu
-                        className={twMerge(
-                            "size-sidebar-icon transition-all duration-300 ease-in-out p-sidebar-icon-padding-burger",
-                            isCollapsed && "rotate-180",
-                        )}
-                    />
+        <>
+            {/* Top-Right Floating Burger on Mobile (ONLY THE BURGER SHOWN ON MOBILE TOP-RIGHT) */}
+            <div className="md:hidden fixed top-3 right-3 z-50">
+                <button
+                    type="button"
+                    onClick={() => setIsMobileOpen(true)}
+                    className="p-2 rounded-xl bg-card/90 backdrop-blur-md border border-border/80 text-foreground shadow-md hover:bg-muted transition-colors cursor-pointer flex items-center justify-center"
+                    aria-label="Open Navigation Menu"
+                >
+                    <Menu className="size-5" />
                 </button>
-                <label className="text-xl font-extrabold tracking-tight translate-x-[0.4rem]">
-                    <div className="flex items-center justify-center gap-3">
-                        <img
-                            src="/images/coreDevlogo.png"
-                            alt="CoreDev Logo"
-                            className="w-10 h-10 object-contain"
-                        />
-                        <span className="font-bold text-xl tracking-wide">
-                            Server Monitoring
-                        </span>
-                    </div>
-                </label>
-                <Menu className="size-sidebar-icon opacity-0" />
             </div>
+
+            {/* Mobile Backdrop */}
+            {isMobileOpen && (
+                <div
+                    className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-60 transition-opacity"
+                    onClick={() => setIsMobileOpen(false)}
+                />
+            )}
+
+            {/* Sidebar Aside Container */}
+            <aside
+                className={twMerge(
+                    "flex flex-col bg-background text-foreground py-5 px-sidebar-padding gap-5 z-70",
+                    // Desktop styles: fixed on left
+                    "hidden md:flex fixed top-0 left-0 h-screen! overflow-x-hidden overflow-y-auto transition-all duration-300 ease-in-out",
+                    isCollapsed ? "w-sidebar-collapsed" : "w-sidebar",
+                    !isFullScreen && "border-r border-border/90",
+                    // Mobile overlay styles: fixed on the RIGHT side (left-auto overrides left-0 from desktop base)
+                    isMobileOpen && "flex! fixed inset-y-0 right-0 left-auto w-72 max-w-[85vw] shadow-2xl border-l border-border/90",
+                )}
+            >
+                <div className="flex items-center justify-between p-sidebar-item-padding w-full cursor-pointer">
+                    {/* Close button on mobile sidebar header (left side, since sidebar is on right) */}
+                    {isMobileOpen && (
+                        <button
+                            type="button"
+                            onClick={() => setIsMobileOpen(false)}
+                            className="md:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                        >
+                            <Menu className="size-5 rotate-90" />
+                        </button>
+                    )}
+                    <div className="flex items-center gap-sidebar-item-gap">
+                        <button
+                            className="cursor-pointer hidden md:block"
+                            onClick={toggleSidebar}
+                        >
+                            <Menu
+                                className={twMerge(
+                                    "size-sidebar-icon transition-all duration-300 ease-in-out p-sidebar-icon-padding-burger",
+                                    isCollapsed && "rotate-180",
+                                )}
+                            />
+                        </button>
+                        <label className={twMerge(
+                            "text-xl font-extrabold tracking-tight translate-x-[0.4rem]",
+                            isCollapsed && !isMobileOpen ? "hidden" : "block",
+                        )}>
+                            <div className="flex items-center justify-center gap-3">
+                                <img
+                                    src="/images/coreDevlogo.png"
+                                    alt="CoreDev Logo"
+                                    className="w-10 h-10 object-contain"
+                                />
+                                <span className="font-bold text-xl tracking-wide">
+                                    Server Monitoring
+                                </span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
 
             <nav className="flex flex-col gap-1 mb-auto">
                 {links.map((link) => {
@@ -200,6 +248,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                 </PopoverContent>
             </Popover>
         </aside>
+        </>
     );
 };
 
