@@ -64,6 +64,7 @@ export interface ClientData {
             record_status?: string;
             budget?: number;
             total_subscription_fee?: number;
+            is_assigned?: boolean;
         }
 
 /** CreateUserData */
@@ -266,6 +267,7 @@ export interface ServerData {
             }[] | null;
             agent?: AgentData | null;
             agent_server_count?: number | null;
+            is_assigned?: boolean;
             alert_scope?: string;
             uptime_seconds?: number;
             subscription_fee?: number;

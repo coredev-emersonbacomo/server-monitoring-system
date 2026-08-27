@@ -13,7 +13,7 @@ import type { ClientData } from "@/types/models";
 import { ClientCard, SkeletonGrid } from "./components/ClientCard";
 import { DeleteClientIndexModal } from "./components/DeleteClientIndexModal";
 import { useVirtualizer } from "@tanstack/react-virtual";
-type FilterTab = "all" | "with-servers" | "no-servers" | "archived";
+type FilterTab = "all" | "assigned" | "with-servers" | "no-servers" | "archived";
 
 const PAGE_SIZE = 12;
 const CARD_ESTIMATE_PX = 300;
@@ -152,6 +152,7 @@ export default function ClientsIndex() {
         if (!clients)
             return {
                 all: 0,
+                assigned: 0,
                 "with-servers": 0,
                 "no-servers": 0,
                 archived: 0,
@@ -159,6 +160,7 @@ export default function ClientsIndex() {
         const active = clients.filter((c) => c.record_status !== "archived");
         return {
             all: active.length,
+            assigned: active.filter((c) => Boolean(c.is_assigned)).length,
             "with-servers": active.filter((c) => c.servers_count > 0).length,
             "no-servers": active.filter((c) => c.servers_count === 0).length,
             archived: clients.filter((c) => c.record_status === "archived").length,
@@ -168,6 +170,11 @@ export default function ClientsIndex() {
     const filterOptions: FilterOption[] = useMemo(
         () => [
             { label: "All", value: "all", count: counts.all },
+            {
+                label: "Assigned to Me",
+                value: "assigned",
+                count: counts.assigned,
+            },
             {
                 label: "With Servers",
                 value: "with-servers",
@@ -213,7 +220,9 @@ export default function ClientsIndex() {
             list = list.filter((c) => c.record_status === "archived");
         } else {
             list = list.filter((c) => c.record_status !== "archived");
-            if (filter === "with-servers") {
+            if (filter === "assigned") {
+                list = list.filter((c) => Boolean(c.is_assigned));
+            } else if (filter === "with-servers") {
                 list = list.filter((c) => c.servers_count > 0);
             } else if (filter === "no-servers") {
                 list = list.filter((c) => c.servers_count === 0);
@@ -230,6 +239,13 @@ export default function ClientsIndex() {
         }
 
         list.sort((a, b) => {
+            // Prioritize assigned clients at the top
+            const aAssigned = a.is_assigned ? 1 : 0;
+            const bAssigned = b.is_assigned ? 1 : 0;
+            if (aAssigned !== bAssigned) {
+                return bAssigned - aAssigned;
+            }
+
             let aVal: unknown = a[sortField as keyof ClientData];
             let bVal: unknown = b[sortField as keyof ClientData];
             if (typeof aVal === "string") {

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { MoreVertical, Trash2, Server, Users } from "lucide-react";
+import { MoreVertical, Trash2, Server, Users, UserCheck } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuTrigger,
@@ -7,6 +7,7 @@ import {
     DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import type { ClientData } from "@/types/models";
+import { cn } from "@/lib/utils";
 
 interface ClientCardProps {
     client: ClientData;
@@ -14,12 +15,21 @@ interface ClientCardProps {
 }
 
 export function ClientCard({ client, onDelete }: ClientCardProps) {
+    const isAssigned = Boolean(client.is_assigned);
+
     return (
         <Link
             to={`/clients/${client.uuid}`}
             className="block rounded-lg transition-transform duration-200 hover:-translate-y-1"
         >
-            <div className="relative size-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans gap-3 transition-shadow hover:shadow-md">
+            <div
+                className={cn(
+                    "relative size-full rounded-lg border p-6 shadow-xs flex flex-col items-center font-sans gap-3 transition-all hover:shadow-md",
+                    isAssigned
+                        ? "bg-card border-primary/50 shadow-primary/5 ring-1 ring-primary/20"
+                        : "bg-card border-border hover:border-border/80",
+                )}
+            >
                 <div className="absolute top-3 left-4 right-4 flex justify-between items-center">
                     <div className="flex items-center gap-2">
                         <span className="flex items-center gap-1.5">
@@ -37,39 +47,51 @@ export function ClientCard({ client, onDelete }: ClientCardProps) {
                         </span>
                     </div>
 
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <button
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                }}
-                                className="text-muted-foreground hover:text-foreground transition-colors pl-1 pr-0 py-1 rounded-md cursor-pointer"
-                                tabIndex={-1}
-                            >
-                                <MoreVertical className="size-4" />
-                            </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" sideOffset={4}>
-                            <DropdownMenuItem
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setTimeout(() => onDelete(client), 0);
-                                }}
-                                className="text-destructive focus:text-destructive cursor-pointer"
-                            >
-                                <Trash2 className="size-3.5" />
-                                Delete
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center gap-1.5">
+                        {isAssigned && (
+                            <span className="flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full shadow-xs">
+                                <UserCheck className="size-3 shrink-0" />
+                                <span>Assigned</span>
+                            </span>
+                        )}
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                    }}
+                                    className="text-muted-foreground hover:text-foreground transition-colors pl-1 pr-0 py-1 rounded-md cursor-pointer"
+                                    tabIndex={-1}
+                                >
+                                    <MoreVertical className="size-4" />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" sideOffset={4}>
+                                <DropdownMenuItem
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setTimeout(() => onDelete(client), 0);
+                                    }}
+                                    className="text-destructive focus:text-destructive cursor-pointer"
+                                >
+                                    <Trash2 className="size-3.5" />
+                                    Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
 
-                <div className="mt-4 mb-1">
+                <div className="mt-7 mb-1">
                     <img
                         src={client.banner_image_url}
                         alt={client.name}
-                        className="w-20 h-20 rounded-full object-cover border border-border shadow-sm"
+                        className={cn(
+                            "w-20 h-20 rounded-full object-cover border shadow-sm transition-all",
+                            isAssigned ? "border-primary/40 ring-2 ring-primary/20" : "border-border",
+                        )}
                     />
                 </div>
 

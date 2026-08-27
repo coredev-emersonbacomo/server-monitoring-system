@@ -14,54 +14,106 @@ export interface ActivityLogData {
     updated_at: string | null;
 }
 
-export const useActivityLogs = () => {
-    return useQuery<ActivityLogData[]>({
-        queryKey: ["activity-logs"],
+export interface PaginatedLogResponse {
+    data: ActivityLogData[];
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
+}
+
+export interface ActivityLogsParams {
+    page?: number;
+    per_page?: number;
+    search?: string;
+    action?: string;
+    user?: string;
+    start_date?: string;
+    end_date?: string;
+    sort_field?: string;
+    sort_dir?: "asc" | "desc";
+}
+
+export const useActivityLogs = (params?: ActivityLogsParams) => {
+    return useQuery<PaginatedLogResponse>({
+        queryKey: ["activity-logs", params],
         queryFn: async () => {
             const { data, error } = await api.GET("/v1/activity-logs", {
-                params: {},
+                params: {
+                    query: params as never,
+                },
             });
             if (error) throw error;
-            return (data as unknown as ActivityLogData[]) ?? [];
+            return (data as unknown as PaginatedLogResponse) ?? {
+                data: [],
+                current_page: 1,
+                per_page: 15,
+                total: 0,
+                last_page: 1,
+            };
         },
     });
 };
 
-export const useServerHealthLogs = () => {
-    return useQuery<ActivityLogData[]>({
-        queryKey: ["server-health-logs"],
+export const useServerHealthLogs = (params?: ActivityLogsParams) => {
+    return useQuery<PaginatedLogResponse>({
+        queryKey: ["server-health-logs", params],
         queryFn: async () => {
             const { data, error } = await api.GET("/v1/server-health-logs", {
-                params: {},
+                params: {
+                    query: params as never,
+                },
             });
             if (error) throw error;
-            return (data as unknown as ActivityLogData[]) ?? [];
+            return (data as unknown as PaginatedLogResponse) ?? {
+                data: [],
+                current_page: 1,
+                per_page: 15,
+                total: 0,
+                last_page: 1,
+            };
         },
     });
 };
 
-export const useAgentLogs = () => {
-    return useQuery<ActivityLogData[]>({
-        queryKey: ["agent-logs"],
+export const useAgentLogs = (params?: ActivityLogsParams) => {
+    return useQuery<PaginatedLogResponse>({
+        queryKey: ["agent-logs", params],
         queryFn: async () => {
             const { data, error } = await api.GET("/v1/agent-logs", {
-                params: {},
+                params: {
+                    query: params as never,
+                },
             });
             if (error) throw error;
-            return (data as unknown as ActivityLogData[]) ?? [];
+            return (data as unknown as PaginatedLogResponse) ?? {
+                data: [],
+                current_page: 1,
+                per_page: 15,
+                total: 0,
+                last_page: 1,
+            };
         },
     });
 };
 
-export const useBillingLogs = () => {
-    return useQuery<ActivityLogData[]>({
-        queryKey: ["billing-logs"],
+export const useBillingLogs = (params?: ActivityLogsParams) => {
+    return useQuery<PaginatedLogResponse>({
+        queryKey: ["billing-logs", params],
         queryFn: async () => {
             const { data, error } = await api.GET("/v1/billing-logs", {
-                params: {},
+                params: {
+                    query: params as never,
+                },
             });
             if (error) throw error;
-            return (data as unknown as ActivityLogData[]) ?? [];
+            return (data as unknown as PaginatedLogResponse) ?? {
+                data: [],
+                current_page: 1,
+                per_page: 15,
+                total: 0,
+                last_page: 1,
+            };
         },
     });
 };

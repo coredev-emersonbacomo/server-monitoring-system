@@ -24,10 +24,19 @@ class ClientData extends Data
         public string $record_status = 'active',
         public float $budget = 0.00,
         public float $total_subscription_fee = 0.00,
+        public bool $is_assigned = false,
     ) {}
 
-    public static function fromModel(Client $client): self
+    public static function fromModel(Client $client, ?int $userId = null): self
     {
+        $currentUserId = $userId ?? request()->user()?->id;
+        $isAssigned = false;
+        if ($currentUserId) {
+            $isAssigned = $client->relationLoaded('secopclients')
+                ? $client->secopclients->contains('id', $currentUserId)
+                : $client->secopclients()->where('users.id', $currentUserId)->exists();
+        }
+
         return new self(
             uuid: $client->uuid,
             name: $client->name,
@@ -45,6 +54,7 @@ class ClientData extends Data
             record_status: $client->record_status instanceof \UnitEnum ? $client->record_status->value : ($client->record_status ?? 'active'),
             budget: (float) ($client->budget ?? 0.00),
             total_subscription_fee: (float) ($client->total_subscription_fee ?? 0.00),
+            is_assigned: $isAssigned,
         );
     }
 }
