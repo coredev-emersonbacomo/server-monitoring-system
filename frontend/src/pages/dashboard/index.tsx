@@ -233,6 +233,18 @@ export default function Dashboard() {
     const leftDivRef = useRef<HTMLDivElement>(null);
     const [leftDivHeight, setLeftDivHeight] = useState(0);
 
+    const [isLargeScreen, setIsLargeScreen] = useState(
+        typeof window !== "undefined" ? window.innerWidth >= 1024 : true,
+    );
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsLargeScreen(window.innerWidth >= 1024);
+        };
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
     const queryClient = useQueryClient();
 
     useEffect(() => {
@@ -258,7 +270,7 @@ export default function Dashboard() {
         if (leftDivRef.current) {
             setLeftDivHeight(leftDivRef.current.offsetHeight);
         }
-    }, [stats]);
+    }, [stats, isLargeScreen]);
 
     const pieData = stats
         ? [
@@ -324,63 +336,63 @@ export default function Dashboard() {
                 )}
 
                 {/* ── Cards + Server Overview + Action Board ── */}
-                <div className="flex flex-col lg:flex-row gap-6 items-start">
+                <div className="flex flex-col lg:flex-row gap-5 lg:gap-6 items-start">
                     <div
                         ref={leftDivRef}
-                        className="min-w-0 flex-1 w-full max-w-130 space-y-6"
+                        className="min-w-0 flex-1 w-full max-w-none lg:max-w-130 space-y-4 sm:space-y-6"
                     >
-                        {/* Stat Cards */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                        {/* Stat Cards: 3 side-by-side on mobile and desktop */}
+                        <div className="grid grid-cols-3 gap-2.5 sm:gap-4 md:gap-6">
                             <Link
                                 to="/servers"
-                                className="rounded-xl border border-border/60 bg-card p-5 flex items-center gap-4 cursor-pointer hover:bg-muted/30 transition-colors h-fit w-full"
+                                className="rounded-xl border border-border/60 bg-card p-3 sm:p-4 md:p-5 flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-2 sm:gap-3.5 md:gap-4 cursor-pointer hover:bg-muted/30 transition-colors h-fit w-full"
                             >
-                                <div className="p-3 rounded-lg bg-primary/10 text-primary">
-                                    <Server className="size-6" />
+                                <div className="p-2 sm:p-2.5 md:p-3 rounded-lg bg-primary/10 text-primary shrink-0">
+                                    <Server className="size-4 sm:size-5 md:size-6" />
                                 </div>
-                                <div>
-                                    <p className="text-2xl font-bold text-foreground">
+                                <div className="min-w-0">
+                                    <p className="text-base sm:text-xl md:text-2xl font-bold text-foreground truncate">
                                         {statsLoading
                                             ? "—"
                                             : (stats?.total_servers ?? 0)}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                                         Servers
                                     </p>
                                 </div>
                             </Link>
                             <Link
                                 to="/clients"
-                                className="rounded-xl border border-border/60 bg-card p-5 flex items-center gap-4 cursor-pointer hover:bg-muted/30 transition-colors h-fit w-full"
+                                className="rounded-xl border border-border/60 bg-card p-3 sm:p-4 md:p-5 flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-2 sm:gap-3.5 md:gap-4 cursor-pointer hover:bg-muted/30 transition-colors h-fit w-full"
                             >
-                                <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-400">
-                                    <Landmark className="size-6" />
+                                <div className="p-2 sm:p-2.5 md:p-3 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
+                                    <Landmark className="size-4 sm:size-5 md:size-6" />
                                 </div>
-                                <div>
-                                    <p className="text-2xl font-bold text-foreground">
+                                <div className="min-w-0">
+                                    <p className="text-base sm:text-xl md:text-2xl font-bold text-foreground truncate">
                                         {statsLoading
                                             ? "—"
                                             : (stats?.total_clients ?? 0)}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                                         Clients
                                     </p>
                                 </div>
                             </Link>
                             <Link
                                 to="/users"
-                                className="rounded-xl border border-border/60 bg-card p-5 flex items-center gap-4 cursor-pointer hover:bg-muted/30 transition-colors h-fit w-full"
+                                className="rounded-xl border border-border/60 bg-card p-3 sm:p-4 md:p-5 flex flex-col sm:flex-row items-center sm:items-center text-center sm:text-left gap-2 sm:gap-3.5 md:gap-4 cursor-pointer hover:bg-muted/30 transition-colors h-fit w-full"
                             >
-                                <div className="p-3 rounded-lg bg-amber-500/10 text-amber-400">
-                                    <Users2 className="size-6" />
+                                <div className="p-2 sm:p-2.5 md:p-3 rounded-lg bg-amber-500/10 text-amber-400 shrink-0">
+                                    <Users2 className="size-4 sm:size-5 md:size-6" />
                                 </div>
-                                <div>
-                                    <p className="text-2xl font-bold text-foreground">
+                                <div className="min-w-0">
+                                    <p className="text-base sm:text-xl md:text-2xl font-bold text-foreground truncate">
                                         {statsLoading
                                             ? "—"
                                             : (stats?.total_users ?? 0)}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                                         Users
                                     </p>
                                 </div>
@@ -388,8 +400,8 @@ export default function Dashboard() {
                         </div>
 
                         {/* Server Overview */}
-                        <div className="rounded-xl border border-border/60 bg-card p-6 h-fit w-full">
-                            <h2 className="text-sm font-semibold text-foreground mb-4">
+                        <div className="rounded-xl border border-border/60 bg-card p-4 sm:p-6 h-fit w-full">
+                            <h2 className="text-sm font-semibold text-foreground mb-3 sm:mb-4">
                                 Server Overview
                             </h2>
                             {statsLoading ? (
@@ -398,15 +410,16 @@ export default function Dashboard() {
                                 <div className="flex flex-col items-center">
                                     <ResponsiveContainer
                                         width="100%"
-                                        height={220}
+                                        height={180}
+                                        className="sm:!h-[220px]"
                                     >
                                         <PieChart>
                                             <Pie
                                                 data={pieData}
                                                 cx="50%"
                                                 cy="50%"
-                                                innerRadius={60}
-                                                outerRadius={90}
+                                                innerRadius={50}
+                                                outerRadius={75}
                                                 paddingAngle={3}
                                                 dataKey="value"
                                                 isAnimationActive={false}
@@ -423,7 +436,7 @@ export default function Dashboard() {
                                             />
                                         </PieChart>
                                     </ResponsiveContainer>
-                                    <div className="flex flex-wrap gap-4 mt-2 justify-center">
+                                    <div className="flex flex-wrap gap-2.5 sm:gap-4 mt-2 justify-center">
                                         {pieData.map((d) => (
                                             <Link
                                                 key={d.name}
@@ -457,10 +470,12 @@ export default function Dashboard() {
 
                     {/* Action Board */}
                     <div
-                        className="w-full flex-1 min-w-0 rounded-xl border border-border/60 bg-card flex flex-col min-h-0"
-                        style={{
-                            height: leftDivHeight ? leftDivHeight : undefined,
-                        }}
+                        className="w-full flex-1 min-w-0 rounded-xl border border-border/60 bg-card flex flex-col overflow-hidden max-h-[380px] lg:max-h-none"
+                        style={
+                            isLargeScreen && leftDivHeight
+                                ? { height: `${leftDivHeight}px` }
+                                : { height: "380px" }
+                        }
                     >
                         <div className="flex flex-col border-b border-border/60 px-5 py-3.5 gap-3">
                             <div className="flex items-center justify-between">

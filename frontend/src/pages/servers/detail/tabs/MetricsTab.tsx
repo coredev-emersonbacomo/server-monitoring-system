@@ -419,7 +419,7 @@ function MonitoringFilter({
                             sel === null ? null : [...sel].map(String).sort(),
                     }
                   : {
-                        process_filter: sel === null ? null : [...sel].sort(),
+                        process_filter: sel === null ? null : [...sel].map(String).sort(),
                     };
             const { error } = await (
                 api as unknown as { PATCH: typeof api.PATCH }

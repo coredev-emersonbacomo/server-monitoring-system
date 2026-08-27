@@ -73,28 +73,33 @@ export function ProtectedRoute() {
 
                 {isFullScreen ? (
                     <main
-                        style={{ marginLeft: sidebarMargin }}
-                        className="flex-1 flex flex-col h-full min-h-0 relative overflow-y-auto transition-[margin] duration-300 ease-in-out [scrollbar-gutter:stable]"
+                        style={{
+                            marginLeft:
+                                typeof window !== "undefined" && window.innerWidth < 768
+                                    ? 0
+                                    : undefined,
+                        }}
+                        className="flex-1 flex flex-col h-full min-h-0 relative overflow-y-auto [scrollbar-gutter:stable] md:[margin-left:var(--sidebar-margin)]"
                     >
                         <Outlet />
                         <div
                             ref={portalRef}
-                            style={{ left: sidebarMargin }}
-                            className="fixed inset-y-0 right-0 z-50 hidden has-[*]:flex has-[*]:flex-col has-[*]:min-h-0 has-[*]:bg-background has-[*]:overflow-y-auto has-[*]:*:h-dvh"
+                            className="fixed inset-y-0 right-0 left-0 md:left-[var(--sidebar-margin)] z-50 hidden has-[*]:flex has-[*]:flex-col has-[*]:min-h-0 has-[*]:bg-background has-[*]:overflow-y-auto has-[*]:*:h-dvh"
                         />
                     </main>
                 ) : (
                     <main
-                        style={{ marginLeft: sidebarMargin }}
-                        className="flex-1 flex flex-col px-8 py-8 sm:px-10 lg:px-12 gap-5 h-screen min-h-0 relative overflow-y-auto transition-[margin] duration-300 ease-in-out [scrollbar-gutter:stable]"
+                        style={{
+                            "--sidebar-margin": sidebarMargin,
+                        } as React.CSSProperties}
+                        className="flex-1 flex flex-col px-4 py-4 sm:px-8 sm:py-8 lg:px-12 gap-5 h-screen min-h-0 relative overflow-y-auto [scrollbar-gutter:stable] ml-0 md:ml-[var(--sidebar-margin)]"
                     >
                         <div className="flex-1 flex flex-col">
                             <Outlet />
                         </div>
                         <div
                             ref={portalRef}
-                            style={{ left: sidebarMargin }}
-                            className="fixed inset-y-0 right-0 z-50 hidden has-[*]:flex has-[*]:flex-col has-[*]:min-h-0 has-[*]:bg-background has-[*]:overflow-y-auto has-[*]:*:h-dvh"
+                            className="fixed inset-y-0 right-0 left-0 md:left-[var(--sidebar-margin)] z-50 hidden has-[*]:flex has-[*]:flex-col has-[*]:min-h-0 has-[*]:bg-background has-[*]:overflow-y-auto has-[*]:*:h-dvh"
                         />
                     </main>
                 )}

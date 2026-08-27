@@ -213,7 +213,7 @@ const Users = () => {
 
                 {/* ── Card grid ── */}
                 {!isLoading && !isError && visible.length > 0 && (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3 sm:gap-4">
                         {visible.map((u) => (
                             <ProfileCard
                                 key={u.uuid}
