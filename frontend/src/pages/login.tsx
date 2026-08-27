@@ -4,6 +4,7 @@ import { Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { FloatingInput } from "@/components/ui/floatingInput";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Login() {
     useDocumentTitle("Login");
@@ -67,17 +68,17 @@ export default function Login() {
     };
 
     return (
-        <div className="coreDevDark min-h-screen w-full flex bg-background text-foreground font-sans">
+        <div className="min-h-screen w-full flex bg-background text-foreground font-sans">
             {/* Left Pane */}
             <div className="w-full lg:w-[40%] flex flex-col justify-center relative px-8 py-12 lg:px-20 lg:py-16">
                 {/* Top Logo */}
-                <div className="absolute top-10 left-8 lg:left-20 flex items-center gap-3">
+                <div className="absolute top-10 flex items-center gap-3">
                     <img
                         src="/images/coreDevlogo.png"
                         alt="CoreDev Logo"
-                        className="w-15 h-15 object-contain"
+                        className="w-10 h-10 lg:w-15 lg:h-15 object-contain"
                     />
-                    <span className="font-bold text-3xl lg:text-3xl tracking-wide">
+                    <span className="font-bold text-2xl lg:text-3xl tracking-wide">
                         Server Monitoring
                     </span>
                 </div>
@@ -187,7 +188,13 @@ export default function Login() {
                         </button>
                     </form>
                 </div>
+
+                {/* Theme Picker */}
+                <div className="absolute bottom-10 self-center w-[70%] lg:w-[55%]">
+                    <ThemeToggle />
+                </div>
             </div>
+
 
             {/* Right Pane */}
             <div className="hidden lg:flex lg:w-[60%] relative bg-muted overflow-hidden">
