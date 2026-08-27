@@ -72,13 +72,13 @@ export default function Login() {
             {/* Left Pane */}
             <div className="w-full lg:w-[40%] flex flex-col justify-center relative px-8 py-12 lg:px-20 lg:py-16">
                 {/* Top Logo */}
-                <div className="absolute top-10 flex items-center gap-3">
+                <div className="absolute top-20 left-0 right-0 flex flex-col lg:flex-row justify-center items-center gap-1 lg:gap-3">
                     <img
                         src="/images/coreDevlogo.png"
                         alt="CoreDev Logo"
-                        className="w-10 h-10 lg:w-15 lg:h-15 object-contain"
+                        className="w-15 h-15 object-contain"
                     />
-                    <span className="font-bold text-2xl lg:text-3xl tracking-wide">
+                    <span className="font-bold text-2xl lg:text-3xl tracking-wide whitespace-nowrap">
                         Server Monitoring
                     </span>
                 </div>
