@@ -16,6 +16,7 @@ import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { EntityPickerModal } from "@/pages/reports/EntityPickerModal";
+import { DataPointModal } from "./DataPointModal";
 
 type TimeSpan = "1H" | "1D" | "1W";
 
@@ -101,6 +102,7 @@ function DashboardMetricChartInner({
     scope = "all",
     serverUuid,
 }: DashboardMetricChartInnerProps) {
+    const [detailTs, setDetailTs] = useState<number | null>(null);
     const apiUnit = TIME_SPAN_TO_UNIT[timeSpan];
 
     const { data, isLoading } = useDashboardUsage(
@@ -200,6 +202,12 @@ function DashboardMetricChartInner({
                         data={mergedData}
                         margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
                         syncId={`dashboard-${metric}`}
+                        onClick={(state) => {
+                            if (state?.activeTooltipIndex == null) return;
+                            const idx = Number(state.activeTooltipIndex);
+                            const clickedTs = mergedData[idx]?.timestamp;
+                            if (clickedTs != null) setDetailTs(clickedTs);
+                        }}
                     >
                         <CartesianGrid
                             stroke="var(--color-border)"
@@ -295,6 +303,20 @@ function DashboardMetricChartInner({
                         </span>
                     ))}
                 </div>
+            )}
+
+            {detailTs != null && (
+                <DataPointModal
+                    timestamp={detailTs}
+                    serverValues={series.map((s) => ({
+                        serverName: s.server_name,
+                        value: s.points.find((p) => p.timestamp === detailTs)?.value ?? null,
+                    }))}
+                    metric={metric}
+                    unit={unit}
+                    timeSpan={timeSpan}
+                    onClose={() => setDetailTs(null)}
+                />
             )}
         </div>
     );
