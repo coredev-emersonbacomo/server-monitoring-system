@@ -38,11 +38,17 @@ class ClientController extends Controller
     /** @return ClientData[] */
     public function index(ClientsIndexData $data): array
     {
+        $user = request()->user();
+
         $query = Client::withCount([
             'servers',
             'secopclients',
             'servers as servers_online_count' => fn ($q) => $q->where('status', 'online'),
-        ]);
+        ])->with(['secopclients' => function ($q) use ($user) {
+            if ($user) {
+                $q->where('users.id', $user->id);
+            }
+        }]);
 
         if ($data->user_uuid) {
             $query->whereHas('secopclients', function ($q) use ($data) {
@@ -65,7 +71,7 @@ class ClientController extends Controller
         return $query
             ->latest()
             ->get()
-            ->map(fn (Client $client) => ClientData::fromModel($client))
+            ->map(fn (Client $client) => ClientData::fromModel($client, $user?->id))
             ->toArray();
     }
 

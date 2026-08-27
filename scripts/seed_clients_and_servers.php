@@ -1,13 +1,17 @@
 <?php
 
+use App\Models\Client;
+use App\Models\Server;
+use Illuminate\Contracts\Console\Kernel;
+
 require __DIR__.'/../vendor/autoload.php';
 $app = require_once __DIR__.'/../bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
-$clients = App\Models\Client::factory(10)->create();
+$clients = Client::factory(10)->create();
 foreach ($clients as $client) {
-    App\Models\Server::factory(3)->create([
+    Server::factory(3)->create([
         'client_id' => $client->id,
         'status' => 'pending_installation',
     ]);

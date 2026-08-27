@@ -27,28 +27,61 @@ export function actionBadgeClass(action: string): string {
     );
 }
 
-export function getLogSubjectLabel(log: ActivityLogData): string {
+export function getLogSubjectInfo(log: ActivityLogData): { title: string; subtitle?: string } {
+    const model = shortModel(log.logable_type);
+    let extractedName: string | undefined;
+
     if (log.details) {
-        if (typeof log.details === "object") {
-            const obj = log.details as Record<string, unknown>;
-            if (obj && (obj.server_name || obj.name)) {
-                return (obj.server_name || obj.name) as string;
-            }
+        let obj: Record<string, unknown> | null = null;
+        if (typeof log.details === "object" && log.details !== null) {
+            obj = log.details as Record<string, unknown>;
         } else if (typeof log.details === "string") {
             try {
-                let obj = JSON.parse(log.details);
-                if (typeof obj === "string") obj = JSON.parse(obj);
-                if (
-                    obj &&
-                    typeof obj === "object" &&
-                    (obj.server_name || obj.name)
-                ) {
-                    return obj.server_name || obj.name;
+                let parsed = JSON.parse(log.details);
+                if (typeof parsed === "string") parsed = JSON.parse(parsed);
+                if (typeof parsed === "object" && parsed !== null) {
+                    obj = parsed as Record<string, unknown>;
                 }
-            } catch { /* ignore parse errors */ }
+            } catch {
+                /* ignore json parse */
+            }
+        }
+
+        if (obj) {
+            if (typeof obj.server_name === "string" && obj.server_name) {
+                extractedName = obj.server_name;
+            } else if (typeof obj.client_name === "string" && obj.client_name) {
+                extractedName = obj.client_name;
+            } else if (typeof obj.name === "string" && obj.name) {
+                extractedName = obj.name;
+            } else if (typeof obj.message === "string" && obj.message) {
+                // e.g. "Updated client profile details for coreDev" or "Added secop to coreDev"
+                const match =
+                    obj.message.match(/(?:for|to|from|on)\s+([A-Za-z0-9_\-\.\s]+)$/i) ||
+                    obj.message.match(/`([^`]+)`/);
+                if (match?.[1]) {
+                    extractedName = match[1].trim();
+                }
+            }
         }
     }
-    return shortModel(log.logable_type);
+
+    if (extractedName && extractedName !== model) {
+        return {
+            title: extractedName,
+            subtitle: model !== "—" ? model : undefined,
+        };
+    }
+
+    return {
+        title: model !== "—" ? model : "System",
+        subtitle: undefined,
+    };
+}
+
+export function getLogSubjectLabel(log: ActivityLogData): string {
+    const info = getLogSubjectInfo(log);
+    return info.subtitle ? `${info.title} (${info.subtitle})` : info.title;
 }
 
 export function shortModel(fqcn: string | null | undefined): string {

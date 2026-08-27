@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import PageLayout from "@/components/PageLayout";
-import { Server, Wifi, WifiOff, AlertTriangle, Trash2 } from "lucide-react";
+import { Server, Wifi, WifiOff, AlertTriangle, Trash2, UserCheck } from "lucide-react";
 import { useServers } from "@/hooks/useServers";
 import { useClients } from "@/hooks/useClients";
 import IndexToolbar from "@/components/IndexToolbar";
@@ -56,14 +56,21 @@ export default function ServersIndex() {
                           s.record_status === "archived" ||
                           s.status === "archived",
                   )
-                : servers.filter(
-                      (s) =>
-                          (s.status === statusFilter ||
-                              (statusFilter === "pending_installation" &&
-                                  !s.status)) &&
-                          s.record_status !== "archived" &&
-                          s.status !== "archived",
-                  )
+                : statusFilter === "assigned"
+                  ? servers.filter(
+                        (s) =>
+                            Boolean(s.is_assigned) &&
+                            s.record_status !== "archived" &&
+                            s.status !== "archived",
+                    )
+                  : servers.filter(
+                        (s) =>
+                            (s.status === statusFilter ||
+                                (statusFilter === "pending_installation" &&
+                                    !s.status)) &&
+                            s.record_status !== "archived" &&
+                            s.status !== "archived",
+                    )
             : servers.filter(
                   (s) =>
                       s.record_status !== "archived" && s.status !== "archived",
@@ -79,6 +86,13 @@ export default function ServersIndex() {
             : statusResult;
 
         return result.sort((a, b) => {
+            // Prioritize assigned servers at the top by default
+            const aAssigned = a.is_assigned ? 1 : 0;
+            const bAssigned = b.is_assigned ? 1 : 0;
+            if (aAssigned !== bAssigned) {
+                return bAssigned - aAssigned;
+            }
+
             const rawA: unknown = a[sortField as keyof typeof a];
             const rawB: unknown = b[sortField as keyof typeof b];
 
@@ -103,6 +117,7 @@ export default function ServersIndex() {
         if (!servers)
             return {
                 all: 0,
+                assigned: 0,
                 online: 0,
                 warning: 0,
                 offline: 0,
@@ -116,6 +131,7 @@ export default function ServersIndex() {
         );
         return {
             all: activeServers.length,
+            assigned: activeServers.filter((s) => Boolean(s.is_assigned)).length,
             online: activeServers.filter(
                 (s) => s.status === "online" && !s.agent_deleted,
             ).length,
@@ -168,6 +184,12 @@ export default function ServersIndex() {
                             label: "All",
                             value: "",
                             count: counts.all,
+                        },
+                        {
+                            label: "Assigned to Me",
+                            value: "assigned",
+                            count: counts.assigned,
+                            icon: <UserCheck className="size-3 text-primary" />,
                         },
                         {
                             label: "Online",
@@ -233,12 +255,14 @@ export default function ServersIndex() {
                     }
                     filterLabel={
                         statusFilter
-                            ? statusFilter === "pending_installation"
-                                ? "Pending Installation"
-                                : statusFilter === "waiting_for_installation"
-                                  ? "Waiting For Installation"
-                                  : statusFilter.charAt(0).toUpperCase() +
-                                    statusFilter.slice(1)
+                            ? statusFilter === "assigned"
+                                ? "Assigned to Me"
+                                : statusFilter === "pending_installation"
+                                  ? "Pending Installation"
+                                  : statusFilter === "waiting_for_installation"
+                                    ? "Waiting For Installation"
+                                    : statusFilter.charAt(0).toUpperCase() +
+                                      statusFilter.slice(1)
                             : "All"
                     }
                     sortOptions={sortOptions as SortOption[]}
@@ -285,16 +309,35 @@ export default function ServersIndex() {
                             );
                             const meta = STATUS_CONFIG[effectiveStatus];
                             const Icon = meta.icon;
+                            const isAssigned = Boolean(server.is_assigned);
+
                             return (
                                 <Link
                                     key={server.uuid}
                                     to={`/servers/${server.uuid}?client=all`}
                                     className="block rounded-lg transition-transform duration-200 hover:-translate-y-1"
                                 >
-                                    <div className="relative size-full bg-card rounded-lg border border-border p-6 shadow-sm flex flex-col items-center font-sans gap-3 transition-shadow hover:shadow-md">
+                                    <div
+                                        className={cn(
+                                            "relative size-full rounded-lg border p-6 shadow-xs flex flex-col items-center font-sans gap-3 transition-all hover:shadow-md",
+                                            isAssigned
+                                                ? "bg-card border-primary/50 shadow-primary/5 ring-1 ring-primary/20"
+                                                : "bg-card border-border hover:border-border/80",
+                                        )}
+                                    >
+                                        {isAssigned && (
+                                            <div className="absolute top-3 right-4 flex items-center">
+                                                <span className="flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full shadow-xs">
+                                                    <UserCheck className="size-3 shrink-0" />
+                                                    <span>Assigned</span>
+                                                </span>
+                                            </div>
+                                        )}
+
                                         <div
                                             className={cn(
                                                 "p-3 rounded-lg",
+                                                isAssigned ? "mt-2" : "",
                                                 meta.bg,
                                             )}
                                         >

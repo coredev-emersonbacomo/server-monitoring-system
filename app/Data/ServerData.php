@@ -101,10 +101,19 @@ class ServerData extends Data
         public float $subscription_fee = 0.00,
 
         public ?int $agent_server_count = null,
+
+        public bool $is_assigned = false,
     ) {}
 
     public static function fromModel(Server $server): self
     {
+        $user = auth()->user();
+        $isAssigned = false;
+        if ($user && $server->client) {
+            $isAssigned = $server->client->secopclients()
+                ->where('user_id', $user->id)
+                ->exists();
+        }
         $activeDetails = null;
         if (in_array($server->status, ['pending_installation', 'waiting_for_installation'])) {
             $activeToken = $server->activeProvisionToken;
@@ -432,6 +441,7 @@ class ServerData extends Data
             uptime_seconds: $uptimeSeconds,
             subscription_fee: (float) ($server->subscription_fee ?? 0.00),
             agent_server_count: $agentServerCount,
+            is_assigned: $isAssigned,
         );
     }
 }
