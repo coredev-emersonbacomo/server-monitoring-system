@@ -24,11 +24,27 @@ export const sidebarLinks: SidebarNavLink[] = [
         icon: (props: LucideProps) => (
             <Landmark {...props} strokeWidth="1.75" />
         ),
+        isActive: ({ pathname, search }) => {
+            if (pathname.startsWith("/clients")) return true;
+            if (pathname.startsWith("/servers/")) {
+                const params = new URLSearchParams(search);
+                return params.get("client") !== "all";
+            }
+            return false;
+        },
     },
     {
         name: "Servers",
         href: "/servers",
         icon: Server,
+        isActive: ({ pathname, search }) => {
+            if (pathname === "/servers") return true;
+            if (pathname.startsWith("/servers/")) {
+                const params = new URLSearchParams(search);
+                return params.get("client") === "all";
+            }
+            return false;
+        },
     },
     { name: "Users", href: "/users", icon: Users },
     { name: "Logs", href: "/logs", icon: ScrollText },

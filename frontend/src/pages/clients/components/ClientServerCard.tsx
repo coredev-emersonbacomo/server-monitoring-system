@@ -4,9 +4,10 @@ import type { ServerData } from "@/types/models";
 import { ServerStatusBadge } from "@/components/ServerStatusBadge";
 
 export default function ClientServerCard({ server }: { server: ServerData }) {
+    const clientQuery = server.client_uuid ? `?client=${server.client_uuid}` : "";
     return (
         <Link
-            to={`/servers/${server.uuid}`}
+            to={`/servers/${server.uuid}${clientQuery}`}
             className="bg-card border border-border/60 rounded-xl shadow-sm p-5 flex flex-col gap-3 transition-shadow hover:shadow-md group"
         >
             <div className="flex items-start justify-between">

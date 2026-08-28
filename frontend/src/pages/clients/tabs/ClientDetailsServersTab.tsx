@@ -1,33 +1,46 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Server, Search, Filter, ChevronDown, Plus } from "lucide-react";
+import { Server, Search, Filter, ChevronDown, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useServers } from "@/hooks/useServers";
 import ClientServerCard from "../components/ClientServerCard";
 
 type ServerFilter = "all" | "online" | "offline" | "archived";
 
 interface ClientDetailsServersTabProps {
     client: any;
-    servers: any[];
-    serversLoading: boolean;
+    servers?: any[];
+    serversLoading?: boolean;
 }
 
-export function ClientDetailsServersTab({ client, servers, serversLoading }: ClientDetailsServersTabProps) {
+export function ClientDetailsServersTab({ client }: ClientDetailsServersTabProps) {
     const [serverSearch, setServerSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [serverFilter, setServerFilter] = useState<ServerFilter>("all");
 
-    const filteredServers = servers.filter((s: any) => {
-        const matchSearch = s.name.toLowerCase().includes(serverSearch.toLowerCase());
-        if (!matchSearch) return false;
-        const isArchived = s.record_status === "archived" || s.status === "archived";
-        if (serverFilter === "archived") return isArchived;
-        if (isArchived) return false;
-        if (serverFilter === "online") return s.status === "online";
-        if (serverFilter === "offline") return s.status === "offline";
-        return true;
+    // Debounce search keystrokes for server-side query
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(serverSearch.trim());
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [serverSearch]);
+
+    // Server-side search & status filtering via useServers API
+    const { data: serverResponse, isLoading: serversLoading } = useServers({
+        client_uuid: client?.uuid,
+        q: debouncedSearch || undefined,
+        status: serverFilter === "all" ? undefined : serverFilter,
+        per_page: 50,
     });
+
+    const serverList = Array.isArray(serverResponse?.data)
+        ? serverResponse.data
+        : Array.isArray(serverResponse)
+          ? serverResponse
+          : [];
 
     return (
         <section>
@@ -91,29 +104,40 @@ export function ClientDetailsServersTab({ client, servers, serversLoading }: Cli
             </div>
 
             {serversLoading ? (
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
-                    {Array.from({ length: Math.min(client.servers_count || 2, 4) }).map((_, i) => (
-                        <div key={i} className="bg-card border border-border/60 rounded-xl p-5 flex flex-col gap-3 animate-pulse">
-                            <div className="flex items-start justify-between">
-                                <div className="w-10 h-10 rounded-lg bg-muted" />
-                                <div className="w-10 h-3 bg-muted rounded" />
+                debouncedSearch ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground bg-card border border-border/60 rounded-xl">
+                        <Loader2 className="size-6 animate-spin text-primary" />
+                        <p className="text-sm">Searching servers…</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
+                        {Array.from({ length: Math.min(client.servers_count || 2, 4) }).map((_, i) => (
+                            <div key={i} className="bg-card border border-border/60 rounded-xl p-5 flex flex-col gap-3 animate-pulse">
+                                <div className="flex items-start justify-between">
+                                    <div className="w-10 h-10 rounded-lg bg-muted" />
+                                    <div className="w-10 h-3 bg-muted rounded" />
+                                </div>
+                                <div className="h-4 w-28 bg-muted rounded" />
+                                <div className="h-3 w-20 bg-muted rounded" />
+                                <div className="h-3 w-32 bg-muted rounded" />
                             </div>
-                            <div className="h-4 w-28 bg-muted rounded" />
-                            <div className="h-3 w-20 bg-muted rounded" />
-                            <div className="h-3 w-32 bg-muted rounded" />
-                        </div>
-                    ))}
-                </div>
-            ) : filteredServers.length > 0 ? (
+                        ))}
+                    </div>
+                )
+            ) : serverList.length > 0 ? (
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
-                    {filteredServers.map((s: any) => (
+                    {serverList.map((s: any) => (
                         <ClientServerCard key={s.uuid} server={s} />
                     ))}
                 </div>
             ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2 bg-card border border-border/60 rounded-xl">
                     <Server size={28} className="opacity-20" />
-                    <p className="text-sm">No servers assigned to this client.</p>
+                    <p className="text-sm">
+                        {debouncedSearch || serverFilter !== "all"
+                            ? "No servers found matching your criteria."
+                            : "No servers assigned to this client."}
+                    </p>
                 </div>
             )}
         </section>

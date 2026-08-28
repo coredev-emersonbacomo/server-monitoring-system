@@ -717,36 +717,35 @@ export default function Docs() {
         <div className="flex h-full flex-col w-full bg-background text-foreground">
             <div className="relative">
             {/* Top Navigation Bar */}
-            <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-                <div className="relative flex h-14 items-center justify-between px-4 sm:px-6">
-                    {/* Left Side: Back Button */}
-                    <div className="flex items-center gap-2">
+            <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md supports-backdrop-filter:bg-background/60">
+                <div className="flex h-14 items-center justify-between px-3 sm:px-6 gap-2 sm:gap-4">
+                    {/* Left Side: Back Button & Logo/Title */}
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                         <button
                             type="button"
                             onClick={() => navigate("/")}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-all hover:bg-muted/50 hover:border-border cursor-pointer"
+                            className="inline-flex items-center gap-1 sm:gap-1.5 rounded-lg border border-border/60 bg-card px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-foreground transition-all hover:bg-muted/50 hover:border-border cursor-pointer shrink-0"
                         >
                             <ChevronLeft className="size-4" />
-                            <span>Back</span>
+                            <span className="hidden xs:inline">Back</span>
                         </button>
-                    </div>
 
-                    {/* Center: Title (Absolutely Centered) */}
-                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none">
-                        <BookOpen className="size-5 text-foreground" />
-                        <span className="font-semibold text-base tracking-tight whitespace-nowrap">
-                            Server Monitoring Documentation
-                        </span>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <BookOpen className="size-4.5 text-primary shrink-0" />
+                            <span className="font-bold text-sm sm:text-base tracking-tight truncate">
+                                <span className="hidden sm:inline">Server Monitoring </span>Documentation
+                            </span>
+                        </div>
                     </div>
 
                     {/* Right Side: Search & Mobile Menu */}
-                    <div className="flex items-center gap-2">
-                        <div className="relative w-full max-w-xs sm:max-w-md">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+                    <div className="flex items-center gap-2 shrink-0">
+                        <div className="relative w-32 xs:w-44 sm:w-64">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 sm:size-4 text-muted-foreground pointer-events-none" />
                             <input
                                 ref={searchInputRef}
                                 type="text"
-                                placeholder="Search docs..."
+                                placeholder="Search..."
                                 value={searchQuery}
                                 onChange={(e) => {
                                     setSearchQuery(e.target.value);
@@ -770,10 +769,10 @@ export default function Docs() {
                                         navigateToResult(searchResults[activeResultIndex]);
                                     }
                                 }}
-                                className="w-full h-9 rounded-lg border border-border/60 bg-muted/30 pl-9 pr-16 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-border transition-colors"
+                                className="w-full h-8 sm:h-9 rounded-lg border border-border/60 bg-muted/30 pl-8 sm:pl-9 pr-2 sm:pr-14 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-border transition-colors"
                             />
-                            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border/60 bg-background px-1.5 text-[10px] font-medium text-muted-foreground">
-                                <span className="text-xs">⌘</span>K
+                            <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border/60 bg-background px-1 text-[10px] font-medium text-muted-foreground">
+                                ⌘K
                             </kbd>
                         </div>
 
@@ -781,7 +780,7 @@ export default function Docs() {
                             type="button"
                             aria-label="Toggle docs navigation"
                             onClick={() => setMobileOpen((v) => !v)}
-                            className="lg:hidden flex size-9 items-center justify-center rounded-lg border border-border/60 text-muted-foreground hover:bg-muted transition cursor-pointer"
+                            className="lg:hidden flex size-8 sm:size-9 items-center justify-center rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
                         >
                             <Menu className="size-4.5" />
                         </button>
