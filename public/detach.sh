@@ -22,6 +22,7 @@ readonly LOG_FILE="/var/log/monitor-agent-detach.log"
 
 log()  { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]  $*" | tee -a "$LOG_FILE"; }
 fail() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $*" | tee -a "$LOG_FILE" >&2; exit 1; }
+# Go binary animates its own ellipsis for detach; shell just passes through so dots appear inline.
 
 if [[ $EUID -ne 0 ]]; then
     fail "This script must be run as root."

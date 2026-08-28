@@ -76,6 +76,20 @@ type ServerAssignment struct {
 type AuthConfig struct {
 	HeartbeatInterval int            `json:"heartbeat_interval"`
 	Realtime          RealtimeConfig `json:"realtime"`
+	WatchedPaths      []WatchedPath  `json:"watched_paths"`
+}
+
+// WatchedPath is one filesystem path the agent should audit, delivered from the
+// backend via the auth response and the config.update broadcast. Agent-scoped
+// paths are always audited; server-scoped paths apply only to ServerUUID.
+type WatchedPath struct {
+	Path            string   `json:"path"`
+	Scope           string   `json:"scope"` // agent | server
+	ServerUUID      string   `json:"server_uuid,omitempty"`
+	Enabled         bool     `json:"enabled"`
+	Recursive       bool     `json:"recursive"`
+	ExcludePatterns []string `json:"exclude_patterns,omitempty"`
+	Description     string   `json:"description,omitempty"`
 }
 
 type RealtimeConfig struct {

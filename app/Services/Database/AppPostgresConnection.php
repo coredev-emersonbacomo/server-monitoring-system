@@ -34,7 +34,7 @@ class AppPostgresConnection extends PostgresEnhancedConnection
         };
     }
 
-    // ponytail: first search_path entry only — add per-schema flags here if a
+    // first search_path entry only — add per-schema flags here if a
     // multi-schema search_path ever needs dumping.
     private function dumpSchemas(): string
     {

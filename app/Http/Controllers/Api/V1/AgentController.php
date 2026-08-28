@@ -11,6 +11,7 @@ use App\Models\Agent;
 use App\Models\AgentChallenge;
 use App\Models\CustomActivityLog;
 use App\Models\Server;
+use App\Models\User;
 use App\Services\AgentAuthService;
 use App\Services\HeartbeatService;
 use App\Services\ProvisioningService;
@@ -431,17 +432,60 @@ class AgentController extends Controller
             'reason' => 'nullable|string',
         ]);
 
+        $this->revokeAgentRecord($agent, $validated['reason'] ?? null, null);
+
+        return response()->json([
+            'status' => 'success',
+            'revoked_agent_id' => $agent->id,
+            'servers_detached' => $agent->monitoredServers->count(),
+            'message' => 'Agent revoked.'
+                .($agent->monitoredServers->isNotEmpty()
+                    ? ' All monitored servers marked as agent uninstalled.'
+                    : ' No monitored servers to detach.'),
+        ]);
+    }
+
+    /**
+     * Dashboard-side cleanup of an orphaned agent record. Used only when the host
+     * agent was already uninstalled/removed but its DB record was never cleared
+     * (e.g. the local script could not reach the backend). It mirrors the DB
+     * effects of the agent's own uninstall but is initiated by a dashboard user
+     * and gated on liveness: a still-reporting agent must be uninstalled on the
+     * host, not deregistered here.
+     */
+    public function deregister(string $uuid, Request $request): JsonResponse
+    {
+        $server = Server::where('uuid', $uuid)->firstOrFail();
+        $agent = $server->agent;
+
+        if (! $agent) {
+            return response()->json(['message' => 'This server has no agent record to clear.'], 422);
+        }
+
+        if ($agent->isAlive()) {
+            return response()->json([
+                'message' => 'Agent is still actively reporting to the server. Run the uninstall script on the host (or wait until it is deemed offline) before clearing its record here.',
+            ], 409);
+        }
+
+        $user = $request->user();
+        $this->revokeAgentRecord($agent, 'cleared from dashboard', $user);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Agent record cleared. Monitored servers marked as agent uninstalled.',
+        ]);
+    }
+
+    /**
+     * Revoke an agent identity and detach every server it monitors. Shared by the
+     * agent's own uninstall and the dashboard deregister; the actor distinguishes
+     * who initiated the removal (the agent itself vs a dashboard user).
+     */
+    private function revokeAgentRecord(Agent $agent, ?string $reason, ?User $actor): void
+    {
         $agent->loadMissing(['monitoredServers', 'server']);
         $servers = $agent->monitoredServers;
-
-        // Full agent uninstall is meaningful whether the agent owns zero servers
-        // (idle agent — clean removal) or many (decommission the whole computer).
-        // It always revokes the identity; the per-server detach loop is simply
-        // a no-op when there are none to mark.
-        //
-        // Activity context uses the agent's primary server row (always present
-        // on an active agent — assigned at registration and never nulled on
-        // detach), falling back to the first monitored server.
 
         DB::transaction(function () use ($agent, $servers) {
             // Revoke the agent so its identity can never authenticate again.
@@ -476,31 +520,21 @@ class AgentController extends Controller
             'server_id' => $contextServer->id,
             'agent_id' => $agent->id,
             'type' => 'agent_uninstalled',
-            'description' => 'Agent service has been uninstalled from the host.'
-                .(($validated['reason'] ?? null) ? ' Reason: '.$validated['reason'] : ''),
+            'description' => 'Agent record cleared from the dashboard.'
+                .($reason ? ' Reason: '.$reason : ''),
         ]);
 
         CustomActivityLog::create([
             'type' => 'agent',
             'logable_type' => Server::class,
             'logable_id' => (string) $contextServer->uuid,
-            'user_id' => null,
-            'user' => 'Agent System',
-            'action' => 'Agent Uninstalled',
+            'user_id' => $actor?->id,
+            'user' => $actor?->name ?? 'Agent System',
+            'action' => 'Agent Deregistered',
             'details' => [
-                'message' => "Agent uninstalled on host: {$contextServer->name}. Servers detached: {$servers->count()}.",
+                'message' => "Agent record cleared from dashboard on host: {$contextServer->name}. Servers detached: {$servers->count()}.",
                 'server_name' => $contextServer->name,
             ],
-        ]);
-
-        return response()->json([
-            'status' => 'success',
-            'revoked_agent_id' => $agent->id,
-            'servers_detached' => $servers->count(),
-            'message' => 'Agent revoked.'
-                .($servers->isNotEmpty()
-                    ? ' All monitored servers marked as agent uninstalled.'
-                    : ' No monitored servers to detach.'),
         ]);
     }
 

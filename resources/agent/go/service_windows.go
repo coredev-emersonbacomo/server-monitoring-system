@@ -42,12 +42,28 @@ func (m *monitorService) Execute(args []string, r <-chan svc.ChangeRequest, chan
 			case svc.Interrogate:
 				changes <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown:
-				changes <- svc.Status{State: svc.StopPending}
+				// Tell SCM we're stopping and will report progress every 2s
+				// so the Services snap-in progress bar keeps moving (CheckPoint)
+				// and SCM doesn't kill us as hung. WaitHint is in ms.
+				changes <- svc.Status{State: svc.StopPending, WaitHint: 30000, CheckPoint: 1}
 				close(stopChan)
 				// runAgentLoop may be mid-uninstall-marker handling (HTTP
 				// revoke + key deletion); wait for it before going Stopped so
-				// the uninstaller never races the cleanup.
-				<-done
+				// the uninstaller never races the cleanup. While waiting,
+				// bump CheckPoint so SCM treats us as making progress.
+				tick := time.NewTicker(2 * time.Second)
+				checkpoint := uint32(1)
+				waitDone:
+					for {
+						select {
+						case <-done:
+							tick.Stop()
+							break waitDone
+						case <-tick.C:
+							checkpoint++
+							changes <- svc.Status{State: svc.StopPending, WaitHint: 30000, CheckPoint: checkpoint}
+						}
+					}
 				changes <- svc.Status{State: svc.Stopped}
 				return
 			default:

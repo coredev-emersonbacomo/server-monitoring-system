@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useUrlState } from "@/hooks/useUrlState";
 import { useClients } from "@/hooks/useClients";
 import { useServers } from "@/hooks/useServers";
 import {
@@ -12,6 +13,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
+import { DebouncedSearchInput } from "@/components/DebouncedSearchInput";
 import {
     resolveServerStatusKey,
     STATUS_CONFIG,
@@ -47,99 +49,63 @@ const SORT_FIELDS = [
     { label: "Name", value: "name" },
 ] as const;
 
-const CLIENT_FILTER_OPTIONS = [
-    { label: "All", value: "all" },
-    { label: "Active", value: "active" },
-    { label: "Inactive", value: "inactive" },
-] as const;
-
 export function EntityPickerModal({
     type,
     onSelect,
     onClose,
     queryParams,
 }: EntityPickerModalProps) {
-    const [search, setSearch] = useState("");
+    const [s, setS] = useUrlState({
+        q: { default: "" },
+        status: { default: type === "servers" ? "active" : "all" },
+        sort: { default: "created_at" },
+        dir: { default: "desc" as "asc" | "desc" },
+        group: { default: "0" },
+    });
+
     const [selected, setSelected] = useState<Set<string>>(new Set());
 
-    const [statusFilter, setStatusFilter] = useState<string>(
-        type === "servers" ? "active" : "all",
-    );
-    const [sortField, setSortField] = useState<string>("created_at");
-    const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-    const [viewByClient, setViewByClient] = useState(false);
+    const serverParams = {
+        q: s.q || undefined,
+        status: s.status,
+        sort: s.sort,
+        dir: s.dir,
+        per_page: 50,
+    };
+    const clientParams = {
+        q: s.q || undefined,
+        sort: s.sort,
+        dir: s.dir,
+        per_page: 50,
+        ...queryParams,
+    };
 
-    const clientsQuery = useClients(
-        type === "clients" ? queryParams : undefined,
-    );
-    const serversQuery = useServers();
+    const clientsQuery = useClients(type === "clients" ? clientParams : undefined);
+    const serversQuery = type === "servers" ? useServers(serverParams) : null;
 
-    const activeQuery = type === "clients" ? clientsQuery : serversQuery;
-    const { data: rawItems = [], isLoading, error } = activeQuery;
-    const items = rawItems as unknown as EntityItemData[];
-
-    const statusCounts = useMemo(() => {
-        const counts: Record<string, number> = { all: items.length };
-        items.forEach((item: EntityItemData) => {
-            const key = resolveServerStatusKey(
-                item.status,
-                item.record_status,
-                item.agent_deleted,
-            );
-            counts[key] = (counts[key] || 0) + 1;
-        });
-        return counts;
-    }, [items]);
-
-    const filtered = useMemo(() => {
-        let result = items.filter((item: EntityItemData) =>
-            item.name?.toLowerCase().includes(search.toLowerCase()),
-        );
-
-        if (type === "servers" && statusFilter !== "all") {
-            result = result.filter((item: EntityItemData) => {
-                const key = resolveServerStatusKey(
-                    item.status,
-                    item.record_status,
-                    item.agent_deleted,
-                );
-                if (statusFilter === "active")
-                    return key !== "pending_installation";
-                return key === statusFilter;
-            });
-        } else if (type === "clients" && statusFilter !== "all") {
-            result = result.filter((item: EntityItemData) => {
-                return (item.record_status || "active") === statusFilter;
-            });
+    const isLoading = type === "clients" ? clientsQuery.isLoading : (serversQuery?.isLoading ?? false);
+    const error = type === "clients" ? clientsQuery.error : (serversQuery?.error ?? null);
+    const items = useMemo<EntityItemData[]>(() => {
+        if (type === "clients") {
+            return (clientsQuery.data?.data ?? []) as unknown as EntityItemData[];
         }
-
-        result.sort((a: EntityItemData, b: EntityItemData) => {
-            const aVal = String(a[sortField] ?? "");
-            const bVal = String(b[sortField] ?? "");
-            const cmp = aVal.localeCompare(bVal);
-            return sortDir === "asc" ? cmp : -cmp;
-        });
-
-        return result;
-    }, [items, search, statusFilter, sortField, sortDir, type]);
+        return ((serversQuery?.data?.data ?? []) as unknown as EntityItemData[]);
+    }, [type, clientsQuery.data, serversQuery?.data]);
 
     const toggle = (uuid: string) => {
         setSelected((prev) => {
             const next = new Set(prev);
-            if (next.has(uuid)) {
-                next.delete(uuid);
-            } else {
-                next.add(uuid);
-            }
+            if (next.has(uuid)) next.delete(uuid);
+            else next.add(uuid);
             return next;
         });
     };
 
     const toggleAll = () => {
-        if (selected.size === filtered.length) {
+        if (selected.size === items.length) {
             setSelected(new Set());
         } else {
-            setSelected(new Set(filtered.map((item: EntityItemData) => item.uuid)));
+            setSelected(new Set(items.map((item) => item.uuid)));
         }
     };
 
@@ -148,68 +114,20 @@ export function EntityPickerModal({
         onSelect(Array.from(selected));
     };
 
+    const viewByClient = s.group === "1";
+
     const groupedByClient = useMemo(() => {
         if (!viewByClient || type !== "servers") return null;
         const groups: Record<string, { name: string; items: EntityItemData[] }> = {};
-        filtered.forEach((item: EntityItemData) => {
+        items.forEach((item) => {
             const key = item.client_uuid || "unassigned";
             if (!groups[key]) {
-                groups[key] = {
-                    name: item.client_name || "Unassigned",
-                    items: [],
-                };
+                groups[key] = { name: item.client_name || "Unassigned", items: [] };
             }
             groups[key].items.push(item);
         });
         return groups;
-    }, [viewByClient, filtered, type]);
-
-    const filterOptions =
-        type === "servers"
-            ? (
-                  [
-                      "active",
-                      "all",
-                      "online",
-                      "offline",
-                      "waiting_for_installation",
-                      "pending_deletion",
-                      "archived",
-                  ] as const
-              ).map((key) => ({
-                  label:
-                      key === "active"
-                          ? "Active"
-                          : key === "all"
-                            ? "All"
-                            : (STATUS_CONFIG[key]?.label ?? key),
-                  value: key,
-                  count:
-                      key === "active"
-                          ? items.filter((item: EntityItemData) => {
-                                const k = resolveServerStatusKey(
-                                    item.status,
-                                    item.record_status,
-                                    item.agent_deleted,
-                                );
-                                return k !== "pending_installation";
-                            }).length
-                          : key === "all"
-                            ? items.length
-                            : statusCounts[key] || 0,
-              }))
-            : CLIENT_FILTER_OPTIONS.map((opt) => ({
-                  label: opt.label,
-                  value: opt.value,
-                  count:
-                      opt.value === "all"
-                          ? items.length
-                          : items.filter(
-                                (item: EntityItemData) =>
-                                    (item.record_status || "active") ===
-                                    opt.value,
-                            ).length,
-              }));
+    }, [viewByClient, items, type]);
 
     return (
         <div
@@ -233,12 +151,10 @@ export function EntityPickerModal({
                 </div>
 
                 <div className="flex items-center gap-2 mb-3">
-                    <input
-                        type="text"
+                    <DebouncedSearchInput
+                        paramName={type === "servers" ? "entity_server_q" : "entity_client_q"}
+                        debounceMs={300}
                         placeholder={`Search ${type}…`}
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="flex-1 px-3 py-2 text-sm rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                     />
 
                     <Popover>
@@ -259,31 +175,28 @@ export function EntityPickerModal({
                                 <p className="text-[11px] font-semibold text-muted-foreground uppercase px-2 py-1">
                                     Status
                                 </p>
-                                {filterOptions.map((option) => (
+                                {(type === "servers"
+                                    ? ["active", "all", "online", "offline", "waiting_for_installation", "pending_deletion", "archived"]
+                                    : ["all", "active", "archived"]
+                                ).map((value) => (
                                     <label
-                                        key={option.value}
+                                        key={value}
                                         className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-sidebar-hover text-xs cursor-pointer"
                                     >
                                         <span className="flex items-center gap-2">
                                             <input
                                                 type="radio"
                                                 name="status-filter"
-                                                value={option.value}
-                                                checked={
-                                                    statusFilter ===
-                                                    option.value
-                                                }
-                                                onChange={() =>
-                                                    setStatusFilter(
-                                                        option.value,
-                                                    )
-                                                }
+                                                value={value}
+                                                checked={s.status === value}
+                                                onChange={() => setS({ status: value })}
                                                 className="h-3.5 w-3.5 accent-black cursor-pointer bg-background border-foreground"
                                             />
-                                            {option.label}
-                                        </span>
-                                        <span className="text-muted-foreground">
-                                            {option.count}
+                                            {value === "active"
+                                                ? "Active"
+                                                : value === "all"
+                                                  ? "All"
+                                                  : (STATUS_CONFIG[value]?.label ?? value)}
                                         </span>
                                     </label>
                                 ))}
@@ -299,17 +212,13 @@ export function EntityPickerModal({
                                     <button
                                         type="button"
                                         onClick={() =>
-                                            setSortDir(
-                                                sortDir === "desc" ? "asc" : "desc",
-                                            )
+                                            setS({ dir: s.dir === "asc" ? "desc" : "asc" })
                                         }
                                         className="flex items-center gap-1 text-xs cursor-pointer font-medium rounded-md px-1.5 py-0.5 transition-colors text-primary"
                                     >
                                         <ArrowUpDown size={12} />
                                         <span>
-                                            {sortDir === "asc"
-                                                ? "Asc"
-                                                : "Desc"}
+                                            {s.dir === "asc" ? "Asc" : "Desc"}
                                         </span>
                                     </button>
                                 </div>
@@ -322,10 +231,8 @@ export function EntityPickerModal({
                                             type="radio"
                                             name="sort-field"
                                             value={option.value}
-                                            checked={sortField === option.value}
-                                            onChange={() =>
-                                                setSortField(option.value)
-                                            }
+                                            checked={s.sort === option.value}
+                                            onChange={() => setS({ sort: option.value })}
                                             className="h-3.5 w-3.5 accent-black cursor-pointer bg-background border-foreground"
                                         />
                                         {option.label}
@@ -342,9 +249,7 @@ export function EntityPickerModal({
                                                 type="checkbox"
                                                 checked={viewByClient}
                                                 onChange={(e) =>
-                                                    setViewByClient(
-                                                        e.target.checked,
-                                                    )
+                                                    setS({ group: e.target.checked ? "1" : "0" })
                                                 }
                                                 className="accent-primary"
                                             />
@@ -358,15 +263,13 @@ export function EntityPickerModal({
                     </Popover>
                 </div>
 
-                {filtered.length > 0 && (
+                {items.length > 0 && (
                     <button
                         type="button"
                         onClick={toggleAll}
                         className="mb-2 text-xs text-muted-foreground hover:text-foreground w-fit cursor-pointer"
                     >
-                        {selected.size === filtered.length
-                            ? "Deselect all"
-                            : "Select all"}
+                        {selected.size === items.length ? "Deselect all" : "Select all"}
                     </button>
                 )}
 
@@ -383,7 +286,7 @@ export function EntityPickerModal({
                         </p>
                     )}
 
-                    {!isLoading && !error && filtered.length === 0 && (
+                    {!isLoading && !error && items.length === 0 && (
                         <p className="text-sm text-muted-foreground py-8 text-center">
                             No {type} found.
                         </p>
@@ -392,7 +295,7 @@ export function EntityPickerModal({
                     {!isLoading &&
                         !error &&
                         !groupedByClient &&
-                        filtered.map((item: EntityItemData) => (
+                        items.map((item) => (
                             <EntityItem
                                 key={item.uuid}
                                 item={item}
@@ -405,64 +308,53 @@ export function EntityPickerModal({
                     {!isLoading &&
                         !error &&
                         groupedByClient &&
-                        Object.entries(groupedByClient).map(
-                            ([clientUuid, group]) => {
-                                const groupSelected = group.items.filter(
-                                    (item: EntityItemData) => selected.has(item.uuid),
-                                ).length;
-                                const groupAll = group.items.length;
-                                const groupChecked =
-                                    groupAll > 0 && groupSelected === groupAll;
+                        Object.entries(groupedByClient).map(([clientUuid, group]) => {
+                            const groupSelected = group.items.filter((item) =>
+                                selected.has(item.uuid),
+                            ).length;
+                            const groupAll = group.items.length;
+                            const groupChecked = groupAll > 0 && groupSelected === groupAll;
 
-                                const toggleGroup = () => {
-                                    setSelected((prev) => {
-                                        const next = new Set(prev);
-                                        if (groupChecked) {
-                                            group.items.forEach((item: EntityItemData) =>
-                                                next.delete(item.uuid),
-                                            );
-                                        } else {
-                                            group.items.forEach((item: EntityItemData) =>
-                                                next.add(item.uuid),
-                                            );
-                                        }
-                                        return next;
-                                    });
-                                };
+                            const toggleGroup = () => {
+                                setSelected((prev) => {
+                                    const next = new Set(prev);
+                                    if (groupChecked) {
+                                        group.items.forEach((item) => next.delete(item.uuid));
+                                    } else {
+                                        group.items.forEach((item) => next.add(item.uuid));
+                                    }
+                                    return next;
+                                });
+                            };
 
-                                return (
-                                    <div key={clientUuid}>
-                                        <div className="flex items-center justify-between px-2 py-1.5">
-                                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                                {group.name}
-                                            </span>
-                                            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={groupChecked}
-                                                    onChange={toggleGroup}
-                                                    className="accent-primary"
-                                                />
-                                                Select all
-                                            </label>
-                                        </div>
-                                        {group.items.map((item: EntityItemData) => (
-                                            <EntityItem
-                                                key={item.uuid}
-                                                item={item}
-                                                type={type}
-                                                checked={selected.has(
-                                                    item.uuid,
-                                                )}
-                                                onToggle={() =>
-                                                    toggle(item.uuid)
-                                                }
+                            return (
+                                <div key={clientUuid}>
+                                    <div className="flex items-center justify-between px-2 py-1.5">
+                                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                            {group.name}
+                                        </span>
+                                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={groupChecked}
+                                                onChange={toggleGroup}
+                                                className="accent-primary"
                                             />
-                                        ))}
+                                            Select all
+                                        </label>
                                     </div>
-                                );
-                            },
-                        )}
+                                    {group.items.map((item) => (
+                                        <EntityItem
+                                            key={item.uuid}
+                                            item={item}
+                                            type={type}
+                                            checked={selected.has(item.uuid)}
+                                            onToggle={() => toggle(item.uuid)}
+                                        />
+                                    ))}
+                                </div>
+                            );
+                        })}
                 </div>
 
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">

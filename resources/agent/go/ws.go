@@ -37,9 +37,10 @@ type configUpdatePayload struct {
 	HeartbeatInterval int       `json:"heartbeat_interval"`
 	Version           string    `json:"version"`
 	BinaryURL         string    `json:"binary_url"`
-	PortFilter        *[]int    `json:"port_filter"`
-	ProcessFilter     *[]string `json:"process_filter"`
-	NetworkFilter     *[]string `json:"network_filter"`
+	PortFilter        *[]int       `json:"port_filter"`
+	ProcessFilter     *[]string    `json:"process_filter"`
+	NetworkFilter     *[]string    `json:"network_filter"`
+	WatchedPaths      *[]WatchedPath `json:"watched_paths"`
 }
 
 // connectControlChannel maintains a persistent WebSocket connection to Reverb.
@@ -308,6 +309,11 @@ func handleConfigUpdate(runtime *AgentRuntime, payload configUpdatePayload, hear
 		// nil means reset to allow-all (not preserve old)
 		runtime.Upsert(payload.ServerUUID, ports, processes, networks)
 		log.Printf("[WS] Filter updated for server %s", payload.ServerUUID)
+	}
+
+	if payload.WatchedPaths != nil {
+		runtime.SetWatchedPaths(*payload.WatchedPaths)
+		log.Printf("[WS] Watched paths updated (%d)", len(*payload.WatchedPaths))
 	}
 }
 

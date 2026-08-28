@@ -13,13 +13,18 @@ interface TabProps {
     children: React.ReactNode;
     className?: string;
     syncUrl?: boolean;
+    // Unique id used to namespace the URL param so nested Tabs on the same page
+    // (e.g. a Tab inside another Tab's panel) don't fight over `?tab=`.
+    id?: string;
 }
 
 const TAB_RADIUS = 12;
 
-function Tab({ children, className, syncUrl = true }: TabProps) {
+function Tab({ children, className, syncUrl = true, id }: TabProps) {
     const [searchParams, setSearchParams] = useSearchParams();
     const [localTab, setLocalTab] = useState<string | null>(null);
+
+    const paramKey = id ? `tab_${id}` : "tab";
 
     const items = Children.toArray(children).filter(
         (child): child is React.ReactElement<TabItemProps> =>
@@ -32,7 +37,7 @@ function Tab({ children, className, syncUrl = true }: TabProps) {
 
     const activeTab = (() => {
         if (syncUrl) {
-            const tabFromUrl = searchParams.get("tab");
+            const tabFromUrl = searchParams.get(paramKey);
             if (
                 tabFromUrl &&
                 items.some((item) => item.props.title === tabFromUrl)
@@ -54,7 +59,7 @@ function Tab({ children, className, syncUrl = true }: TabProps) {
                 setSearchParams(
                     (prev) => {
                         const next = new URLSearchParams(prev);
-                        next.set("tab", title);
+                        next.set(paramKey, title);
                         return next;
                     },
                     { replace: true },
@@ -63,7 +68,7 @@ function Tab({ children, className, syncUrl = true }: TabProps) {
                 setLocalTab(title);
             }
         },
-        [syncUrl, setSearchParams],
+        [syncUrl, setSearchParams, paramKey],
     );
 
     const activeItem =

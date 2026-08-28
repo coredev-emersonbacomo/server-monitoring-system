@@ -1,15 +1,18 @@
 import type {
     ActionItemData,
+    ActivityLogData,
     AgentData,
+    AgentLifecycleEventResource,
     AuthUserData,
     ClientData,
     CreateUserData,
-    CustomActivityLog,
     DashboardStatsData,
+    FileActivityLogResource,
     GlobalAlert,
     NodeConfig,
     NodeConfigData,
     NodeConfigState,
+    Paginator,
     PortsData,
     ProcessesData,
     ProvisionDetailData,
@@ -191,6 +194,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/servers/{uuid}/force-reinstall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.agent.forceReinstall_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/servers/{uuid}/deregister": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dashboard-side cleanup of an orphaned agent record. Used only when the host
+         *     agent was already uninstalled/removed but its DB record was never cleared
+         *     (e.g. the local script could not reach the backend). It mirrors the DB
+         *     effects of the agent's own uninstall but is initiated by a dashboard user
+         *     and gated on liveness: a still-reporting agent must be uninstalled on the
+         *     host, not deregistered here
+         */
+        post: operations["v1.agent.deregister_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/provision": {
         parameters: {
             query?: never;
@@ -281,6 +324,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/agent/servers/{serverUuid}/uninstall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Detach a single owned server from the agent. The agent stays installed and
+         *     keeps monitoring its other servers; only the named server is decommissioned
+         *     (status → agent_uninstalled, agent_id → null). Full agent revocation
+         *     (POST /agent/uninstall) is a separate operation used only when the agent
+         *     owns zero servers and the operator wants to remove the whole installation
+         */
+        post: operations["v1.agent.detachServer_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/agent/uninstall": {
         parameters: {
             query?: never;
@@ -345,6 +411,46 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["v1.agent.regenerate_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/servers/{uuid}/force-reinstall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1.agent.forceReinstall_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/servers/{uuid}/deregister": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dashboard-side cleanup of an orphaned agent record. Used only when the host
+         *     agent was already uninstalled/removed but its DB record was never cleared
+         *     (e.g. the local script could not reach the backend). It mirrors the DB
+         *     effects of the agent's own uninstall but is initiated by a dashboard user
+         *     and gated on liveness: a still-reporting agent must be uninstalled on the
+         *     host, not deregistered here
+         */
+        post: operations["v1.agent.deregister_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -441,6 +547,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent/servers/{serverUuid}/uninstall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Detach a single owned server from the agent. The agent stays installed and
+         *     keeps monitoring its other servers; only the named server is decommissioned
+         *     (status → agent_uninstalled, agent_id → null). Full agent revocation
+         *     (POST /agent/uninstall) is a separate operation used only when the agent
+         *     owns zero servers and the operator wants to remove the whole installation
+         */
+        post: operations["v1.agent.detachServer_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/uninstall": {
         parameters: {
             query?: never;
@@ -495,6 +624,112 @@ export interface paths {
          *     then return a Pusher-signed auth string.
          */
         post: operations["agentBroadcastAuth.authorize"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/agent/audit/file-activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agent-ingested bulk file-activity events. Agent-authenticated (signed
+         *     session); each event carries a stable uuid for idempotent ingestion
+         */
+        post: operations["v1.audit.ingestFileActivity_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/agent/audit/lifecycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Agent-ingested lifecycle events. Agent-authenticated; idempotent by uuid */
+        post: operations["v1.audit.ingestLifecycle_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/audit/file-activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["audit.fileActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/audit/agent-lifecycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["audit.agentLifecycle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/audit/file-activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Agent-ingested bulk file-activity events. Agent-authenticated (signed
+         *     session); each event carries a stable uuid for idempotent ingestion
+         */
+        post: operations["v1.audit.ingestFileActivity_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/audit/lifecycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Agent-ingested lifecycle events. Agent-authenticated; idempotent by uuid */
+        post: operations["v1.audit.ingestLifecycle_0"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1585,6 +1820,28 @@ export interface paths {
         patch: operations["v1.server.updateMonitoringConfig_0"];
         trace?: never;
     };
+    "/v1/clients/{clientUuid}/servers/{serverUuid}/detach": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * User-initiated detach of a single server from its shared agent.
+         *     Used by the Agent tab when the host agent monitors >1 servers — the
+         *     button becomes "Detach Server" and shows that the agent will remain
+         *     for the other servers
+         */
+        post: operations["v1.server.detachFromAgent_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/clients/{clientUuid}/servers/{serverUuid}/adjust-cost": {
         parameters: {
             query?: never;
@@ -1685,6 +1942,28 @@ export interface paths {
          *     picks this up on its next auth/heartbeat and applies it in memory
          */
         patch: operations["v1.server.updateMonitoringConfig_0"];
+        trace?: never;
+    };
+    "/clients/{clientUuid}/servers/{serverUuid}/detach": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * User-initiated detach of a single server from its shared agent.
+         *     Used by the Agent tab when the host agent monitors >1 servers — the
+         *     button becomes "Detach Server" and shows that the agent will remain
+         *     for the other servers
+         */
+        post: operations["v1.server.detachFromAgent_0"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/clients/{clientUuid}/servers/{serverUuid}/adjust-cost": {
@@ -2171,24 +2450,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/watched-paths": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["watchedPath.index"];
+        put?: never;
+        post: operations["watchedPath.store"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/watched-paths/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["watchedPath.show"];
+        put: operations["watchedPath.update"];
+        post?: never;
+        delete: operations["watchedPath.destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /** ActionItemData */
         ActionItemData: ActionItemData;
+        /** ActivityLogData */
+        ActivityLogData: ActivityLogData;
         /** AgentData */
         AgentData: AgentData;
+        /** AgentLifecycleEventResource */
+        AgentLifecycleEventResource: AgentLifecycleEventResource;
         /** AuthUserData */
         AuthUserData: AuthUserData;
         /** ClientData */
         ClientData: ClientData;
         /** CreateUserData */
         CreateUserData: CreateUserData;
-        /** CustomActivityLog */
-        CustomActivityLog: CustomActivityLog;
         /** DashboardStatsData */
         DashboardStatsData: DashboardStatsData;
+        /** FileActivityLogResource */
+        FileActivityLogResource: FileActivityLogResource;
         /** GlobalAlert */
         GlobalAlert: GlobalAlert;
         /** NodeConfig */
@@ -2295,7 +2610,17 @@ export type $defs = Record<string, never>;
 export interface operations {
     "v1.activityLog.index_0": {
         parameters: {
-            query?: never;
+            query?: {
+                per_page?: 5 | 10 | 15 | 25 | 50 | 100 | null;
+                search?: string | null;
+                action?: string | null;
+                user?: string | null;
+                server_uuid?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                sort_field?: "created_at" | "action" | "user" | "logable_type" | null;
+                sort_dir?: "asc" | "desc" | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2307,7 +2632,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": CustomActivityLog[];
+                    "application/json": {
+                        data: ActivityLogData[];
+                        prev: string | null;
+                        next: string | null;
+                        total: number;
+                        per_page: number;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2315,7 +2646,17 @@ export interface operations {
     };
     "v1.activityLog.serverHealth_0": {
         parameters: {
-            query?: never;
+            query?: {
+                per_page?: 5 | 10 | 15 | 25 | 50 | 100 | null;
+                search?: string | null;
+                action?: string | null;
+                user?: string | null;
+                server_uuid?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                sort_field?: "created_at" | "action" | "user" | "logable_type" | null;
+                sort_dir?: "asc" | "desc" | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2327,7 +2668,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": CustomActivityLog[];
+                    "application/json": {
+                        data: ActivityLogData[];
+                        prev: string | null;
+                        next: string | null;
+                        total: number;
+                        per_page: number;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2335,7 +2682,17 @@ export interface operations {
     };
     "v1.activityLog.agent_0": {
         parameters: {
-            query?: never;
+            query?: {
+                per_page?: 5 | 10 | 15 | 25 | 50 | 100 | null;
+                search?: string | null;
+                action?: string | null;
+                user?: string | null;
+                server_uuid?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                sort_field?: "created_at" | "action" | "user" | "logable_type" | null;
+                sort_dir?: "asc" | "desc" | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2347,7 +2704,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": CustomActivityLog[];
+                    "application/json": {
+                        data: ActivityLogData[];
+                        prev: string | null;
+                        next: string | null;
+                        total: number;
+                        per_page: number;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2355,7 +2718,17 @@ export interface operations {
     };
     "v1.activityLog.billing_0": {
         parameters: {
-            query?: never;
+            query?: {
+                per_page?: 5 | 10 | 15 | 25 | 50 | 100 | null;
+                search?: string | null;
+                action?: string | null;
+                user?: string | null;
+                server_uuid?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                sort_field?: "created_at" | "action" | "user" | "logable_type" | null;
+                sort_dir?: "asc" | "desc" | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2367,7 +2740,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": CustomActivityLog[];
+                    "application/json": {
+                        data: ActivityLogData[];
+                        prev: string | null;
+                        next: string | null;
+                        total: number;
+                        per_page: number;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2375,7 +2754,17 @@ export interface operations {
     };
     "v1.activityLog.index_0": {
         parameters: {
-            query?: never;
+            query?: {
+                per_page?: 5 | 10 | 15 | 25 | 50 | 100 | null;
+                search?: string | null;
+                action?: string | null;
+                user?: string | null;
+                server_uuid?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                sort_field?: "created_at" | "action" | "user" | "logable_type" | null;
+                sort_dir?: "asc" | "desc" | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2387,7 +2776,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": CustomActivityLog[];
+                    "application/json": {
+                        data: ActivityLogData[];
+                        prev: string | null;
+                        next: string | null;
+                        total: number;
+                        per_page: number;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2395,7 +2790,17 @@ export interface operations {
     };
     "v1.activityLog.serverHealth_0": {
         parameters: {
-            query?: never;
+            query?: {
+                per_page?: 5 | 10 | 15 | 25 | 50 | 100 | null;
+                search?: string | null;
+                action?: string | null;
+                user?: string | null;
+                server_uuid?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                sort_field?: "created_at" | "action" | "user" | "logable_type" | null;
+                sort_dir?: "asc" | "desc" | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2407,7 +2812,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": CustomActivityLog[];
+                    "application/json": {
+                        data: ActivityLogData[];
+                        prev: string | null;
+                        next: string | null;
+                        total: number;
+                        per_page: number;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2415,7 +2826,17 @@ export interface operations {
     };
     "v1.activityLog.agent_0": {
         parameters: {
-            query?: never;
+            query?: {
+                per_page?: 5 | 10 | 15 | 25 | 50 | 100 | null;
+                search?: string | null;
+                action?: string | null;
+                user?: string | null;
+                server_uuid?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                sort_field?: "created_at" | "action" | "user" | "logable_type" | null;
+                sort_dir?: "asc" | "desc" | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2427,7 +2848,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": CustomActivityLog[];
+                    "application/json": {
+                        data: ActivityLogData[];
+                        prev: string | null;
+                        next: string | null;
+                        total: number;
+                        per_page: number;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2435,7 +2862,17 @@ export interface operations {
     };
     "v1.activityLog.billing_0": {
         parameters: {
-            query?: never;
+            query?: {
+                per_page?: 5 | 10 | 15 | 25 | 50 | 100 | null;
+                search?: string | null;
+                action?: string | null;
+                user?: string | null;
+                server_uuid?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                sort_field?: "created_at" | "action" | "user" | "logable_type" | null;
+                sort_dir?: "asc" | "desc" | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2447,7 +2884,13 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": CustomActivityLog[];
+                    "application/json": {
+                        data: ActivityLogData[];
+                        prev: string | null;
+                        next: string | null;
+                        total: number;
+                        per_page: number;
+                    };
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -2474,6 +2917,10 @@ export interface operations {
                         token: string;
                         expires_at: string;
                         linux_command: string;
+                        /**
+                         * @description argValue is single-quoted so the emitted -Command string always stays
+                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
+                         */
                         windows_command: string;
                         token_expires_in: string;
                     } | {
@@ -2496,6 +2943,10 @@ export interface operations {
                         token: string;
                         expires_at: string;
                         linux_command: string;
+                        /**
+                         * @description argValue is single-quoted so the emitted -Command string always stays
+                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
+                         */
                         windows_command: string;
                         token_expires_in: string;
                     } | {
@@ -2540,6 +2991,10 @@ export interface operations {
                         token: string;
                         expires_at: string;
                         linux_command: string;
+                        /**
+                         * @description argValue is single-quoted so the emitted -Command string always stays
+                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
+                         */
                         windows_command: string;
                         token_expires_in: string;
                     } | {
@@ -2559,6 +3014,99 @@ export interface operations {
                 content: {
                     "application/json": {
                         message: string;
+                    };
+                };
+            };
+        };
+    };
+    "v1.agent.forceReinstall_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        conflict: boolean;
+                        token: string;
+                        installation_id: string;
+                        expires_at: string;
+                        linux_command: string;
+                        /**
+                         * @description argValue is single-quoted so the emitted -Command string always stays
+                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
+                         */
+                        windows_command: string;
+                        token_expires_in: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
+    "v1.agent.deregister_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "success";
+                        /** @constant */
+                        message: "Agent record cleared. Monitored servers marked as agent uninstalled.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Agent is still actively reporting to the server. Run the uninstall script on the host (or wait until it is deemed offline) before clearing its record here.";
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "This server has no agent record to clear.";
                     };
                 };
             };
@@ -2718,6 +3266,7 @@ export interface operations {
                             server_uuid: string;
                             port_filter: unknown[] | null;
                             process_filter: unknown[] | null;
+                            network_filter: unknown[] | null;
                         }[];
                         config: {
                             heartbeat_interval: number;
@@ -2727,6 +3276,14 @@ export interface operations {
                                 scheme: unknown;
                                 app_key: unknown;
                             };
+                            watched_paths: {
+                                path: string;
+                                scope: string;
+                                server_uuid: string;
+                                enabled: boolean;
+                                recursive: boolean;
+                                description: string | null;
+                            }[];
                         };
                     };
                 };
@@ -2753,9 +3310,6 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Signature verification failed.";
-                    } | {
-                        /** @constant */
-                        message: "Server has been decommissioned.";
                     } | {
                         /** @constant */
                         message: "Agent is revoked or disabled.";
@@ -2786,9 +3340,10 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
+                    servers?: string;
                     /**
-                     * @description The agent now monitors many servers: each heartbeat targets exactly
-                     *      one server by uuid, and the backend verifies ownership + lifecycle.
+                     * @description Legacy per-server heartbeat: each request targets exactly one server
+                     *      by uuid, and the backend verifies ownership + lifecycle.
                      */
                     server_uuid?: string;
                 };
@@ -2805,6 +3360,23 @@ export interface operations {
                         current_time: string;
                         feature_flags: string[];
                         server_uuid: string;
+                        pending_update: {
+                            version: string;
+                            heartbeat_interval: null;
+                            binary_url: string;
+                        };
+                        configuration: unknown[];
+                        pending_commands: {
+                            id: string;
+                            type: string;
+                            payload: string;
+                        }[];
+                    } | {
+                        heartbeat_interval: number;
+                        current_time: string;
+                        feature_flags: string[];
+                        server_uuids: unknown[];
+                        revoked_server_uuids: string[];
                         pending_update: {
                             version: string;
                             heartbeat_interval: null;
@@ -2871,6 +3443,67 @@ export interface operations {
             };
         };
     };
+    "v1.agent.detachServer_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "success";
+                        server_uuid: string;
+                        agent_revoked: boolean;
+                        agent_remaining_servers: number;
+                        message: string;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Agent has been decommissioned.";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Server not found or not owned by this agent.";
+                    };
+                };
+            };
+        };
+    };
     "v1.agent.uninstall_0": {
         parameters: {
             query?: never;
@@ -2894,8 +3527,9 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         status: "success";
-                        /** @constant */
-                        message: "Agent revoked and all monitored servers marked as agent uninstalled successfully.";
+                        revoked_agent_id: number;
+                        servers_detached: number;
+                        message: string;
                     };
                 };
             };
@@ -2907,17 +3541,6 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Unauthenticated.";
-                    };
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Server not found.";
                     };
                 };
             };
@@ -2998,6 +3621,10 @@ export interface operations {
                         token: string;
                         expires_at: string;
                         linux_command: string;
+                        /**
+                         * @description argValue is single-quoted so the emitted -Command string always stays
+                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
+                         */
                         windows_command: string;
                         token_expires_in: string;
                     } | {
@@ -3020,6 +3647,10 @@ export interface operations {
                         token: string;
                         expires_at: string;
                         linux_command: string;
+                        /**
+                         * @description argValue is single-quoted so the emitted -Command string always stays
+                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
+                         */
                         windows_command: string;
                         token_expires_in: string;
                     } | {
@@ -3064,6 +3695,10 @@ export interface operations {
                         token: string;
                         expires_at: string;
                         linux_command: string;
+                        /**
+                         * @description argValue is single-quoted so the emitted -Command string always stays
+                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
+                         */
                         windows_command: string;
                         token_expires_in: string;
                     } | {
@@ -3083,6 +3718,99 @@ export interface operations {
                 content: {
                     "application/json": {
                         message: string;
+                    };
+                };
+            };
+        };
+    };
+    "v1.agent.forceReinstall_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        conflict: boolean;
+                        token: string;
+                        installation_id: string;
+                        expires_at: string;
+                        linux_command: string;
+                        /**
+                         * @description argValue is single-quoted so the emitted -Command string always stays
+                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
+                         */
+                        windows_command: string;
+                        token_expires_in: string;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
+    "v1.agent.deregister_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "success";
+                        /** @constant */
+                        message: "Agent record cleared. Monitored servers marked as agent uninstalled.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Agent is still actively reporting to the server. Run the uninstall script on the host (or wait until it is deemed offline) before clearing its record here.";
+                    };
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "This server has no agent record to clear.";
                     };
                 };
             };
@@ -3242,6 +3970,7 @@ export interface operations {
                             server_uuid: string;
                             port_filter: unknown[] | null;
                             process_filter: unknown[] | null;
+                            network_filter: unknown[] | null;
                         }[];
                         config: {
                             heartbeat_interval: number;
@@ -3251,6 +3980,14 @@ export interface operations {
                                 scheme: unknown;
                                 app_key: unknown;
                             };
+                            watched_paths: {
+                                path: string;
+                                scope: string;
+                                server_uuid: string;
+                                enabled: boolean;
+                                recursive: boolean;
+                                description: string | null;
+                            }[];
                         };
                     };
                 };
@@ -3277,9 +4014,6 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Signature verification failed.";
-                    } | {
-                        /** @constant */
-                        message: "Server has been decommissioned.";
                     } | {
                         /** @constant */
                         message: "Agent is revoked or disabled.";
@@ -3319,6 +4053,23 @@ export interface operations {
                         current_time: string;
                         feature_flags: string[];
                         server_uuid: string;
+                        pending_update: {
+                            version: string;
+                            heartbeat_interval: null;
+                            binary_url: string;
+                        };
+                        configuration: unknown[];
+                        pending_commands: {
+                            id: string;
+                            type: string;
+                            payload: string;
+                        }[];
+                    } | {
+                        heartbeat_interval: number;
+                        current_time: string;
+                        feature_flags: string[];
+                        server_uuids: unknown[];
+                        revoked_server_uuids: string[];
                         pending_update: {
                             version: string;
                             heartbeat_interval: null;
@@ -3385,6 +4136,67 @@ export interface operations {
             };
         };
     };
+    "v1.agent.detachServer_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "success";
+                        server_uuid: string;
+                        agent_revoked: boolean;
+                        agent_remaining_servers: number;
+                        message: string;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Agent has been decommissioned.";
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Server not found or not owned by this agent.";
+                    };
+                };
+            };
+        };
+    };
     "v1.agent.uninstall_0": {
         parameters: {
             query?: never;
@@ -3408,8 +4220,9 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         status: "success";
-                        /** @constant */
-                        message: "Agent revoked and all monitored servers marked as agent uninstalled successfully.";
+                        revoked_agent_id: number;
+                        servers_detached: number;
+                        message: string;
                     };
                 };
             };
@@ -3421,17 +4234,6 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         message: "Unauthenticated.";
-                    };
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @constant */
-                        message: "Server not found.";
                     };
                 };
             };
@@ -3543,6 +4345,319 @@ export interface operations {
             };
         };
     };
+    "v1.audit.ingestFileActivity_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    events: {
+                        uuid: string;
+                        server_uuid?: string | null;
+                        /** @enum {string} */
+                        action: "created" | "modified" | "moved" | "renamed" | "deleted";
+                        file_name: string;
+                        source_path: string;
+                        destination_path?: string | null;
+                        is_directory?: boolean | null;
+                        username?: string | null;
+                        process_name?: string | null;
+                        process_id?: number | null;
+                        occurred_at: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        inserted: number;
+                        skipped: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Agent has been decommissioned.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.audit.ingestLifecycle_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    events: {
+                        uuid: string;
+                        /** @enum {string} */
+                        event_type: "started" | "stopping" | "stopped" | "unexpectedly_disconnected";
+                        server_uuid?: string | null;
+                        occurred_at: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        inserted: number;
+                        skipped: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Agent has been decommissioned.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "audit.fileActivity": {
+        parameters: {
+            query?: {
+                server_id?: number | null;
+                server_uuid?: string | null;
+                agent_id?: number | null;
+                action?: "created" | "modified" | "moved" | "renamed" | "deleted" | null;
+                path?: string | null;
+                occurred_at_from?: string | null;
+                occurred_at_to?: string | null;
+                per_page?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: FileActivityLogResource[];
+                        prev: string | null;
+                        next: string | null;
+                        total: number;
+                        per_page: number;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "audit.agentLifecycle": {
+        parameters: {
+            query?: {
+                server_id?: number | null;
+                server_uuid?: string | null;
+                agent_id?: number | null;
+                event_type?: "started" | "stopping" | "stopped" | "unexpectedly_disconnected" | null;
+                occurred_at_from?: string | null;
+                occurred_at_to?: string | null;
+                per_page?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: AgentLifecycleEventResource[];
+                        prev: string | null;
+                        next: string | null;
+                        total: number;
+                        per_page: number;
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.audit.ingestFileActivity_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    events: {
+                        uuid: string;
+                        server_uuid?: string | null;
+                        /** @enum {string} */
+                        action: "created" | "modified" | "moved" | "renamed" | "deleted";
+                        file_name: string;
+                        source_path: string;
+                        destination_path?: string | null;
+                        is_directory?: boolean | null;
+                        username?: string | null;
+                        process_name?: string | null;
+                        process_id?: number | null;
+                        occurred_at: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        inserted: number;
+                        skipped: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Agent has been decommissioned.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.audit.ingestLifecycle_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    events: {
+                        uuid: string;
+                        /** @enum {string} */
+                        event_type: "started" | "stopping" | "stopped" | "unexpectedly_disconnected";
+                        server_uuid?: string | null;
+                        occurred_at: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        inserted: number;
+                        skipped: number;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Unauthenticated.";
+                    };
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Agent has been decommissioned.";
+                    };
+                };
+            };
+            422: components["responses"]["ValidationException"];
+        };
+    };
     "broadcast.authenticate": {
         parameters: {
             query?: never;
@@ -3620,7 +4735,10 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        /** @description Error overview. */
+                        /**
+                         * @description Error overview.
+                         * @example Server creation failed. Please try again.
+                         */
                         message: string;
                     };
                 };
@@ -3632,7 +4750,13 @@ export interface operations {
             query?: {
                 user_uuid?: string | null;
                 exclude_user_uuid?: string | null;
-                available_only?: boolean;
+                available_only?: "true" | "false" | "0" | "1" | 1 | null;
+                q?: string | null;
+                filter?: string | null;
+                sort?: string | null;
+                dir?: "asc" | "desc" | null;
+                page?: number;
+                per_page?: number;
             };
             header?: never;
             path?: never;
@@ -3645,7 +4769,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": ClientData[];
+                    "application/json": Paginator<ClientData>;
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -3977,7 +5101,10 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        /** @description Error overview. */
+                        /**
+                         * @description Error overview.
+                         * @example Server creation failed. Please try again.
+                         */
                         message: string;
                     };
                 };
@@ -3989,7 +5116,13 @@ export interface operations {
             query?: {
                 user_uuid?: string | null;
                 exclude_user_uuid?: string | null;
-                available_only?: boolean;
+                available_only?: "true" | "false" | "0" | "1" | 1 | null;
+                q?: string | null;
+                filter?: string | null;
+                sort?: string | null;
+                dir?: "asc" | "desc" | null;
+                page?: number;
+                per_page?: number;
             };
             header?: never;
             path?: never;
@@ -4002,7 +5135,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": ClientData[];
+                    "application/json": Paginator<ClientData>;
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -5141,15 +6274,13 @@ export interface operations {
                         active_tasks: unknown[];
                         states: NodeConfigState[];
                         last_monitor_sweep_at: unknown;
-                        /**
-                         * @description microtime float or null
-                         * @constant
-                         */
+                        /** @constant */
                         monitor_interval_seconds: 60;
                     };
                 };
             };
             401: components["responses"]["AuthenticationException"];
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
     "nodeConfig.nodeConfig.preview_0": {
@@ -5510,15 +6641,13 @@ export interface operations {
                         active_tasks: unknown[];
                         states: NodeConfigState[];
                         last_monitor_sweep_at: unknown;
-                        /**
-                         * @description microtime float or null
-                         * @constant
-                         */
+                        /** @constant */
                         monitor_interval_seconds: 60;
                     };
                 };
             };
             401: components["responses"]["AuthenticationException"];
+            404: components["responses"]["ModelNotFoundException"];
         };
     };
     "nodeConfig.nodeConfig.preview_0": {
@@ -5929,8 +7058,9 @@ export interface operations {
         responses: {
             200: {
                 headers: {
-                    "Content-Disposition"?: "inline; filename=\"report.pdf\"";
+                    "Content-Disposition"?: string;
                     "X-Generated-At"?: string;
+                    "X-Filename"?: null | unknown[] | string | Record<string, never>;
                     [name: string]: unknown;
                 };
                 content: {
@@ -6018,7 +7148,15 @@ export interface operations {
     };
     "v1.server.listAll_0": {
         parameters: {
-            query?: never;
+            query?: {
+                client_uuid?: string | null;
+                q?: string | null;
+                status?: string | null;
+                sort?: string | null;
+                dir?: "asc" | "desc" | null;
+                page?: number;
+                per_page?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -6030,7 +7168,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": ServerData[];
+                    "application/json": Paginator<ServerData>;
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -6174,6 +7312,7 @@ export interface operations {
                 "application/json": {
                     port_filter?: number[] | null;
                     process_filter?: string[] | null;
+                    network_filter?: string[] | null;
                 };
             };
         };
@@ -6189,6 +7328,46 @@ export interface operations {
             };
             401: components["responses"]["AuthenticationException"];
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.server.detachFromAgent_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "success";
+                        server_uuid: string;
+                        agent_remaining_servers: number;
+                        message: string | "Server detached; agent now has no servers and can be fully uninstalled.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Server is not attached to an agent.";
+                    };
+                };
+            };
         };
     };
     "v1.server.adjustCost_0": {
@@ -6255,7 +7434,15 @@ export interface operations {
     };
     "v1.server.listAll_0": {
         parameters: {
-            query?: never;
+            query?: {
+                client_uuid?: string | null;
+                q?: string | null;
+                status?: string | null;
+                sort?: string | null;
+                dir?: "asc" | "desc" | null;
+                page?: number;
+                per_page?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -6267,7 +7454,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": ServerData[];
+                    "application/json": Paginator<ServerData>;
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -6411,6 +7598,7 @@ export interface operations {
                 "application/json": {
                     port_filter?: number[] | null;
                     process_filter?: string[] | null;
+                    network_filter?: string[] | null;
                 };
             };
         };
@@ -6426,6 +7614,46 @@ export interface operations {
             };
             401: components["responses"]["AuthenticationException"];
             422: components["responses"]["ValidationException"];
+        };
+    };
+    "v1.server.detachFromAgent_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+                serverUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        status: "success";
+                        server_uuid: string;
+                        agent_remaining_servers: number;
+                        message: string | "Server detached; agent now has no servers and can be fully uninstalled.";
+                    };
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Server is not attached to an agent.";
+                    };
+                };
+            };
         };
     };
     "v1.server.adjustCost_0": {
@@ -7170,7 +8398,15 @@ export interface operations {
     };
     "v1.user.index_0": {
         parameters: {
-            query?: never;
+            query?: {
+                q?: string | null;
+                filter?: string | null;
+                sort?: string | null;
+                dir?: "asc" | "desc" | null;
+                exclude_user_uuid?: string | null;
+                page?: number;
+                per_page?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -7182,7 +8418,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": UserData[];
+                    "application/json": Paginator<UserData>;
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -7439,7 +8675,15 @@ export interface operations {
     };
     "v1.user.index_0": {
         parameters: {
-            query?: never;
+            query?: {
+                q?: string | null;
+                filter?: string | null;
+                sort?: string | null;
+                dir?: "asc" | "desc" | null;
+                exclude_user_uuid?: string | null;
+                page?: number;
+                per_page?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -7451,7 +8695,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": UserData[];
+                    "application/json": Paginator<UserData>;
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -7704,6 +8948,144 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    "watchedPath.index": {
+        parameters: {
+            query?: {
+                scope?: string;
+                enabled?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "watchedPath.store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    path: string;
+                    /** @enum {string} */
+                    scope: "agent" | "server";
+                    server_id?: number | null;
+                    enabled?: boolean | null;
+                    recursive?: boolean | null;
+                    description?: string | null;
+                    exclude_patterns?: string[] | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "watchedPath.show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            404: components["responses"]["ModelNotFoundException"];
+        };
+    };
+    "watchedPath.update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    path?: string;
+                    /** @enum {string} */
+                    scope?: "agent" | "server";
+                    server_id?: number | null;
+                    enabled?: boolean | null;
+                    recursive?: boolean | null;
+                    description?: string | null;
+                    exclude_patterns?: string[] | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            422: components["responses"]["ValidationException"];
+        };
+    };
+    "watchedPath.destroy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
         };
     };
 }

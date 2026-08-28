@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use App\Models\Agent;
+use App\Models\Server;
 use App\Models\Setting;
+use App\Models\WatchedPath;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 
@@ -74,8 +77,46 @@ class AgentAuthService
                     'scheme' => env('REVERB_SCHEME', 'http'),
                     'app_key' => env('REVERB_APP_KEY'),
                 ],
+                'watched_paths' => $this->watchedPathsForAgent($agent, $servers),
             ],
         ];
+    }
+
+    /**
+     * Resolve the watched-path set the agent should monitor: every enabled
+     * agent-scoped path plus every enabled server-scoped path belonging to a
+     * server this agent owns. Server UUIDs are resolved for the agent so it can
+     * apply server-scoped paths to the correct monitored server.
+     *
+     * @param  Collection<int, Server>  $servers
+     * @return array<int, array{path: string, scope: string, server_uuid: string|null, enabled: bool, recursive: bool, description: string|null}>
+     */
+    public function watchedPathsForAgent(Agent $agent, Collection $servers): array
+    {
+        $ownedServerIds = $servers->pluck('id')->all();
+
+        $paths = WatchedPath::query()
+            ->where('enabled', true)
+            ->where(function ($q) use ($ownedServerIds) {
+                $q->where('scope', 'agent')
+                    ->orWhere(function ($q2) use ($ownedServerIds) {
+                        $q2->where('scope', 'server')
+                            ->whereIn('server_id', $ownedServerIds);
+                    });
+            })
+            ->with('server')
+            ->get();
+
+        return $paths->map(function (WatchedPath $path) {
+            return [
+                'path' => $path->path,
+                'scope' => $path->scope,
+                'server_uuid' => $path->server?->uuid,
+                'enabled' => (bool) $path->enabled,
+                'recursive' => (bool) $path->recursive,
+                'description' => $path->description,
+            ];
+        })->values()->all();
     }
 
     public function issueToken(int $agentId, string $serverUuid): string

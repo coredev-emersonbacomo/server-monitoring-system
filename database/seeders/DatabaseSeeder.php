@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             ClientSeeder::class,
             GlobalAlertSeeder::class,
             NodeConfigSeeder::class,
+            WatchedPathSeeder::class,
         ]);
 
         // Demo data alongside the fixed seed records above.

@@ -46,7 +46,7 @@ class SystemTelemetryEvent implements ShouldBroadcastNow
 
     public static function emit(string $type, array $payload): void
     {
-        // ponytail: single toggle point — when the visual debugger is off, no
+        // single toggle point — when the visual debugger is off, no
         // backend path (heartbeat, scheduler, sweeps) pushes telemetry at all.
         if (! config('telemetry.enabled')) {
             return;

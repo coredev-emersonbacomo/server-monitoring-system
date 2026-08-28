@@ -32,6 +32,8 @@ readonly PROVISION_URL="$APP_URL/api/v1/provision"
 log()  { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]  $*" | tee -a "$LOG_FILE"; }
 warn() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [WARN]  $*" | tee -a "$LOG_FILE"; }
 fail() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $*" | tee -a "$LOG_FILE" >&2; exit 1; }
+# animate ellipsis while long commands run — \r cycle 1..3 dots, cursor follows last dot (pad+backs)
+animate_while_pid() { local msg="$1" pid="$2" i=0; while kill -0 "$pid" 2>/dev/null; do case $((i%3)) in 0) printf "\r%s.  \b\b" "$msg";;1) printf "\r%s.. \b" "$msg";;2) printf "\r%s..." "$msg";;esac; sleep 0.4; i=$((i+1)); done; printf "\r%s...   \n" "$msg"; }
 
 # ─── Must run as root ─────────────────────────────────────────
 if [[ $EUID -ne 0 ]]; then
@@ -93,11 +95,15 @@ fi
 INSTANCE_DIR="${DATA_ROOT}/instances/${INSTALLATION_ID}"
 
 # ─── Contact Provision Endpoint ───────────────────────────────
-log "Contacting provision endpoint..."
-PROVISION_RESPONSE=$(curl -fsSL -X POST \
-  -H "Content-Type: application/json" \
-  -d "{\"token\":\"$TOKEN\",\"hostname\":\"$(hostname)\",\"platform\":\"linux\",\"architecture\":\"$(uname -m)\",\"installer_version\":\"3.0\"}" \
-  "$PROVISION_URL") || fail "Failed to contact provision API or token invalid."
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]  Contacting provision endpoint..." | tee -a "$LOG_FILE" >/dev/null
+printf "Contacting provision endpoint"
+PROVISION_TMP=$(mktemp)
+( curl -fsSL -X POST -H "Content-Type: application/json" -d "{\"token\":\"$TOKEN\",\"hostname\":\"$(hostname)\",\"platform\":\"linux\",\"architecture\":\"$(uname -m)\",\"installer_version\":\"3.0\"}" "$PROVISION_URL" > "$PROVISION_TMP" 2>/dev/null ) &
+curl_pid=$!
+animate_while_pid "Contacting provision endpoint" $curl_pid
+wait $curl_pid || fail "Failed to contact provision API or token invalid."
+PROVISION_RESPONSE=$(cat "$PROVISION_TMP"); rm -f "$PROVISION_TMP"
+printf "\rContacting provision endpoint...   \n"
 
 DOWNLOAD_URL=$(echo "$PROVISION_RESPONSE" | python3 -c 'import sys, json; print(json.load(sys.stdin).get("download_url", ""))')
 EXPECTED_SHA256=$(echo "$PROVISION_RESPONSE" | python3 -c 'import sys, json; print(json.load(sys.stdin).get("expected_sha256", ""))')
@@ -145,16 +151,27 @@ if [[ -f "$AGENT_FILE" && -n "$EXPECTED_SHA256" ]]; then
 fi
 
 if [[ "$NEED_DOWNLOAD" == true ]]; then
-    log "Downloading agent from $DOWNLOAD_URL..."
-    curl -fsSL -o "$AGENT_FILE.tmp" "$DOWNLOAD_URL" || fail "Failed to download agent."
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]  Downloading agent from $DOWNLOAD_URL..." | tee -a "$LOG_FILE" >/dev/null
+    printf "Downloading agent"
+    ( curl -fsSL -o "$AGENT_FILE.tmp" "$DOWNLOAD_URL" 2>/dev/null ) &
+    dl_pid=$!
+    animate_while_pid "Downloading agent" $dl_pid
+    wait $dl_pid || fail "Failed to download agent."
+    printf "\rDownloading agent...   \n"
 
     if [[ -n "$EXPECTED_SHA256" ]]; then
-        log "Verifying checksum..."
-        ACTUAL_SHA256=$(sha256sum "$AGENT_FILE.tmp" | awk '{print $1}')
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]  Verifying checksum..." | tee -a "$LOG_FILE" >/dev/null
+        printf "Verifying checksum"
+        sha256sum "$AGENT_FILE.tmp" > /tmp/monitor-agent-sha.tmp 2>/dev/null &
+        hash_pid=$!
+        animate_while_pid "Verifying checksum" $hash_pid
+        wait $hash_pid
+        ACTUAL_SHA256=$(awk '{print $1}' /tmp/monitor-agent-sha.tmp); rm -f /tmp/monitor-agent-sha.tmp
         if [[ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]]; then
             rm -f "$AGENT_FILE.tmp"
             fail "Checksum verification failed! Expected $EXPECTED_SHA256, got $ACTUAL_SHA256"
         fi
+        printf "\rVerifying checksum...   \n"
         log "Checksum verified."
     fi
 
@@ -217,11 +234,22 @@ EOF
 fi
 
 # ─── Enable and start (restart on attach picks up the new token) ─
-log "Enabling and starting service..."
-systemctl enable "$STABLE_UNIT" 2>/dev/null || true
-systemctl restart "$STABLE_UNIT"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]  Enabling and starting service..." | tee -a "$LOG_FILE" >/dev/null
+printf "Enabling and starting service"
+( systemctl enable "$STABLE_UNIT" 2>/dev/null; systemctl restart "$STABLE_UNIT" 2>/dev/null ) &
+svc_pid=$!
+animate_while_pid "Enabling and starting service" $svc_pid
+wait $svc_pid
+printf "\rEnabling and starting service...   \n"
 
-sleep 2
+# poll until service is active (up to 15s) with animated ellipsis — cursor follows dot
+printf "Waiting for service to be running"
+for i in $(seq 1 15); do
+    systemctl is-active --quiet "$STABLE_UNIT" && { printf "\rWaiting for service to be running...   \n"; break; }
+    case $((i%3)) in 0) printf "\rWaiting for service to be running.  \b\b";;1) printf "\rWaiting for service to be running.. \b";;2) printf "\rWaiting for service to be running...";;esac
+    sleep 1
+done
+printf "\rWaiting for service to be running...   \n"
 if systemctl is-active --quiet "$STABLE_UNIT"; then
     log "Service is running."
 else

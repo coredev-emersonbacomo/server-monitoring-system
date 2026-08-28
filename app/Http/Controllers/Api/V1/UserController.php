@@ -7,6 +7,7 @@ use App\Data\ClientData;
 use App\Data\CreateUserData;
 use App\Data\UpdateUserData;
 use App\Data\UserData;
+use App\Data\UsersIndexData;
 use App\Http\Controllers\Controller;
 use App\Jobs\DeleteStorageAsset;
 use App\Models\Client;
@@ -27,11 +28,58 @@ class UserController extends Controller
         private readonly MediaUrlService $mediaUrlService,
     ) {}
 
-    public function index()
+    public function index(UsersIndexData $data)
     {
-        $users = User::orderBy('created_at', 'desc')->get();
+        $query = User::query();
 
-        return $users->map(fn (User $u) => UserData::fromModel($u));
+        if ($data->q) {
+            $term = '%'.strtolower(trim($data->q)).'%';
+            $query->where(function ($q) use ($term) {
+                $q->whereRaw('LOWER(first_name) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(last_name) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(email) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(username) LIKE ?', [$term]);
+            });
+        }
+
+        if ($data->exclude_user_uuid) {
+            $uuids = array_filter(explode(',', $data->exclude_user_uuid));
+            $query->whereNotIn('uuid', $uuids);
+        }
+
+        // Filter
+        switch ($data->filter) {
+            case 'archived':
+                $query->whereIn('record_status', ['archived', 'deleted']);
+                break;
+            case 'deleted':
+                $query->where('record_status', 'deleted');
+                break;
+            case 'active':
+                $query->where('record_status', 'active');
+                break;
+            case 'all':
+            default:
+                $query->where('record_status', '!=', 'archived')
+                    ->where('record_status', '!=', 'deleted');
+                break;
+        }
+
+        $sort = $data->sort ?? 'created_at';
+        $dir = $data->dir ?? 'desc';
+        $allowedSorts = ['created_at', 'name', 'email', 'username'];
+        if ($sort === 'name') {
+            $query->orderBy('first_name', $dir)->orderBy('last_name', $dir);
+        } elseif (in_array($sort, $allowedSorts, true)) {
+            $query->orderBy($sort, $dir);
+        } else {
+            $query->orderBy('created_at', $dir);
+        }
+
+        return $query
+            ->paginate(perPage: $data->per_page, page: $data->page)
+            ->through(fn (User $u) => UserData::fromModel($u))
+            ->toArray();
     }
 
     public function store(CreateUserData $data)

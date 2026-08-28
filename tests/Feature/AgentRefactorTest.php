@@ -919,3 +919,65 @@ test('force reinstall generates a provision token with the existing installation
         ->and($response->json('linux_command'))
         ->toContain($installationId);
 });
+
+test('dashboard deregister clears an orphaned agent record when the agent is not reporting', function () {
+    [$user, $client, $server, $keys, $installationId] = setupRegisteredAgent();
+    // Agent never reported (last_seen_at null) => considered dead, safe to clear.
+    expect($server->fresh()->agent)->not->toBeNull();
+
+    $this->actingAs($user, 'jwt')
+        ->postJson("/api/v1/servers/{$server->uuid}/deregister")
+        ->assertStatus(200)
+        ->assertJson(['status' => 'success']);
+
+    $stored = Agent::where('installation_uuid', $installationId)->first();
+    expect($stored->status)->toBe('revoked')
+        ->and($stored->revoked_at)->not->toBeNull();
+
+    $server = $server->fresh();
+    expect($server->agent_deleted)->toBeTrue()
+        ->and($server->status)->toBe(ServerStatus::AgentUninstalled->value);
+});
+
+test('dashboard deregister is refused while the agent is still reporting', function () {
+    [$user, $client, $server, $keys, $installationId] = setupRegisteredAgent();
+    $server->fresh()->agent->update(['last_seen_at' => now()]);
+
+    $this->actingAs($user, 'jwt')
+        ->postJson("/api/v1/servers/{$server->uuid}/deregister")
+        ->assertStatus(409);
+
+    // Record must remain intact.
+    $stored = Agent::where('installation_uuid', $installationId)->first();
+    expect($stored->status)->toBe('active')
+        ->and($server->fresh()->agent_deleted)->toBeFalse();
+});
+
+test('dashboard deregister returns 422 when there is no agent record', function () {
+    $user = User::factory()->create();
+    $client = Client::factory()->create();
+    $server = Server::create([
+        'client_id' => $client->id,
+        'name' => 'No Agent Server',
+        'host_name' => 'no-agent',
+        'status' => ServerStatus::PendingInstallation->value,
+    ]);
+
+    $this->actingAs($user, 'jwt')
+        ->postJson("/api/v1/servers/{$server->uuid}/deregister")
+        ->assertStatus(422);
+});
+
+test('dashboard deregister is safe to call again after the record is cleared', function () {
+    [$user, $client, $server, $keys, $installationId] = setupRegisteredAgent();
+
+    $this->actingAs($user, 'jwt')
+        ->postJson("/api/v1/servers/{$server->uuid}/deregister")
+        ->assertStatus(200);
+
+    // Second call: the agent record is already cleared (agent_id nulled), so it
+    // reports no record rather than duplicating the deregistration.
+    $this->actingAs($user, 'jwt')
+        ->postJson("/api/v1/servers/{$server->uuid}/deregister")
+        ->assertStatus(422);
+});

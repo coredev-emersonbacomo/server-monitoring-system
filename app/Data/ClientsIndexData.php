@@ -12,6 +12,13 @@ class ClientsIndexData extends Data
         public ?string $exclude_user_uuid = null,
         #[In('true', 'false', '0', '1', true, false, 0, 1)]
         public mixed $available_only = false,
+        public ?string $q = null,
+        public ?string $filter = 'all',
+        public ?string $sort = 'name',
+        #[In('asc', 'desc')]
+        public ?string $dir = 'asc',
+        public int $page = 1,
+        public int $per_page = 15,
     ) {}
 
     public function isAvailableOnly(): bool

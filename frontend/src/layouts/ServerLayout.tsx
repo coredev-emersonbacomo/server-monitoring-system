@@ -1,8 +1,8 @@
 import { Outlet, useParams, useSearchParams, Link } from "react-router-dom";
 import { useServers } from "@/hooks/useServers";
+import { useUrlState } from "@/hooks/useUrlState";
+import { DebouncedSearchInput } from "@/components/DebouncedSearchInput";
 import { cn } from "@/lib/utils";
-import { Search } from "lucide-react";
-import { useState } from "react";
 import {
     STATUS_CONFIG,
     resolveServerStatusKey,
@@ -14,15 +14,18 @@ export default function ServerLayout() {
     const clientParam = searchParams.get("client");
     const clientUuid =
         clientParam && clientParam !== "all" ? clientParam : undefined;
-    const { data: servers, isLoading } = useServers(clientUuid);
-    const [search, setSearch] = useState("");
+    const [s] = useUrlState({ q: { default: "" } });
+    const { data: response, isLoading } = useServers({
+        client_uuid: clientUuid,
+        q: s.q || undefined,
+        per_page: 50,
+    });
+    const servers = response?.data ?? [];
 
-    const filtered = servers?.filter(
-        (s) =>
-            s.client_uuid ===
-                servers?.find((x) => x.uuid === uuid)?.client_uuid &&
-            s.name.toLowerCase().includes(search.toLowerCase()),
-    );
+    const currentClientUuid = servers.find((x) => x.uuid === uuid)?.client_uuid;
+    const filtered = s.q
+        ? servers
+        : servers.filter((s) => s.client_uuid === currentClientUuid);
 
     return (
         <div className="flex-1 flex flex-row gap-6">
@@ -37,19 +40,11 @@ export default function ServerLayout() {
                     </h2>
 
                     {/* Search */}
-                    <div className="relative shrink-0">
-                        <Search
-                            size={13}
-                            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Search servers…"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-7 pr-3 py-1.5 text-xs border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
-                        />
-                    </div>
+                    <DebouncedSearchInput
+                        paramName="layout_server_q"
+                        debounceMs={300}
+                        placeholder="Search servers…"
+                    />
                 </div>
 
                 {/* Scrollable list */}

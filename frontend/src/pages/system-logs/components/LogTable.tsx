@@ -1,18 +1,15 @@
-import { useMemo } from "react";
+﻿import { useMemo, useState } from "react";
 import {
     ArrowUp,
     ArrowDown,
     ArrowUpDown,
-    ChevronLeft,
-    ChevronRight,
-    ChevronsLeft,
-    ChevronsRight,
     Search,
     Filter,
     Calendar,
     X,
     Check,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
     Popover,
@@ -20,6 +17,8 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import type { ActivityLogData } from "../hooks/useActivityLogs";
+import { usePaginatedTable } from "../hooks/usePaginatedTable";
+import { PaginationControls } from "@/components/PaginationControls";
 import {
     COLUMNS,
     type SortableKey,
@@ -51,6 +50,7 @@ function RowSkeleton() {
 }
 
 interface LogTableProps {
+    url?: string;
     data: ActivityLogData[];
     total: number;
     currentPage: number;
@@ -78,7 +78,7 @@ interface LogTableProps {
     availableUsers?: string[];
 }
 
-export function LogTable({
+function LogTableBody({
     data,
     total,
     currentPage,
@@ -105,10 +105,6 @@ export function LogTable({
     availableActions = ["created", "updated", "deleted", "login", "logout", "assigned", "removed"],
     availableUsers = [],
 }: LogTableProps) {
-    const startItem = total === 0 ? 0 : (currentPage - 1) * perPage + 1;
-    const endItem = Math.min(currentPage * perPage, total);
-    const totalPages = Math.max(1, lastPage);
-
     const hasActiveFilters =
         actionFilter !== "all" ||
         userFilter !== "all" ||
@@ -421,7 +417,7 @@ export function LogTable({
                                     <td className="px-4 py-3 whitespace-nowrap">
                                         {(() => {
                                             const info = getLogSubjectInfo(log);
-                                            return (
+                                            const body = (
                                                 <div className="flex flex-col min-w-0">
                                                     <span className="text-foreground font-medium truncate max-w-[220px]">
                                                         {info.title}
@@ -433,10 +429,32 @@ export function LogTable({
                                                     )}
                                                 </div>
                                             );
+                                            return log.logable_id ? (
+                                                <Link
+                                                    to={`/servers/${log.logable_id}`}
+                                                    className="rounded px-1 -mx-1 text-foreground hover:bg-muted/70 hover:text-primary underline-offset-2 hover:underline transition-colors"
+                                                    title={info.title}
+                                                >
+                                                    {body}
+                                                </Link>
+                                            ) : (
+                                                body
+                                            );
                                         })()}
                                     </td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-foreground">
-                                        {log.user ?? "System"}
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                        {log.user_uuid ? (
+                                            <Link
+                                                to={`/users/${log.user_uuid}`}
+                                                className="rounded px-1 -mx-1 text-foreground hover:bg-muted/70 hover:text-primary underline-offset-2 hover:underline transition-colors"
+                                            >
+                                                {log.user ?? "System"}
+                                            </Link>
+                                        ) : (
+                                            <span className="text-foreground">
+                                                {log.user ?? "System"}
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-foreground">
                                         <span
@@ -465,97 +483,139 @@ export function LogTable({
             </div>
 
             {/* Pagination Controls */}
-            {!isLoading && total > 0 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-border/60 bg-muted/10 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                        <span>
-                            Showing{" "}
-                            <strong className="text-foreground">
-                                {startItem}
-                            </strong>{" "}
-                            to{" "}
-                            <strong className="text-foreground">
-                                {endItem}
-                            </strong>{" "}
-                            of{" "}
-                            <strong className="text-foreground">
-                                {total}
-                            </strong>{" "}
-                            logs
-                        </span>
-                        <span className="hidden sm:inline text-border">|</span>
-                        <div className="flex items-center gap-1.5">
-                            <span>Per page:</span>
-                            <select
-                                value={perPage}
-                                onChange={(e) =>
-                                    onPerPageChange(Number(e.target.value))
-                                }
-                                className="h-7 px-2 py-0.5 rounded border border-border/60 bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-                            >
-                                <option value={10}>10</option>
-                                <option value={15}>15</option>
-                                <option value={25}>25</option>
-                                <option value={50}>50</option>
-                                <option value={100}>100</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                        <span className="mr-2">
-                            Page{" "}
-                            <strong className="text-foreground">
-                                {currentPage}
-                            </strong>{" "}
-                            of{" "}
-                            <strong className="text-foreground">
-                                {totalPages}
-                            </strong>
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => onPageChange(1)}
-                            disabled={currentPage === 1}
-                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
-                            title="First page"
-                        >
-                            <ChevronsLeft className="size-4" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() =>
-                                onPageChange(Math.max(1, currentPage - 1))
-                            }
-                            disabled={currentPage === 1}
-                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
-                            title="Previous page"
-                        >
-                            <ChevronLeft className="size-4" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() =>
-                                onPageChange(Math.min(totalPages, currentPage + 1))
-                            }
-                            disabled={currentPage === totalPages}
-                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
-                            title="Next page"
-                        >
-                            <ChevronRight className="size-4" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => onPageChange(totalPages)}
-                            disabled={currentPage === totalPages}
-                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
-                            title="Last page"
-                        >
-                            <ChevronsRight className="size-4" />
-                        </button>
-                    </div>
-                </div>
+            {!isLoading && data.length > 0 && (
+                <PaginationControls
+                    meta={{
+                        mode: "page",
+                        perPage,
+                        hasPrevious: currentPage > 1,
+                        hasNext: currentPage < lastPage,
+                        total,
+                        page: currentPage,
+                        pageCount: lastPage,
+                        nextCursor: null,
+                        previousCursor: null,
+                    }}
+                    onFirst={() => onPageChange(1)}
+                    onPrev={() => onPageChange(Math.max(1, currentPage - 1))}
+                    onNext={() => onPageChange(Math.min(lastPage, currentPage + 1))}
+                    onLast={() => onPageChange(lastPage)}
+                    onPage={onPageChange}
+                    perPage={perPage}
+                    onPerPageChange={onPerPageChange}
+                    unit="logs"
+                />
             )}
         </div>
     );
 }
+
+interface UrlLogTableProps {
+    url: string;
+    params?: Record<string, string>;
+    emptyMessage: string;
+    onSelectLog: (log: ActivityLogData) => void;
+    availableUsers?: string[];
+}
+
+function UrlLogTable({
+    url,
+    params,
+    emptyMessage,
+    onSelectLog,
+    availableUsers,
+}: UrlLogTableProps) {
+    const [search, setSearch] = useState("");
+    const [actionFilter, setActionFilter] = useState("all");
+    const [userFilter, setUserFilter] = useState("all");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+    const [sortField, setSortField] = useState<SortableKey>("created_at");
+    const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+    const fixedParams = {
+        ...params,
+        search: search || undefined,
+        action: actionFilter !== "all" ? actionFilter : undefined,
+        user: userFilter !== "all" ? userFilter : undefined,
+        start_date: startDate || undefined,
+        end_date: endDate || undefined,
+        sort_field: sortField,
+        sort_dir: sortDir,
+    };
+
+    const { data, isLoading, meta, setParams, goToPage } = usePaginatedTable<ActivityLogData>(
+        url,
+        fixedParams,
+    );
+
+    const resetPage = () => setParams({ page: null, cursor: null, previous_cursor: null });
+
+    const handleSort = (key: SortableKey) => {
+        if (sortField === key) {
+            setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+        } else {
+            setSortField(key);
+            setSortDir("asc");
+        }
+    };
+
+    return (
+        <LogTableBody
+            data={data}
+            total={meta.total ?? 0}
+            currentPage={meta.page}
+            perPage={meta.perPage}
+            lastPage={meta.pageCount ?? 1}
+            isLoading={isLoading}
+            emptyMessage={emptyMessage}
+            search={search}
+            onSearchChange={(v) => {
+                setSearch(v);
+                resetPage();
+            }}
+            actionFilter={actionFilter}
+            onActionFilterChange={(v) => {
+                setActionFilter(v);
+                resetPage();
+            }}
+            userFilter={userFilter}
+            onUserFilterChange={(v) => {
+                setUserFilter(v);
+                resetPage();
+            }}
+            startDate={startDate}
+            onStartDateChange={(v) => {
+                setStartDate(v);
+                resetPage();
+            }}
+            endDate={endDate}
+            onEndDateChange={(v) => {
+                setEndDate(v);
+                resetPage();
+            }}
+            sortField={sortField}
+            sortDir={sortDir}
+            onSort={handleSort}
+            onPageChange={goToPage}
+            onPerPageChange={(s) =>
+                setParams({
+                    per_page: String(s),
+                    page: null,
+                    cursor: null,
+                    previous_cursor: null,
+                })
+            }
+            onSelectLog={onSelectLog}
+            availableUsers={availableUsers}
+        />
+    );
+}
+
+export function LogTable(props: LogTableProps | UrlLogTableProps) {
+    if ("url" in props && props.url) {
+        return <UrlLogTable {...(props as UrlLogTableProps)} />;
+    }
+    return <LogTableBody {...(props as LogTableProps)} />;
+}
+

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -26,8 +28,9 @@ type ServerRuntimeConfig struct {
 // monitored server. A multi-server agent holds one entry per server; each
 // server's filter is applied independently (no cross-server leakage).
 type AgentRuntime struct {
-	mu      sync.RWMutex
-	servers map[string]*ServerRuntimeConfig // keyed by server_uuid
+	mu          sync.RWMutex
+	servers     map[string]*ServerRuntimeConfig // keyed by server_uuid
+	watchedPaths []WatchedPath
 }
 
 // NewAgentRuntime builds the initial runtime from the auth response. Legacy
@@ -42,6 +45,7 @@ func NewAgentRuntime(sess *AgentSession) *AgentRuntime {
 	} else if sess.ServerUUID != "" {
 		rt.Upsert(sess.ServerUUID, nil, nil, nil)
 	}
+	rt.SetWatchedPaths(sess.WatchedPaths)
 	return rt
 }
 
@@ -80,6 +84,65 @@ func (rt *AgentRuntime) SyncFromSession(sess *AgentSession) {
 	} else if sess.ServerUUID != "" {
 		rt.Upsert(sess.ServerUUID, nil, nil, nil)
 	}
+	rt.SetWatchedPaths(sess.WatchedPaths)
+}
+
+// SetWatchedPaths replaces the audit watched-path set. Paths are normalized
+// (environment expansion, separators) so the watcher can match them directly.
+func (rt *AgentRuntime) SetWatchedPaths(paths []WatchedPath) {
+	rt.mu.Lock()
+	defer rt.mu.Unlock()
+	out := make([]WatchedPath, 0, len(paths))
+	for _, p := range paths {
+		if p.Path == "" {
+			continue
+		}
+		p.Path = normalizeWatchPath(p.Path)
+		out = append(out, p)
+	}
+	rt.watchedPaths = out
+}
+
+// EffectiveWatchedPaths returns the enabled watched paths the agent should
+// currently audit. Agent-scoped paths carry an empty ServerUUID; server-scoped
+// paths carry their server's UUID so events can be associated.
+func (rt *AgentRuntime) EffectiveWatchedPaths() []WatchedPath {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	out := make([]WatchedPath, 0, len(rt.watchedPaths))
+	for _, p := range rt.watchedPaths {
+		if p.Enabled {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// WatchedPathForPath returns the enabled watched path that owns the given path
+// (exact match or descendant), or nil if none does.
+func (rt *AgentRuntime) WatchedPathForPath(path string) *WatchedPath {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	for i := range rt.watchedPaths {
+		p := rt.watchedPaths[i]
+		if !p.Enabled {
+			continue
+		}
+		if path == p.Path || strings.HasPrefix(path, p.Path+string(os.PathSeparator)) {
+			return &p
+		}
+	}
+	return nil
+}
+
+// normalizeWatchPath expands %ProgramData% and cleans OS separators.
+func normalizeWatchPath(p string) string {
+	if pd := os.Getenv("ProgramData"); pd != "" {
+		p = strings.ReplaceAll(p, "%ProgramData%", pd)
+	} else {
+		p = strings.ReplaceAll(p, "%ProgramData%", `C:\ProgramData`)
+	}
+	return filepath.Clean(p)
 }
 
 // ServerUUIDs returns the sorted list of monitored server UUIDs.
