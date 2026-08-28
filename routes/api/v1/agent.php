@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AgentController;
+use App\Http\Controllers\Api\V1\AuditController;
 use Illuminate\Support\Facades\Route;
 
 // Authenticated dashboard routes
@@ -8,6 +9,7 @@ Route::middleware('auth:jwt')->group(function () {
     Route::post('servers/{uuid}/provision', [AgentController::class, 'provision']);
     Route::post('servers/{uuid}/provision/regenerate', [AgentController::class, 'regenerate']);
     Route::post('servers/{uuid}/force-reinstall', [AgentController::class, 'forceReinstall']);
+    Route::post('servers/{uuid}/deregister', [AgentController::class, 'deregister']);
 });
 
 // Public / Agent endpoints
@@ -24,3 +26,7 @@ Route::post('agent/servers/{server_uuid}/uninstall', [AgentController::class, 'd
 
 Route::post('agent/uninstall', [AgentController::class, 'uninstall']);
 Route::post('agent/error', [AgentController::class, 'agentError']);
+
+// Agent-ingested audit events (agent-authenticated via signed session).
+Route::post('agent/audit/file-activity', [AuditController::class, 'ingestFileActivity']);
+Route::post('agent/audit/lifecycle', [AuditController::class, 'ingestLifecycle']);

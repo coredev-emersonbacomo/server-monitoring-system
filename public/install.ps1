@@ -33,10 +33,17 @@ if (-not $isAdmin) {
     if ($ProvisionToken) { $relaunch += "-ProvisionToken"; $relaunch += $ProvisionToken }
     if ($AppUrl -and $AppUrl -ne "{{APP_URL}}") { $relaunch += "-AppUrl"; $relaunch += $AppUrl }
     if ($InstallationId) { $relaunch += "-InstallationId"; $relaunch += $InstallationId }
-    Start-Process -FilePath $pwsh -Verb RunAs -ArgumentList $relaunch -Wait
+    try {
+        Start-Process -FilePath $pwsh -Verb RunAs -ArgumentList $relaunch -Wait -ErrorAction Stop
+    } catch {
+        if ($_.Exception.Message -match "canceled") {
+            Write-Host "Elevation was canceled. Re-run as Administrator." -ForegroundColor Yellow
+        } else {
+            Write-Host "Failed to elevate: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+        exit 1
+    }
 
-    # The elevated child wrote its progress to $LogFile; surface it here so the
-    # results appear in this (non-elevated) shell once the child closes.
     if (Test-Path $LogFile) {
         Write-Host ""
         Write-Host "=== Install log (elevated) ===" -ForegroundColor Cyan
@@ -63,6 +70,32 @@ function Fail($msg) {
     [System.IO.File]::AppendAllText($LogFile, "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [ERROR] $msg`r`n")
     Write-Error $msg
     exit 1
+}
+
+# minimal ellipsis animation for long waits — \r cycle 1..3 dots so hangs don't look stuck, cursor follows last dot.
+function Wait-JobWithDots {
+    param([string]$Message, [System.Management.Automation.Job]$Job)
+    $i = 0
+    while ($Job.State -eq 'Running') {
+        $dots = "." * (($i % 3) + 1); $pad = " " * (3 - $dots.Length); $backs = "`b" * $pad.Length
+        Write-Host "`r$Message$dots$pad$backs" -NoNewline
+        Start-Sleep -Milliseconds 400; $i++
+    }
+    Write-Host "`r$Message...   "
+}
+
+function Wait-ServiceWithDots {
+    param([string]$Message, [string]$ServiceName, [int]$TimeoutSec = 30)
+    $i = 0
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    while ((Get-Date) -lt $deadline) {
+        $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+        if (-not $svc -or $svc.Status -eq 'Running') { break }
+        $dots = "." * (($i % 3) + 1); $pad = " " * (3 - $dots.Length); $backs = "`b" * $pad.Length
+        Write-Host "`r$Message$dots$pad$backs" -NoNewline
+        Start-Sleep -Milliseconds 400; $i++
+    }
+    Write-Host "`r$Message...   "
 }
 
 # ----- Detect an existing single agent installation -------------
@@ -115,7 +148,7 @@ $AgentFile = "$AppDir\MonitorAgent.exe"
 
 # ----- Contact Provision Endpoint ------------------------------
 $bootstrapUrl = "$($AppUrl.TrimEnd('/'))/api/v1/provision"
-Log "Contacting provision endpoint..."
+[System.IO.File]::AppendAllText($LogFile, "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [INFO] Contacting provision endpoint...`r`n")
 $body = @{
     token = $ProvisionToken
     hostname = [System.Net.Dns]::GetHostName()
@@ -123,12 +156,13 @@ $body = @{
     architecture = $env:PROCESSOR_ARCHITECTURE
     installer_version = "3.0"
 } | ConvertTo-Json
-
-try {
-    $response = Invoke-RestMethod -Uri $bootstrapUrl -Method Post -Body $body -ContentType "application/json"
-} catch {
-    Fail "Failed to contact provision API or token invalid: $_"
-}
+# animate while the provision POST is in flight (can hang on DNS/TLS)
+Write-Host "Contacting provision endpoint" -NoNewline
+$provJob = Start-Job -ScriptBlock { param($u,$b) Invoke-RestMethod -Uri $u -Method Post -Body $b -ContentType "application/json" } -ArgumentList $bootstrapUrl, $body
+Wait-JobWithDots "Contacting provision endpoint" $provJob
+$provErr = $null
+try { $response = Receive-Job $provJob -ErrorAction Stop } catch { $provErr = $_ } finally { Remove-Job $provJob -Force -ErrorAction SilentlyContinue }
+if ($provErr) { Fail "Failed to contact provision API or token invalid: $provErr" }
 
 $downloadUrl = $response.download_url
 $expectedSha256 = $response.expected_sha256
@@ -153,21 +187,27 @@ if (Test-Path $AgentFile) {
 }
 
 if ($needDownload) {
-    Log "Downloading agent binary from $downloadUrl..."
-    try {
-        Invoke-WebRequest -Uri $downloadUrl -OutFile "$AgentFile.tmp" -UseBasicParsing
-    } catch {
-        Fail "Failed to download agent: $_"
-    }
+    [System.IO.File]::AppendAllText($LogFile, "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [INFO] Downloading agent binary from $downloadUrl...`r`n")
+    Write-Host "Downloading agent binary" -NoNewline
+    $dlJob = Start-Job -ScriptBlock { param($u,$o) Invoke-WebRequest -Uri $u -OutFile $o -UseBasicParsing } -ArgumentList $downloadUrl, "$AgentFile.tmp"
+    Wait-JobWithDots "Downloading agent binary" $dlJob
+    $dlErr = $null
+    try { Receive-Job $dlJob -ErrorAction Stop | Out-Null } catch { $dlErr = $_ } finally { Remove-Job $dlJob -Force -ErrorAction SilentlyContinue }
+    if ($dlErr) { Fail "Failed to download agent: $dlErr" }
 
     if ($expectedSha256) {
-        Log "Verifying checksum..."
-        $actualHash = (Get-FileHash "$AgentFile.tmp" -Algorithm SHA256).Hash.ToLower()
+        [System.IO.File]::AppendAllText($LogFile, "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [INFO] Verifying checksum...`r`n")
+        Write-Host "Verifying checksum" -NoNewline
+        $hashJob = Start-Job -ScriptBlock { param($p) (Get-FileHash $p -Algorithm SHA256).Hash.ToLower() } -ArgumentList "$AgentFile.tmp"
+        Wait-JobWithDots "Verifying checksum" $hashJob
+        try { $actualHash = Receive-Job $hashJob -ErrorAction Stop } catch { $actualHash = "" } finally { Remove-Job $hashJob -Force -ErrorAction SilentlyContinue }
         if ($actualHash -ne $expectedSha256.ToLower()) {
             Remove-Item "$AgentFile.tmp" -Force
             Fail "Checksum verification failed! Expected $expectedSha256, got $actualHash"
         }
-        Log "Checksum verified."
+        Write-Host "`rVerifying checksum...   "
+        [System.IO.File]::AppendAllText($LogFile, "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [INFO] Checksum verified.`r`n")
+        Write-Host "Checksum verified."
     }
 
     try {
@@ -194,17 +234,22 @@ Log "Instance configuration written."
 if (-not $Attach) {
     # First install: register the single stable "MonitorAgent" service.
     # The Go binary creates the service pinned to -instance <uuid>.
-    try {
-        & "$AgentFile" -install -instance $InstallationId | Out-Null
-        if ($LASTEXITCODE -ne 0) { Fail "Agent service registration failed." }
-        Log "Windows service '$ServiceName' registered and started."
-    } catch {
-        Fail "Could not register Windows service: $_"
-    }
+    [System.IO.File]::AppendAllText($LogFile, "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [INFO] Registering Windows service '$ServiceName'...`r`n")
+    Write-Host "Registering Windows service" -NoNewline
+    $svcJob = Start-Job -ScriptBlock { param($f,$id) & $f -install -instance $id | Out-Null; if ($LASTEXITCODE -ne 0) { throw "service install failed" } } -ArgumentList $AgentFile, $InstallationId
+    Wait-JobWithDots "Registering Windows service" $svcJob
+    $svcErr = $null; try { Receive-Job $svcJob -ErrorAction Stop | Out-Null } catch { $svcErr = $_ } finally { Remove-Job $svcJob -Force -ErrorAction SilentlyContinue }
+    if ($svcErr) { Fail "Could not register Windows service: $svcErr" }
+    Log "Windows service '$ServiceName' registered and started."
 } else {
     # Existing host: restart the stable service so it picks up the new token.
-    Log "Restarting existing service '$ServiceName' to pick up new provision token..."
-    Restart-Service -Name $ServiceName -Force -ErrorAction Stop
+    [System.IO.File]::AppendAllText($LogFile, "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [INFO] Restarting existing service '$ServiceName' to pick up new provision token...`r`n")
+    Write-Host "Restarting existing service" -NoNewline
+    $rstJob = Start-Job -ScriptBlock { param($n) Restart-Service -Name $n -Force -ErrorAction Stop } -ArgumentList $ServiceName
+    Wait-JobWithDots "Restarting existing service" $rstJob
+    $rstErr = $null; try { Receive-Job $rstJob -ErrorAction Stop | Out-Null } catch { $rstErr = $_ } finally { Remove-Job $rstJob -Force -ErrorAction SilentlyContinue }
+    if ($rstErr) { Fail "Could not restart service: $rstErr" }
+    Wait-ServiceWithDots "Waiting for service to be running" $ServiceName 15
     Log "Service restarted -- agent will register immediately on next startup (register+auth, ~3s)."
 }
 

@@ -50,11 +50,14 @@ if [[ -f "$AGENT_FILE" ]]; then
     touch "$INSTANCE_DIR/uninstall.flag"
     chown "$SERVICE_USER":"$SERVICE_USER" "$INSTANCE_DIR/uninstall.flag"
     if systemctl list-unit-files | grep -q "^${STABLE_UNIT} "; then
+        printf "Stopping service for cleanup"
         systemctl restart "$STABLE_UNIT" || warn "Service failed to restart for cleanup."
-        for _ in $(seq 1 30); do
-            systemctl is-active --quiet "$STABLE_UNIT" || break
+        for i in $(seq 1 30); do
+            systemctl is-active --quiet "$STABLE_UNIT" || { printf "\rStopping service for cleanup...   \n"; break; }
+            case $((i % 3)) in 0) printf "\rStopping service for cleanup.  \b\b" ;; 1) printf "\rStopping service for cleanup.. \b" ;; 2) printf "\rStopping service for cleanup..." ;; esac
             sleep 1
         done
+        printf "\rStopping service for cleanup...   \n"
     fi
 else
     warn "Agent binary not found - skipping marker-based cleanup."

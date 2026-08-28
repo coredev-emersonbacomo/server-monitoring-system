@@ -5,23 +5,24 @@ import ForgotPassword from "./pages/forgot-password";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
 import { DocsLayout } from "./layouts/DocsLayout";
 import { GuestLayout } from "./layouts/GuestLayout";
-import Clients from "./pages/clients/index/index";
-import UsersIndex from "./pages/users/index/index";
-import ClientDetail from "./pages/clients/detail/index";
+import Clients from "./pages/clients/index";
+import UsersIndex from "./pages/users/index";
+import ClientDetail from "./pages/clients/detail";
 import LogsPage from "./pages/system-logs/index";
 import ServerLayout from "./layouts/ServerLayout";
-import ServerDetail from "./pages/servers/detail/index";
-import CreateServer from "./pages/servers/create/index";
-import ServersIndex from "./pages/servers/index/index";
+import ServerDetail from "./pages/servers/detail";
+import CreateServer from "./pages/servers/create";
+import ServersIndex from "./pages/servers/index";
 import RootLayout from "./layouts/RootLayout";
-import Settings from "./pages/settings/index/index";
-import Sessions from "./pages/settings/sessions/index";
-import Profile from "./pages/settings/profile/index";
-import UserDetail from "./pages/users/detail/index";
-import SystemSettings from "./pages/settings/system/index";
-import AgentSettings from "./pages/settings/agent/index";
+import Settings from "./pages/settings/index";
+import Sessions from "./pages/settings/sessions";
+import Profile from "./pages/settings/profile";
+import UserDetail from "./pages/users/detail";
+import SystemSettings from "./pages/settings/system";
+import AgentSettings from "./pages/settings/agent";
+import FileActivitySettings from "./pages/settings/file-activity";
 import { NodeConfigEditor } from "./components/node-config/NodeConfigEditor";
-import AlertVisualizer from "./pages/settings/alerts/index";
+import AlertVisualizer from "./pages/settings/alerts";
 import Docs from "./pages/docs/index";
 import ReportIndexPage from "./pages/reports/report-index.tsx";
 import { ReportsLayout } from "./layouts/ReportsLayout";
@@ -111,6 +112,10 @@ const router = createBrowserRouter([
                     {
                         path: "/settings/agent",
                         element: <AgentSettings />,
+                    },
+                    {
+                        path: "/settings/file-activity",
+                        element: <FileActivitySettings />,
                     },
                     {
                         path: "/settings/alerts",

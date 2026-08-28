@@ -20,6 +20,14 @@ test('activity logs expose the performer uuid', function () {
         ->getJson('/api/v1/activity-logs');
 
     $response->assertSuccessful()
-        ->assertJsonPath('0.user_id', $user->id)
-        ->assertJsonPath('0.user_uuid', $user->uuid);
+        ->assertJsonPath('data.0.user_id', $user->id)
+        ->assertJsonPath('data.0.user_uuid', $user->uuid);
+});
+
+test('activity logs validate query params', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user, 'jwt')
+        ->getJson('/api/v1/activity-logs?per_page=999')
+        ->assertStatus(422);
 });

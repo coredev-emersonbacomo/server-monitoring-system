@@ -68,10 +68,64 @@ class ClientController extends Controller
             $query->has('secopclients', '<', $limit);
         }
 
+        // Search by name or description (case-insensitive, pre-lowercased for the DB)
+        if ($data->q) {
+            $term = '%'.strtolower(trim($data->q)).'%';
+            $query->where(function ($q) use ($term) {
+                $q->whereRaw('LOWER(name) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(description) LIKE ?', [$term]);
+            });
+        }
+
+        // Filter
+        switch ($data->filter) {
+            case 'archived':
+                $query->where('record_status', 'archived');
+                break;
+            case 'assigned':
+                $query->whereHas('secopclients', function ($q) use ($user) {
+                    if ($user) {
+                        $q->where('users.id', $user->id);
+                    }
+                });
+                break;
+            case 'with-servers':
+                $query->has('servers', '>', 0);
+                break;
+            case 'no-servers':
+                $query->has('servers', '=', 0);
+                break;
+            case 'all':
+            default:
+                $query->where('record_status', '!=', 'archived');
+                break;
+        }
+
+        // Sort: assigned clients always pinned to the top, then the requested column
+        $sort = $data->sort ?? 'name';
+        $dir = $data->dir ?? 'asc';
+        $allowedSorts = ['name', 'servers_count', 'secops_count', 'created_at', 'budget'];
+        if (! in_array($sort, $allowedSorts, true)) {
+            $sort = 'name';
+        }
+
+        if ($sort === 'servers_count' || $sort === 'secops_count') {
+            $query->orderBy($sort, $dir);
+        } else {
+            $query->orderBy($sort, $dir);
+        }
+
+        // Prioritize assigned-to-current-user rows above the rest within the same sort key
+        if ($user) {
+            $query->orderByRaw(
+                'exists (select 1 from sec_op_clients where sec_op_clients.client_id = clients.id and sec_op_clients.user_id = ?) desc',
+                [$user->id]
+            );
+        }
+
         return $query
-            ->latest()
-            ->get()
-            ->map(fn (Client $client) => ClientData::fromModel($client, $user?->id))
+            ->paginate(perPage: $data->per_page, page: $data->page)
+            ->through(fn (Client $client) => ClientData::fromModel($client, $user?->id))
             ->toArray();
     }
 

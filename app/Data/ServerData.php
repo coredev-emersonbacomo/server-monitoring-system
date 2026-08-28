@@ -102,15 +102,15 @@ class ServerData extends Data
 
         public ?int $agent_server_count = null,
 
-        public bool $is_assigned = false,
+        public bool $is_assigned_to_current_user = false,
     ) {}
 
     public static function fromModel(Server $server): self
     {
         $user = auth()->user();
-        $isAssigned = false;
+        $isAssignedToCurrentUser = false;
         if ($user && $server->client) {
-            $isAssigned = $server->client->secopclients()
+            $isAssignedToCurrentUser = $server->client->secopclients()
                 ->where('user_id', $user->id)
                 ->exists();
         }
@@ -299,6 +299,7 @@ class ServerData extends Data
                 process_scan_interval: $config ? $config->process_scan_interval : 60,
                 update_channel: $config ? $config->update_channel : 'stable',
                 auto_update: $config ? (bool) $config->auto_update : true,
+                is_alive: $agentForData->isAlive(),
             );
         }
 
@@ -441,7 +442,7 @@ class ServerData extends Data
             uptime_seconds: $uptimeSeconds,
             subscription_fee: (float) ($server->subscription_fee ?? 0.00),
             agent_server_count: $agentServerCount,
-            is_assigned: $isAssigned,
+            is_assigned_to_current_user: $isAssignedToCurrentUser,
         );
     }
 }

@@ -33,7 +33,7 @@ First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 Alert Trigger: <t:{runtime.eventTimestampUnix}:f>
 First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 <email-button url="{server.url}">View Server Details</email-button>']],
-            ['id' => 'discord_30',       'type' => 'notification', 'position' => ['x' => 860,  'y' => 460], 'settings' => ['label' => 'Discord 30s', 'channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '{runtime.discordRoleCallout} [{server.client.name}] {server.name}\'s {runtime.metricName} ({runtime.severity})
+            ['id' => 'discord_30',       'type' => 'notification', 'position' => ['x' => 860,  'y' => 460], 'settings' => ['label' => 'Discord 30s', 'channel' => 'discord', 'bot_token' => env('SEEDED_DISCORD_BOT_TOKEN'), 'channel_id' => env('SEEDED_DISCORD_CHANNEL_ID'), 'role_id' => env('SEEDED_DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '{runtime.discordRoleCallout} [{server.client.name}] {server.name}\'s {runtime.metricName} ({runtime.severity})
 <discord-embed>
 <discord-embed-title>:rotating_light: Server Alert ({runtime.severity})</discord-embed-title>
 
@@ -60,7 +60,7 @@ First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 <email-button url="{server.url}">View Server Details</email-button>']],
 
             ['id' => 'check_after_10m',  'type' => 'check_after', 'position' => ['x' => -60,  'y' => 750], 'settings' => ['label' => 'Check After 10s', 'duration' => '10000', 'repeat_interval' => '10000', 'repeat_max_repeats' => -1]],
-            ['id' => 'discord_offline',  'type' => 'notification', 'position' => ['x' => 200,  'y' => 670], 'settings' => ['label' => 'Discord Offline', 'channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '{runtime.discordRoleCallout} [{server.client.name}] {server.name} — ({runtime.severity})
+            ['id' => 'discord_offline',  'type' => 'notification', 'position' => ['x' => 200,  'y' => 670], 'settings' => ['label' => 'Discord Offline', 'channel' => 'discord', 'bot_token' => env('SEEDED_DISCORD_BOT_TOKEN'), 'channel_id' => env('SEEDED_DISCORD_CHANNEL_ID'), 'role_id' => env('SEEDED_DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '{runtime.discordRoleCallout} [{server.client.name}] {server.name} — ({runtime.severity})
 <discord-embed>
 <discord-embed-title>:rotating_light: Server Alert ({runtime.severity})</discord-embed-title>
 
@@ -86,7 +86,7 @@ First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
             ['id' => 'sustained_ping',   'type' => 'sustained',   'position' => ['x' => 200,  'y' => 1100], 'settings' => ['label' => 'Sustained 10s', 'duration' => '10000']],
             ['id' => 'check_after_ping', 'type' => 'check_after', 'position' => ['x' => -60,  'y' => 1390], 'settings' => ['label' => 'Check After 10s', 'duration' => '10000', 'repeat_interval' => '10000', 'repeat_max_repeats' => -1]],
 
-            ['id' => 'discord_ping',     'type' => 'notification', 'position' => ['x' => 460,  'y' => 1100], 'settings' => ['label' => 'Discord Ping Slow', 'channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'severity' => 'warning', 'message' => '{runtime.discordRoleCallout} [{server.client.name}] {server.name} — Port Ping Slow ({runtime.severity})
+            ['id' => 'discord_ping',     'type' => 'notification', 'position' => ['x' => 460,  'y' => 1100], 'settings' => ['label' => 'Discord Ping Slow', 'channel' => 'discord', 'bot_token' => env('SEEDED_DISCORD_BOT_TOKEN'), 'channel_id' => env('SEEDED_DISCORD_CHANNEL_ID'), 'role_id' => env('SEEDED_DISCORD_ROLE_ID'), 'severity' => 'warning', 'message' => '{runtime.discordRoleCallout} [{server.client.name}] {server.name} — Port Ping Slow ({runtime.severity})
 <discord-embed>
 <discord-embed-title>:rotating_light: Port Ping Alert ({runtime.severity})</discord-embed-title>
 
@@ -101,7 +101,7 @@ First Trigger: <t:{runtime.firstTriggerTimestampUnix}:f>
 </if-repeat>
 </discord-embed>
 <discord-button url="{server.url}">View Server Details</discord-button>']],
-            ['id' => 'discord_ping_off', 'type' => 'notification', 'position' => ['x' => 200,  'y' => 1390], 'settings' => ['label' => 'Discord Port Unreachable', 'channel' => 'discord', 'bot_token' => env('DISCORD_BOT_TOKEN'), 'channel_id' => env('DISCORD_CHANNEL_ID'), 'role_id' => env('DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '{runtime.discordRoleCallout} [{server.client.name}] {server.name} — Port Unreachable ({runtime.severity})
+            ['id' => 'discord_ping_off', 'type' => 'notification', 'position' => ['x' => 200,  'y' => 1390], 'settings' => ['label' => 'Discord Port Unreachable', 'channel' => 'discord', 'bot_token' => env('SEEDED_DISCORD_BOT_TOKEN'), 'channel_id' => env('SEEDED_DISCORD_CHANNEL_ID'), 'role_id' => env('SEEDED_DISCORD_ROLE_ID'), 'severity' => 'critical', 'message' => '{runtime.discordRoleCallout} [{server.client.name}] {server.name} — Port Unreachable ({runtime.severity})
 <discord-embed>
 <discord-embed-title>:rotating_light: Port Unreachable ({runtime.severity})</discord-embed-title>
 

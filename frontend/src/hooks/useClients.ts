@@ -7,6 +7,12 @@ export const useClients = (params?: {
     exclude_user_uuid?: string;
     user_uuid?: string;
     available_only?: boolean;
+    q?: string;
+    filter?: string;
+    sort?: string;
+    dir?: "asc" | "desc";
+    page?: number;
+    per_page?: number;
 }) => {
     return useQuery({
         queryKey: ["clients", params],

@@ -15,7 +15,16 @@ if (-not $isAdmin) {
     }
     $pwsh = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
     $relaunch = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $MyInvocation.MyCommand.Path, "-Instance", $Instance, "-Server", $Server)
-    Start-Process -FilePath $pwsh -Verb RunAs -ArgumentList $relaunch -Wait
+    try {
+        Start-Process -FilePath $pwsh -Verb RunAs -ArgumentList $relaunch -Wait -ErrorAction Stop
+    } catch {
+        if ($_.Exception.Message -match "canceled") {
+            Write-Host "Elevation was canceled. Re-run as Administrator." -ForegroundColor Yellow
+        } else {
+            Write-Host "Failed to elevate: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+        exit 1
+    }
     exit
 }
 

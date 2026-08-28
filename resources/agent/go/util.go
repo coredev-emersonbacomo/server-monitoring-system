@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,6 +19,20 @@ import (
 )
 
 const configFileName = "config.json"
+
+// uuidV4 returns a random RFC 4122 v4 UUID string. Used for audit event ids so
+// the backend can dedupe at the database level.
+func uuidV4() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// crypto/rand failure is unrecoverable; fall back to a zeroed id.
+		return "00000000-0000-0000-0000-000000000000"
+	}
+	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+}
 
 // dataRoot is the root of all agent state, shared by every installation on the
 // machine. Each installation lives under instances/<uuid>.

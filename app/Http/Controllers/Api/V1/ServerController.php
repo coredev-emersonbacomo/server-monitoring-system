@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Data\CreateServerData;
 use App\Data\ServerData;
 use App\Data\ServerDataRequest;
+use App\Data\ServersIndexData;
 use App\Data\StatPointData;
 use App\Data\UpdateServerData;
 use App\Events\AgentConfigUpdated;
@@ -341,24 +342,97 @@ class ServerController extends Controller
         return response()->json(['status' => 'success']);
     }
 
-    public function listAll(Request $request)
+    public function listAll(ServersIndexData $data)
     {
-        $query = Server::withTrashed()->with('client', 'latestUpdate', 'agent');
+        $user = request()->user();
 
-        if ($clientUuid = $request->query('client_uuid')) {
-            $client = Client::where('uuid', $clientUuid)->first();
+        $query = Server::withTrashed()
+            ->with(['client', 'latestUpdate', 'agent'])
+            ->withCount('agents');
+
+        if ($data->client_uuid) {
+            $client = Client::where('uuid', $data->client_uuid)->first();
             if ($client) {
                 $query->where('client_id', $client->id);
             }
         }
 
-        $servers = $query->orderBy('created_at', 'desc')->get();
+        if ($data->q) {
+            $term = '%'.strtolower(trim($data->q)).'%';
+            $query->where(function ($q) use ($term) {
+                $q->whereRaw('LOWER(name) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(host_name) LIKE ?', [$term])
+                    ->orWhereHas('client', function ($cq) use ($term) {
+                        $cq->whereRaw('LOWER(name) LIKE ?', [$term]);
+                    });
+            });
+        }
 
-        foreach ($servers as $server) {
+        // Status filter — a server is "assigned" if its client is assigned to the user via sec_op_clients
+        switch ($data->status) {
+            case 'archived':
+                $query->where(function ($q) {
+                    $q->whereNotNull('deleted_at')
+                        ->orWhere('record_status', 'archived')
+                        ->orWhere('status', 'archived');
+                });
+                break;
+            case 'assigned':
+                $query->whereHas('client.secopclients', function ($q) use ($user) {
+                    if ($user) {
+                        $q->where('users.id', $user->id);
+                    }
+                })->whereNull('deleted_at')
+                    ->where('record_status', '!=', 'archived')
+                    ->where('status', '!=', 'archived');
+                break;
+            case 'pending_installation':
+                $query->whereNull('status')
+                    ->whereNull('deleted_at')
+                    ->where('record_status', '!=', 'archived');
+                break;
+            case 'all':
+            default:
+                $query->whereNull('deleted_at')
+                    ->where('record_status', '!=', 'archived')
+                    ->where('status', '!=', 'archived');
+                break;
+        }
+
+        // Also support explicit status values like 'online', 'offline'
+        if (in_array($data->status, ['online', 'offline'], true)) {
+            $query->where('status', $data->status)
+                ->whereNull('deleted_at')
+                ->where('record_status', '!=', 'archived');
+        }
+
+        $sort = $data->sort ?? 'created_at';
+        $dir = $data->dir ?? 'desc';
+        $allowedSorts = ['created_at', 'name', 'record_status'];
+        if (! in_array($sort, $allowedSorts, true)) {
+            $sort = 'created_at';
+        }
+
+        $query->orderBy($sort, $dir);
+
+        // Pin assigned-to-current-user rows to the top
+        if ($user) {
+            $query->orderByRaw(
+                'exists (select 1 from sec_op_clients inner join clients on sec_op_clients.client_id = clients.id where clients.id = servers.client_id and sec_op_clients.user_id = ?) desc',
+                [$user->id]
+            );
+        }
+
+        $page = $query->paginate(perPage: $data->per_page, page: $data->page);
+
+        // Refresh token expiration on the page's items
+        foreach ($page as $server) {
             $server->checkTokenExpiration();
         }
 
-        return ServerData::collect($servers->map(fn (Server $s) => ServerData::fromModel($s)));
+        return $page
+            ->through(fn (Server $s) => ServerData::fromModel($s, $user?->id))
+            ->toArray();
     }
 
     public function showWithStats(string $serverUuid, ServerDataRequest $requestData): ServerData

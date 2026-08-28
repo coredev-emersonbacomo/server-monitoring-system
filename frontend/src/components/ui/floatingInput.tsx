@@ -139,11 +139,11 @@ export const FloatingInput = forwardRef<InputRef, InputProps>(
                         divClassName,
                         "focus-within:border-ring focus-within:ring-1 focus-within:ring-ring",
                         displayErrorType === "error" &&
-                        "border-destructive focus-within:border-destructive focus-within:ring-destructive",
+                            "border-destructive focus-within:border-destructive focus-within:ring-destructive",
                         displayErrorType === "warning" &&
-                        "border-amber-500 focus-within:border-amber-500 focus-within:ring-amber-500",
+                            "border-amber-500 focus-within:border-amber-500 focus-within:ring-amber-500",
                         disableInput &&
-                        "opacity-50 pointer-events-none cursor-not-allowed",
+                            "opacity-50 pointer-events-none cursor-not-allowed",
                     )}
                     onClick={() => {
                         inputRef.current?.focus();
@@ -178,15 +178,15 @@ export const FloatingInput = forwardRef<InputRef, InputProps>(
                             onChange={handleChange}
                             value={internalValue}
                             className={twMerge(
-                                "relative flex-1 outline-none bg-transparent text-ellipsis text-foreground placeholder:text-muted-foreground/50",
+                                "relative flex-1 outline-none bg-transparent text-ellipsis text-foreground placeholder:text-muted-foreground/50 autofill:bg-transparent [&:-webkit-autofill]:bg-transparent",
                                 className,
                                 icon && "ml-2",
                             )}
                             title={
                                 props.type !== "password"
                                     ? [internalValue, props.title]
-                                        .filter(Boolean)
-                                        .join(" ")
+                                          .filter(Boolean)
+                                          .join(" ")
                                     : ""
                             }
                             onBlur={(e) => {
@@ -216,22 +216,27 @@ export const FloatingInput = forwardRef<InputRef, InputProps>(
                                 displayErrorLabel || displayErrorType
                                     ? displayErrorType === "error"
                                         ? twMerge(
-                                            "group-focus-within:text-destructive",
-                                            internalValue && "text-destructive",
-                                        )
+                                              "group-focus-within:text-destructive",
+                                              internalValue &&
+                                                  "text-destructive",
+                                          )
                                         : twMerge(
-                                            "group-focus-within:text-amber-500",
-                                            internalValue && "text-amber-500",
-                                        )
+                                              "group-focus-within:text-amber-500",
+                                              internalValue && "text-amber-500",
+                                          )
                                     : "group-focus-within:text-foreground",
                                 "group-focus-within:top-0 group-focus-within:text-xs group-focus-within:font-medium",
-                                (internalValue || disableInput) && "top-0 text-xs font-medium",
+                                (internalValue || disableInput) &&
+                                    "top-0 text-xs font-medium",
                                 disableInput && "text-muted-foreground/50",
                             )}
                         >
                             {label}
                             {sublabel && (
-                                <span className="text-muted-foreground/70"> {sublabel}</span>
+                                <span className="text-muted-foreground/70">
+                                    {" "}
+                                    {sublabel}
+                                </span>
                             )}
                         </label>
                     )}

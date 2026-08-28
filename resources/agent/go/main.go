@@ -203,10 +203,29 @@ func uninstallWithMarker(instance string) error {
 	if err := os.WriteFile(marker, []byte("pending"), 0644); err != nil {
 		return fmt.Errorf("failed to write uninstall marker: %w", err)
 	}
-	fmt.Println("Uninstall marker written; stopping service for cleanup...")
-
-	if err := stopServiceAndWait(serviceName, 90*time.Second); err != nil {
-		return fmt.Errorf("service did not stop cleanly (identity key may remain): %w", err)
+	// animate ellipsis while waiting so a 90s stop doesn't look hung — \r cycle 1..3 dots.
+	// Only animate when stdout is a real console; when piped (e.g. PowerShell Start-Job captures stdout)
+	// PowerShell's own Write-Host animation takes over — otherwise the \r gets buffered and looks frozen.
+	isTTY := false
+	if fi, err := os.Stdout.Stat(); err == nil {
+		isTTY = (fi.Mode() & os.ModeCharDevice) != 0
+	}
+	var stopDone chan struct{}
+	if isTTY {
+		fmt.Print("Uninstall marker written; stopping service for cleanup")
+		stopDone = make(chan struct{})
+		go animateEllipsis("Uninstall marker written; stopping service for cleanup", stopDone)
+	} else {
+		fmt.Println("Uninstall marker written; stopping service for cleanup...")
+	}
+	stopErr := stopServiceAndWait(serviceName, 90*time.Second)
+	if isTTY {
+		close(stopDone)
+		time.Sleep(80 * time.Millisecond)
+		fmt.Printf("\rUninstall marker written; stopping service for cleanup...   \n")
+	}
+	if stopErr != nil {
+		return fmt.Errorf("service did not stop cleanly (identity key may remain): %w", stopErr)
 	}
 
 	if data, err := os.ReadFile(marker); err == nil && string(data) == "done" {
@@ -226,6 +245,26 @@ func uninstallWithMarker(instance string) error {
 	}
 	fmt.Println("Uninstall complete.")
 	return nil
+}
+
+// animateEllipsis prints msg with a cycling 1..3 dot ellipsis on the same line
+// until done is closed. Keeps long waits from looking stuck. Only the "..."
+// animates and the cursor follows the last visible dot (not the padded end).
+func animateEllipsis(msg string, done <-chan struct{}) {
+	for i := 0; ; i++ {
+		select {
+		case <-done:
+			return
+		default:
+		}
+		dots := strings.Repeat(".", i%3+1)
+		pad := 3 - len(dots)
+		spaces := strings.Repeat(" ", pad)
+		backs := strings.Repeat("\b", pad)
+		fmt.Printf("\r%s%s%s%s", msg, dots, spaces, backs)
+		_ = os.Stdout.Sync()
+		time.Sleep(400 * time.Millisecond)
+	}
 }
 
 // removeAllWithRetry removes a directory tree, retrying for transient errors
@@ -253,8 +292,16 @@ func handleUninstallMarker(instance, dir, keyName string, keystore KeyStore, cli
 
 	log.Println("Uninstall marker detected — revoking agent and removing identity key.")
 	if client != nil {
-		if err := client.revokeInstallation(); err != nil {
-			log.Printf("Warning: revocation request failed: %v", err)
+		// revoke must not block SCM Stop indefinitely – 8s best-effort, then continue to key deletion.
+		done := make(chan error, 1)
+		go func() { done <- client.revokeInstallation() }()
+		select {
+		case err := <-done:
+			if err != nil {
+				log.Printf("Warning: revocation request failed: %v", err)
+			}
+		case <-time.After(8 * time.Second):
+			log.Println("Warning: revocation timed out, continuing to delete identity key")
 		}
 	}
 	if err := keystore.DeleteKey(context.Background(), keyName); err != nil {
@@ -279,7 +326,18 @@ func detachWithMarker(instance, serverUuid string) error {
 	if err := os.WriteFile(marker, []byte(serverUuid), 0644); err != nil {
 		return fmt.Errorf("failed to write detach marker: %w", err)
 	}
-	fmt.Printf("Detach marker written for server %s; signalling running agent...\n", serverUuid)
+	isDetachTTY := false
+	if fi, err := os.Stdout.Stat(); err == nil {
+		isDetachTTY = (fi.Mode() & os.ModeCharDevice) != 0
+	}
+	var sigDone chan struct{}
+	if isDetachTTY {
+		fmt.Printf("Detach marker written for server %s; signalling running agent", serverUuid)
+		sigDone = make(chan struct{})
+		go animateEllipsis(fmt.Sprintf("Detach marker written for server %s; signalling running agent", serverUuid), sigDone)
+	} else {
+		fmt.Printf("Detach marker written for server %s; signalling running agent...\n", serverUuid)
+	}
 	// Try an immediate POST only when THIS process can reach the agent's
 	// identity key. The key lives in the installed service's per-user key store
 	// (LocalSystem on Windows), so a human running this script from their own
@@ -288,6 +346,7 @@ func detachWithMarker(instance, serverUuid string) error {
 	// challenge then returning 401 on retry. In that common case the marker is
 	// enough: the running service picks it up on its next tick. (Like
 	// handleDetachMarker, which always runs in the service's own context.)
+	immediateDone := false
 	if keystore := newKeyStore(); keystore != nil {
 		if keyName := keyIDForInstallation(instance); keyName != "" {
 			if ok, _ := keystore.HasKey(context.Background(), keyName); ok {
@@ -297,18 +356,34 @@ func detachWithMarker(instance, serverUuid string) error {
 							client := NewAgentClient(keystore, key, cfg.ServerURL, instance)
 							client.SetPublicKeyHash(publicKeyHashHex(pub))
 							if err := client.detachServer(serverUuid); err != nil {
+								if isDetachTTY {
+									close(sigDone)
+									time.Sleep(50 * time.Millisecond)
+									fmt.Printf("\rDetach marker written for server %s; signalling running agent...   \n", serverUuid)
+								}
 								fmt.Printf("Warning: immediate detach failed (will retry on next heartbeat): %v\n", err)
 							} else {
+								if isDetachTTY {
+									close(sigDone)
+									time.Sleep(50 * time.Millisecond)
+									fmt.Printf("\rDetach marker written for server %s; signalling running agent...   \n", serverUuid)
+								}
 								fmt.Println("Server detached immediately.")
 								_ = os.WriteFile(marker, []byte("done"), 0644)
 								go func() { time.Sleep(2 * time.Second); os.Remove(marker) }()
 								return nil
 							}
+							immediateDone = true
 						}
 					}
 				}
 			}
 		}
+	}
+	if !immediateDone && isDetachTTY {
+		close(sigDone)
+		time.Sleep(50 * time.Millisecond)
+		fmt.Printf("\rDetach marker written for server %s; signalling running agent...   \n", serverUuid)
 	}
 	fmt.Println("Detach signal queued — the running agent will detach on its next heartbeat.")
 	return nil
@@ -501,6 +576,74 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 
 	// Start the WebSocket control channel goroutine
 	go connectControlChannel(client, runtime, &heartbeatInterval, stopChan)
+
+	// --- Audit: file activity + agent lifecycle -------------------------------
+	// Durable queue + OS watcher over the backend-delivered watched paths. Events
+	// are enqueued to disk and drained to the backend on a ticker so a crash
+	// never loses an audited event. Agent lifecycle events are emitted alongside.
+	queue, qerr := NewEventQueue(instance)
+	if qerr != nil {
+		log.Printf("[AUDIT] queue init failed (audit disabled): %v", qerr)
+	} else {
+		watcher := NewFileWatcher(runtime)
+		watcher.Start()
+
+		// Enqueue every correlated event to the durable queue.
+		go func() {
+			for {
+				select {
+				case ev := <-watcher.Events():
+					_ = queue.Enqueue(ev)
+				case <-stopChan:
+					return
+				}
+			}
+		}()
+
+		// Drain the queue to the backend on a fixed cadence.
+		go func() {
+			drainTicker := time.NewTicker(5 * time.Second)
+			defer drainTicker.Stop()
+			for {
+				select {
+				case <-drainTicker.C:
+					_ = queue.Drain(client)
+				case <-stopChan:
+					return
+				}
+			}
+		}()
+
+		// Emit an agent "started" lifecycle event per monitored server.
+		for _, su := range runtime.ServerUUIDs() {
+			_ = queue.Enqueue(LifecycleEvent(su, "started"))
+		}
+
+		defer func() {
+			_ = queue.Enqueue(LifecycleEvent("", "stopping"))
+			// Flush whatever the watcher still has buffered, then stop it.
+			watcher.Stop()
+			for {
+				select {
+				case ev := <-watcher.Events():
+					_ = queue.Enqueue(ev)
+				default:
+					_ = queue.Enqueue(LifecycleEvent("", "stopped"))
+					// shutdown drain must not block SCM Stop – best-effort with hard timeout,
+					// durable queue file survives so missed events are sent on next start.
+					done := make(chan error, 1)
+					go func() { done <- queue.Drain(client) }()
+					select {
+					case <-done:
+					case <-time.After(5 * time.Second):
+						log.Println("[AUDIT] shutdown drain timed out, leaving events on disk for next start")
+					}
+					_ = queue.Close()
+					return
+				}
+			}
+		}()
+	}
 
 	for {
 		select {

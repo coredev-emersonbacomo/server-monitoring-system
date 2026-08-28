@@ -17,6 +17,20 @@ export interface ActionItemData {
             created_at?: string | null;
         }
 
+/** ActivityLogData */
+export interface ActivityLogData {
+            id: number;
+            logable_type?: string | null;
+            logable_id?: string | null;
+            user_id?: number | null;
+            user_uuid?: string | null;
+            user?: string | null;
+            action: string;
+            details?: string | null;
+            created_at?: string | null;
+            updated_at?: string | null;
+        }
+
 /** AgentData */
 export interface AgentData {
             version: string;
@@ -30,6 +44,20 @@ export interface AgentData {
             process_scan_interval: number;
             update_channel: string;
             auto_update: boolean;
+            is_alive: boolean;
+        }
+
+/** AgentLifecycleEventResource */
+export interface AgentLifecycleEventResource {
+            uuid: string;
+            server_id: number | null;
+            server_uuid: string;
+            server_name: string;
+            agent_servers: string | string[];
+            agent_id: number;
+            event_type: string;
+            occurred_at: string;
+            created_at: string;
         }
 
 /** AuthUserData */
@@ -64,30 +92,20 @@ export interface ClientData {
             record_status?: string;
             budget?: number;
             total_subscription_fee?: number;
-            is_assigned?: boolean;
+            is_assigned_to_current_user?: boolean;
         }
 
 /** CreateUserData */
 export interface CreateUserData {
+            first_name: string;
+            last_name: string;
+            /** Format: email */
+            email: string;
+            phone_number: string;
+            username: string;
+            password: string;
             timezone?: string | null;
-        }
-
-/** CustomActivityLog */
-export interface CustomActivityLog {
-            id: number;
-            type: string;
-            logable_type: string | null;
-            logable_id: string | null;
-            user_id: number | null;
-            user: string | null;
-            action: string;
-            title: string | null;
-            details: unknown[] | null;
-            severity: string | null;
-            /** Format: date-time */
-            created_at: string | null;
-            /** Format: date-time */
-            updated_at: string | null;
+            password_confirmation: string;
         }
 
 /** DashboardStatsData */
@@ -100,7 +118,7 @@ export interface DashboardStatsData {
             pending_installation_count: number;
             waiting_for_installation_count: number;
             pending_deletion_count: number;
-            agent_uninstalled_count?: number;
+            agent_uninstalled_count: number;
             top_usage_cpu: {
                 server_uuid: string;
                 name: string;
@@ -119,6 +137,26 @@ export interface DashboardStatsData {
                 client_name: string;
                 value: number;
             }[];
+        }
+
+/** FileActivityLogResource */
+export interface FileActivityLogResource {
+            uuid: string;
+            server_id: number | null;
+            server_uuid: string;
+            server_name: string;
+            agent_servers: string | string[];
+            agent_id: number;
+            action: string;
+            file_name: string;
+            source_path: string;
+            destination_path: string | null;
+            is_directory: boolean;
+            username: string | null;
+            process_name: string | null;
+            process_id: number | null;
+            occurred_at: string;
+            created_at: string;
         }
 
 /** GlobalAlert */
@@ -222,7 +260,6 @@ export interface SecopsUserData {
 export interface SecurityActivityData {
             id: number;
             event_type: string;
-            ip_address?: string | null;
             created_at: string;
             created_at_timestamp: string;
             metadata?: string | null;
@@ -251,7 +288,11 @@ export interface ServerData {
             processes?: ProcessesData[] | null;
             available_processes?: ProcessesData[] | null;
             available_ports?: PortsData[] | null;
-            available_interfaces?: { interface: string; type: string; state: string; rx_bytes?: number; tx_bytes?: number }[] | null;
+            available_interfaces?: {
+                interface: string;
+                type: string;
+                state: string;
+            }[] | null;
             uninstall_linux_command?: string | null;
             uninstall_windows_command?: string | null;
             detach_linux_command?: string | null;
@@ -266,11 +307,11 @@ export interface ServerData {
                 created_at: string;
             }[] | null;
             agent?: AgentData | null;
-            agent_server_count?: number | null;
-            is_assigned?: boolean;
             alert_scope?: string;
             uptime_seconds?: number;
             subscription_fee?: number;
+            agent_server_count?: number | null;
+            is_assigned_to_current_user?: boolean;
         }
 
 /** ServerReportData */
@@ -321,10 +362,14 @@ export interface StatPointData {
             timestamp: number;
             cpu: number;
             memory: number;
+            netIn: number;
+            netOut: number;
             disk: number;
-            netIn?: number;
-            netOut?: number;
-            networks?: { name: string; netIn: number; netOut: number }[];
+            networks?: {
+                name: string;
+                netIn: number;
+                netOut: number;
+            }[];
         }
 
 /** StoreUploadIntentRequest */
@@ -369,5 +414,22 @@ export interface UserData {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        }
+
+/** Laravel paginator response shape */
+export interface Paginator<T> {
+            current_page: number;
+            data: T[];
+            first_page_url: string;
+            from: number | null;
+            last_page: number;
+            last_page_url: string;
+            links: { url: string | null; label: string; active: boolean }[];
+            next_page_url: string | null;
+            path: string;
+            per_page: number;
+            prev_page_url: string | null;
+            to: number | null;
+            total: number;
         }
 

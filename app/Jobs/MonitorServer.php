@@ -8,8 +8,10 @@ use App\Events\ServerStatsUpdated;
 use App\Events\ServerStatusUpdated;
 use App\Models\ActionItem;
 use App\Models\Activity;
+use App\Models\AgentLifecycleEvent;
 use App\Models\CustomActivityLog;
 use App\Models\Server;
+use App\Models\Setting;
 use App\NodeConfig\Engine\NodeConfigEngine;
 use App\NodeConfig\Engine\NodeRegistry;
 use App\NodeConfig\Engine\NodeTaskScheduler;
@@ -86,6 +88,11 @@ class MonitorServer implements ShouldQueue
                 'type' => 'server_offline',
                 'description' => 'Server transitioned to Offline state.',
             ]);
+
+            // Distinct backend-detected lifecycle event. Never recorded if the
+            // agent already reported a graceful stopping/stopped event within a
+            // grace window — a clean shutdown wins over a timeout.
+            $this->recordUnexpectedDisconnect($server);
 
             CustomActivityLog::create([
                 'type' => 'server_health',
@@ -194,6 +201,33 @@ class MonitorServer implements ShouldQueue
             ->where('status', 'open')
             ->whereNull('assigned_to')
             ->delete();
+    }
+
+    private function recordUnexpectedDisconnect(Server $server): void
+    {
+        $agent = $server->agent;
+        if (! $agent) {
+            return;
+        }
+
+        // A genuine graceful shutdown (stopping/stopped reported by the agent)
+        // within the recent grace window takes precedence over a timeout.
+        $graceSeconds = (int) (Setting::get('offline_threshold', '15')) * 4;
+        $recentGraceful = AgentLifecycleEvent::where('agent_id', $agent->id)
+            ->whereIn('event_type', ['stopping', 'stopped'])
+            ->where('occurred_at', '>=', now()->subSeconds($graceSeconds))
+            ->exists();
+
+        if ($recentGraceful) {
+            return;
+        }
+
+        AgentLifecycleEvent::create([
+            'server_id' => $server->id,
+            'agent_id' => $agent->id,
+            'event_type' => 'unexpectedly_disconnected',
+            'occurred_at' => now(),
+        ]);
     }
 
     private function resetGraphStates(Server $server): void

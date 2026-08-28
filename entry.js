@@ -67,6 +67,17 @@ console.log(
   `[entry] ALERTS_VISUAL_DEBUGGER=${alertDebugger ?? 'false'} (visual debugger ${alertOn ? 'ENABLED' : 'disabled'})`,
 );
 
+// Surface mute-notification and telescope flags for both dev and prod.
+const sharedEnv = fs.readFileSync(path.join(root, ENV_FILES[mode]), 'utf8');
+const muteNotif = sharedEnv.match(/^MUTE_NOTIFICATION=(.*)$/m)?.[1]?.trim().toLowerCase();
+console.log(
+  `[entry] MUTE_NOTIFICATION=${muteNotif ?? 'false'} (notifications ${muteNotif === 'true' || muteNotif === '1' ? 'MUTED' : 'active'})`,
+);
+const telescope = sharedEnv.match(/^TELESCOPE_ENABLED=(.*)$/m)?.[1]?.trim().toLowerCase();
+console.log(
+  `[entry] TELESCOPE_ENABLED=${telescope ?? 'false'} (Telescope ${telescope === 'true' || telescope === '1' ? 'ENABLED' : 'disabled'})`,
+);
+
 // Recompile/drop the Laravel config cache so the swapped .env takes effect.
 // Avoid optimize:clear — its cache:clear step needs Redis, which starts later.
 spawnSync('php', ['artisan', 'config:clear'], { stdio: 'inherit' });
@@ -74,14 +85,11 @@ spawnSync('php', ['artisan', 'config:clear'], { stdio: 'inherit' });
 if (mode === 'dev') {
   spawnAndPipe(process.execPath, ['scripts/dev.js', ...process.argv.slice(3)]);
 } else {
-  const prodEnv = fs.existsSync(path.join(root, '.env.production')) ? fs.readFileSync(path.join(root, '.env.production'), 'utf8') : '';
-  const telEnabled = prodEnv.match(/^TELESCOPE_ENABLED=(.*)$/m)?.[1]?.trim().toLowerCase();
-  if (telEnabled === 'true' || telEnabled === '1') {
-    console.warn('[entry] WARNING: TELESCOPE_ENABLED=true in .env.production — Telescope is dev-only. Only run this in development or admin-lock it via Gate::define(\'viewTelescope\'). Set TELESCOPE_ENABLED=false for prod.');
-  }
-  const muted = prodEnv.match(/^MUTE_NOTIFICATION=(.*)$/m)?.[1]?.trim().toLowerCase();
-  if (muted === 'true' || muted === '1') {
+  if (muteNotif === 'true' || muteNotif === '1') {
     console.warn('[entry] WARNING: MUTE_NOTIFICATION=true in .env.production — alerts will be logged, never sent. Set MUTE_NOTIFICATION=false for prod.');
+  }
+  if (telescope === 'true' || telescope === '1') {
+    console.warn('[entry] WARNING: TELESCOPE_ENABLED=true in .env.production — Telescope is dev-only. Only run this in development or admin-lock it via Gate::define(\'viewTelescope\'). Set TELESCOPE_ENABLED=false for prod.');
   }
   spawnAndPipe(npm, ['run', 'build']);
 }

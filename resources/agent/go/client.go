@@ -67,6 +67,7 @@ type AgentSession struct {
 	ExpiresAt         time.Time
 	ServerUUID        string
 	Servers           []ServerAssignment
+	WatchedPaths      []WatchedPath
 	HeartbeatInterval int
 	ReverbHost        string
 	ReverbPort        int
@@ -139,6 +140,7 @@ func (c *AgentClient) authenticate() (*AgentSession, error) {
 		ExpiresAt:         time.Now().Add(time.Duration(authResp.ExpiresIn) * time.Second),
 		ServerUUID:        authResp.ServerUUID,
 		Servers:           authResp.Servers,
+		WatchedPaths:      authResp.Config.WatchedPaths,
 		HeartbeatInterval: authResp.Config.HeartbeatInterval,
 		ReverbHost:        authResp.Config.Realtime.Host,
 		ReverbPort:        authResp.Config.Realtime.Port,
@@ -231,7 +233,45 @@ func parseAuthResponse(result map[string]interface{}) (*AuthResponse, error) {
 				resp.Config.Realtime.AppKey = k
 			}
 		}
+		if wps, ok := cfg["watched_paths"].([]interface{}); ok {
+			for _, item := range wps {
+				m, ok := item.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				wp := WatchedPath{}
+				if p, ok := m["path"].(string); ok {
+					wp.Path = p
+				}
+				if s, ok := m["scope"].(string); ok {
+					wp.Scope = s
+				}
+				if u, ok := m["server_uuid"].(string); ok {
+					wp.ServerUUID = u
+				}
+				if e, ok := m["enabled"].(bool); ok {
+					wp.Enabled = e
+				}
+				if r, ok := m["recursive"].(bool); ok {
+					wp.Recursive = r
+				}
+				if pats, ok := m["exclude_patterns"].([]interface{}); ok {
+					for _, pat := range pats {
+						if s, ok := pat.(string); ok && s != "" {
+							wp.ExcludePatterns = append(wp.ExcludePatterns, s)
+						}
+					}
+				}
+				if d, ok := m["description"].(string); ok {
+					wp.Description = d
+				}
+				if wp.Path != "" {
+					resp.Config.WatchedPaths = append(resp.Config.WatchedPaths, wp)
+				}
+			}
+		}
 	}
+
 	if resp.AccessToken == "" {
 		return nil, fmt.Errorf("auth response missing access_token")
 	}
@@ -444,6 +484,67 @@ func (c *AgentClient) sendAgentHeartbeat(payload *AgentHeartbeatRequest) (*Agent
 	}
 
 	return nil, fmt.Errorf("heartbeat failed after session refresh")
+}
+
+// sendAuditEvents delivers a batch of audit events, splitting by type into the
+// file-activity and lifecycle ingestion endpoints. Events that fail to send are
+// returned so the caller can re-enqueue them for the next drain. Empty batches
+// are skipped (the backend requires at least one event per request).
+func (c *AgentClient) sendAuditEvents(events []*AuditEvent) []*AuditEvent {
+	var fileEvents, lifeEvents []AuditEvent
+	for _, ev := range events {
+		if ev.Type == auditTypeLifecycle {
+			lifeEvents = append(lifeEvents, *ev)
+		} else {
+			fileEvents = append(fileEvents, *ev)
+		}
+	}
+
+	failed := make([]*AuditEvent, 0)
+	if len(fileEvents) > 0 {
+		if err := c.sendAuthenticated("/api/v1/agent/audit/file-activity", map[string]interface{}{"events": fileEvents}); err != nil {
+			log.Printf("[AUDIT] file-activity send failed: %v", err)
+			for i := range fileEvents {
+				e := fileEvents[i]
+				failed = append(failed, &e)
+			}
+		}
+	}
+	if len(lifeEvents) > 0 {
+		if err := c.sendAuthenticated("/api/v1/agent/audit/lifecycle", map[string]interface{}{"events": lifeEvents}); err != nil {
+			log.Printf("[AUDIT] lifecycle send failed: %v", err)
+			for i := range lifeEvents {
+				e := lifeEvents[i]
+				failed = append(failed, &e)
+			}
+		}
+	}
+	return failed
+}
+
+// sendAuthenticated posts payload to an agent-signed endpoint, refreshing the
+// session once on a 401. Non-401 errors are returned for the caller to decide
+// whether to retry (the queue does, on the next drain).
+func (c *AgentClient) sendAuthenticated(path string, payload interface{}) error {
+	url := c.apiURL(path)
+	for attempt := 0; attempt < 2; attempt++ {
+		sess, err := c.ensureSession()
+		if err != nil {
+			return err
+		}
+		headers := map[string]string{"Authorization": "Bearer " + sess.AccessToken}
+		_, err = c.sendWithRetry(url, payload, headers, 0, func(status int) bool { return status == 401 })
+		if err != nil {
+			var hse *httpStatusError
+			if errors.As(err, &hse) && hse.Status == http.StatusUnauthorized {
+				c.invalidate()
+				continue
+			}
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("audit send gave up after session refresh")
 }
 
 func (c *AgentClient) postNotification(url string, payload interface{}) error {

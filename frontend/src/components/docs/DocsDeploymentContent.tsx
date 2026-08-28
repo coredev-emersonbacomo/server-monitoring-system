@@ -440,9 +440,9 @@ export function DocsConfigurationContent() {
                     </li>
                     <li>
                         <strong>Notifications</strong> —{" "}
-                        <InlineCode>DISCORD_BOT_TOKEN</InlineCode>,{" "}
-                        <InlineCode>DISCORD_CHANNEL_ID</InlineCode>,{" "}
-                        <InlineCode>DISCORD_ROLE_ID</InlineCode>.
+<InlineCode>SEEDED_DISCORD_BOT_TOKEN</InlineCode>,{" "}
+<InlineCode>SEEDED_DISCORD_CHANNEL_ID</InlineCode>,{" "}
+<InlineCode>SEEDED_DISCORD_ROLE_ID</InlineCode>.
                     </li>
                     <li>
                         <strong>Frontend</strong> —{" "}

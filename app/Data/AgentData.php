@@ -18,5 +18,6 @@ class AgentData extends Data
         public int $process_scan_interval,
         public string $update_channel,
         public bool $auto_update,
+        public bool $is_alive,
     ) {}
 }

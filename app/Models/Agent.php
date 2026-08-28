@@ -96,4 +96,21 @@ class Agent extends Model
     {
         return $this->hasMany(Process::class);
     }
+
+    /**
+     * A dashboard "deregister" may only clear an agent that is no longer reporting.
+     * Liveness reuses the offline threshold: an agent with a recent heartbeat is
+     * still alive and must be uninstalled on the host, not deregistered here.
+     */
+    public function isAlive(): bool
+    {
+        if ($this->status !== 'active' || ! $this->last_seen_at) {
+            return false;
+        }
+
+        $threshold = (int) Setting::get('offline_threshold', 15);
+        $threshold = $threshold >= 1000 ? intdiv($threshold, 1000) : $threshold;
+
+        return $this->last_seen_at->gt(now()->subSeconds($threshold));
+    }
 }

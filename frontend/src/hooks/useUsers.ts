@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
-import type { UserData } from "@/types/models";
+import type { Paginator, UserData } from "@/types/models";
 import type {
     UsersStorePayload as CreateUserPayload,
     UsersUpdatePayload as UpdateUserPayload,
@@ -8,13 +8,23 @@ import type {
 
 // ── Queries ──────────────────────────────────────────────────────────────────
 
-export const useUsers = () =>
-    useQuery<UserData[]>({
-        queryKey: ["users"],
+export const useUsers = (params?: {
+    q?: string;
+    filter?: string;
+    sort?: string;
+    dir?: "asc" | "desc";
+    exclude_user_uuid?: string;
+    page?: number;
+    per_page?: number;
+}) =>
+    useQuery<Paginator<UserData>>({
+        queryKey: ["users", params],
         queryFn: async () => {
-            const { data, error } = await api.GET("/v1/users");
+            const { data, error } = await api.GET("/v1/users", {
+                params: { query: (params ?? undefined) as never },
+            });
             if (error) throw error;
-            return data;
+            return data as Paginator<UserData>;
         },
     });
 
