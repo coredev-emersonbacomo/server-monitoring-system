@@ -17,6 +17,7 @@ export interface SidebarNavLink {
     name: string;
     href: string;
     icon: React.ComponentType<{ variant?: string; className?: string }>;
+    isActive?: (location: { pathname: string; search: string }) => boolean;
 }
 
 interface SidebarNavProps {
@@ -72,10 +73,11 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
     };
 
     const navLinks = useMemo(() => links.map((link) => {
-        const isActive =
-            link.href === "/"
-                ? location.pathname === "/"
-                : location.pathname.startsWith(link.href);
+        const isActive = link.isActive
+            ? link.isActive(location)
+            : link.href === "/"
+              ? location.pathname === "/"
+              : location.pathname.startsWith(link.href);
 
         return (
             <Tooltip key={link.name}>
@@ -131,7 +133,10 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
 
     return (
         <>
-            {/* Top-Right Floating Burger on Mobile (ONLY THE BURGER SHOWN ON MOBILE TOP-RIGHT) */}
+            {/* ═══════════════════════════════════════════════════════════════════
+                MOBILE NAVIGATION (Visible ONLY on mobile, hidden on md+)
+               ═══════════════════════════════════════════════════════════════════ */}
+            {/* Top-Right Floating Burger on Mobile */}
             <div className="md:hidden fixed top-3 right-3 z-50">
                 <button
                     type="button"
@@ -145,34 +150,115 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
 
             {/* Mobile Backdrop */}
             <div
-                className={`md:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-60 transition-opacity duration-300 ${isMobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+                className={`md:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-60 transition-opacity duration-300 ${
+                    isMobileOpen
+                        ? "opacity-100 pointer-events-auto"
+                        : "opacity-0 pointer-events-none"
+                }`}
                 onClick={() => setIsMobileOpen(false)}
             />
 
-            {/* Sidebar Aside Container */}
+            {/* Mobile Sidebar Overlay Drawer (Anchored to Right) */}
             <aside
                 className={twMerge(
-                    "flex flex-col bg-background text-foreground py-5 px-sidebar-padding gap-5 z-70",
-                    // Desktop styles: fixed on left
-                    "hidden md:flex fixed top-0 left-0 h-screen! overflow-x-hidden overflow-y-auto transition-all duration-300 ease-in-out",
-                    isCollapsed ? "w-sidebar-collapsed" : "w-sidebar",
-                    !isFullScreen && "border-r border-border/90",
-                    // Mobile overlay styles: fixed on the RIGHT side (left-auto overrides left-0 from desktop base)
-                    isMobileOpen && "flex! fixed inset-y-0 right-0 left-auto w-72 max-w-[85vw] shadow-2xl border-l border-border/90",
+                    "md:hidden fixed inset-y-0 right-0 z-70 w-72 max-w-[85vw] bg-background text-foreground py-5 px-sidebar-padding gap-5 flex flex-col shadow-2xl border-l border-border/90 transition-transform duration-300 ease-in-out",
+                    isMobileOpen
+                        ? "translate-x-0 pointer-events-auto"
+                        : "translate-x-full pointer-events-none",
                 )}
             >
-                <div className="flex items-center justify-between p-sidebar-item-padding w-full cursor-pointer">
-                    {/* Close button on mobile sidebar header (left side, since sidebar is on right) */}
+                {/* Mobile Drawer Header */}
+                <div className="flex items-center justify-between p-sidebar-item-padding w-full border-b border-border/40 pb-3.5">
                     <button
                         type="button"
                         onClick={() => setIsMobileOpen(false)}
-                        className={`md:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer ${isMobileOpen ? "block" : "hidden"}`}
+                        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                        aria-label="Close menu"
                     >
-                        <Menu className="size-5 rotate-90" />
+                        <Menu className="size-5.5" />
                     </button>
+                    <div className="flex items-center gap-3">
+                        <img
+                            src="/images/coreDevlogo.png"
+                            alt="CoreDev Logo"
+                            className="size-8 object-contain shrink-0 drop-shadow-xs"
+                        />
+                        <span className="font-extrabold text-base tracking-tight text-foreground">
+                            Server Monitoring
+                        </span>
+                    </div>
+                </div>
+
+                {/* Mobile Nav Links */}
+                <nav
+                    className="flex flex-col gap-1 mb-auto overflow-y-auto"
+                    onClick={() => setIsMobileOpen(false)}
+                >
+                    {links.map((link) => {
+                        const isActive = link.isActive
+                            ? link.isActive(location)
+                            : link.href === "/"
+                              ? location.pathname === "/"
+                              : location.pathname.startsWith(link.href);
+
+                        return (
+                            <Link
+                                key={link.name}
+                                to={link.href}
+                                className={twMerge(
+                                    "rounded-xl transition-colors duration-200 overflow-hidden cursor-pointer w-full flex items-center gap-sidebar-item-gap p-sidebar-item-padding text-sm",
+                                    isActive
+                                        ? "bg-sidebar-active font-bold text-sidebar-foreground"
+                                        : "text-muted-foreground hover:bg-sidebar-hover hover:text-foreground",
+                                )}
+                            >
+                                <link.icon
+                                    className="size-sidebar-icon p-sidebar-icon-padding shrink-0"
+                                />
+                                <span className="text-[16px]">{link.name}</span>
+                            </Link>
+                        );
+                    })}
+                </nav>
+
+                {/* Mobile Profile & Actions */}
+                <div className="pt-3 border-t border-border/60 flex flex-col gap-2.5">
+                    <Link
+                        to="/profile"
+                        onClick={() => setIsMobileOpen(false)}
+                        className="w-full block"
+                    >
+                        <ProfileBar user={user} asNavigation />
+                    </Link>
+
+                    {/* Theme selector taking full width so text is never cramped */}
+                    <ThemeToggle className="w-full bg-muted/40 hover:bg-muted" />
+
+                    <Button
+                        className="w-full cursor-pointer justify-center"
+                        label="Logout"
+                        variant={"danger"}
+                        onClick={logout}
+                    />
+                </div>
+            </aside>
+
+            {/* ═══════════════════════════════════════════════════════════════════
+                DESKTOP NAVIGATION (Visible ONLY on desktop md+, hidden on mobile)
+               ═══════════════════════════════════════════════════════════════════ */}
+            <aside
+                className={twMerge(
+                    "hidden md:flex flex-col fixed top-0 left-0 h-screen! bg-background text-foreground py-5 px-sidebar-padding gap-5 z-40 overflow-x-hidden overflow-y-auto transition-all duration-300 ease-in-out",
+                    isCollapsed ? "w-sidebar-collapsed" : "w-sidebar",
+                    !isFullScreen && "border-r border-border/90",
+                )}
+            >
+                {/* Desktop Header */}
+                <div className="flex items-center justify-between p-sidebar-item-padding w-full cursor-pointer">
                     <div className="flex items-center gap-sidebar-item-gap">
                         <button
-                            className="cursor-pointer hidden md:block"
+                            type="button"
+                            className="cursor-pointer"
                             onClick={toggleSidebar}
                         >
                             <Menu
@@ -182,12 +268,19 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                                 )}
                             />
                         </button>
-                        <label className={twMerge(
-                            "text-xl font-extrabold tracking-tight translate-x-[0.4rem]",
-                            isCollapsed && !isMobileOpen ? "hidden" : "block",
-                        )}>
-                            <div className="flex items-center justify-center gap-3">
-                                <span className="font-bold text-sm tracking-wide">
+                        <label
+                            className={twMerge(
+                                "text-xl font-extrabold tracking-tight translate-x-[0.4rem]",
+                                isCollapsed ? "hidden" : "block",
+                            )}
+                        >
+                            <div className="flex items-center justify-center gap-2.5">
+                                <img
+                                    src="/images/coreDevlogo.png"
+                                    alt="CoreDev Logo"
+                                    className="size-7.5 object-contain shrink-0 drop-shadow-xs"
+                                />
+                                <span className="font-extrabold text-[15px] tracking-tight">
                                     Server Monitoring
                                 </span>
                             </div>
@@ -195,52 +288,56 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                     </div>
                 </div>
 
-            <nav className="flex flex-col gap-1 mb-auto">
-                {navLinks}
-            </nav>
+                {/* Desktop Nav Links */}
+                <nav className="flex flex-col gap-1 mb-auto">
+                    {navLinks}
+                </nav>
 
-            <Popover
-                open={popoverProfileOpen}
-                onOpenChange={setPopoverProfileOpen}
-            >
-                <PopoverTrigger>
-                    <ProfileBar isCollapsed={isCollapsed} user={user} />
-                </PopoverTrigger>
-                <PopoverContent
-                    align="end"
-                    side="right"
-                    sideOffset={8}
-                    className="w-80 bg-background p-5 rounded-lg flex flex-col gap-2 ring-foreground/50 z-9999"
+                {/* Desktop Profile Popover */}
+                <Popover
+                    open={popoverProfileOpen}
+                    onOpenChange={setPopoverProfileOpen}
                 >
-                    {isCollapsed ? (
-                        <Link
-                            to="/profile"
-                            onClick={() => setPopoverProfileOpen(false)}
-                            className="w-full block"
-                        >
-                            <ProfileBar user={user} asNavigation />
-                        </Link>
-                    ) : (
-                        <Link
-                            to="/profile"
-                            onClick={() => setPopoverProfileOpen(false)}
-                            className="flex gap-3 items-center px-4 py-2.5 rounded-lg transition-colors w-full hover:bg-muted cursor-pointer group text-sm"
-                        >
-                            <CircleUser className="size-5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
-                            <span className="font-medium text-foreground">Profile</span>
-                        </Link>
-                    )}
-                    <ThemeToggle />
+                    <PopoverTrigger>
+                        <ProfileBar isCollapsed={isCollapsed} user={user} />
+                    </PopoverTrigger>
+                    <PopoverContent
+                        align="end"
+                        side="right"
+                        sideOffset={8}
+                        className="w-80 bg-background p-5 rounded-lg flex flex-col gap-2 ring-foreground/50 z-9999"
+                    >
+                        {isCollapsed ? (
+                            <Link
+                                to="/profile"
+                                onClick={() => setPopoverProfileOpen(false)}
+                                className="w-full block"
+                            >
+                                <ProfileBar user={user} asNavigation />
+                            </Link>
+                        ) : (
+                            <Link
+                                to="/profile"
+                                onClick={() => setPopoverProfileOpen(false)}
+                                className="flex gap-3 items-center px-4 py-2.5 rounded-lg transition-colors w-full hover:bg-muted cursor-pointer group text-sm"
+                            >
+                                <CircleUser className="size-5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                <span className="font-medium text-foreground">
+                                    Profile
+                                </span>
+                            </Link>
+                        )}
+                        <ThemeToggle />
 
-                    <Button
-                        className="cursor-pointer"
-                        label="Logout"
-                        variant={"danger"}
-                        onClick={logout}
-                    />
-                </PopoverContent>
-            </Popover>
-        </aside>
+                        <Button
+                            className="cursor-pointer"
+                            label="Logout"
+                            variant={"danger"}
+                            onClick={logout}
+                        />
+                    </PopoverContent>
+                </Popover>
+            </aside>
         </>
     );
 };
