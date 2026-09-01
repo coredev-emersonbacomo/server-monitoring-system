@@ -25,34 +25,39 @@ export function ServerCard({ server }: ServerCardProps) {
     return (
         <Link
             to={`/servers/${server.uuid}?client=all`}
-            className="block rounded-lg transition-transform duration-200 hover:-translate-y-1"
+            className="block h-full rounded-lg transition-transform duration-200 hover:-translate-y-1"
         >
-            <div className="relative size-full rounded-lg border bg-card border-border p-6 shadow-xs flex flex-col items-center font-sans gap-3 transition-all hover:shadow-md hover:border-border/80">
+            <div className="relative size-full rounded-lg border bg-card border-border p-4 shadow-xs flex flex-col items-center justify-between font-sans transition-all hover:shadow-md hover:border-border/80">
+                {/* Top Badge: Positioned close to top-right corner */}
                 {isAssignedToCurrentUser && (
-                    <div className="absolute top-3 right-4 flex items-center">
-                        <span className="flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full shadow-xs">
-                            <UserCheck className="size-3 shrink-0" />
+                    <div className="absolute top-2 right-2 flex items-center">
+                        <span className="flex items-center gap-1 text-[9px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shadow-xs">
+                            <UserCheck className="size-2.5 shrink-0" />
                             <span>Assigned to you</span>
                         </span>
                     </div>
                 )}
 
-                <div
-                    className={cn(
-                        "p-3 rounded-lg",
-                        isAssignedToCurrentUser ? "mt-8" : "",
-                        meta.bg,
-                    )}
-                >
-                    <Icon className={cn("size-5", meta.color)} />
+                {/* Top Spacer: Maintains consistent vertical spacing & alignment for all cards */}
+                <div className="w-full h-3" />
+
+                {/* Center Content: Icon, Name & Client */}
+                <div className="w-full flex flex-col items-center gap-2.5 my-2">
+                    <div className={cn("p-3 rounded-lg", meta.bg)}>
+                        <Icon className={cn("size-5", meta.color)} />
+                    </div>
+                    <div className="text-center w-full flex flex-col items-center gap-1">
+                        <p className="text-sm font-medium text-foreground truncate w-full" title={server.name}>
+                            {server.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate w-full" title={server.client_name ?? undefined}>
+                            {server.client_name || "\u00A0"}
+                        </p>
+                    </div>
                 </div>
-                <div className="text-center w-full flex flex-col items-center gap-1.5">
-                    <p className="text-sm font-medium text-foreground truncate w-full">
-                        {server.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate w-full">
-                        {server.client_name}
-                    </p>
+
+                {/* Bottom Badge Slot: Fixed height so bottom status is aligned */}
+                <div className="w-full h-6 flex items-center justify-center">
                     <ServerStatusBadge
                         status={server.status}
                         record_status={server.record_status}

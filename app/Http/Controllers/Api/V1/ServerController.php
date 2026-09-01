@@ -406,14 +406,48 @@ class ServerController extends Controller
                     ->where('record_status', '!=', 'archived');
                 break;
             case 'online':
-                $query->where('status', 'online')
+                $rawOffline = (int) Setting::get('offline_threshold', '15');
+                $offlineThresholdSec = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
+                $cutoff = Carbon::now()->subSeconds($offlineThresholdSec);
+
+                $query->where('status', '!=', 'archived')
+                    ->where('record_status', '!=', 'archived')
                     ->whereNull('deleted_at')
-                    ->where('record_status', '!=', 'archived');
+                    ->where('agent_deleted', false)
+                    ->where('status', '!=', 'agent_uninstalled')
+                    ->where('status', '!=', 'waiting_for_installation')
+                    ->where('status', '!=', 'pending_installation')
+                    ->where('status', '!=', 'waiting_for_first_heartbeat')
+                    ->whereHas('agent', function ($aq) use ($cutoff) {
+                        $aq->where('status', 'active')
+                            ->whereNotNull('registered_at')
+                            ->whereNotNull('last_seen_at')
+                            ->where('last_seen_at', '>=', $cutoff);
+                    });
                 break;
             case 'offline':
-                $query->where('status', 'offline')
+                $rawOffline = (int) Setting::get('offline_threshold', '15');
+                $offlineThresholdSec = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
+                $cutoff = Carbon::now()->subSeconds($offlineThresholdSec);
+
+                $query->where('status', '!=', 'archived')
+                    ->where('record_status', '!=', 'archived')
                     ->whereNull('deleted_at')
-                    ->where('record_status', '!=', 'archived');
+                    ->where('status', '!=', 'agent_uninstalled')
+                    ->where('status', '!=', 'waiting_for_installation')
+                    ->where('status', '!=', 'pending_installation')
+                    ->where('status', '!=', 'waiting_for_first_heartbeat')
+                    ->where(function ($oq) use ($cutoff) {
+                        $oq->where('agent_deleted', true)
+                            ->orWhereHas('agent', function ($aq) use ($cutoff) {
+                                $aq->where('status', 'active')
+                                    ->whereNotNull('registered_at')
+                                    ->where(function ($lq) use ($cutoff) {
+                                        $lq->whereNull('last_seen_at')
+                                            ->orWhere('last_seen_at', '<', $cutoff);
+                                    });
+                            });
+                    });
                 break;
             case 'pending_deletion':
                 $query->where('agent_deleted', true)
