@@ -87,7 +87,6 @@ type WatchedPath struct {
 	Scope           string   `json:"scope"` // agent | server
 	ServerUUID      string   `json:"server_uuid,omitempty"`
 	Enabled         bool     `json:"enabled"`
-	Recursive       bool     `json:"recursive"`
 	ExcludePatterns []string `json:"exclude_patterns,omitempty"`
 	Description     string   `json:"description,omitempty"`
 }

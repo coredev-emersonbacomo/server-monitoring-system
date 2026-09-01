@@ -3,9 +3,9 @@ import api from "@/api/api";
 
 export interface ActionItem {
     id: number;
-    action_type: "no_secops" | "server_offline";
+    action_type: string;
     message: string;
-    severity: "critical" | "warning" | "notice";
+    severity: "critical" | "warning" | "notice" | "info";
     server_uuid: string | null;
     client_uuid: string | null;
     client_name: string | null;
@@ -25,7 +25,7 @@ export const useDashboardActions = () => {
             return data as ActionItem[];
         },
         staleTime: 30_000,
-        refetchInterval: 60_000,
+        refetchInterval: false,
     });
 };
 

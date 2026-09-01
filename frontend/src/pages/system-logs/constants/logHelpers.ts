@@ -92,7 +92,8 @@ export function shortModel(fqcn: string | null | undefined): string {
 
 export function formatDate(value: string | null): string {
     if (!value) return "—";
-    const d = new Date(value);
+    const normalized = value.endsWith("Z") || /[+-]\d{2}:?\d{2}$/.test(value) ? value : `${value}Z`;
+    const d = new Date(normalized);
     return d.toLocaleString(undefined, {
         month: "short",
         day: "numeric",

@@ -26,8 +26,8 @@ class FileActivityLogResource extends JsonResource
             'username' => $this->username,
             'process_name' => $this->process_name,
             'process_id' => $this->process_id,
-            'occurred_at' => $this->occurred_at?->toIso8601String(),
-            'created_at' => $this->created_at?->toIso8601String(),
+            'occurred_at' => $this->occurred_at?->utc()->toIso8601String(),
+            'created_at' => $this->created_at?->utc()->toIso8601String(),
         ];
     }
 }

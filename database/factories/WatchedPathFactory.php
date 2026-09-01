@@ -17,7 +17,6 @@ class WatchedPathFactory extends Factory
             'scope' => 'agent',
             'server_id' => null,
             'enabled' => true,
-            'recursive' => true,
             'description' => 'MonitorAgent state/config/identity/update files',
         ];
     }

@@ -1,11 +1,5 @@
 === Missing Auth Features (from original big prompt) ===
 
-1. Email Verification
-   - Wire up `MustVerifyEmail` on the User model
-   - Create verification notification + routes
-   - Add frontend UI (verification prompt, resend button)
-   - `email_verified_at` column already exists
-
 4. Account Lockout (DB-persistent)
    - Add `locked_until` column to users table
    - After N consecutive failed attempts, lock the account

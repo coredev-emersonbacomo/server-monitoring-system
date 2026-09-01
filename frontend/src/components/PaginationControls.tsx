@@ -143,7 +143,7 @@ export function PaginationControls({
                         aria-label="Page"
                         className="w-9 h-6 rounded border border-border bg-background text-center text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-40"
                     />
-                    <span>/ {meta.pageCount ?? "?"}</span>
+                    {meta.pageCount !== null && <span>/ {meta.pageCount}</span>}
                 </span>
                 <button
                     type="button"

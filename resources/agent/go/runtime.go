@@ -101,6 +101,10 @@ func (rt *AgentRuntime) SetWatchedPaths(paths []WatchedPath) {
 		out = append(out, p)
 	}
 	rt.watchedPaths = out
+	// Nudge the file watcher to reconcile immediately (non-blocking).
+	if currentWatcher != nil {
+		currentWatcher.TriggerSync()
+	}
 }
 
 // EffectiveWatchedPaths returns the enabled watched paths the agent should

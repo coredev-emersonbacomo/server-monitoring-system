@@ -36,7 +36,7 @@ type RawEnvelope = {
     meta?: { pagination?: RawPagination };
 };
 
-const PAGE_KEYS = ["page", "per_page", "cursor"];
+const PAGE_KEYS = ["page", "per_page", "cursor", "previous_cursor"];
 
 /**
  * Drives a server-paginated table. Filter/sort state lives in the browser URL
@@ -47,26 +47,48 @@ const PAGE_KEYS = ["page", "per_page", "cursor"];
  *  - "cursor": cursor pagination (`next_cursor`/`previous_cursor`, no total).
  * If the backend returns the flat `{ prev, next, total, per_page }` envelope
  * (activity logs), it is treated as page mode.
+ *
+ * When `opts.id` is provided, pagination URL keys are namespaced as
+ * `${id}_page` etc. so multiple tables on the same page don't collide on `page`.
+ * Backend always receives the canonical `page`/`per_page`/`cursor` keys.
  */
 export function usePaginatedTable<T>(
     url: string,
     fixedParams: Record<string, string | undefined> = {},
+    opts?: { id?: string },
 ) {
+    const id = opts?.id?.trim() || "";
+    const pageKey = id ? `${id}_page` : "page";
+    const perPageKey = id ? `${id}_per_page` : "per_page";
+    const cursorKey = id ? `${id}_cursor` : "cursor";
+    const prevCursorKey = id ? `${id}_previous_cursor` : "previous_cursor";
+    const scopedPageKeys = id ? [pageKey, perPageKey, cursorKey, prevCursorKey] : PAGE_KEYS;
+    const logicalToScoped: Record<string, string> = id
+        ? { page: pageKey, per_page: perPageKey, cursor: cursorKey, previous_cursor: prevCursorKey }
+        : { page: "page", per_page: "per_page", cursor: "cursor", previous_cursor: "previous_cursor" };
+    const scopedToLogical: Record<string, string> = id
+        ? { [pageKey]: "page", [perPageKey]: "per_page", [cursorKey]: "cursor", [prevCursorKey]: "previous_cursor" }
+        : { page: "page", per_page: "per_page", cursor: "cursor", previous_cursor: "previous_cursor" };
+
     const [searchParams, setSearchParams] = useSearchParams();
     const [cursorPage, setCursorPage] = useState(1);
 
     const setParams = (updates: Record<string, string | null>) => {
         const next = new URLSearchParams(searchParams);
+        let isFilterChange = false;
         for (const [key, value] of Object.entries(updates)) {
+            const urlKey = logicalToScoped[key] ?? key;
             if (value === null || value === "") {
-                next.delete(key);
+                next.delete(urlKey);
             } else {
-                next.set(key, value);
+                next.set(urlKey, value);
             }
             if (!PAGE_KEYS.includes(key)) {
-                next.delete("page");
-                next.delete("cursor");
+                isFilterChange = true;
             }
+        }
+        if (isFilterChange) {
+            for (const k of scopedPageKeys) next.delete(k);
         }
         setSearchParams(next);
     };
@@ -78,11 +100,21 @@ export function usePaginatedTable<T>(
         }
     }
     searchParams.forEach((value, key) => {
-        queryParams[key] = value;
+        const logical = scopedToLogical[key] ?? key;
+        // Only map pagination keys to canonical backend keys; others pass through.
+        if (PAGE_KEYS.includes(logical)) {
+            queryParams[logical] = value;
+        } else if (!id || !scopedPageKeys.includes(key)) {
+            // For id-scoped tables, ignore unscoped page keys that belong to other tables.
+            // For non-scoped tables, pass everything.
+            queryParams[key] = value;
+        } else {
+            queryParams[key] = value;
+        }
     });
 
     const query = useQuery<RawEnvelope | null>({
-        queryKey: ["paginated", url, fixedParams, searchParams.toString()],
+        queryKey: ["paginated", url, fixedParams, searchParams.toString(), id],
         queryFn: async () => {
             const { data, error } = await api.GET(
                 url as never,
@@ -127,13 +159,14 @@ export function usePaginatedTable<T>(
     } else {
         const perPage = raw?.per_page ?? 15;
         const total = raw?.total ?? 0;
+        const urlPage = Number(searchParams.get(pageKey) ?? searchParams.get("page") ?? "1");
         meta = {
             mode: "page",
             perPage,
             hasPrevious: raw?.prev !== null && raw?.prev !== undefined,
             hasNext: raw?.next !== null && raw?.next !== undefined,
             total,
-            page: Number(searchParams.get("page") ?? "1"),
+            page: urlPage,
             pageCount: total > 0 ? Math.max(1, Math.ceil(total / perPage)) : 1,
             nextCursor: null,
             previousCursor: null,

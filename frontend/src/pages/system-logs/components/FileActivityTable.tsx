@@ -1,6 +1,7 @@
 import { usePaginatedTable } from "../hooks/usePaginatedTable";
 import type { FileActivityLogData } from "../hooks/useAuditLogs";
 import { cn, tailEllipsis } from "@/lib/utils";
+import { time } from "@/lib/time";
 import { ServerLink } from "./ServerLink";
 import { PaginationControls } from "@/components/PaginationControls";
 
@@ -24,13 +25,8 @@ const actionClass: Record<string, string> = {
     deleted: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
 };
 
-function formatDate(value?: string | null): string {
-    if (!value) return "—";
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? value : d.toLocaleString();
-}
-
 interface FileActivityTableProps {
+    id?: string;
     url: string;
     params?: Record<string, string | undefined>;
     emptyMessage: string;
@@ -38,6 +34,7 @@ interface FileActivityTableProps {
 }
 
 export function FileActivityTable({
+    id,
     url,
     params = {},
     emptyMessage,
@@ -53,7 +50,7 @@ export function FileActivityTable({
         goNext,
         goLast,
         goToPage,
-    } = usePaginatedTable<FileActivityLogData>(url, params);
+    } = usePaginatedTable<FileActivityLogData>(url, params, { id });
 
     return (
         <div className="bg-card overflow-hidden">
@@ -91,7 +88,7 @@ export function FileActivityTable({
                                     onClick={() => onSelect(log)}
                                 >
                                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                                        {formatDate(log.occurred_at)}
+                                        {time(log.occurred_at)}
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap">
                                         <ServerLink

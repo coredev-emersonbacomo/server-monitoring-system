@@ -5,6 +5,8 @@ namespace App\NodeConfig\NodeTypes;
 use App\Models\Agent;
 use App\Models\MetricSample;
 use App\Models\Port;
+use App\Models\Server;
+use App\Models\ServerUpdate;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Log;
 
@@ -182,7 +184,7 @@ class SustainedNode extends BaseNode
 
     private function checkServerStatusCondition(int $serverId, int $requiredMs): bool
     {
-        $agent = Agent::where('server_id', $serverId)->first();
+        $agent = Server::find($serverId)?->agent ?? Agent::where('server_id', $serverId)->where('status', 'active')->first();
 
         if (! $agent || ! $agent->last_seen_at) {
             return false;
@@ -200,7 +202,7 @@ class SustainedNode extends BaseNode
             return false;
         }
 
-        $agent = Agent::where('server_id', $serverId)->first();
+        $agent = Server::find($serverId)?->agent ?? Agent::where('server_id', $serverId)->where('status', 'active')->first();
         if (! $agent) {
             return false;
         }
@@ -222,7 +224,7 @@ class SustainedNode extends BaseNode
         int $requiredMs,
         float $minMatchPercent,
     ): bool {
-        $agent = Agent::where('server_id', $serverId)->first();
+        $agent = Server::find($serverId)?->agent ?? Agent::where('server_id', $serverId)->where('status', 'active')->first();
         if (! $agent) {
             return false;
         }
@@ -251,6 +253,31 @@ class SustainedNode extends BaseNode
             ->first();
 
         if (! $row || (int) $row->total === 0) {
+            // Fallback to ServerUpdate when MetricSample window is empty (e.g. aggregated heartbeat lag)
+            $colMap = ['cpu_usage' => 'cpu_usage', 'memory_usage' => 'memory_usage', 'disk_usage' => 'storage'];
+            $col = $colMap[$metricType] ?? null;
+            if ($col) {
+                $latest = ServerUpdate::where('server_id', $serverId)
+                    ->orderByDesc('created_at')
+                    ->first();
+                if ($latest && isset($latest->$col)) {
+                    $val = (float) $latest->$col;
+                    $holds = match ($operator) {
+                        'greater_than' => $val > $threshold,
+                        'greater_than_equal' => $val >= $threshold,
+                        'less_than' => $val < $threshold,
+                        'less_than_equal' => $val <= $threshold,
+                        'equal' => $val == $threshold,
+                        'not_equal' => $val != $threshold,
+                        default => false,
+                    };
+                    if ($holds) {
+                        Log::info('[sustained] checkMetricCondition — fallback ServerUpdate holds', ['server_id' => $serverId, 'metric_type' => $metricType, 'value' => $val]);
+
+                        return true;
+                    }
+                }
+            }
             Log::info('[sustained] checkMetricCondition — no samples in window', [
                 'server_id' => $serverId,
                 'metric_type' => $metricType,

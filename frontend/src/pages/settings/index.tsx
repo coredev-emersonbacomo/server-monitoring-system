@@ -16,6 +16,8 @@ import { useJwtAuth } from "@/hooks/useJwtAuth";
 import IndexHeader from "@/components/IndexHeader";
 import PageLayout from "@/components/PageLayout";
 
+const SHOW_PIPELINE_VISUALIZER = import.meta.env.VITE_ALERTS_VISUAL_DEBUGGER === "true";
+
 function Settings() {
     useDocumentTitle("Settings");
     const { user, isLoading: authLoading } = useJwtAuth();
@@ -82,13 +84,17 @@ function Settings() {
             icon: GitBranch,
             href: "/settings/alerts",
         },
-        {
-            title: "System Pipeline Visualizer",
-            description:
-                "Real-time ecosystem map showing agent heartbeats, metrics flow particles, backend FSM evaluations, and exact scheduled timers.",
-            icon: Activity,
-            href: "/settings/alerts/debugger",
-        },
+        ...(SHOW_PIPELINE_VISUALIZER
+            ? [
+                  {
+                      title: "System Pipeline Visualizer",
+                      description:
+                          "Real-time ecosystem map showing agent heartbeats, metrics flow particles, backend FSM evaluations, and exact scheduled timers.",
+                      icon: Activity,
+                      href: "/settings/alerts/debugger",
+                  } as const,
+              ]
+            : []),
         {
             title: "Docs",
             description:

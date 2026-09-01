@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\ServerStatus;
+use App\Events\AgentLifecycleCreated;
+use App\Events\FileActivityCreated;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AgentLifecycleEventResource;
 use App\Http\Resources\FileActivityLogResource;
@@ -14,7 +16,9 @@ use App\Services\AgentAuthService;
 use App\Services\HybridPaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AuditController extends Controller
 {
@@ -64,7 +68,9 @@ class AuditController extends Controller
             ->all();
         $knownUuids = array_flip($knownUuids);
 
-        DB::transaction(function () use ($validated, $agent, $serverByUuid, $knownUuids, &$inserted, &$skipped) {
+        $created = [];
+
+        DB::transaction(function () use ($validated, $agent, $serverByUuid, $knownUuids, &$inserted, &$skipped, &$created) {
             foreach ($validated['events'] as $event) {
                 if (isset($knownUuids[$event['uuid']])) {
                     $skipped++;
@@ -84,7 +90,10 @@ class AuditController extends Controller
                     continue;
                 }
 
-                FileActivityLog::create([
+                // Agent sends UTC RFC3339 (e.g. 2026-09-01T05:36:44Z). Store as UTC.
+                $occurredAt = Carbon::parse($event['occurred_at'])->utc();
+
+                $created[] = FileActivityLog::create([
                     'uuid' => $event['uuid'],
                     'server_id' => $serverId,
                     'agent_id' => $agent->id,
@@ -96,12 +105,20 @@ class AuditController extends Controller
                     'username' => $event['username'] ?? null,
                     'process_name' => $event['process_name'] ?? null,
                     'process_id' => $event['process_id'] ?? null,
-                    'occurred_at' => $event['occurred_at'],
+                    'occurred_at' => $occurredAt,
                 ]);
 
                 $inserted++;
             }
         });
+
+        foreach ($created as $log) {
+            try {
+                FileActivityCreated::dispatch($log);
+            } catch (\Throwable $e) {
+                Log::warning('[broadcast] FileActivityCreated failed: '.$e->getMessage());
+            }
+        }
 
         return response()->json(['inserted' => $inserted, 'skipped' => $skipped], 200);
     }
@@ -138,7 +155,9 @@ class AuditController extends Controller
             ->all();
         $knownUuids = array_flip($knownUuids);
 
-        DB::transaction(function () use ($validated, $agent, $serverByUuid, $knownUuids, &$inserted, &$skipped) {
+        $created = [];
+
+        DB::transaction(function () use ($validated, $agent, $serverByUuid, $knownUuids, &$inserted, &$skipped, &$created) {
             foreach ($validated['events'] as $event) {
                 if (isset($knownUuids[$event['uuid']])) {
                     $skipped++;
@@ -156,17 +175,27 @@ class AuditController extends Controller
                     continue;
                 }
 
-                AgentLifecycleEvent::create([
+                $occurredAt = Carbon::parse($event['occurred_at'])->utc();
+
+                $created[] = AgentLifecycleEvent::create([
                     'uuid' => $event['uuid'],
                     'server_id' => $serverId,
                     'agent_id' => $agent->id,
                     'event_type' => $event['event_type'],
-                    'occurred_at' => $event['occurred_at'],
+                    'occurred_at' => $occurredAt,
                 ]);
 
                 $inserted++;
             }
         });
+
+        foreach ($created as $ev) {
+            try {
+                AgentLifecycleCreated::dispatch($ev);
+            } catch (\Throwable $e) {
+                Log::warning('[broadcast] AgentLifecycleCreated failed: '.$e->getMessage());
+            }
+        }
 
         return response()->json(['inserted' => $inserted, 'skipped' => $skipped], 200);
     }
@@ -232,6 +261,14 @@ class AuditController extends Controller
             });
         }
 
+        // Default to page mode so the UI shows total pages like the other log tabs.
+        // HybridPaginator defaults to cursor when no page/cursor is given, which
+        // renders as "1 / ?" and breaks the shared PaginationControls expectation
+        // for these tabs. Jump-to-page still works via ?page=N.
+        if (! $request->filled('page') && ! $request->filled('cursor') && ! $request->filled('previous_cursor')) {
+            $request->merge(['page' => '1']);
+        }
+
         $results = $this->hybridPaginator->paginate($query, $request);
 
         return response()->json([
@@ -266,6 +303,10 @@ class AuditController extends Controller
             $query->where('event_type', $request->string('event_type'));
         }
 
+        if (! $request->filled('page') && ! $request->filled('cursor') && ! $request->filled('previous_cursor')) {
+            $request->merge(['page' => '1']);
+        }
+
         $results = $this->hybridPaginator->paginate($query, $request);
 
         return response()->json([
@@ -282,7 +323,22 @@ class AuditController extends Controller
             $query->where('server_id', $request->integer('server_id'));
         } elseif ($request->filled('server_uuid')) {
             $server = Server::where('uuid', $request->string('server_uuid'))->first();
-            $query->where('server_id', $server ? $server->id : -1);
+            if (! $server) {
+                $query->where('server_id', -1);
+
+                return;
+            }
+            // Include agent-scoped rows (server_id IS NULL) for this agent so
+            // the Agent tab shows file activity that is not bound to a single
+            // server (e.g. %ProgramData%\MonitorAgent watches).
+            $query->where(function ($q) use ($server) {
+                $q->where('server_id', $server->id);
+                if ($server->agent_id) {
+                    $q->orWhere(function ($qq) use ($server) {
+                        $qq->whereNull('server_id')->where('agent_id', $server->agent_id);
+                    });
+                }
+            });
         }
     }
 

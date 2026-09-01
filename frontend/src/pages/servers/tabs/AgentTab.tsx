@@ -22,6 +22,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import api from "@/api/api";
+import { time } from "@/lib/time";
 import { useServerDetailContext } from "../context/ServerDetailContext";
 import { AgentLogsSection } from "./AgentLogsSection";
 
@@ -210,16 +211,12 @@ export function AgentTab() {
                                 },
                                 {
                                     label: "First Registered",
-                                    value: new Date(
-                                        server.agent.registered_at,
-                                    ).toLocaleString(),
+                                    value: time(server.agent.registered_at),
                                 },
                                 {
                                     label: "Last Heartbeat",
                                     value: server.agent.last_seen_at
-                                        ? new Date(
-                                              server.agent.last_seen_at,
-                                          ).toLocaleString()
+                                        ? time(server.agent.last_seen_at)
                                         : "Never",
                                 },
                             ].map((prop, idx) => (

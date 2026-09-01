@@ -57,7 +57,12 @@ class MonitorServer implements ShouldQueue
         $config = NodeConfig::resolveForServer($this->serverUuid);
         $engine = $config ? new NodeConfigEngine($registry) : null;
 
-        $isOffline = $server->health === ServerHealth::Offline;
+        // Fresh last_seen to respect offline_threshold exactly — avoids stale
+        // eager-loaded agent when heartbeat just updated it.
+        $lastSeen = Agent::where('id', $server->agent_id)->value('last_seen_at');
+        $rawThreshold = (int) Setting::get('offline_threshold', '15');
+        $thresholdSec = $rawThreshold >= 1000 ? intdiv($rawThreshold, 1000) : ($rawThreshold ?: 15);
+        $isOffline = Server::computeHealth($lastSeen, $thresholdSec) === ServerHealth::Offline;
         $previousStatus = $server->status;
 
         if ($isOffline) {
@@ -198,6 +203,19 @@ class MonitorServer implements ShouldQueue
 
         ActionItem::where('action_type', 'server_offline')
             ->where('server_id', $server->id)
+            ->where('status', 'open')
+            ->whereNull('assigned_to')
+            ->delete();
+
+        // Also resolve alert ActionItems for server_status when server recovers
+        ActionItem::where('server_id', $server->id)
+            ->where('action_type', 'like', '%offline%')
+            ->where('status', 'open')
+            ->whereNotNull('assigned_to')
+            ->update(['status' => 'completed', 'completed_at' => now()]);
+
+        ActionItem::where('server_id', $server->id)
+            ->where('action_type', 'like', '%offline%')
             ->where('status', 'open')
             ->whereNull('assigned_to')
             ->delete();

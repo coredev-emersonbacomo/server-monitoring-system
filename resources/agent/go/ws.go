@@ -314,6 +314,9 @@ func handleConfigUpdate(runtime *AgentRuntime, payload configUpdatePayload, hear
 	if payload.WatchedPaths != nil {
 		runtime.SetWatchedPaths(*payload.WatchedPaths)
 		log.Printf("[WS] Watched paths updated (%d)", len(*payload.WatchedPaths))
+		if currentWatcher != nil {
+			currentWatcher.TriggerSync()
+		}
 	}
 }
 
