@@ -468,6 +468,7 @@ interface SearchIndexEntry {
     description: string;
     contentText: string;
     group: string;
+    subtopics: { id: string; text: string }[];
 }
 
 export default function Docs() {
@@ -501,12 +502,42 @@ export default function Docs() {
             if (!id) return;
             const page = PAGES[id];
             const section = DOC_SECTIONS.find((s) => s.id === id);
+            const subtopics: { id: string; text: string }[] = [];
+            let current: { id: string; text: string[] } | null = null;
+            el.childNodes.forEach((node) => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    const child = node as HTMLElement;
+                    const h2 =
+                        child.querySelector?.(":scope > h2[id]") ??
+                        ((child.tagName === "H2" && child.id
+                            ? child
+                            : null) as HTMLElement | null);
+                    if (h2) {
+                        if (current) {
+                            subtopics.push({
+                                id: current.id,
+                                text: current.text.join(" "),
+                            });
+                        }
+                        current = { id: h2.id, text: [h2.textContent ?? ""] };
+                        return;
+                    }
+                }
+                if (current) current.text.push(node.textContent ?? "");
+            });
+            if (current) {
+                subtopics.push({
+                    id: current.id,
+                    text: current.text.join(" "),
+                });
+            }
             entries.push({
                 id,
                 title: page?.title ?? section?.label ?? id,
                 description: page?.description ?? "",
                 contentText: el.textContent ?? "",
                 group: section?.group ?? "Sub-page",
+                subtopics,
             });
         });
         searchIndexRef.current = entries;
@@ -615,23 +646,40 @@ export default function Docs() {
 
     const navigateToResult = useCallback(
         (entry: SearchIndexEntry) => {
+            const q = searchQuery.trim().toLowerCase();
+            const countMatches = (text: string) => {
+                const lower = text.toLowerCase();
+                let count = 0;
+                let idx = lower.indexOf(q);
+                while (idx !== -1) {
+                    count++;
+                    idx = lower.indexOf(q, idx + q.length);
+                }
+                return count;
+            };
+            const matchedSub = entry.subtopics
+                ?.filter((s) => s.text.toLowerCase().includes(q))
+                .sort((a, b) => countMatches(b.text) - countMatches(a.text))[0]
+                ?.id;
             const isSidebar = DOC_SECTIONS.some((s) => s.id === entry.id);
             if (isSidebar) {
                 navigate(`/docs/${entry.id}`);
+                if (matchedSub) pendingScroll.current = matchedSub;
             } else {
                 const parent = PARENT_SECTION[entry.id];
                 if (parent) {
                     navigate(`/docs/${parent}`);
-                    pendingScroll.current = entry.id;
+                    pendingScroll.current = matchedSub ?? entry.id;
                 } else {
                     navigate(`/docs/${entry.id}`);
+                    if (matchedSub) pendingScroll.current = matchedSub;
                 }
             }
             setSearchOpen(false);
             setSearchQuery("");
             setMobileOpen(false);
         },
-        [navigate],
+        [navigate, searchQuery],
     );
 
     useEffect(() => {
