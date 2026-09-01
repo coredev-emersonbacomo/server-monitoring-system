@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { DebouncedSearchInput } from "@/components/DebouncedSearchInput";
 import { useUrlState } from "@/hooks/useUrlState";
 import { useUsers } from "@/hooks/useUsers";
+import type { UserData } from "@/types/models";
 import {
     Dialog,
     DialogContent,
@@ -20,7 +21,7 @@ interface AddSecopDialogProps {
     secopLimit: number;
     excludedUuids: string[];
     isAdding: boolean;
-    onAddSecop: (userUuid: string, userName: string) => void;
+    onAddSecop: (user: UserData) => void;
     paramName?: string;
 }
 
@@ -80,10 +81,7 @@ export function AddSecopDialog({
                                     key={user.uuid}
                                     onClick={() => {
                                         setSelectedSecopToAdd(user.uuid);
-                                        onAddSecop(
-                                            user.uuid,
-                                            `${user.first_name} ${user.last_name}`,
-                                        );
+                                        onAddSecop(user);
                                     }}
                                     disabled={
                                         isAdding ||

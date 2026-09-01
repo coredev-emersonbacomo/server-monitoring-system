@@ -19,6 +19,7 @@ beforeEach(function () {
     $this->secop = User::factory()->create([
         'email' => 'secop@example.com',
         'password' => bcrypt('password123'),
+        'email_verified_at' => now(),
     ]);
 
     $this->client = Client::factory()->create();
@@ -102,7 +103,7 @@ test('admin can remove a client from a user', function () {
 test('assigning client to user rejects if client exceeds secops limit', function () {
     Setting::set('secop_limit_per_client', '1');
 
-    $secopTwo = User::factory()->create();
+    $secopTwo = User::factory()->create(['email_verified_at' => now()]);
     $token = loginAsUser($this->admin);
 
     // Assign the first SecOp user
@@ -121,4 +122,27 @@ test('assigning client to user rejects if client exceeds secops limit', function
 
     $response->assertStatus(422)
         ->assertJsonValidationErrors(['client_uuid']);
+});
+
+test('assigning a client to an unverified user is rejected', function () {
+    $unverified = User::factory()->create([
+        'email' => 'unverified@example.com',
+        'password' => bcrypt('password123'),
+        'email_verified_at' => null,
+    ]);
+    $token = loginAsUser($this->admin);
+
+    $response = $this->withHeaders([
+        'Authorization' => 'Bearer '.$token,
+    ])->postJson("/api/users/{$unverified->uuid}/clients", [
+        'client_uuid' => $this->client->uuid,
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['user_uuid']);
+
+    $this->assertDatabaseMissing('sec_op_clients', [
+        'client_id' => $this->client->id,
+        'user_id' => $unverified->id,
+    ]);
 });
