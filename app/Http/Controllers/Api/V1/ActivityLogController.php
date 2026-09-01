@@ -100,7 +100,15 @@ class ActivityLogController extends Controller
                 $q->whereRaw('LOWER(action) LIKE ?', [$search])
                     ->orWhereRaw('LOWER(COALESCE(user, \'System\')) LIKE ?', [$search])
                     ->orWhereRaw('LOWER(COALESCE(logable_type, \'\')) LIKE ?', [$search])
-                    ->orWhereRaw('LOWER(CAST(details AS TEXT)) LIKE ?', [$search]);
+                    ->orWhereRaw('LOWER(CAST(details AS TEXT)) LIKE ?', [$search])
+                    ->orWhereHas('PerformerUser', function ($uq) use ($search) {
+                        $uq->where(function ($w) use ($search) {
+                            $w->whereRaw('LOWER(first_name) LIKE ?', [$search])
+                                ->orWhereRaw('LOWER(last_name) LIKE ?', [$search])
+                                ->orWhereRaw('LOWER(username) LIKE ?', [$search])
+                                ->orWhereRaw("LOWER(COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) LIKE ?", [$search]);
+                        });
+                    });
             });
         }
 
