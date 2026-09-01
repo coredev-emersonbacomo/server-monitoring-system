@@ -44,6 +44,7 @@ import { TimezoneCombobox, tzOffsetLabel } from "@/components/TimezoneCombobox";
 import { FormStoreProvider } from "@/components/ui/form/FormStoreProvider";
 import { AssignClientDialog } from "./components/AssignClientDialog";
 import { DeleteUserDialog } from "./components/DeleteUserDialog";
+import { VerifyRequiredModal } from "@/components/VerifyRequiredModal";
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
 const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -250,6 +251,7 @@ export default function UserDetail() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDelete, setShowDelete] = useState(false);
     const [showClientDialog, setShowClientDialog] = useState(false);
+    const [showVerifyRequired, setShowVerifyRequired] = useState(false);
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [localErrors, setErrors] = useState<Record<string, string>>({});
@@ -1184,6 +1186,11 @@ export default function UserDetail() {
                     secopLimit={secopLimit}
                     isAdding={addClient.isPending}
                     onAssignClient={(clientUuid, clientName) => {
+                        if (!user?.email_verified_at) {
+                            setShowClientDialog(false);
+                            setShowVerifyRequired(true);
+                            return;
+                        }
                         addClient.mutate(clientUuid, {
                             onSuccess: () => {
                                 toast.success(
@@ -1196,6 +1203,13 @@ export default function UserDetail() {
                             },
                         });
                     }}
+                />
+
+                <VerifyRequiredModal
+                    open={showVerifyRequired}
+                    onOpenChange={setShowVerifyRequired}
+                    userName={user ? `${user.first_name} ${user.last_name}` : undefined}
+                    userUuid={user?.uuid}
                 />
             </div>
         </>

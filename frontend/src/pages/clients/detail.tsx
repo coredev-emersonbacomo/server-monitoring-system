@@ -17,6 +17,7 @@ import {
 
 import { useUsers } from "@/hooks/useUsers";
 import { useSettings } from "@/hooks/useSettings";
+import type { UserData } from "@/types/models";
 import { Tab } from "@/components/ui/tab";
 import IndexHeader from "@/components/IndexHeader";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import { uploadFile } from "@/lib/uploadToast";
 import FormSkeleton from "./components/FormSkeleton";
 import { DeleteClientDialog } from "./components/DeleteClientDialog";
 import { AddSecopDialog } from "./components/AddSecopDialog";
+import { VerifyRequiredModal } from "@/components/VerifyRequiredModal";
 import { clientSchema } from "./constants/schema";
 import { useClientAlertTab } from "./hooks/useClientAlertTab";
 import { useFormattedNumberInput } from "@/hooks/useFormattedNumberInput";
@@ -76,6 +78,7 @@ export default function ClientDetail() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showDelete, setShowDelete] = useState(false);
     const [showSecopDialog, setShowSecopDialog] = useState(false);
+    const [verifyReqUser, setVerifyReqUser] = useState<UserData | null>(null);
     const defaultBanner = import.meta.env.VITE_DEFAULT_CLIENT_BANNER as string;
     const [bannerFile, setBannerFile] = useState<File | null>(null);
     const [bannerPreview, setBannerPreview] = useState<string | null>(
@@ -602,11 +605,16 @@ export default function ClientDetail() {
                     secopLimit={secopLimit}
                     excludedUuids={currentSecops.map((s) => s.uuid)}
                     isAdding={addSecop.isPending}
-                    onAddSecop={(userUuid, userName) => {
-                        addSecop.mutate(userUuid, {
+                    onAddSecop={(user) => {
+                        if (!user.email_verified_at) {
+                            setShowSecopDialog(false);
+                            setVerifyReqUser(user);
+                            return;
+                        }
+                        addSecop.mutate(user.uuid, {
                             onSuccess: () => {
                                 toast.success(
-                                    `${userName} added to ${client?.name}.`,
+                                    `${user.first_name} ${user.last_name} added to ${client?.name}.`,
                                 );
                                 setShowSecopDialog(false);
                             },
@@ -617,6 +625,19 @@ export default function ClientDetail() {
                             },
                         });
                     }}
+                />
+
+                <VerifyRequiredModal
+                    open={!!verifyReqUser}
+                    onOpenChange={(open) => {
+                        if (!open) setVerifyReqUser(null);
+                    }}
+                    userName={
+                        verifyReqUser
+                            ? `${verifyReqUser.first_name} ${verifyReqUser.last_name}`
+                            : undefined
+                    }
+                    userUuid={verifyReqUser?.uuid}
                 />
             </div>
         </>
