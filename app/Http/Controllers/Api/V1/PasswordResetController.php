@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AuthAuditService;
 use App\Services\NotificationService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -51,7 +52,7 @@ class PasswordResetController extends Controller
             ->first();
 
         if ($existing && $existing->created_at) {
-            $lastSentAt = \Carbon\Carbon::parse($existing->created_at);
+            $lastSentAt = Carbon::parse($existing->created_at);
             $secondsElapsed = abs(now()->diffInSeconds($lastSentAt));
 
             if ($secondsElapsed < 60) {

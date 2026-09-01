@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 export interface FilterOption {
     label: string;
     value: string;
-    count: number;
+    count?: number;
     icon?: React.ReactNode;
 }
 
@@ -51,6 +51,7 @@ interface IndexToolbarProps {
 
     onViewByClient?: () => void;
     viewByClientLabel?: string;
+    isViewByClientActive?: boolean;
     onClearViewByClient?: () => void;
 }
 
@@ -76,6 +77,7 @@ function IndexToolbar({
 
     onViewByClient,
     viewByClientLabel = "View by Client",
+    isViewByClientActive = false,
     onClearViewByClient,
 }: IndexToolbarProps) {
     return (
@@ -144,7 +146,7 @@ function IndexToolbar({
                                             {option.label}
                                         </span>
                                         <span className="text-xs text-muted-foreground">
-                                            {option.count}
+                                            {option.count !== undefined ? option.count : null}
                                         </span>
                                     </label>
                                 ))}
@@ -198,11 +200,12 @@ function IndexToolbar({
                 {onViewByClient && (
                     <div className="flex items-center">
                         <Button
-                            variant="outline"
+                            variant={isViewByClientActive ? "default" : "outline"}
                             icon={<Landmark size={14} />}
                             label={viewByClientLabel}
                             className={cn(
-                                "cursor-pointer",
+                                "cursor-pointer transition-colors",
+                                isViewByClientActive && "bg-primary text-primary-foreground font-semibold shadow-xs hover:bg-primary/90",
                                 onClearViewByClient &&
                                     "rounded-r-none border-r-0",
                             )}
