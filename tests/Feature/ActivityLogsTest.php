@@ -31,3 +31,32 @@ test('activity logs validate query params', function () {
         ->getJson('/api/v1/activity-logs?per_page=999')
         ->assertStatus(422);
 });
+
+test('activity logs search matches linked performer full name', function () {
+    $user = User::factory()->create([
+        'first_name' => 'Admin',
+        'last_name' => 'Surname',
+        'username' => 'admin',
+    ]);
+
+    CustomActivityLog::create([
+        'user_id' => $user->id,
+        'user' => 'admin',
+        'action' => 'Updated a server',
+        'details' => ['message' => 'Server updated'],
+    ]);
+
+    // Search by the user's full name should match via the linked user record,
+    // even though the raw `user` column stores only the username.
+    $this->actingAs($user, 'jwt')
+        ->getJson('/api/v1/activity-logs?search='.urlencode('Admin Surname'))
+        ->assertSuccessful()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.user_id', $user->id);
+
+    // Searching by only the first name should also match.
+    $this->actingAs($user, 'jwt')
+        ->getJson('/api/v1/activity-logs?search=admin')
+        ->assertSuccessful()
+        ->assertJsonCount(1, 'data');
+});
