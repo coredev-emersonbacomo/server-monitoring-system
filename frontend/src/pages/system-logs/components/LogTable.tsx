@@ -49,6 +49,38 @@ function RowSkeleton() {
     );
 }
 
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function HighlightMatch({
+    text,
+    query,
+}: {
+    text: string;
+    query: string;
+}) {
+    const q = query.trim();
+    if (!q || !text) return <>{text}</>;
+    const parts = text.split(new RegExp(`(${escapeRegExp(q)})`, "gi"));
+    return (
+        <>
+            {parts.map((part, i) =>
+                part.toLowerCase() === q.toLowerCase() ? (
+                    <mark
+                        key={i}
+                        className="bg-primary/20 text-foreground rounded-sm px-0.5"
+                    >
+                        {part}
+                    </mark>
+                ) : (
+                    <span key={i}>{part}</span>
+                ),
+            )}
+        </>
+    );
+}
+
 interface LogTableProps {
     url?: string;
     data: ActivityLogData[];
@@ -420,11 +452,11 @@ function LogTableBody({
                                             const body = (
                                                 <div className="flex flex-col min-w-0">
                                                     <span className="text-foreground font-medium truncate max-w-[220px]">
-                                                        {info.title}
+                                                        <HighlightMatch text={info.title} query={search} />
                                                     </span>
                                                     {info.subtitle && (
                                                         <span className="text-[10px] text-muted-foreground font-normal">
-                                                            {info.subtitle}
+                                                            <HighlightMatch text={info.subtitle} query={search} />
                                                         </span>
                                                     )}
                                                 </div>
@@ -448,11 +480,11 @@ function LogTableBody({
                                                 to={`/users/${log.user_uuid}`}
                                                 className="rounded px-1 -mx-1 text-foreground hover:bg-muted/70 hover:text-primary underline-offset-2 hover:underline transition-colors"
                                             >
-                                                {log.user ?? "System"}
+                                                <HighlightMatch text={log.user ?? "System"} query={search} />
                                             </Link>
                                         ) : (
                                             <span className="text-foreground">
-                                                {log.user ?? "System"}
+                                                <HighlightMatch text={log.user ?? "System"} query={search} />
                                             </span>
                                         )}
                                     </td>
