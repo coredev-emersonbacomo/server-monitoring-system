@@ -393,6 +393,15 @@ class ClientController extends Controller
 
         $user = User::where('uuid', $data->user_uuid)->firstOrFail();
 
+        if ($user->email_verified_at === null) {
+            return response()->json([
+                'message' => 'This user must verify their email before they can be assigned to a client.',
+                'errors' => [
+                    'user_uuid' => ['This user has not verified their email yet.'],
+                ],
+            ], 422);
+        }
+
         if ($client->secopclients()->where('user_id', $user->id)->exists()) {
             return response()->json(['error' => 'User already assigned to this client'], 409);
         }

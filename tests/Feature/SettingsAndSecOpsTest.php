@@ -18,6 +18,7 @@ beforeEach(function () {
     $this->secop = User::factory()->create([
         'email' => 'secop@example.com',
         'password' => bcrypt('password123'),
+        'email_verified_at' => now(),
     ]);
 
     $this->client = Client::factory()->create();
@@ -102,7 +103,7 @@ test('non-admin cannot update settings', function () {
     $response->assertStatus(403);
 });
 test('admin can assign secops to a client within limit', function () {
-    $secopTwo = User::factory()->create();
+    $secopTwo = User::factory()->create(['email_verified_at' => now()]);
     $token = loginAs($this->admin);
 
     $response = $this->withHeaders([
@@ -127,8 +128,8 @@ test('admin can assign secops to a client within limit', function () {
 });
 
 test('assign secops rejects assignments above configured limit', function () {
-    $secopTwo = User::factory()->create();
-    $secopThree = User::factory()->create();
+    $secopTwo = User::factory()->create(['email_verified_at' => now()]);
+    $secopThree = User::factory()->create(['email_verified_at' => now()]);
     $token = loginAs($this->admin);
 
     // Assign up to the limit (2)
@@ -168,4 +169,23 @@ test('client secops endpoint returns assigned secops', function () {
 
     $response->assertStatus(200)
         ->assertJsonPath('0.uuid', $this->secop->uuid);
+});
+
+test('assigning an unverified user to a client is rejected', function () {
+    $unverified = User::factory()->create(['email_verified_at' => null]);
+    $token = loginAs($this->admin);
+
+    $response = $this->withHeaders([
+        'Authorization' => 'Bearer '.$token,
+    ])->postJson("/api/clients/{$this->client->uuid}/secops", [
+        'user_uuid' => $unverified->uuid,
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['user_uuid']);
+
+    $this->assertDatabaseMissing('sec_op_clients', [
+        'client_id' => $this->client->id,
+        'user_id' => $unverified->id,
+    ]);
 });

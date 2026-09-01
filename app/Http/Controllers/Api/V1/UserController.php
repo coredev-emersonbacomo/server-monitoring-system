@@ -285,6 +285,15 @@ class UserController extends Controller
         $user = User::where('uuid', $userUuid)->firstOrFail();
         $client = Client::where('uuid', $data->client_uuid)->firstOrFail();
 
+        if ($user->email_verified_at === null) {
+            return response()->json([
+                'message' => 'This user must verify their email before they can be assigned clients.',
+                'errors' => [
+                    'user_uuid' => ['This user has not verified their email yet.'],
+                ],
+            ], 422);
+        }
+
         if ($user->clients()->where('client_id', $client->id)->exists()) {
             return response()->json(['error' => 'Client already assigned to this user'], 409);
         }
