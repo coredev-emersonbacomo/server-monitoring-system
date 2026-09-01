@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import PageLayout from "@/components/PageLayout";
@@ -11,8 +11,9 @@ import {
     UserCheck,
     Landmark,
     ExternalLink,
+    Loader2,
 } from "lucide-react";
-import { useServers } from "@/hooks/useServers";
+import { useServers, useInfiniteServers } from "@/hooks/useServers";
 import { useUrlState } from "@/hooks/useUrlState";
 import { useDashboardStats } from "@/pages/dashboard/hooks/useDashboard";
 import IndexToolbar from "@/components/IndexToolbar";
@@ -67,16 +68,47 @@ export default function ServersIndex() {
     });
     const baseServers = useMemo(() => baseResponse?.data ?? [], [baseResponse]);
 
-    const { data: response, isLoading } = useServers({
+    // Infinite servers query
+    const {
+        data: infiniteData,
+        isLoading,
+        isFetchingNextPage,
+        hasNextPage,
+        fetchNextPage,
+    } = useInfiniteServers({
         client_uuid: selectedClientUuids.length === 1 ? selectedClientUuids[0] : undefined,
         client_uuids: selectedClientUuids.length > 1 ? selectedClientUuids.join(",") : undefined,
         q: s.q || undefined,
         status: statusFilter || undefined,
         sort: s.sort,
         dir: s.dir,
-        per_page: isGroupedByClient ? 150 : 50,
+        per_page: 50,
     });
-    const servers = useMemo(() => response?.data ?? [], [response]);
+
+    const servers = useMemo(() => {
+        if (!infiniteData?.pages) return [];
+        return infiniteData.pages.flatMap((page) => page.data ?? []);
+    }, [infiniteData]);
+
+    // IntersectionObserver sentinel for automatic infinite scrolling
+    const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        const el = loadMoreRef.current;
+        if (!el) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+                    fetchNextPage();
+                }
+            },
+            { rootMargin: "300px" },
+        );
+
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
     const sortOptions = [
         { label: "Created At", value: "created_at" },
@@ -421,6 +453,16 @@ export default function ServersIndex() {
                         ))}
                     </div>
                 )}
+
+                {/* Infinite Scroll Trigger Sentinel */}
+                <div ref={loadMoreRef} className="w-full py-4 flex items-center justify-center min-h-[40px]">
+                    {isFetchingNextPage && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 className="size-4 animate-spin text-primary" />
+                            <span>Loading more servers…</span>
+                        </div>
+                    )}
+                </div>
             </main>
 
             {/* Multi-Select Client Dialog for Viewing/Filtering */}
