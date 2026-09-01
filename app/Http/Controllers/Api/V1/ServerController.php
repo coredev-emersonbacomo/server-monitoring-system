@@ -350,7 +350,13 @@ class ServerController extends Controller
             ->with(['client', 'latestUpdate', 'agent'])
             ->withCount('agents');
 
-        if ($data->client_uuid) {
+        if ($data->client_uuids) {
+            $uuids = array_values(array_filter(explode(',', $data->client_uuids)));
+            if (! empty($uuids)) {
+                $clientIds = Client::whereIn('uuid', $uuids)->pluck('id');
+                $query->whereIn('client_id', $clientIds);
+            }
+        } elseif ($data->client_uuid) {
             $client = Client::where('uuid', $data->client_uuid)->first();
             if ($client) {
                 $query->where('client_id', $client->id);
@@ -387,7 +393,35 @@ class ServerController extends Controller
                     ->where('status', '!=', 'archived');
                 break;
             case 'pending_installation':
-                $query->whereNull('status')
+                $query->where(function ($q) {
+                    $q->whereNull('status')
+                        ->orWhere('status', 'pending_installation')
+                        ->orWhere('status', 'waiting_for_first_heartbeat');
+                })->whereNull('deleted_at')
+                    ->where('record_status', '!=', 'archived');
+                break;
+            case 'waiting_for_installation':
+                $query->where('status', 'waiting_for_installation')
+                    ->whereNull('deleted_at')
+                    ->where('record_status', '!=', 'archived');
+                break;
+            case 'online':
+                $query->where('status', 'online')
+                    ->whereNull('deleted_at')
+                    ->where('record_status', '!=', 'archived');
+                break;
+            case 'offline':
+                $query->where('status', 'offline')
+                    ->whereNull('deleted_at')
+                    ->where('record_status', '!=', 'archived');
+                break;
+            case 'pending_deletion':
+                $query->where('agent_deleted', true)
+                    ->whereNull('deleted_at')
+                    ->where('record_status', '!=', 'archived');
+                break;
+            case 'agent_uninstalled':
+                $query->where('status', 'agent_uninstalled')
                     ->whereNull('deleted_at')
                     ->where('record_status', '!=', 'archived');
                 break;
@@ -397,13 +431,6 @@ class ServerController extends Controller
                     ->where('record_status', '!=', 'archived')
                     ->where('status', '!=', 'archived');
                 break;
-        }
-
-        // Also support explicit status values like 'online', 'offline'
-        if (in_array($data->status, ['online', 'offline'], true)) {
-            $query->where('status', $data->status)
-                ->whereNull('deleted_at')
-                ->where('record_status', '!=', 'archived');
         }
 
         $sort = $data->sort ?? 'created_at';

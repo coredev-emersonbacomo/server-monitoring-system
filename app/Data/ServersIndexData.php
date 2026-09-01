@@ -9,6 +9,7 @@ class ServersIndexData extends Data
 {
     public function __construct(
         public ?string $client_uuid = null,
+        public ?string $client_uuids = null,
         public ?string $q = null,
         public ?string $status = 'all',
         public ?string $sort = 'created_at',

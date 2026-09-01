@@ -6,6 +6,7 @@ import type { Paginator, ServerData } from "@/types/models";
 
 export const useServers = (params?: {
     client_uuid?: string;
+    client_uuids?: string;
     q?: string;
     status?: string;
     sort?: string;
