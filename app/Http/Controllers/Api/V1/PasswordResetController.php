@@ -57,11 +57,7 @@ class PasswordResetController extends Controller
             ]
         );
 
-        $appName = config('app.name', 'Server Monitor');
-        $subject = "{$appName} Password Reset Code";
-        $message = "Your password reset code is: {$code}\n\nThis code will expire in 10 minutes.\n\nIf you did not request this, please ignore this email.";
-
-        $this->notificationService->sendEmailAlert($user->email, $message, $subject);
+        $this->notificationService->sendPasswordResetCode($user->email, $code, 10);
 
         $this->auditService->log(
             AuthEventType::PasswordResetRequested,

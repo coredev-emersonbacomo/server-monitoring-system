@@ -124,7 +124,7 @@ function Tab({ children, className, syncUrl = true, id }: TabProps) {
             `}</style>
             <div className={cn("relative", className)}>
                 {/* Tab buttons header - horizontal scroll on mobile, flex-end on desktop */}
-                <div className="flex items-end justify-start md:justify-end relative z-30 overflow-x-auto no-scrollbar scrollbar-none max-w-full pb-0.5">
+                <div className="flex items-end justify-start md:justify-end relative z-30 overflow-x-auto no-scrollbar scrollbar-none max-w-full">
                     <div className="flex items-end min-w-max">
                         {items.map((item) => {
                             const isActive = item.props.title === activeTab;
@@ -144,8 +144,8 @@ function Tab({ children, className, syncUrl = true, id }: TabProps) {
                                     className={cn(
                                         "chrome-tab inline-flex items-center gap-1.5 px-3 sm:px-5 py-2 text-xs sm:text-sm cursor-pointer relative border border-border/60 shrink-0 select-none",
                                         isActive
-                                            ? "active text-foreground cursor-default bg-card translate-y-0 mb-0 shadow-none border-b-card"
-                                            : "chrome-tab-inactive text-muted-foreground hover:text-foreground bg-background/70 translate-y-0.5 mb-0.5 shadow-sm",
+                                            ? "active text-foreground cursor-default bg-card translate-y-[1px] mb-0 shadow-none border-b-transparent"
+                                            : "chrome-tab-inactive text-muted-foreground hover:text-foreground bg-background/70 translate-y-0 mb-0 shadow-sm",
                                     )}
                                 >
                                     <Icon size={14} className="shrink-0" />

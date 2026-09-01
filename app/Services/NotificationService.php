@@ -253,4 +253,23 @@ class NotificationService
                 ->subject($subject);
         });
     }
+
+    /**
+     * Send password reset code email using dedicated styled Mailable & Blade template.
+     */
+    public function sendPasswordResetCode(
+        string $receiver,
+        string $code,
+        int $expiresInMinutes = 10,
+    ): void {
+        $logoPath = public_path('images/coreDevlogo.png');
+
+        Mail::to($receiver)->send(
+            new \App\Mail\PasswordResetCodeMail(
+                code: $code,
+                expiresInMinutes: $expiresInMinutes,
+                logoPath: file_exists($logoPath) ? $logoPath : null,
+            )
+        );
+    }
 }
