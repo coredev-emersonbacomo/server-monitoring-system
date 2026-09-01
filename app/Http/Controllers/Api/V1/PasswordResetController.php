@@ -45,6 +45,27 @@ class PasswordResetController extends Controller
             ]);
         }
 
+        // 60-second cooldown per email
+        $existing = DB::table('password_reset_tokens')
+            ->where('email', $user->email)
+            ->first();
+
+        if ($existing && $existing->created_at) {
+            $lastSentAt = \Carbon\Carbon::parse($existing->created_at);
+            $secondsElapsed = abs(now()->diffInSeconds($lastSentAt));
+
+            if ($secondsElapsed < 60) {
+                $secondsLeft = (int) ceil(60 - $secondsElapsed);
+                $secondsLeft = max(1, min(60, $secondsLeft));
+
+                return response()->json([
+                    'message' => "Please wait {$secondsLeft} seconds before requesting a new code.",
+                    'seconds_remaining' => $secondsLeft,
+                    'masked_email' => $this->maskEmail($user->email),
+                ], 429);
+            }
+        }
+
         $code = (string) random_int(100000, 999999);
         $codeHash = hash('sha256', $code);
 

@@ -4,6 +4,7 @@ import { Loader2, ChevronLeft, Eye, EyeOff, Mail, Lock, Key } from "lucide-react
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import axios from "axios";
 
 type Step = 1 | 2 | 3;
@@ -22,15 +23,37 @@ export default function ForgotPassword() {
     const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
     const [errors, setErrors] = useState<Record<string, string[]>>({});
     const [isPending, setIsPending] = useState(false);
-    const [resendCooldown, setResendCooldown] = useState(0);
+    const [resendCooldown, setResendCooldown] = useState(() => {
+        const stored = localStorage.getItem("reset_password_cooldown");
+        if (stored) {
+            const expiry = parseInt(stored, 10);
+            const remaining = Math.ceil((expiry - Date.now()) / 1000);
+            return remaining > 0 ? remaining : 0;
+        }
+        return 0;
+    });
 
     useEffect(() => {
-        if (resendCooldown <= 0) return;
+        if (resendCooldown <= 0) {
+            localStorage.removeItem("reset_password_cooldown");
+            return;
+        }
         const timer = setInterval(() => {
-            setResendCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+            setResendCooldown((prev) => {
+                if (prev <= 1) {
+                    localStorage.removeItem("reset_password_cooldown");
+                    return 0;
+                }
+                return prev - 1;
+            });
         }, 1000);
         return () => clearInterval(timer);
     }, [resendCooldown]);
+
+    const setCooldown = (seconds: number) => {
+        setResendCooldown(seconds);
+        localStorage.setItem("reset_password_cooldown", (Date.now() + seconds * 1000).toString());
+    };
 
     const handleSendCode = useCallback(async (e: SubmitEvent) => {
         e.preventDefault();
@@ -40,13 +63,22 @@ export default function ForgotPassword() {
             const { data } = await axios.post("/api/v1/forgot-password", { email });
             setMaskedEmail(data.masked_email);
             setStep(2);
-            setResendCooldown(60);
+            setCooldown(60);
+            toast.success("A reset code has been sent to your email.");
         } catch (err: unknown) {
             if (err && typeof err === "object" && "response" in err) {
-                const axiosErr = err as { response?: { data?: Record<string, unknown> } };
+                const axiosErr = err as { response?: { status?: number; data?: Record<string, unknown> } };
                 if (axiosErr.response?.data) {
                     const data = axiosErr.response.data;
-                    if ("errors" in data) {
+                    if (axiosErr.response.status === 429) {
+                        const secondsLeft = (data.seconds_remaining as number) || 60;
+                        setCooldown(secondsLeft);
+                        if (data.masked_email) {
+                            setMaskedEmail(data.masked_email as string);
+                        }
+                        setStep(2);
+                        setErrors({ code: [(data.message as string) || `Please wait ${secondsLeft} seconds before requesting a new code.`] });
+                    } else if ("errors" in data) {
                         setErrors(data.errors as Record<string, string[]>);
                     } else if ("message" in data) {
                         setErrors({ email: [data.message as string] });
@@ -64,9 +96,20 @@ export default function ForgotPassword() {
         setIsPending(true);
         try {
             await axios.post("/api/v1/forgot-password", { email });
-            setResendCooldown(60);
-        } catch {
-            // Silent fail on resend
+            setCooldown(60);
+            toast.success("A new verification code has been sent to your email.");
+        } catch (err: unknown) {
+            if (err && typeof err === "object" && "response" in err) {
+                const axiosErr = err as { response?: { status?: number; data?: Record<string, unknown> } };
+                if (axiosErr.response?.data) {
+                    const data = axiosErr.response.data;
+                    if (axiosErr.response.status === 429) {
+                        const secondsLeft = (data.seconds_remaining as number) || 60;
+                        setCooldown(secondsLeft);
+                        setErrors({ code: [(data.message as string) || `Please wait ${secondsLeft} seconds before requesting a new code.`] });
+                    }
+                }
+            }
         } finally {
             setIsPending(false);
         }
