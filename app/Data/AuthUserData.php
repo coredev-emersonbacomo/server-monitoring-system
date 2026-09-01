@@ -17,6 +17,7 @@ class AuthUserData extends Data
         public ?string $last_login,
         public ?string $timezone,
         public string $profile_picture_url,
+        public ?string $email_verified_at = null,
         public string $record_status = 'active',
     ) {}
 
@@ -32,6 +33,7 @@ class AuthUserData extends Data
             last_login: $user->last_login,
             timezone: $user->timezone,
             profile_picture_url: $user->profile_picture_url,
+            email_verified_at: $user->email_verified_at?->toIso8601String(),
             record_status: $user->record_status ?? 'active',
         );
     }

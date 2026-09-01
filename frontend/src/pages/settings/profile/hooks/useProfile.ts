@@ -6,12 +6,14 @@ import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { createFormStore, useForm } from "@/components/ui/form";
 import { profileSchema } from "../constants/profileSchema";
 import { useUpdateProfile } from "./useUpdateProfile";
+import { useResendVerification } from "./useResendVerification";
 
 export function useProfile() {
     const { user, isLoading } = useAuthContext();
     const navigate = useNavigate();
     const { refreshUser } = useJwtAuth();
     const updateProfile = useUpdateProfile();
+    const resendVerification = useResendVerification();
 
     const store = useMemo(
         () =>
@@ -100,6 +102,7 @@ export function useProfile() {
     const fullName = user ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() : "";
     const email = user?.email ?? "";
     const username = user?.username ?? (email ? email.split("@")[0] : "");
+    const isVerified = !!user?.email_verified_at;
     const phone_number = user?.phone_number
         ? user.phone_number
               .replace(/\D/g, "")
@@ -122,8 +125,10 @@ export function useProfile() {
         email,
         username,
         phone_number,
+        isVerified,
         avatarSrc,
         handleAvatarChange,
         handleFormSubmit,
+        resendVerification,
     };
 }

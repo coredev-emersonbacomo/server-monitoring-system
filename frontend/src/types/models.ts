@@ -71,6 +71,7 @@ export interface AuthUserData {
             last_login?: string | null;
             timezone?: string | null;
             profile_picture_url: string;
+            email_verified_at?: string | null;
             record_status?: string;
         }
 
