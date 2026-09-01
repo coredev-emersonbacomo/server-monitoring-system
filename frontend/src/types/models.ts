@@ -409,6 +409,7 @@ export interface UserData {
             phone_number: string;
             last_login?: string | null;
             timezone?: string | null;
+            email_verified_at?: string | null;
             profile_picture_url: string;
             record_status: string;
             /** Format: date-time */
