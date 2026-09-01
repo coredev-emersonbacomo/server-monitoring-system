@@ -82,6 +82,7 @@ function HighlightMatch({
 }
 
 interface LogTableProps {
+    id?: string;
     url?: string;
     data: ActivityLogData[];
     total: number;
@@ -461,16 +462,18 @@ function LogTableBody({
                                                     )}
                                                 </div>
                                             );
-                                            return log.logable_id ? (
+                                            const short = (log.logable_type ?? "").split("\\").pop() ?? "";
+                                            const linkable = ["Client", "Server"].includes(short) && !!log.logable_id;
+                                            if (!linkable) return body;
+                                            const href = short === "Client" ? `/clients/${log.logable_id}` : `/servers/${log.logable_id}`;
+                                            return (
                                                 <Link
-                                                    to={`/servers/${log.logable_id}`}
+                                                    to={href}
                                                     className="rounded px-1 -mx-1 text-foreground hover:bg-muted/70 hover:text-primary underline-offset-2 hover:underline transition-colors"
                                                     title={info.title}
                                                 >
                                                     {body}
                                                 </Link>
-                                            ) : (
-                                                body
                                             );
                                         })()}
                                     </td>
@@ -543,6 +546,7 @@ function LogTableBody({
 }
 
 interface UrlLogTableProps {
+    id?: string;
     url: string;
     params?: Record<string, string>;
     emptyMessage: string;
@@ -551,6 +555,7 @@ interface UrlLogTableProps {
 }
 
 function UrlLogTable({
+    id,
     url,
     params,
     emptyMessage,
@@ -579,6 +584,7 @@ function UrlLogTable({
     const { data, isLoading, meta, setParams, goToPage } = usePaginatedTable<ActivityLogData>(
         url,
         fixedParams,
+        { id },
     );
 
     const resetPage = () => setParams({ page: null, cursor: null, previous_cursor: null });

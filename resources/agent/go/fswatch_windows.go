@@ -12,10 +12,8 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// watchPath watches a single directory (recursively on Windows) using
-// ReadDirectoryChangesW and emits normalized rawOps. The blocking read is
-// cancelled by closing the directory handle when done is signalled.
-func watchPath(root string, recursive bool, out chan<- rawOp, done <-chan struct{}) {
+// watchPath watches a single directory recursively using ReadDirectoryChangesW.
+func watchPath(root string, out chan<- rawOp, done <-chan struct{}) {
 	h, err := windows.CreateFile(
 		windows.StringToUTF16Ptr(root),
 		windows.FILE_LIST_DIRECTORY,
@@ -50,7 +48,7 @@ func watchPath(root string, recursive bool, out chan<- rawOp, done <-chan struct
 			h,
 			&buf[0],
 			uint32(len(buf)),
-			recursive,
+			true,
 			flags,
 			&bytes,
 			nil, 0,

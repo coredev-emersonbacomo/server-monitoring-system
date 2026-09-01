@@ -98,6 +98,7 @@ const ACTION_ICONS: Record<ActionItem["action_type"], typeof ShieldX> = {
 
 const SEVERITY_BORDER: Record<ActionItem["severity"], string> = {
     notice: "text-yellow-300 bg-yellow-300/10 border-yellow-300/20",
+    info: "text-sky-400 bg-sky-500/10 border-sky-500/20",
     warning: "text-orange-400 bg-orange-400/10 border-orange-400/20",
     critical: "text-red-400 bg-red-500/10 border-red-500/20",
 };
@@ -569,6 +570,15 @@ export default function Dashboard() {
                                     const isMine =
                                         user &&
                                         action.assigned_to_uuid === user.uuid;
+                                    const isMetricAlert =
+                                        action.action_type.startsWith(
+                                            "alert_",
+                                        ) && action.action_type !== "server_offline";
+                                    const href = action.server_uuid
+                                        ? `/servers/${action.server_uuid}${isMetricAlert ? "?tab=Metrics" : ""}`
+                                        : action.client_uuid
+                                          ? `/clients/${action.client_uuid}`
+                                          : "#";
 
                                     return (
                                         <div
@@ -592,13 +602,7 @@ export default function Dashboard() {
 
                                                 <Link
                                                     className="flex-1 min-w-0 cursor-pointer group"
-                                                    to={
-                                                        action.server_uuid
-                                                            ? `/servers/${action.server_uuid}`
-                                                            : action.client_uuid
-                                                              ? `/clients/${action.client_uuid}`
-                                                              : "#"
-                                                    }
+                                                    to={href}
                                                 >
                                                     <div className="flex items-center gap-2">
                                                         <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">

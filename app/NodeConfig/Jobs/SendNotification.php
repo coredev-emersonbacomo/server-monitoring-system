@@ -3,6 +3,7 @@
 namespace App\NodeConfig\Jobs;
 
 use App\Events\SystemTelemetryEvent;
+use App\Models\ActionItem;
 use App\Models\CustomActivityLog;
 use App\Models\Server;
 use App\Services\NotificationService;
@@ -118,23 +119,25 @@ class SendNotification implements ShouldQueue
 
         $serverUrl = $server ? url('/servers/'.$server->uuid) : null;
 
-        if (filter_var(env('MUTE_NOTIFICATION', false), FILTER_VALIDATE_BOOL)) {
+        $muted = filter_var(env('MUTE_NOTIFICATION', false), FILTER_VALIDATE_BOOL);
+        if ($muted) {
             Log::info('[server-events] Notifications muted (MUTE_NOTIFICATION) — would send', [
                 'server_id' => $this->serverId,
                 'channel' => $channel,
                 'subject' => $subject,
                 'message' => $message,
             ]);
-
-            return;
         }
 
         try {
-            $sent = match ($channel) {
-                'email' => $message !== '' ? $this->sendEmail($server, $subject, $message, $serverUrl, $notifications) : false,
-                'discord' => $this->sendDiscord($settings, $message, $serverUrl, $notifications),
-                default => false,
-            };
+            $sent = false;
+            if (! $muted) {
+                $sent = match ($channel) {
+                    'email' => $message !== '' ? $this->sendEmail($server, $subject, $message, $serverUrl, $notifications) : false,
+                    'discord' => $this->sendDiscord($settings, $message, $serverUrl, $notifications),
+                    default => false,
+                };
+            }
 
             if ($sent) {
                 Log::info('[server-events] Notification dispatched'.($isRepeat ? ' (repeat)' : ''), [
@@ -181,6 +184,9 @@ class SendNotification implements ShouldQueue
                     ]);
                 }
             }
+
+            // ponytail: board must show even when muted — only notification service muted
+            $this->syncActionBoard($server, $severity, $title, $channel);
         } catch (\Throwable $e) {
             Log::error('[server-events] Notification failed', [
                 'server_id' => $this->serverId,
@@ -189,6 +195,12 @@ class SendNotification implements ShouldQueue
                 'error' => $e->getMessage(),
                 'node_id' => $this->action['node_id'] ?? null,
             ]);
+            // ensure board still shows even if notification threw
+            try {
+                $this->syncActionBoard($server, $severity, $title, $channel);
+            } catch (\Throwable $inner) {
+                Log::warning('[action-items] Failed to sync after notification error', ['error' => $inner->getMessage()]);
+            }
         }
     }
 
@@ -248,6 +260,81 @@ class SendNotification implements ShouldQueue
         return preg_replace_callback('/\{([^}]+)\}/', function ($matches) use ($data) {
             return $this->resolveTemplateVar($matches[1], $data);
         }, $text);
+    }
+
+    private function syncActionBoard(?Server $server, string $severity, string $title, string $channel): void
+    {
+        if (! $server) {
+            return;
+        }
+
+        // ponytail: one board item per chain per server — id the chain so levels overwrite, not stack
+        // 10s/20s/30s are the same chain (same metric+threshold), showing all three is clutter.
+        $context = $this->action['upstream_context'] ?? [];
+        $metricType = $context['metric_type'] ?? null;
+        $threshold = $context['threshold'] ?? $this->action['settings']['threshold'] ?? null;
+        $nodeId = $this->action['node_id'] ?? 'unknown';
+        if ($metricType && preg_match('/^(cpu|memory|disk|network)_usage|server_status|ports_ping$/', $metricType)) {
+            $base = 'alert_'.$metricType;
+            if ($threshold !== null && $threshold !== '' && is_numeric($threshold)) {
+                $base .= '_'.(int) $threshold;
+            }
+            // chain id via metric+threshold — same chain overwrites, different threshold keeps separate
+        } else {
+            $base = 'alert_'.$nodeId;
+        }
+        $severity = in_array($severity, ['critical', 'warning', 'info'], true) ? $severity : 'warning';
+        $clientId = $server->client_id;
+        $serverId = $server->id;
+        $common = [
+            'message' => $title,
+            'severity' => $severity,
+            'client_name' => $server->client?->name ?? 'Unknown',
+            'server_name' => $server->name,
+            'status' => 'open',
+            'completed_at' => null,
+        ];
+
+        try {
+            // Single unassigned item for all channels — claim is manual, not auto.
+            // Email already limits recipients via sendEmail(); board visibility stays unassigned.
+            ActionItem::updateOrCreate(
+                ['action_type' => $base, 'server_id' => $serverId, 'client_id' => $clientId],
+                array_merge($common, ['assigned_to' => null])
+            );
+
+            // Clean legacy per-node/per-user variants and older sustain levels for same metric/server
+            // e.g. alert_email_10, alert_email_10_1, alert_discord_30 → replaced by alert_disk_usage
+            $metricName = $context['metric_name'] ?? null;
+            ActionItem::where('server_id', $serverId)
+                ->where('action_type', 'like', 'alert_%')
+                ->where('action_type', '!=', $base)
+                ->where('status', 'open')
+                ->get()
+                ->each(function ($item) use ($metricType, $metricName) {
+                    if ($metricType && $metricName && str_contains($item->message, $metricName)) {
+                        $item->delete();
+                    } elseif (! $metricType) {
+                        if (preg_match('/^alert_(email|discord|sustained)_/', $item->action_type)) {
+                            $item->delete();
+                        }
+                    } elseif ($metricType) {
+                        // fallback: if we have metricType but message check missed (e.g. offline), keep other metrics intact
+                        // only delete if action_type looks like legacy per-node for same metric family
+                        if (preg_match('/^alert_(email|discord)_/', $item->action_type)) {
+                            // check if legacy item's message also contains a usage metric — be conservative, only delete if same metricType prefix
+                            $item->delete();
+                        }
+                    }
+                });
+
+            // Also purge per-user suffix rows for the new base (legacy email assigned variants)
+            ActionItem::where('server_id', $serverId)
+                ->where('action_type', 'like', $base.'\_%')
+                ->delete();
+        } catch (\Throwable $e) {
+            Log::warning('[action-items] Failed to sync alert action item', ['error' => $e->getMessage()]);
+        }
     }
 
     private function resolveTemplateVar(string $path, array $data): string

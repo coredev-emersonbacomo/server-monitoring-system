@@ -152,7 +152,7 @@ export function EntityPickerModal({
 
                 <div className="flex items-center gap-2 mb-3">
                     <DebouncedSearchInput
-                        paramName={type === "servers" ? "entity_server_q" : "entity_client_q"}
+                        paramName="q"
                         debounceMs={300}
                         placeholder={`Search ${type}…`}
                     />

@@ -16,11 +16,10 @@ class WatchedPathResource extends JsonResource
             'server_id' => $this->server_id,
             'server_uuid' => $this->server?->uuid,
             'enabled' => $this->enabled,
-            'recursive' => $this->recursive,
             'exclude_patterns' => $this->exclude_patterns ?? [],
             'description' => $this->description,
-            'created_at' => $this->created_at?->toIso8601String(),
-            'updated_at' => $this->updated_at?->toIso8601String(),
+            'created_at' => $this->created_at?->utc()->toIso8601String(),
+            'updated_at' => $this->updated_at?->utc()->toIso8601String(),
         ];
     }
 }

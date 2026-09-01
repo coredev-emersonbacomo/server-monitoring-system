@@ -13,10 +13,9 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// watchPath watches a directory (and, when recursive, its sub-directories as
-// they are created) using inotify and emits normalized rawOps. The fd is closed
-// when done is signalled, which ends the blocking read.
-func watchPath(root string, recursive bool, out chan<- rawOp, done <-chan struct{}) {
+// watchPath watches a directory and all sub-directories recursively using
+// inotify and emits normalized rawOps. The fd is closed when done is signalled.
+func watchPath(root string, out chan<- rawOp, done <-chan struct{}) {
 	fd, err := unix.InotifyInit()
 	if err != nil {
 		log.Printf("[FSW] inotify init failed for %s: %v", root, err)
@@ -46,6 +45,17 @@ func watchPath(root string, recursive bool, out chan<- rawOp, done <-chan struct
 		return
 	}
 
+	// Walk existing tree so edits inside pre-existing subdirs are captured.
+	_ = filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+		if err != nil || p == root {
+			return nil
+		}
+		if d.IsDir() {
+			addWatch(p)
+		}
+		return nil
+	})
+
 	go func() {
 		<-done
 		unix.Close(fd)
@@ -65,11 +75,11 @@ func watchPath(root string, recursive bool, out chan<- rawOp, done <-chan struct
 		if n <= 0 {
 			return
 		}
-		parseInotify(buf[:n], out, recursive, addWatch, wdToPath, &wdMu)
+		parseInotify(buf[:n], out, addWatch, wdToPath, &wdMu)
 	}
 }
 
-func parseInotify(buf []byte, out chan<- rawOp, recursive bool,
+func parseInotify(buf []byte, out chan<- rawOp,
 	addWatch func(string) int, wdToPath map[int]string, wdMu *sync.Mutex) {
 
 	offset := 0
@@ -103,7 +113,7 @@ func parseInotify(buf []byte, out chan<- rawOp, recursive bool,
 			isDir := mask&unix.IN_ISDIR != 0
 			switch {
 			case mask&unix.IN_CREATE != 0:
-				if isDir && recursive {
+				if isDir {
 					addWatch(full)
 				}
 				out <- rawOp{path: full, kind: "create", isDir: isDir}
@@ -119,7 +129,7 @@ func parseInotify(buf []byte, out chan<- rawOp, recursive bool,
 			case mask&unix.IN_MOVED_FROM != 0:
 				out <- rawOp{path: full, kind: "renameOld", isDir: isDir}
 			case mask&unix.IN_MOVED_TO != 0:
-				if isDir && recursive {
+				if isDir {
 					addWatch(full)
 				}
 				out <- rawOp{path: full, kind: "renameNew", isDir: isDir}

@@ -10,6 +10,7 @@ import type {
     AgentLifecycleLogData,
 } from "../hooks/useAuditLogs";
 import { ServerLink } from "./ServerLink";
+import { time } from "@/lib/time";
 
 interface AuditDetailModalProps {
     fileLog: FileActivityLogData | null;
@@ -77,7 +78,7 @@ export function AuditDetailModal({
                             label="Is Directory"
                             value={fileLog.is_directory}
                         />
-                        <Field label="Occurred At" value={fileLog.occurred_at} />
+                        <Field label="Occurred At" value={time(fileLog.occurred_at)} />
                         <Field label="Event UUID" value={fileLog.uuid} />
                     </>
                 )}
@@ -103,7 +104,7 @@ export function AuditDetailModal({
                         <Field label="Agent ID" value={lifecycleLog.agent_id} />
                         <Field
                             label="Occurred At"
-                            value={lifecycleLog.occurred_at}
+                            value={time(lifecycleLog.occurred_at)}
                         />
                         <Field label="Event UUID" value={lifecycleLog.uuid} />
                     </>

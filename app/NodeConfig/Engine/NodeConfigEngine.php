@@ -2,9 +2,12 @@
 
 namespace App\NodeConfig\Engine;
 
+use App\Models\ActionItem;
 use App\Models\Agent;
 use App\Models\MetricSample;
 use App\Models\Port;
+use App\Models\Server;
+use App\Models\ServerUpdate;
 use App\Models\Setting;
 use App\NodeConfig\Models\NodeConfig;
 use App\NodeConfig\Models\NodeConfigState;
@@ -191,6 +194,7 @@ class NodeConfigEngine
         if ($latched) {
             if (! $conditionPassed && ! $this->branchHasActiveEvaluation($config, $branch, $serverId)) {
                 $this->saveBranchLatch($config->id, $serverId, $branchKey, false);
+                $this->cleanupAlertActionItems($serverId, $branch);
             }
 
             return ['timers' => $timers, 'actions' => $actions, 'outputs' => $outputs];
@@ -459,6 +463,7 @@ class NodeConfigEngine
                 new NodeResult(false, false, null, ['phase' => 'idle', 'repeat_count' => 0], [], true),
                 $branch['metric'],
             );
+            $this->cleanupAlertActionItems($serverId, $branch);
 
             return ['timers' => [], 'actions' => []];
         }
@@ -683,6 +688,7 @@ class NodeConfigEngine
                 'chain' => $chainRootNodeId,
             ]);
             $this->resetChain($config, $branch, $serverId, $chainRootNodeId, true);
+            $this->cleanupAlertActionItems($serverId, $branch);
 
             return ['timers' => [], 'actions' => []];
         }
@@ -721,6 +727,7 @@ class NodeConfigEngine
 
         if ($timingResult === null) {
             $this->resetChain($config, $branch, $serverId, $chainRootNodeId, false);
+            $this->cleanupAlertActionItems($serverId, $branch);
 
             return ['timers' => [], 'actions' => []];
         }
@@ -782,6 +789,7 @@ class NodeConfigEngine
 
         if ($timingResult === null) {
             $this->resetChain($config, $branch, $serverId, $chainRootNodeId, false);
+            $this->cleanupAlertActionItems($serverId, $branch);
 
             return ['timers' => [], 'actions' => []];
         }
@@ -1042,6 +1050,7 @@ class NodeConfigEngine
                     $branch['metric'],
                 );
             }
+            $this->cleanupAlertActionItems($serverId, $branch);
 
             return ['timers' => [], 'actions' => []];
         }
@@ -1401,7 +1410,7 @@ class NodeConfigEngine
 
         // ── server_status: check whether the agent is still offline ──────
         if ($metricType === 'server_status') {
-            $agent = Agent::where('server_id', $serverId)->first();
+            $agent = Server::find($serverId)?->agent ?? Agent::where('server_id', $serverId)->where('status', 'active')->first();
 
             if (! $agent) {
                 // No agent record at all → definitively offline
@@ -1425,7 +1434,7 @@ class NodeConfigEngine
 
         // ── ports_ping: check whether a tracked port still matches the socket ──
         if ($metricType === 'ports_ping') {
-            $agent = Agent::where('server_id', $serverId)->first();
+            $agent = Server::find($serverId)?->agent ?? Agent::where('server_id', $serverId)->where('status', 'active')->first();
             if (! $agent) {
                 return true; // fail open
             }
@@ -1462,7 +1471,7 @@ class NodeConfigEngine
         // ── metric conditions: re-check most recent sample vs threshold ──
         $condition = $branch['condition'] ?? null;
         if ($condition && isset($condition['threshold'], $condition['operator'])) {
-            $agent = Agent::where('server_id', $serverId)->first();
+            $agent = Server::find($serverId)?->agent ?? Agent::where('server_id', $serverId)->where('status', 'active')->first();
             if (! $agent) {
                 return true; // fail open
             }
@@ -1486,7 +1495,15 @@ class NodeConfigEngine
                 ->value('value');
 
             if ($latest === null) {
-                return true; // No sample yet – fail open
+                // Fallback to ServerUpdate per-server rollup
+                $colMap = ['cpu_usage' => 'cpu_usage', 'memory_usage' => 'memory_usage', 'disk_usage' => 'storage'];
+                $col = $colMap[$metricType] ?? null;
+                if ($col) {
+                    $latest = ServerUpdate::where('server_id', $serverId)->orderByDesc('created_at')->value($col);
+                }
+                if ($latest === null) {
+                    return true; // No sample yet – fail open
+                }
             }
 
             $threshold = (float) $condition['threshold'];
@@ -1516,5 +1533,65 @@ class NodeConfigEngine
         }
 
         return true; // Fail open for unknown branch shapes
+    }
+
+    /**
+     * Clean alert ActionItems for a branch when its condition no longer holds.
+     * Mirrors server_offline cleanup: assigned → completed, unassigned → deleted.
+     */
+    private function cleanupAlertActionItems(?int $serverId, array $branch): void
+    {
+        if ($serverId === null) {
+            return;
+        }
+
+        $actionNodeIds = [];
+        foreach ($branch['sub_branches'] as $sub) {
+            if (! empty($sub['action_node_id'])) {
+                $actionNodeIds[] = $sub['action_node_id'];
+            }
+            foreach ($sub['timing_chain'] ?? [] as $step) {
+                if (! empty($step['action_node_id'])) {
+                    $actionNodeIds[] = $step['action_node_id'];
+                }
+            }
+        }
+        $actionNodeIds = array_unique($actionNodeIds);
+        $bases = [];
+        // metric+threshold is the chain id — same chain (10s/20s/30s) overwrites, not stacks
+        if (! empty($branch['metric'])) {
+            $base = 'alert_'.$branch['metric'];
+            $thr = $branch['condition']['threshold'] ?? null;
+            if ($thr !== null && $thr !== '' && is_numeric($thr)) {
+                $base .= '_'.(int) $thr;
+            }
+            $bases[] = $base;
+            // also keep plain metric base for backward compat (old rows created before threshold suffix)
+            $bases[] = 'alert_'.$branch['metric'];
+        }
+        foreach ($actionNodeIds as $nid) {
+            $bases[] = 'alert_'.$nid;
+        }
+        $bases = array_unique($bases);
+        if (empty($bases)) {
+            return;
+        }
+
+        foreach ($bases as $base) {
+            $items = ActionItem::where('server_id', $serverId)
+                ->where(function ($q) use ($base) {
+                    $q->where('action_type', $base)->orWhere('action_type', 'like', $base.'_%');
+                })
+                ->where('status', '!=', 'completed')
+                ->get();
+
+            foreach ($items as $item) {
+                if ($item->assigned_to) {
+                    $item->update(['status' => 'completed', 'completed_at' => now()]);
+                } else {
+                    $item->delete();
+                }
+            }
+        }
     }
 }

@@ -217,7 +217,6 @@ test('watched path default is seeded and admin can manage them', function () {
             'path' => 'C:\\Shared',
             'scope' => 'agent',
             'enabled' => true,
-            'recursive' => true,
             'description' => 'Shared dir',
         ])
         ->assertCreated()

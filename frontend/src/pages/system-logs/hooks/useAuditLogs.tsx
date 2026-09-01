@@ -44,7 +44,6 @@ export interface WatchedPathData {
     server_id: number | null;
     server_uuid: string | null;
     enabled: boolean;
-    recursive: boolean;
     exclude_patterns: string[] | null;
     description: string | null;
     created_at: string | null;
@@ -92,7 +91,6 @@ export interface WatchedPathInput {
     scope: "agent" | "server";
     server_id?: number | null;
     enabled?: boolean;
-    recursive?: boolean;
     exclude_patterns?: string[] | null;
     description?: string | null;
 }

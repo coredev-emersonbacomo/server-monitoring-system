@@ -36,7 +36,6 @@ function WatchedPathDialog({
         initial?.server_id ? String(initial.server_id) : "",
     );
     const [enabled, setEnabled] = useState(initial?.enabled ?? true);
-    const [recursive, setRecursive] = useState(initial?.recursive ?? true);
     const [description, setDescription] = useState(initial?.description ?? "");
     const [excludePatterns, setExcludePatterns] = useState(
         initial?.exclude_patterns ? initial.exclude_patterns.join("\n") : "",
@@ -55,7 +54,6 @@ function WatchedPathDialog({
             scope,
             server_id: scope === "server" ? Number(serverId) || null : null,
             enabled,
-            recursive,
             exclude_patterns: patterns.length ? patterns : null,
             description: description.trim() || null,
         };
@@ -134,26 +132,14 @@ function WatchedPathDialog({
                             className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
                         />
                     </label>
-                    <div className="flex gap-4">
-                        <label className="flex items-center gap-2 text-sm">
-                            <input
-                                type="checkbox"
-                                checked={enabled}
-                                onChange={(e) => setEnabled(e.target.checked)}
-                            />
-                            Enabled
-                        </label>
-                        <label className="flex items-center gap-2 text-sm">
-                            <input
-                                type="checkbox"
-                                checked={recursive}
-                                onChange={(e) =>
-                                    setRecursive(e.target.checked)
-                                }
-                            />
-                            Recursive
-                        </label>
-                    </div>
+                    <label className="flex items-center gap-2 text-sm">
+                        <input
+                            type="checkbox"
+                            checked={enabled}
+                            onChange={(e) => setEnabled(e.target.checked)}
+                        />
+                        Enabled
+                    </label>
                 </div>
                 <div className="mt-5 flex justify-end gap-2">
                     <DialogClose className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border border-border hover:bg-muted transition-colors cursor-pointer">
@@ -216,9 +202,6 @@ export default function FileActivitySettings() {
                                         Scope
                                     </th>
                                     <th className="px-4 py-3 text-left">
-                                        Rec
-                                    </th>
-                                    <th className="px-4 py-3 text-left">
                                         Exclude
                                     </th>
                                     <th className="px-4 py-3 text-left">
@@ -233,7 +216,7 @@ export default function FileActivitySettings() {
                                 {isLoading ? (
                                     <tr>
                                         <td
-                                            colSpan={6}
+                                            colSpan={5}
                                             className="px-4 py-10 text-center text-muted-foreground"
                                         >
                                             Loading…
@@ -242,7 +225,7 @@ export default function FileActivitySettings() {
                                 ) : paths.length === 0 ? (
                                     <tr>
                                         <td
-                                            colSpan={6}
+                                            colSpan={5}
                                             className="px-4 py-10 text-center text-muted-foreground"
                                         >
                                             No watched paths configured.
@@ -262,9 +245,6 @@ export default function FileActivitySettings() {
                                                 {p.scope === "server" &&
                                                     p.server_id != null &&
                                                     ` #${p.server_id}`}
-                                            </td>
-                                            <td className="px-4 py-3 text-muted-foreground">
-                                                {p.recursive ? "Yes" : "No"}
                                             </td>
                                             <td className="px-4 py-3 text-muted-foreground">
                                                 {p.exclude_patterns &&

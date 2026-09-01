@@ -61,7 +61,17 @@ export function DocsGmailSmtpContent() {
                 </p>
                 <CodeBlock>{`MAIL_USERNAME="you@gmail.com"
 MAIL_PASSWORD="the16characterapppassword"
-MAIL_FROM_ADDRESS="you@gmail.com"`}</CodeBlock>
+MAIL_FROM_ADDRESS="you@gmail.com" # must be same as MAIL_USERNAME for Gmail
+# MAIL_FROM_NAME="My App"          # optional display name, defaults to APP_NAME (not an email)`}</CodeBlock>
+                <Callout type="warning">
+                    Gmail enforces that <InlineCode>MAIL_FROM_ADDRESS</InlineCode>{" "}
+                    equals <InlineCode>MAIL_USERNAME</InlineCode> (or a verified
+                    alias). If they differ Gmail will overwrite the From or reject
+                    the mail. <InlineCode>MAIL_FROM_NAME</InlineCode> is only the
+                    display name — leave it unset to use{" "}
+                    <InlineCode>APP_NAME</InlineCode> or set it to a plain name
+                    like <InlineCode>"Server Monitor"</InlineCode>, never an email.
+                </Callout>
                 <p>
                     The tracked <InlineCode>.env.development</InlineCode> keeps
                     the non-secret SMTP transport config:
@@ -72,7 +82,8 @@ MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
 MAIL_USERNAME=null
 MAIL_PASSWORD=null
-MAIL_FROM_ADDRESS="hello@example.com"`}</CodeBlock>
+MAIL_FROM_ADDRESS="hello@example.com"
+MAIL_FROM_NAME="Laravel"         # display name only, not an email; defaults to APP_NAME if removed`}</CodeBlock>
                 <p>
                     <InlineCode>MAIL_SCHEME=null</InlineCode> on port 587 uses
                     STARTTLS automatically. For port 465 use{" "}

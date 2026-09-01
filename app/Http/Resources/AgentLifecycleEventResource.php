@@ -19,8 +19,8 @@ class AgentLifecycleEventResource extends JsonResource
             )?->values()->all() ?? [],
             'agent_id' => $this->agent_id,
             'event_type' => $this->event_type,
-            'occurred_at' => $this->occurred_at?->toIso8601String(),
-            'created_at' => $this->created_at?->toIso8601String(),
+            'occurred_at' => $this->occurred_at?->utc()->toIso8601String(),
+            'created_at' => $this->created_at?->utc()->toIso8601String(),
         ];
     }
 }

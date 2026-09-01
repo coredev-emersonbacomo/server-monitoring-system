@@ -160,6 +160,12 @@ export function useServerSocket(
                 if (onAgentUninstalledRef.current) {
                     onAgentUninstalledRef.current();
                 }
+            })
+            .listen(".FileActivityCreated", () => {
+                queryClient.invalidateQueries({ queryKey: ["paginated"] });
+            })
+            .listen(".AgentLifecycleCreated", () => {
+                queryClient.invalidateQueries({ queryKey: ["paginated"] });
             });
 
         return () => {

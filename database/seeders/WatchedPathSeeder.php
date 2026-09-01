@@ -20,7 +20,6 @@ class WatchedPathSeeder extends Seeder
             ['path' => $agentDir, 'scope' => 'agent', 'server_id' => null],
             [
                 'enabled' => true,
-                'recursive' => true,
                 'exclude_patterns' => json_encode(['*.log', '*.tmp']),
                 'description' => 'MonitorAgent state/config/identity/update files',
                 'created_at' => now(),
@@ -48,7 +47,6 @@ class WatchedPathSeeder extends Seeder
                 ['path' => $path, 'scope' => 'agent', 'server_id' => null],
                 [
                     'enabled' => true,
-                    'recursive' => true,
                     'exclude_patterns' => json_encode($userExcludes),
                     'description' => $description,
                     'created_at' => now(),

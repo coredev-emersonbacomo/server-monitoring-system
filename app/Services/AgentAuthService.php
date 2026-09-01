@@ -89,7 +89,7 @@ class AgentAuthService
      * apply server-scoped paths to the correct monitored server.
      *
      * @param  Collection<int, Server>  $servers
-     * @return array<int, array{path: string, scope: string, server_uuid: string|null, enabled: bool, recursive: bool, description: string|null}>
+     * @return array<int, array{path: string, scope: string, server_uuid: string|null, enabled: bool, description: string|null}>
      */
     public function watchedPathsForAgent(Agent $agent, Collection $servers): array
     {
@@ -113,7 +113,7 @@ class AgentAuthService
                 'scope' => $path->scope,
                 'server_uuid' => $path->server?->uuid,
                 'enabled' => (bool) $path->enabled,
-                'recursive' => (bool) $path->recursive,
+                'exclude_patterns' => $path->exclude_patterns ?? [],
                 'description' => $path->description,
             ];
         })->values()->all();

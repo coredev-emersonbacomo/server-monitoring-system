@@ -61,15 +61,21 @@ type FileWatcher struct {
 	stop    chan struct{}
 	rawOps  chan rawOp
 	managed sync.Map // normalized path -> chan struct{} (watch done)
+	syncCh  chan struct{}
 }
 
+var currentWatcher *FileWatcher
+
 func NewFileWatcher(rt *AgentRuntime) *FileWatcher {
-	return &FileWatcher{
+	fw := &FileWatcher{
 		runtime: rt,
 		events:  make(chan *AuditEvent, 256),
 		stop:    make(chan struct{}),
 		rawOps:  make(chan rawOp, 1024),
+		syncCh:  make(chan struct{}, 1),
 	}
+	currentWatcher = fw
+	return fw
 }
 
 // Events returns the channel of correlated audit events for the caller to drain.
@@ -100,16 +106,28 @@ func (fw *FileWatcher) manageLoop() {
 			return
 		case <-ticker.C:
 			fw.syncWatches()
+		case <-fw.syncCh:
+			fw.syncWatches()
 		}
 	}
 }
 
-// syncWatches starts a watch for every enabled path that is not yet watched and
-// currently exists. Inaccessible/missing paths are skipped (never fatal); they
-// are retried on the next tick if they reappear.
+// TriggerSync requests an immediate re-sync of watched paths (non-blocking).
+func (fw *FileWatcher) TriggerSync() {
+	select {
+	case fw.syncCh <- struct{}{}:
+	default:
+	}
+}
+
+// syncWatches reconciles the live OS watches with the backend-delivered
+// enabled paths: starts watches for new paths, stops watches for removed or
+// disabled paths, and retries unavailable paths on the next tick.
 func (fw *FileWatcher) syncWatches() {
 	paths := fw.runtime.EffectiveWatchedPaths()
+	desired := make(map[string]bool, len(paths))
 	for _, wp := range paths {
+		desired[wp.Path] = true
 		if _, loaded := fw.managed.Load(wp.Path); loaded {
 			continue
 		}
@@ -119,13 +137,29 @@ func (fw *FileWatcher) syncWatches() {
 		}
 		done := make(chan struct{})
 		fw.managed.Store(wp.Path, done)
-		go func(p string, recursive bool, done chan struct{}) {
+		go func(p string, done chan struct{}) {
 			defer func() {
 				fw.managed.Delete(p)
 			}()
-			watchPath(p, recursive, fw.rawOps, done)
-		}(wp.Path, wp.Recursive, done)
+			watchPath(p, fw.rawOps, done)
+		}(wp.Path, done)
 	}
+	// Stop watches whose path is no longer desired (removed/disabled).
+	fw.managed.Range(func(k, v interface{}) bool {
+		path := k.(string)
+		if !desired[path] {
+			if ch, ok := v.(chan struct{}); ok {
+				// close safely (may already be closing via Stop)
+				func() {
+					defer func() { recover() }()
+					close(ch)
+				}()
+			}
+			fw.managed.Delete(path)
+			log.Printf("[FSW] stopped watch for removed path: %s", path)
+		}
+		return true
+	})
 }
 
 func (fw *FileWatcher) correlateLoop() {
@@ -237,24 +271,58 @@ func (fw *FileWatcher) emitFile(path string, isDir bool, action, dest string) {
 // instance directory (logs/queue) that must never be self-audited.
 func (fw *FileWatcher) isExcluded(path string) bool {
 	base := filepath.Base(path)
-	if !agentExclusions[base] {
-		return false
+	// case-insensitive on Windows
+	key := base
+	if os.PathSeparator == '\\' {
+		key = strings.ToLower(base)
+		lower := make(map[string]bool, len(agentExclusions))
+		for k := range agentExclusions {
+			lower[strings.ToLower(k)] = true
+		}
+		if !lower[key] {
+			return false
+		}
+	} else {
+		if !agentExclusions[base] {
+			return false
+		}
 	}
 	instDir := instanceDir(currentInstance)
+	if os.PathSeparator == '\\' {
+		return strings.HasPrefix(strings.ToLower(path), strings.ToLower(instDir))
+	}
 	return strings.HasPrefix(path, instDir)
 }
 
-// matchAny reports whether path matches any of the gitignore-style patterns,
-// comparing both the full path and its base name. An invalid pattern never
-// matches, so a user typo only skips that one rule instead of throwing.
+// matchAny reports whether path matches any of the gitignore-style patterns.
+// It checks: base name, full path, and any path segment (so a pattern like
+// "node_modules" matches files inside that directory on both platforms).
+// An invalid pattern never matches, so a user typo only skips that one rule.
 func matchAny(patterns []string, path string) bool {
 	base := filepath.Base(path)
+	segments := strings.FieldsFunc(path, func(r rune) bool { return r == '/' || r == '\\' })
 	for _, pat := range patterns {
 		if matched, err := filepath.Match(pat, base); err == nil && matched {
 			return true
 		}
 		if matchDir, err := filepath.Match(pat, path); err == nil && matchDir {
 			return true
+		}
+		for _, seg := range segments {
+			if matched, err := filepath.Match(pat, seg); err == nil && matched {
+				return true
+			}
+		}
+		// plain substring fallback for directory patterns without wildcards
+		if !strings.Contains(pat, "*") && !strings.Contains(pat, "?") && !strings.Contains(pat, "[") {
+			for _, seg := range segments {
+				if seg == pat {
+					return true
+				}
+				if os.PathSeparator == '\\' && strings.EqualFold(seg, pat) {
+					return true
+				}
+			}
 		}
 	}
 	return false
@@ -263,9 +331,17 @@ func matchAny(patterns []string, path string) bool {
 // serverUUIDForPath finds the owning server for a watched path: agent-scoped
 // paths return "" (agent-wide), server-scoped paths return that server's UUID.
 func (fw *FileWatcher) serverUUIDForPath(path string) string {
+	cleanPath := filepath.Clean(path)
 	for _, wp := range fw.runtime.EffectiveWatchedPaths() {
-		if path == wp.Path || strings.HasPrefix(path, wp.Path+string(os.PathSeparator)) {
-			return wp.ServerUUID
+		cleanWP := filepath.Clean(wp.Path)
+		if os.PathSeparator == '\\' {
+			if strings.EqualFold(cleanPath, cleanWP) || strings.HasPrefix(strings.ToLower(cleanPath), strings.ToLower(cleanWP)+string(os.PathSeparator)) {
+				return wp.ServerUUID
+			}
+		} else {
+			if cleanPath == cleanWP || strings.HasPrefix(cleanPath, cleanWP+string(os.PathSeparator)) {
+				return wp.ServerUUID
+			}
 		}
 	}
 	return ""

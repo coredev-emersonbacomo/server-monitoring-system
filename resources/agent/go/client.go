@@ -252,9 +252,6 @@ func parseAuthResponse(result map[string]interface{}) (*AuthResponse, error) {
 				if e, ok := m["enabled"].(bool); ok {
 					wp.Enabled = e
 				}
-				if r, ok := m["recursive"].(bool); ok {
-					wp.Recursive = r
-				}
 				if pats, ok := m["exclude_patterns"].([]interface{}); ok {
 					for _, pat := range pats {
 						if s, ok := pat.(string); ok && s != "" {

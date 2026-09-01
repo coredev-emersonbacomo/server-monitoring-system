@@ -56,7 +56,6 @@ class WatchedPathController extends Controller
             'scope' => ['required', 'string', 'in:agent,server'],
             'server_id' => ['nullable', 'integer', 'exists:servers,id'],
             'enabled' => ['nullable', 'boolean'],
-            'recursive' => ['nullable', 'boolean'],
             'exclude_patterns' => ['nullable', 'array'],
             'exclude_patterns.*' => ['string', 'max:512'],
             'description' => ['nullable', 'string', 'max:2000'],
@@ -73,7 +72,6 @@ class WatchedPathController extends Controller
             ['path' => $validated['path'], 'scope' => $validated['scope'], 'server_id' => $validated['server_id']],
             [
                 'enabled' => $validated['enabled'] ?? true,
-                'recursive' => $validated['recursive'] ?? true,
                 'exclude_patterns' => $validated['exclude_patterns'] ?? null,
                 'description' => $validated['description'] ?? null,
                 'created_at' => now(),
@@ -116,7 +114,6 @@ class WatchedPathController extends Controller
             'scope' => ['sometimes', 'string', 'in:agent,server'],
             'server_id' => ['nullable', 'integer', 'exists:servers,id'],
             'enabled' => ['nullable', 'boolean'],
-            'recursive' => ['nullable', 'boolean'],
             'exclude_patterns' => ['nullable', 'array'],
             'exclude_patterns.*' => ['string', 'max:512'],
             'description' => ['nullable', 'string', 'max:2000'],

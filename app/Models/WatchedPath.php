@@ -17,7 +17,6 @@ class WatchedPath extends Model
     {
         return [
             'enabled' => 'boolean',
-            'recursive' => 'boolean',
             'server_id' => 'integer',
             'exclude_patterns' => 'array',
         ];

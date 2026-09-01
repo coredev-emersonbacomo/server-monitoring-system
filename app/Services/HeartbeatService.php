@@ -476,9 +476,12 @@ class HeartbeatService
 
     private function bringServerOnline(Agent $agent, Server $server): void
     {
+        // Fresh status to avoid stale model from aggregated loop / concurrent MonitorServer
+        $server->refresh();
         // Transition server to online if needed
         if ($server->status !== ServerStatus::Online->value) {
             $server->update(['status' => ServerStatus::Online->value]);
+            $server->refresh();
 
             Activity::create([
                 'server_id' => $server->id,
@@ -500,21 +503,6 @@ class HeartbeatService
                 ]),
             ]);
 
-            // Resolve server offline problems on the Action Board:
-            // If claimed by a user, mark as completed (so it appears in their completed history).
-            // If unclaimed, delete it so it clears cleanly without cluttering completed records.
-            ActionItem::where('action_type', 'server_offline')
-                ->where('server_id', $server->id)
-                ->where('status', 'open')
-                ->whereNotNull('assigned_to')
-                ->update(['status' => 'completed', 'completed_at' => now()]);
-
-            ActionItem::where('action_type', 'server_offline')
-                ->where('server_id', $server->id)
-                ->where('status', 'open')
-                ->whereNull('assigned_to')
-                ->delete();
-
             // Real-time push so UI immediately reflects online status (failsafe if Reverb is offline)
             try {
                 ServerStatusUpdated::dispatch($server->uuid, ServerStatus::Online->value, $server->name);
@@ -530,6 +518,20 @@ class HeartbeatService
                 Log::warning('[broadcast] Failed to push online update', ['error' => $e->getMessage()]);
             }
         }
+
+        // Always resolve lingering offline ActionItems when a heartbeat proves the agent is alive —
+        // even if status was already Online, this cleans stale board entries and respects offline_threshold.
+        ActionItem::where('action_type', 'server_offline')
+            ->where('server_id', $server->id)
+            ->where('status', 'open')
+            ->whereNotNull('assigned_to')
+            ->update(['status' => 'completed', 'completed_at' => now()]);
+
+        ActionItem::where('action_type', 'server_offline')
+            ->where('server_id', $server->id)
+            ->where('status', 'open')
+            ->whereNull('assigned_to')
+            ->delete();
     }
 
     /**
