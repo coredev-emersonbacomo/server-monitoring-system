@@ -1,4 +1,4 @@
-import { ChevronLeft, Upload } from "lucide-react";
+import { ChevronLeft, Upload, BadgeCheck, ShieldAlert } from "lucide-react";
 import { Form, type FormStore } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import type { AuthUserData } from "@/types/models";
@@ -9,6 +9,7 @@ interface ProfileHeaderProps {
     form: Record<string, string>;
     store: FormStore<any>;
     fullName: string;
+    isVerified?: boolean;
     avatarSrc: string | null;
     onNavigateBack: () => void;
     onAvatarChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -20,6 +21,7 @@ export function ProfileHeader({
     form,
     store,
     fullName,
+    isVerified,
     avatarSrc,
     onNavigateBack,
     onAvatarChange,
@@ -154,6 +156,23 @@ export function ProfileHeader({
                             {user.record_status === "active"
                                 ? "Active"
                                 : "Inactive"}
+                        </span>
+                        <span
+                            className={cn(
+                                "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
+                                isVerified
+                                    ? "bg-emerald-500/10 text-emerald-400"
+                                    : "bg-muted text-muted-foreground",
+                            )}
+                        >
+                            {isVerified ? (
+                                <BadgeCheck className="size-3.5" />
+                            ) : (
+                                <ShieldAlert className="size-3.5" />
+                            )}
+                            {isVerified
+                                ? "Email Verified"
+                                : "Email Unverified"}
                         </span>
                     </div>
                 )}

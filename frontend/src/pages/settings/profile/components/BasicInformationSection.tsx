@@ -1,4 +1,4 @@
-import { Mail, AtSign, User } from "lucide-react";
+import { Mail, AtSign, User, BadgeCheck, ShieldAlert, Loader2 } from "lucide-react";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { InfoBlock } from "./InfoBlock";
 
@@ -9,6 +9,9 @@ interface BasicInformationSectionProps {
     email: string;
     username: string;
     phone_number: string;
+    isVerified?: boolean;
+    isResending?: boolean;
+    onResend?: () => void;
 }
 
 export function BasicInformationSection({
@@ -18,6 +21,9 @@ export function BasicInformationSection({
     email,
     username,
     phone_number,
+    isVerified,
+    isResending,
+    onResend,
 }: BasicInformationSectionProps) {
     return (
         <section className="space-y-4">
@@ -67,6 +73,34 @@ export function BasicInformationSection({
                         label="Email"
                         value={email}
                     />
+                    {mode === "view" && (
+                        <div className="sm:col-span-2">
+                            {isVerified ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400">
+                                    <BadgeCheck className="size-3.5" />
+                                    Email Verified
+                                </span>
+                            ) : (
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                                        <ShieldAlert className="size-3.5" />
+                                        Unverified
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={onResend}
+                                        disabled={isResending}
+                                        className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                    >
+                                        {isResending ? (
+                                            <Loader2 className="size-3.5 animate-spin" />
+                                        ) : null}
+                                        Resend verification email
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <InfoBlock
                         icon={<AtSign size={15} />}
                         label="Username"

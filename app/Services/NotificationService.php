@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Mail\EmailVerificationMail;
+use App\Mail\PasswordResetCodeMail;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -265,8 +267,28 @@ class NotificationService
         $logoPath = public_path('images/coreDevlogo.png');
 
         Mail::to($receiver)->send(
-            new \App\Mail\PasswordResetCodeMail(
+            new PasswordResetCodeMail(
                 code: $code,
+                expiresInMinutes: $expiresInMinutes,
+                logoPath: file_exists($logoPath) ? $logoPath : null,
+            )
+        );
+    }
+
+    /**
+     * Send email verification link using dedicated styled Mailable & Blade template.
+     */
+    public function sendEmailVerification(
+        string $receiver,
+        string $verifyUrl,
+        int $expiresInMinutes = 60,
+    ): void {
+        $logoPath = public_path('images/coreDevlogo.png');
+
+        Mail::to($receiver)->send(
+            new EmailVerificationMail(
+                verifyUrl: $verifyUrl,
+                userEmail: $receiver,
                 expiresInMinutes: $expiresInMinutes,
                 logoPath: file_exists($logoPath) ? $logoPath : null,
             )

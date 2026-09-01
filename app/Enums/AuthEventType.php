@@ -18,4 +18,7 @@ enum AuthEventType: string
     case PasswordResetCodeVerified = 'password_reset_code_verified';
     case PasswordResetCompleted = 'password_reset_completed';
     case PasswordResetFailed = 'password_reset_failed';
+    case EmailVerificationRequested = 'email_verification_requested';
+    case EmailVerified = 'email_verified';
+    case EmailVerificationFailed = 'email_verification_failed';
 }

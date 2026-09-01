@@ -19,9 +19,11 @@ export const Profile: React.FC = () => {
         email,
         username,
         phone_number,
+        isVerified,
         avatarSrc,
         handleAvatarChange,
         handleFormSubmit,
+        resendVerification,
     } = useProfile();
 
     if (isLoading) {
@@ -67,6 +69,7 @@ export const Profile: React.FC = () => {
                     form={form}
                     store={store}
                     fullName={fullName}
+                    isVerified={isVerified}
                     avatarSrc={avatarSrc}
                     onNavigateBack={() => navigate("/settings")}
                     onAvatarChange={handleAvatarChange}
@@ -84,6 +87,9 @@ export const Profile: React.FC = () => {
                                 email={email}
                                 username={username}
                                 phone_number={phone_number}
+                                isVerified={isVerified}
+                                isResending={resendVerification.isPending}
+                                onResend={() => resendVerification.mutate()}
                             />
 
                             <div className="h-px bg-border" />
