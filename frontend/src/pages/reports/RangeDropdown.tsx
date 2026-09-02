@@ -32,7 +32,7 @@ export function RangeDropdown({ value, onChange, options }: RangeDropdownProps) 
         <div className="relative" ref={ref}>
             <button
                 onClick={() => setOpen((o) => !o)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border border-border hover:bg-sidebar-hover"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border border-border hover:bg-sidebar-hover whitespace-nowrap shrink-0"
             >
                 <CalendarRange className="w-4 h-4" />
                 <span className="hidden sm:inline">Range:</span>
