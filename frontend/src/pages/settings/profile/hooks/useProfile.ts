@@ -7,6 +7,7 @@ import { createFormStore, useForm } from "@/components/ui/form";
 import { profileSchema } from "../constants/profileSchema";
 import { useUpdateProfile } from "./useUpdateProfile";
 import { useResendVerification } from "./useResendVerification";
+import { formatContactNumber } from "@/utils/helpers";
 
 export function useProfile() {
     const { user, isLoading } = useAuthContext();
@@ -104,9 +105,7 @@ export function useProfile() {
     const username = user?.username ?? (email ? email.split("@")[0] : "");
     const isVerified = !!user?.email_verified_at;
     const phone_number = user?.phone_number
-        ? user.phone_number
-              .replace(/\D/g, "")
-              .replace(/^(\d{3})(\d{4})(\d{4})$/, "$1-$2-$3")
+        ? formatContactNumber(user.phone_number)
         : "—";
     const avatarSrc =
         avatarPreview ||
