@@ -129,23 +129,23 @@ export function ReportsLayout() {
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                 <IndexHeader
                     icon={FileBarChart}
                     title="Reports"
                     description="View and generate reports for clients and servers"
                 />
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                     {view !== "global" && (
                         <button
                             onClick={() => setPickerOpen(true)}
-                            className="px-4 py-1.5 rounded-lg text-sm border border-border hover:bg-sidebar-hover"
+                            className="px-4 py-1.5 rounded-lg text-sm border border-border hover:bg-sidebar-hover whitespace-nowrap shrink-0"
                         >
                             Select {view === "servers" ? "Servers" : "Clients"}
                         </button>
                     )}
-                    <div className="flex gap-1 p-1 rounded-xl bg-sidebar-hover">
+                    <div className="flex gap-1 p-1 rounded-xl bg-sidebar-hover shrink-0">
                         {VIEWS.map((v) => (
                             <button
                                 key={v.key}
@@ -154,8 +154,8 @@ export function ReportsLayout() {
                                 aria-selected={view === v.key}
                                 className={
                                     view === v.key
-                                        ? "px-4 py-1.5 rounded-lg bg-background font-semibold text-sm shadow-sm"
-                                        : "px-4 py-1.5 rounded-lg text-sm text-muted-foreground hover:text-foreground"
+                                        ? "px-4 py-1.5 rounded-lg bg-background font-semibold text-sm shadow-sm whitespace-nowrap"
+                                        : "px-4 py-1.5 rounded-lg text-sm text-muted-foreground hover:text-foreground whitespace-nowrap"
                                 }
                             >
                                 {v.label}
@@ -165,7 +165,7 @@ export function ReportsLayout() {
                 </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3">
+            <div className="flex flex-wrap items-center gap-3 w-full lg:justify-end">
                 {view === "servers" && (
                     <RangeDropdown
                         value={hours}
@@ -177,7 +177,7 @@ export function ReportsLayout() {
                 <button
                     onClick={() => setRefreshToken((t) => t + 1)}
                     title="Regenerate this report"
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border border-border bg-background text-foreground hover:bg-sidebar-hover"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border border-border bg-background text-foreground hover:bg-sidebar-hover shrink-0"
                 >
                     <RefreshCw className="w-4 h-4" />
                     <span className="hidden sm:inline">Refresh</span>
@@ -186,7 +186,7 @@ export function ReportsLayout() {
                 <select
                     value={orientation}
                     onChange={(e) => setOrientation(e.target.value as ReportOrientation)}
-                    className="px-3 py-1.5 rounded-lg text-sm border border-border bg-background text-foreground"
+                    className="px-3 py-1.5 rounded-lg text-sm border border-border bg-background text-foreground shrink-0"
                 >
                     <option value="landscape">Landscape</option>
                     <option value="portrait">Portrait</option>

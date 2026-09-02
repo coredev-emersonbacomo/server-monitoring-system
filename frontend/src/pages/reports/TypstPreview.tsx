@@ -241,7 +241,7 @@ export function TypstPreview({
                     data={pdfUrl}
                     type="application/pdf"
                     className="w-full"
-                    style={{ height: "80vh", minHeight: "600px" }}
+                    style={{ height: "80dvh", minHeight: "400px" }}
                 >
                     <p className="text-sm text-muted-foreground p-8 text-center">
                         Your browser doesn't support PDF viewing.
