@@ -469,6 +469,35 @@ class AgentController extends Controller
         }
 
         $user = $request->user();
+
+        $activeServersCount = $agent->monitoredServers()->where('agent_deleted', false)->count();
+
+        if ($activeServersCount > 1) {
+            DB::transaction(function () use ($server, $agent) {
+                $server->update([
+                    'agent_deleted' => true,
+                    'status' => ServerStatus::AgentUninstalled->value,
+                    'agent_id' => null,
+                    'went_offline_at' => now(),
+                ]);
+
+                event(new ServerStatusUpdated($server->uuid, ServerStatus::Offline->value, $server->name));
+                event(new AgentUninstalled($server->uuid));
+
+                Activity::create([
+                    'server_id' => $server->id,
+                    'agent_id' => $agent->id,
+                    'type' => 'server_detached',
+                    'description' => "Server {$server->name} detached via dashboard; agent remains active for other servers.",
+                ]);
+            });
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Server detached from agent. Other servers continue to be monitored.',
+            ]);
+        }
+
         $this->revokeAgentRecord($agent, 'cleared from dashboard', $user);
 
         return response()->json([

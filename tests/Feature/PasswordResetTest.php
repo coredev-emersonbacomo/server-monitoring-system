@@ -1,10 +1,10 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 
-uses(RefreshDatabase::class)->group('auth');
+uses(DatabaseTransactions::class)->group('auth');
 
 beforeEach(function () {
     Mail::fake();

@@ -145,17 +145,25 @@ export function JwtAuthProvider({ children }: { children: ReactNode }) {
                 );
             }
 
-            const { access_token } = data as {
+            const loginData = data as {
                 access_token: string;
+                user?: AuthUserData;
             };
-            setAccessToken(access_token);
+            setAccessToken(loginData.access_token);
 
-            const meResponse = await api.GET("/v1/me");
-            if (mountedRef.current && meResponse.data) {
-                setUser(meResponse.data as AuthUserData);
+            if (mountedRef.current) {
+                if (loginData.user) {
+                    setUser(loginData.user);
+                } else {
+                    const meResponse = await api.GET("/v1/me");
+                    if (meResponse.data) {
+                        setUser(meResponse.data as AuthUserData);
+                    }
+                }
             }
         } catch (error) {
             setAccessToken(null);
+            setUser(null);
             throw error;
         } finally {
             if (mountedRef.current) {

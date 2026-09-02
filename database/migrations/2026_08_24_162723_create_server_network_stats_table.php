@@ -46,6 +46,24 @@ return new class extends Migration
             );
         });
 
+        DB::unprepared('
+            DROP INDEX IF EXISTS server_network_stats_agg_minute_server_id_interface_name_timestamp_index CASCADE;
+            DROP INDEX IF EXISTS server_network_stats_agg_hour_server_id_interface_name_timestamp_index CASCADE;
+            DROP INDEX IF EXISTS server_network_stats_agg_day_server_id_interface_name_timestamp_index CASCADE;
+            DROP INDEX IF EXISTS server_network_stats_agg_week_server_id_interface_name_timestamp_index CASCADE;
+            DROP INDEX IF EXISTS server_network_stats_agg_month_server_id_interface_name_timestamp_index CASCADE;
+            DROP INDEX IF EXISTS _timescaledb_internal.server_network_stats_agg_minute_server_id_interface_name_timest CASCADE;
+            DROP INDEX IF EXISTS _timescaledb_internal.server_network_stats_agg_hour_server_id_interface_name_timest CASCADE;
+            DROP INDEX IF EXISTS _timescaledb_internal.server_network_stats_agg_day_server_id_interface_name_timest CASCADE;
+            DROP INDEX IF EXISTS _timescaledb_internal.server_network_stats_agg_week_server_id_interface_name_timest CASCADE;
+            DROP INDEX IF EXISTS _timescaledb_internal.server_network_stats_agg_month_server_id_interface_name_timest CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_minute CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_hour CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_day CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_week CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_month CASCADE;
+        ');
+
         // ---------------------------------------------------------------
         // 1 minute rollup (per interface)
         // ---------------------------------------------------------------
@@ -166,11 +184,18 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_month');
-        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_week');
-        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_day');
-        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_hour');
-        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_minute');
+        DB::unprepared('
+            DROP INDEX IF EXISTS _timescaledb_internal.server_network_stats_agg_minute_server_id_interface_name_timest CASCADE;
+            DROP INDEX IF EXISTS _timescaledb_internal.server_network_stats_agg_hour_server_id_interface_name_timest CASCADE;
+            DROP INDEX IF EXISTS _timescaledb_internal.server_network_stats_agg_day_server_id_interface_name_timest CASCADE;
+            DROP INDEX IF EXISTS _timescaledb_internal.server_network_stats_agg_week_server_id_interface_name_timest CASCADE;
+            DROP INDEX IF EXISTS _timescaledb_internal.server_network_stats_agg_month_server_id_interface_name_timest CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_month CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_week CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_day CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_hour CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_network_stats_agg_minute CASCADE;
+        ');
         LaravelSchema::dropIfExists('server_network_stats');
     }
 };

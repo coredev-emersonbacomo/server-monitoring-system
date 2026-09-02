@@ -29,6 +29,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Spatie\LaravelData\Optional;
 
 class ServerController extends Controller
@@ -709,14 +710,24 @@ class ServerController extends Controller
     {
         $networkTable = str_replace('server_updates_agg', 'server_network_stats_agg', $tableUnit);
 
-        try {
-            $rows = $this->queryNetworkAggTable($serverId, $networkTable, $subTime, $endTime);
-        } catch (\Throwable $e) {
-            if (str_contains($e->getMessage(), 'has not been populated')) {
-                DB::statement("REFRESH MATERIALIZED VIEW {$networkTable}");
+        if (! Schema::hasTable($networkTable)) {
+            $rows = DB::table('server_network_stats')
+                ->selectRaw('DATE_TRUNC(\'minute\', created_at) AS timestamp, interface_name as "interfaceName", AVG(rx_bytes) as "netIn", AVG(tx_bytes) as "netOut"')
+                ->where('server_id', $serverId)
+                ->where('created_at', '>=', $subTime)
+                ->groupByRaw('DATE_TRUNC(\'minute\', created_at), interface_name')
+                ->orderBy('timestamp')
+                ->get();
+        } else {
+            try {
                 $rows = $this->queryNetworkAggTable($serverId, $networkTable, $subTime, $endTime);
-            } else {
-                throw $e;
+            } catch (\Throwable $e) {
+                if (str_contains($e->getMessage(), 'has not been populated')) {
+                    DB::statement("REFRESH MATERIALIZED VIEW {$networkTable}");
+                    $rows = $this->queryNetworkAggTable($serverId, $networkTable, $subTime, $endTime);
+                } else {
+                    throw $e;
+                }
             }
         }
 

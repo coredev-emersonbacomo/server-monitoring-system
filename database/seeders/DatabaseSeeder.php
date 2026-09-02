@@ -33,12 +33,12 @@ class DatabaseSeeder extends Seeder
         Client::factory(9)->has(Server::factory()->count(8))->create();
         Server::factory(28)->create();
 
-        // Make admin a secop to every client
-        $admin = User::where('username', 'admin')->first();
-        if ($admin) {
+        // Make seeded user a secop to every client
+        $user = User::where('username', 'user')->first();
+        if ($user) {
             foreach (Client::all() as $client) {
-                if (! $client->secopclients()->where('user_id', $admin->id)->exists()) {
-                    $client->secopclients()->attach($admin->id, [
+                if (! $client->secopclients()->where('user_id', $user->id)->exists()) {
+                    $client->secopclients()->attach($user->id, [
                         'uuid' => (string) Str::uuid7(),
                         'record_status' => 'active',
                     ]);

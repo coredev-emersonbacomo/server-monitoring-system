@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Partially Superseded by [ADR-0002: Single Agent per Physical Computer](./0002-singleton-agent-per-computer.md)
 
 > **Note (superseded installer/on-disk/uninstall model):** the data-model, authentication,
 > heartbeat, filter, and log-root-cause decisions in this ADR remain in force. The *installer /

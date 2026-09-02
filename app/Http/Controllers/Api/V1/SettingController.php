@@ -31,6 +31,7 @@ class SettingController extends Controller
      */
     public function update(UpdateSettingsData $data, Request $request): JsonResponse
     {
+<<<<<<< Updated upstream
         $user = $request->user();
         $isAdmin = $user && ($user->username === 'admin' || $user->email === 'admin@example.com' || str_contains($user->email, 'admin'));
         if (! $isAdmin) {
@@ -38,6 +39,15 @@ class SettingController extends Controller
         }
 
         $attributes = collect($data->toArray())->filter(fn ($value) => $value !== null);
+=======
+        $data = request()->validate([
+            'secop_limit_per_client' => ['sometimes', 'integer', 'min:1', 'max:50'],
+            'heartbeat_interval' => ['sometimes', 'integer', 'min:1', 'max:1000'],
+            'offline_threshold' => ['sometimes', 'integer', 'min:1', 'max:3600'],
+            'port_ping_interval' => ['sometimes', 'integer', 'min:1', 'max:3600'],
+            'agent_version' => ['sometimes', 'string'],
+        ]);
+>>>>>>> Stashed changes
 
         if ($attributes->has('heartbeat_interval') && $attributes->has('offline_threshold')) {
             if ((int) $attributes['offline_threshold'] < (int) $attributes['heartbeat_interval']) {

@@ -48,6 +48,24 @@ return new class extends Migration
             );
         });
 
+        DB::unprepared('
+            DROP INDEX IF EXISTS server_updates_agg_minute_server_id_timestamp_index CASCADE;
+            DROP INDEX IF EXISTS server_updates_agg_hour_server_id_timestamp_index CASCADE;
+            DROP INDEX IF EXISTS server_updates_agg_day_server_id_timestamp_index CASCADE;
+            DROP INDEX IF EXISTS server_updates_agg_week_server_id_timestamp_index CASCADE;
+            DROP INDEX IF EXISTS server_updates_agg_month_server_id_timestamp_index CASCADE;
+            DROP INDEX IF EXISTS _timescaledb_internal.server_updates_agg_minute_server_id_timestamp_index CASCADE;
+            DROP INDEX IF EXISTS _timescaledb_internal.server_updates_agg_hour_server_id_timestamp_index CASCADE;
+            DROP INDEX IF EXISTS _timescaledb_internal.server_updates_agg_day_server_id_timestamp_index CASCADE;
+            DROP INDEX IF EXISTS _timescaledb_internal.server_updates_agg_week_server_id_timestamp_index CASCADE;
+            DROP INDEX IF EXISTS _timescaledb_internal.server_updates_agg_month_server_id_timestamp_index CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_minute CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_hour CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_day CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_week CASCADE;
+            DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_month CASCADE;
+        ');
+
         // ---------------------------------------------------------------
         // 1 minute rollup
         // ---------------------------------------------------------------
@@ -183,11 +201,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_month');
-        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_week');
-        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_day');
-        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_hour');
-        DB::statement('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_minute');
+        DB::unprepared('DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_month CASCADE; DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_week CASCADE; DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_day CASCADE; DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_hour CASCADE; DROP MATERIALIZED VIEW IF EXISTS server_updates_agg_minute CASCADE;');
         LaravelSchema::dropIfExists('server_updates');
     }
 };

@@ -2,6 +2,7 @@
 
 namespace App\Auth;
 
+use App\Models\UserSession;
 use App\Services\JwtService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Guard;
@@ -24,9 +25,36 @@ class JwtGuard implements Guard
         private Request $request,
     ) {}
 
+    public function setRequest(Request $request): self
+    {
+        $this->request = $request;
+        $this->user = null;
+        $this->sessionUuid = null;
+        $this->jwtPayload = null;
+        $this->validated = false;
+        $this->currentToken = null;
+
+        return $this;
+    }
+
+    private ?string $currentToken = null;
+
     public function user(): ?Authenticatable
     {
-        if ($this->validated) {
+        // If the global request has changed (new HTTP request in tests or async context),
+        // reset all cached state so revocation checks always run on a fresh request.
+        $currentRequest = request();
+        if ($currentRequest !== $this->request) {
+            $this->setRequest($currentRequest);
+        }
+
+        $token = $this->extractToken();
+
+        if ($this->user !== null && $token === null) {
+            return $this->user;
+        }
+
+        if ($this->validated && $token !== null && $this->currentToken === $token) {
             return $this->user;
         }
 
@@ -102,6 +130,10 @@ class JwtGuard implements Guard
     private function authenticate(): void
     {
         $this->validated = true;
+        $this->user = null;
+        $this->sessionUuid = null;
+        $this->jwtPayload = null;
+        $this->currentToken = null;
 
         $token = $this->extractToken();
         if (! $token) {
@@ -113,6 +145,19 @@ class JwtGuard implements Guard
             return;
         }
 
+        if (! empty($payload->sid)) {
+            $sessionRevoked = UserSession::where('session_uuid', $payload->sid)
+                ->where(function ($q) {
+                    $q->whereNotNull('revoked_at')
+                        ->orWhereNotNull('compromised_at');
+                })
+                ->exists();
+
+            if ($sessionRevoked) {
+                return;
+            }
+        }
+
         $user = $this->provider->retrieveById($payload->sub);
         if (! $user) {
             return;
@@ -121,11 +166,12 @@ class JwtGuard implements Guard
         $this->user = $user;
         $this->sessionUuid = $payload->sid;
         $this->jwtPayload = (array) $payload;
+        $this->currentToken = $token;
     }
 
     private function extractToken(): ?string
     {
-        $header = $this->request->header('Authorization');
+        $header = request()->header('Authorization') ?: $this->request->header('Authorization');
         if ($header && str_starts_with($header, 'Bearer ')) {
             return substr($header, 7);
         }

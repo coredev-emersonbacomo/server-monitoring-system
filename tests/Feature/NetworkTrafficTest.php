@@ -30,8 +30,8 @@ class NetworkTrafficTest extends TestCase
     {
         parent::setUp();
 
-        Setting::create(['key' => 'offline_threshold', 'value' => '15']);
-        Setting::create(['key' => 'heartbeat_interval', 'value' => '5']);
+        Setting::set('offline_threshold', '15');
+        Setting::set('heartbeat_interval', '5');
 
         $this->client = Client::create([
             'name' => 'Net Traffic Client',

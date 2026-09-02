@@ -738,8 +738,7 @@ export default function Docs() {
         const offset = 60;
         let active: string | null = null;
         headings.forEach((heading) => {
-            const top =
-                heading.getBoundingClientRect().top -
+            const top = heading.getBoundingClientRect().top -
                 container.getBoundingClientRect().top;
             if (top <= offset) active = heading.id;
         });

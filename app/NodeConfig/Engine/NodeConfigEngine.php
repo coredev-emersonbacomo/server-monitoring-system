@@ -1349,6 +1349,7 @@ class NodeConfigEngine
         }
 
         return [
+            'metric_type' => $metricType,
             'metric_name' => $metricName,
             'sustain_value' => $sustainValue,
             // ports_ping: feed the actual ping latency and the resolved threshold

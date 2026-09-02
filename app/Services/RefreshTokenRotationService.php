@@ -28,6 +28,30 @@ class RefreshTokenRotationService
             $session = $this->sessionManager->findSessionByPreviousRefreshTokenId($tokenId);
 
             if ($session) {
+                $matchesPreviousSecret = $session->previous_refresh_token_hash && $this->jwtService->constantTimeCompare(
+                    $session->previous_refresh_token_hash,
+                    $this->jwtService->hashSecret($tokenSecret)
+                );
+
+                $gracePeriodSeconds = (int) config('jwt.refresh_grace_period', 30);
+                $isWithinGracePeriod = $matchesPreviousSecret
+                    && $session->last_refresh_at
+                    && $session->last_refresh_at->diffInSeconds(now()) <= $gracePeriodSeconds
+                    && ! $session->isCompromised()
+                    && $session->revoked_at === null
+                    && ! $session->isExpired();
+
+                if ($isWithinGracePeriod) {
+                    $rotation = $this->sessionManager->rotateRefreshToken($session);
+                    $this->auditService->log('refresh_grace_window', $session->user_id, $session->session_uuid, $ip, $userAgent);
+
+                    return [
+                        'error' => false,
+                        'session' => $rotation['session'],
+                        'newRefreshToken' => $rotation['token'],
+                    ];
+                }
+
                 $this->handleReuseDetection($session, $ip, $userAgent);
 
                 return ['error' => true, 'message' => 'Refresh token reuse detected. Session compromised.', 'status' => 401];

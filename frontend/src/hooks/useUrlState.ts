@@ -71,9 +71,9 @@ export function useUrlState<T extends Record<string, unknown>>(
                 def.serialize?.(value) ??
                 (value === undefined || value === null ? "" : String(value));
             if (isDefaultValue(value, def.default)) {
-                next.delete(key);
+                next.delete(String(key));
             } else {
-                next.set(key, serialized);
+                next.set(String(key), serialized);
             }
             writeParams(next);
         },

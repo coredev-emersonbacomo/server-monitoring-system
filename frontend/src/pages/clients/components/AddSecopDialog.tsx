@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DebouncedSearchInput } from "@/components/DebouncedSearchInput";

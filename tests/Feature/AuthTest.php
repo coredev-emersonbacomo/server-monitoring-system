@@ -1,11 +1,12 @@
 <?php
 
 use App\Models\User;
+use App\Models\UserSession;
 use App\Services\JwtService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Testing\TestResponse;
 
-uses(RefreshDatabase::class)->group('auth');
+uses(DatabaseTransactions::class)->group('auth');
 
 beforeEach(function () {
     config(['jwt.secret' => 'test-secret-key-32-chars-long-for-testing!']);
@@ -263,4 +264,61 @@ test('active sessions count endpoint works', function () {
 
     $response->assertStatus(200)
         ->assertJsonStructure(['active_count']);
+});
+
+test('revoked session cannot access protected routes with existing access token', function () {
+    $loginResponse = $this->postJson('/api/login', [
+        'email' => 'test@example.com',
+        'password' => 'password123',
+    ]);
+
+    $accessToken = $loginResponse->json('access_token');
+    $sessionUuid = $loginResponse->json('session.session_uuid');
+
+    // Access works initially
+    $this->withHeaders(['Authorization' => 'Bearer '.$accessToken])
+        ->getJson('/api/sessions/active-count')
+        ->assertStatus(200);
+
+    // Revoke the session in database
+    UserSession::where('session_uuid', $sessionUuid)->update([
+        'revoked_at' => now(),
+    ]);
+
+    // Access must now be rejected
+    $this->withHeaders(['Authorization' => 'Bearer '.$accessToken])
+        ->getJson('/api/sessions/active-count')
+        ->assertStatus(401);
+});
+
+test('refresh token reused within grace window allows rotation without compromise', function () {
+    $loginResponse = $this->postJson('/api/login', [
+        'email' => 'test@example.com',
+        'password' => 'password123',
+    ]);
+
+    $refreshCookie = collect($loginResponse->headers->getCookies())
+        ->first(fn ($c) => $c->getName() === 'refresh_token');
+    $initialRefreshToken = $refreshCookie->getValue();
+
+    // First refresh: rotates the token
+    $firstRefresh = $this->call('POST', '/api/refresh', [], [
+        'refresh_token' => $initialRefreshToken,
+    ], []);
+    $firstResponse = TestResponse::fromBaseResponse($firstRefresh);
+    $firstResponse->assertStatus(201);
+
+    // Immediate second refresh using the initial token (concurrent tab within 30s grace window)
+    $secondRefresh = $this->call('POST', '/api/refresh', [], [
+        'refresh_token' => $initialRefreshToken,
+    ], []);
+    $secondResponse = TestResponse::fromBaseResponse($secondRefresh);
+
+    // Must succeed within grace window rather than returning 401 Session compromised
+    $secondResponse->assertStatus(201)
+        ->assertJsonStructure(['access_token', 'session_uuid']);
+
+    $sessionUuid = $firstResponse->json('session_uuid');
+    $session = UserSession::where('session_uuid', $sessionUuid)->first();
+    expect($session->isCompromised())->toBeFalse();
 });

@@ -261,14 +261,6 @@ class AuditController extends Controller
             });
         }
 
-        // Default to page mode so the UI shows total pages like the other log tabs.
-        // HybridPaginator defaults to cursor when no page/cursor is given, which
-        // renders as "1 / ?" and breaks the shared PaginationControls expectation
-        // for these tabs. Jump-to-page still works via ?page=N.
-        if (! $request->filled('page') && ! $request->filled('cursor') && ! $request->filled('previous_cursor')) {
-            $request->merge(['page' => '1']);
-        }
-
         $results = $this->hybridPaginator->paginate($query, $request);
 
         return response()->json([
@@ -301,10 +293,6 @@ class AuditController extends Controller
         }
         if ($request->filled('event_type')) {
             $query->where('event_type', $request->string('event_type'));
-        }
-
-        if (! $request->filled('page') && ! $request->filled('cursor') && ! $request->filled('previous_cursor')) {
-            $request->merge(['page' => '1']);
         }
 
         $results = $this->hybridPaginator->paginate($query, $request);

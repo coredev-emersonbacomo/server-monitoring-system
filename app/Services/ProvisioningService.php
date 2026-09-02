@@ -210,21 +210,25 @@ class ProvisioningService
         $server = $token->server;
 
         // Record installation attempt
-        $installation = AgentInstallation::create([
-            'server_id' => $server->id,
-            'installer_version' => $metadata['installer_version'] ?? '1.0',
-            'operating_system' => $metadata['platform'] ?? null,
-            'architecture' => $metadata['architecture'] ?? null,
-            'hostname' => $metadata['hostname'] ?? null,
-            'started_at' => now(),
-            'status' => 'started',
-        ]);
+        $installation = DB::transaction(function () use ($server, $metadata) {
+            $installation = AgentInstallation::create([
+                'server_id' => $server->id,
+                'installer_version' => $metadata['installer_version'] ?? '1.0',
+                'operating_system' => $metadata['platform'] ?? null,
+                'architecture' => $metadata['architecture'] ?? null,
+                'hostname' => $metadata['hostname'] ?? null,
+                'started_at' => now(),
+                'status' => 'started',
+            ]);
 
-        Activity::create([
-            'server_id' => $server->id,
-            'type' => 'provision_started',
-            'description' => 'Agent provisioning started.',
-        ]);
+            Activity::create([
+                'server_id' => $server->id,
+                'type' => 'provision_started',
+                'description' => 'Agent provisioning started.',
+            ]);
+
+            return $installation;
+        });
 
         // Select agent binary based on platform
         $platform = $metadata['platform'] ?? 'linux';

@@ -1,4 +1,4 @@
-import { useState, type SubmitEvent } from "react";
+import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
@@ -26,12 +26,17 @@ export default function Login() {
 
     const isPending = isLoggingIn;
 
-    const handleSubmit = async (e: SubmitEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setErrors({});
 
+        const form = e.currentTarget;
+        const formData = new FormData(form);
+        const submitEmail = ((formData.get("email") as string) || email || "").trim();
+        const submitPassword = (formData.get("password") as string) || password || "";
+
         try {
-            await login({ email, password, remember });
+            await login({ email: submitEmail, password: submitPassword, remember });
             const returnTo = searchParams.get("returnTo");
             if (
                 returnTo &&
@@ -43,7 +48,9 @@ export default function Login() {
                 navigate("/", { replace: true });
             }
         } catch (err: unknown) {
-            if (err && typeof err === "object" && "response" in err) {
+            if (err && typeof err === "object" && "errors" in err) {
+                setErrors((err as { errors: Record<string, string[]> }).errors);
+            } else if (err && typeof err === "object" && "response" in err) {
                 const axiosErr = err as {
                     response?: { data?: Record<string, unknown> };
                 };
@@ -55,8 +62,6 @@ export default function Login() {
                         setErrors({ email: [data.message as string] });
                     }
                 }
-            } else if (err && typeof err === "object" && "errors" in err) {
-                setErrors((err as { errors: Record<string, string[]> }).errors);
             } else if (err && typeof err === "object" && "message" in err) {
                 setErrors({ email: [(err as { message: string }).message] });
             } else {
@@ -101,6 +106,7 @@ export default function Login() {
                                 type="text"
                                 autoComplete="username"
                                 value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 onValueChange={(value) => setEmail(value)}
                                 required
                                 disabled={isPending}
@@ -124,6 +130,7 @@ export default function Login() {
                                 type={showPassword ? "text" : "password"}
                                 autoComplete="current-password"
                                 value={password}
+                                onChange={(e) => setPassword(e.target.value)}
                                 onValueChange={(value) => setPassword(value)}
                                 required
                                 disabled={isPending}

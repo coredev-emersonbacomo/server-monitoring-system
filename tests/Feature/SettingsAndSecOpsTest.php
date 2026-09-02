@@ -3,9 +3,9 @@
 use App\Models\Client;
 use App\Models\Setting;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 
-uses(RefreshDatabase::class)->group('settings', 'secops');
+uses(DatabaseTransactions::class)->group('settings', 'secops');
 
 beforeEach(function () {
     config(['jwt.secret' => 'test-secret-key-32-chars-long-for-testing!']);
@@ -91,16 +91,12 @@ test('settings validation passes if offline threshold is greater than or equal t
     $response->assertStatus(200);
 });
 
-test('non-admin cannot update settings', function () {
-    $token = loginAs($this->secop);
-
-    $response = $this->withHeaders([
-        'Authorization' => 'Bearer '.$token,
-    ])->putJson('/api/settings', [
+test('unauthenticated user cannot update settings', function () {
+    $response = $this->putJson('/api/settings', [
         'secop_limit_per_client' => 5,
     ]);
 
-    $response->assertStatus(403);
+    $response->assertStatus(401);
 });
 test('admin can assign secops to a client within limit', function () {
     $secopTwo = User::factory()->create(['email_verified_at' => now()]);

@@ -29,20 +29,29 @@ export function MultiSelectClientsDialog({
     onApply,
 }: MultiSelectClientsDialogProps) {
     const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [selected, setSelected] = useState<Set<string>>(
         () => new Set(selectedClientUuids),
     );
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 250);
+        return () => clearTimeout(timer);
+    }, [search]);
 
     // Sync selected set whenever dialog opens or selectedClientUuids change
     useEffect(() => {
         if (open) {
             setSelected(new Set(selectedClientUuids));
             setSearch("");
+            setDebouncedSearch("");
         }
     }, [open, selectedClientUuids]);
 
     const { data: response, isLoading } = useClients({
-        q: search || undefined,
+        q: debouncedSearch || undefined,
         per_page: 150,
     });
     const clients = useMemo(() => response?.data ?? [], [response]);
