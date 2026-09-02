@@ -787,12 +787,11 @@ export function DocsSettingsContent() {
                     so the backend emits no telemetry in normal operation. To
                     enable it locally, set{" "}
                     <InlineCode>ALERTS_VISUAL_DEBUGGER=true</InlineCode> in the
-                    root <InlineCode>.env.development</InlineCode> (backend: gates
-                    the <InlineCode>/node-configs/telemetry-state</InlineCode>{" "}
-                    endpoint and all realtime broadcasts) and{" "}
-                    <InlineCode>VITE_ALERTS_VISUAL_DEBUGGER=true</InlineCode> in{" "}
-                    <InlineCode>frontend/.env</InlineCode> (frontend: reveals the{" "}
-                    <InlineCode>/settings/alerts/debugger</InlineCode> route).
+                    root <InlineCode>.env.development</InlineCode> (or the local .env.). This single flag
+                    gates the <InlineCode>/node-configs/telemetry-state</InlineCode>{" "}
+                    endpointend all realtime broadcasts,and the{" "}
+                    <InlineCode>/settings/alerts/debugger</InlineCode> route (it is
+                    injected as <InlineCode>VITE_ALERTS_VISUAL_DEBUGGER</InlineCode>).
                 </p>
                 <p>
                     The feature is modular: the frontend is split into{" "}
