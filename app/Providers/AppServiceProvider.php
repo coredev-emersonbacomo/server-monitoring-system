@@ -11,6 +11,7 @@ use App\NodeConfig\NodeTypes\NotificationNode;
 use App\NodeConfig\NodeTypes\SeverityNode;
 use App\NodeConfig\NodeTypes\SustainedNode;
 use App\NodeConfig\NodeTypes\TemplateNode;
+use App\Services\AgentDataCleanupService;
 use App\Services\Database\AppPostgresConnection;
 use App\Services\MediaUrlService;
 use App\Services\StorageProviderFactory;
@@ -74,6 +75,10 @@ class AppServiceProvider extends ServiceProvider
 
             return $registry;
         });
+
+        $this->app->singleton(AgentDataCleanupService::class, function () {
+            return new AgentDataCleanupService;
+        });
     }
 
     public function boot(): void
@@ -85,6 +90,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->afterResolving(Schedule::class, function (Schedule $schedule) {
             $schedule->command('uploads:cleanup')->hourly();
             $schedule->command('uploads:consistency-check')->daily();
+            $schedule->command('agent-data:cleanup')->daily();
         });
 
         $makePusherBroadcaster = function ($app, $config) {

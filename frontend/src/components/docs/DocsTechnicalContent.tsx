@@ -444,6 +444,15 @@ export function DocsSchedulingContent() {
                         validates upload intents and entity references against
                         the storage provider.
                     </li>
+                    <li>
+                        <strong>agent-data:cleanup</strong> (daily) — removes
+                        high-volume, low-retention rows older than the
+                        configured Data Retention window (default 60 days):
+                        agent heartbeats, metric batches/samples, and file
+                        activity events. Agent logs and long-term records
+                        (CRUD, install/uninstall) are kept. Retention is set in
+                        Settings → Agent Settings → Data Retention.
+                    </li>
                 </ul>
             </Section>
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Data\UpdateSettingsData;
 use App\Events\AgentConfigUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Activity;
@@ -9,6 +10,7 @@ use App\Models\Agent;
 use App\Models\AgentVersion;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class SettingController extends Controller
 {
@@ -27,49 +29,40 @@ class SettingController extends Controller
     /**
      * Bulk-update settings for authenticated users.
      */
-    public function update(): JsonResponse
+    public function update(UpdateSettingsData $data, Request $request): JsonResponse
     {
-        $user = request()->user();
+        $user = $request->user();
         $isAdmin = $user && ($user->username === 'admin' || $user->email === 'admin@example.com' || str_contains($user->email, 'admin'));
         if (! $isAdmin) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
-        $data = request()->validate([
-            'secop_limit_per_client' => ['sometimes', 'integer', 'min:1', 'max:50'],
-            'heartbeat_interval' => ['sometimes', 'integer', 'min:1', 'max:1000'],
-            'offline_threshold' => ['sometimes', 'integer', 'min:1', 'max:3600'],
-            'port_ping_interval' => ['sometimes', 'integer', 'min:1', 'max:3600'],
-            'agent_version' => ['sometimes', 'string'],
-        ]);
+        $attributes = collect($data->toArray())->filter(fn ($value) => $value !== null);
 
-        if (isset($data['heartbeat_interval']) && isset($data['offline_threshold'])) {
-            if ($data['offline_threshold'] < $data['heartbeat_interval']) {
+        if ($attributes->has('heartbeat_interval') && $attributes->has('offline_threshold')) {
+            if ((int) $attributes['offline_threshold'] < (int) $attributes['heartbeat_interval']) {
                 return response()->json([
                     'message' => 'Offline threshold must be greater than or equal to the heartbeat interval.',
                 ], 422);
             }
         }
 
-        if (isset($data['agent_version'])) {
+        $agentVersion = $attributes->pull('agent_version');
+        if ($agentVersion !== null) {
             $latest = AgentVersion::orderBy('id', 'desc')->first();
-            if (! $latest || $latest->version !== $data['agent_version']) {
+            if (! $latest || $latest->version !== $agentVersion) {
                 AgentVersion::create([
-                    'version' => $data['agent_version'],
+                    'version' => $agentVersion,
                     'binary_url' => url('/MonitorAgent.exe'),
-                    'description' => 'Agent binary updated to version '.$data['agent_version'],
+                    'description' => 'Agent binary updated to version '.$agentVersion,
                 ]);
             }
         }
 
-        // No longer creating AgentVersion records for simple heartbeat_interval updates to prevent update-loop bugs.
-
-        unset($data['agent_version']);
-
         // Capture heartbeat interval before bulk-setting so we can broadcast after
-        $newHeartbeatInterval = $data['heartbeat_interval'] ?? null;
+        $newHeartbeatInterval = $attributes->has('heartbeat_interval') ? (int) $attributes['heartbeat_interval'] : null;
 
-        foreach ($data as $key => $value) {
+        foreach ($attributes as $key => $value) {
             Setting::set($key, (string) $value);
         }
 
@@ -82,7 +75,7 @@ class SettingController extends Controller
                 if ($agent->server) {
                     event(new AgentConfigUpdated(
                         $agent->server->uuid,
-                        (int) $newHeartbeatInterval
+                        $newHeartbeatInterval
                     ));
 
                     Activity::create([
@@ -95,10 +88,6 @@ class SettingController extends Controller
             }
         }
 
-        $settings = Setting::all()->pluck('value', 'key')->toArray();
-        $latestVersion = AgentVersion::orderBy('id', 'desc')->first();
-        $settings['agent_version'] = $latestVersion ? $latestVersion->version : '2.0';
-
-        return response()->json($settings);
+        return $this->index();
     }
 }
