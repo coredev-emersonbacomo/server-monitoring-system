@@ -480,4 +480,42 @@ class NodeConfigEngineHandleTest extends TestCase
         $this->assertNotNull($compareState);
         $this->assertEquals(['value' => true], $compareState->output_value, '500 > 150 from built-in leaf id ping');
     }
+
+    public function test_notification_action_context_carries_metric_type_chain_id(): void
+    {
+        $config = $this->createConfig([
+            'nodes' => [
+                ['id' => 'metric_disk', 'type' => 'metric', 'settings' => ['metric_type' => 'disk_usage']],
+                ['id' => 'compare', 'type' => 'condition', 'settings' => ['operator' => 'greater_than_equal', 'threshold' => 85]],
+                ['id' => 'notify', 'type' => 'notification', 'settings' => ['channel' => 'email', 'subject' => 'Disk', 'message' => 'Disk']],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'source' => 'metric_disk', 'target' => 'compare', 'sourceHandle' => 'output', 'targetHandle' => 'input-a'],
+                ['id' => 'e2', 'source' => 'compare', 'target' => 'notify', 'sourceHandle' => 'output', 'targetHandle' => 'input'],
+            ],
+        ]);
+
+        // Do NOT pass metric_type via extraState — the action context must carry it on its own
+        $result = $this->engine->trigger($config, 'metric_disk', 92.0, [
+            'server_id' => 1,
+            'server_name' => 'TestServer',
+            'client_name' => 'TestClient',
+        ]);
+
+        $this->assertTrue($result['success']);
+        $this->assertNotEmpty($result['actions'], '92.5 >= 85 should fire the notification');
+        $this->assertEquals('notify', $result['actions'][0]['node_id']);
+
+        $upstream = $result['actions'][0]['upstream_context'];
+        $this->assertEquals(
+            'disk_usage',
+            $upstream['metric_type'] ?? null,
+            'upstream_context must carry the branch metric_type (chain id) so the action board dedups per chain'
+        );
+        $this->assertEquals(
+            85,
+            $upstream['threshold'] ?? null,
+            'threshold must be present so the per-chain board base is alert_disk_usage_85'
+        );
+    }
 }

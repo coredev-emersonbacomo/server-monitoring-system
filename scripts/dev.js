@@ -3,34 +3,17 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { spawn, spawnSync } from 'child_process';
 import concurrently from 'concurrently';
+import { loadEnvIntoProcess } from './load-env.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // Load .env.development, then let .env override it (mirrors bootstrap/app.php
 // load order). .env is gitignored and is the place for local secrets (e.g.
 // Gmail SMTP credentials) — Laravel reads it directly, no runtime injection
-// needed. Pulled into a function so we can re-inject on file changes.
-function loadEnvIntoProcess() {
-  for (const file of ['.env.development', '.env']) {
-    const envFile = path.join(__dirname, '..', file);
-    if (!fs.existsSync(envFile)) continue;
-    for (const line of fs.readFileSync(envFile, 'utf8').split(/\r?\n/)) {
-      const t = line.trim();
-      if (!t || t.startsWith('#') || !t.includes('=')) continue;
-      const i = t.indexOf('=');
-      const k = t.slice(0, i).trim();
-      let v = t.slice(i + 1).trim();
-      if (v.length >= 2 && ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'")))) v = v.slice(1, -1);
-      v = v.replace(/\$\{([^}]+)\}/g, (_, name) => process.env[name] ?? v);
-      // .env overrides .env.development; only seed when unset for the first file.
-      if (file === '.env.development' ? process.env[k] == null && v !== '' : v !== '') {
-        process.env[k] = v;
-      }
-    }
-  }
-}
-
-loadEnvIntoProcess();
+// needed. Loaded env (including VITE_* vars) is available to the Vite dev
+// server, which is spawned with this process's env. Pulled into a function so
+// we can re-inject on file changes.
+loadEnvIntoProcess(['.env.development', '.env']);
 
 function logStatus() {
   if (String(process.env.MUTE_NOTIFICATION).toLowerCase() === 'true' || process.env.MUTE_NOTIFICATION === '1') {
@@ -83,7 +66,7 @@ workerDefs.forEach(spawnWorker);
 let debounce;
 function reinjectEnv() {
   console.log('[dev] .env changed — reinjecting environment into artisan workers');
-  loadEnvIntoProcess();
+  loadEnvIntoProcess(['.env.development', '.env']);
   spawnSync('php', ['artisan', 'config:clear'], { stdio: 'inherit' });
   logStatus();
   for (const def of workerDefs) {
@@ -93,7 +76,7 @@ function reinjectEnv() {
 }
 
 for (const file of ['.env', '.env.development']) {
-  const p = path.join(__dirname, '..', file);
+  const p = path.join(root, file);
   if (fs.existsSync(p)) {
     fs.watchFile(p, { interval: 300 }, () => {
       clearTimeout(debounce);
