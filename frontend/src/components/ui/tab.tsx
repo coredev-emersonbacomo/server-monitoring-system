@@ -144,7 +144,7 @@ function Tab({ children, className, syncUrl = true, id }: TabProps) {
                                     className={cn(
                                         "chrome-tab inline-flex items-center gap-1.5 px-3 sm:px-5 py-2 text-xs sm:text-sm cursor-pointer relative border border-border/60 shrink-0 select-none",
                                         isActive
-                                            ? "active text-foreground cursor-default bg-card translate-y-[1px] mb-0 shadow-none border-b-transparent"
+                                            ? "active text-foreground cursor-default bg-card translate-y-[1px] mb-0 shadow-none "
                                             : "chrome-tab-inactive text-muted-foreground hover:text-foreground bg-background/70 translate-y-0 mb-0 shadow-sm",
                                     )}
                                 >
@@ -155,7 +155,7 @@ function Tab({ children, className, syncUrl = true, id }: TabProps) {
                         })}
                     </div>
                 </div>
-                <div className="relative -mt-px z-20 rounded-tl-xl md:rounded-tl-xl rounded-tr-none md:rounded-tr-none rounded-b-xl overflow-hidden">
+                <div className="relative -mt-px z-20 rounded-tl-none md:rounded-tl-xl md:rounded-tl-xl rounded-tr-xl md:rounded-tr-none rounded-b-xl overflow-hidden">
                     {activeItem}
                 </div>
             </div>
