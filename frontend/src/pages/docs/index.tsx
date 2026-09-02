@@ -476,6 +476,7 @@ export default function Docs() {
     const { sectionId } = useParams();
     const navigate = useNavigate();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [isDesktop, setIsDesktop] = useState(false);
     const [subSections, setSubSections] =
         useState<Record<string, DocSubItem[]>>(MANUAL_SUBS);
     const [activeSub, setActiveSub] = useState<string | null>(null);
@@ -491,6 +492,16 @@ export default function Docs() {
     const [activeResultIndex, setActiveResultIndex] = useState(0);
     const searchIndexRef = useRef<SearchIndexEntry[]>([]);
     const searchInputRef = useRef<HTMLInputElement>(null);
+
+    // Track desktop breakpoint so the sidebar panel is fully unmounted on
+    // mobile (display:none still reserves a measured column, pushing content).
+    useEffect(() => {
+        const mql = window.matchMedia("(min-width: 1024px)");
+        const update = () => setIsDesktop(mql.matches);
+        update();
+        mql.addEventListener("change", update);
+        return () => mql.removeEventListener("change", update);
+    }, []);
 
     // Build search index from hidden content renderer on mount
     useEffect(() => {
@@ -886,20 +897,25 @@ export default function Docs() {
                 className="flex-1 min-h-0 w-full"
             >
                 {/* Left Sidebar */}
-                <ResizablePanel
-                    id="docs-sidebar"
-                    minSize="15"
-                    maxSize="30"
-                    className="hidden lg:block border-r border-border/60 bg-background/50"
-                >
-                    <DocsSidebar
-                        sections={DOC_SECTIONS}
-                        activeId={routeId}
-                        onJump={go}
-                        subItems={SIDEBAR_SUBS}
-                    />
-                </ResizablePanel>
-                <ResizableHandle withHandle className="hidden lg:flex" />
+                {isDesktop && (
+                    <>
+                        <ResizablePanel
+                            id="docs-sidebar"
+                            minSize="15"
+                            maxSize="30"
+                            defaultSize={0}
+                            className="hidden lg:block border-r border-border/60 bg-background/50"
+                        >
+                            <DocsSidebar
+                                sections={DOC_SECTIONS}
+                                activeId={routeId}
+                                onJump={go}
+                                subItems={SIDEBAR_SUBS}
+                            />
+                        </ResizablePanel>
+                        <ResizableHandle withHandle className="hidden lg:flex" />
+                    </>
+                )}
 
                 {/* Main Content Area */}
                 <ResizablePanel id="docs-content" minSize="50">
