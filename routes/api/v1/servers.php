@@ -21,8 +21,5 @@ Route::middleware('auth:jwt')->group(function () {
     });
 
     Route::get('/servers/{uuid}', [ServerController::class, 'showWithStats']);
+    Route::get('/servers/{server:uuid}/report', [ServerReportController::class, 'show']);
 });
-Route::get('/servers/{server:uuid}/report', [ServerReportController::class, 'show']);
-Route::get('/server/{serverId}/minute', [ServerController::class, 'dailyUsage']);
-Route::get('/server/{serverId}/{date}', [ServerController::class, 'dayAverage'])
-    ->where('date', '\d{4}-\d{2}-\d{2}'); // only match YYYY-MM-DD

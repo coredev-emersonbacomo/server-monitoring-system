@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AuthAuditService;
 use App\Services\NotificationService;
+use App\Services\SessionManager;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,7 @@ class PasswordResetController extends Controller
     public function __construct(
         private readonly NotificationService $notificationService,
         private readonly AuthAuditService $auditService,
+        private readonly SessionManager $sessionManager,
     ) {}
 
     public function forgotPassword(Request $request): JsonResponse
@@ -205,6 +207,8 @@ class PasswordResetController extends Controller
         $user->update([
             'password' => Hash::make($request->input('password')),
         ]);
+
+        $this->sessionManager->revokeAllUserSessionsExcept($user, '');
 
         DB::table('password_reset_tokens')
             ->where('email', $record->email)

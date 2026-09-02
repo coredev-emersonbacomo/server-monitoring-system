@@ -17,22 +17,8 @@ class WatchedPathController extends Controller
 {
     public function __construct(private AgentAuthService $agentAuthService) {}
 
-    private function ensureAdmin(Request $request): ?JsonResponse
-    {
-        $user = $request->user();
-        $isAdmin = $user && ($user->username === 'admin'
-            || $user->email === 'admin@example.com'
-            || str_contains((string) $user->email, 'admin'));
-
-        return $isAdmin ? null : response()->json(['message' => 'Forbidden.'], 403);
-    }
-
     public function index(Request $request): JsonResponse
     {
-        if ($denied = $this->ensureAdmin($request)) {
-            return $denied;
-        }
-
         $query = WatchedPath::query()->with('server');
 
         if ($request->filled('scope')) {
@@ -47,10 +33,6 @@ class WatchedPathController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        if ($denied = $this->ensureAdmin($request)) {
-            return $denied;
-        }
-
         $validated = $request->validate([
             'path' => ['required', 'string', 'max:4096'],
             'scope' => ['required', 'string', 'in:agent,server'],
@@ -92,10 +74,6 @@ class WatchedPathController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        if ($denied = $this->ensureAdmin($request)) {
-            return $denied;
-        }
-
         $watchedPath = WatchedPath::with('server')->findOrFail($id);
 
         return response()->json(new WatchedPathResource($watchedPath));
@@ -103,10 +81,6 @@ class WatchedPathController extends Controller
 
     public function update(Request $request, int $id): JsonResponse
     {
-        if ($denied = $this->ensureAdmin($request)) {
-            return $denied;
-        }
-
         $watchedPath = WatchedPath::findOrFail($id);
 
         $validated = $request->validate([
@@ -131,10 +105,6 @@ class WatchedPathController extends Controller
 
     public function destroy(Request $request, int $id): JsonResponse
     {
-        if ($denied = $this->ensureAdmin($request)) {
-            return $denied;
-        }
-
         $watchedPath = WatchedPath::findOrFail($id);
         $watchedPath->delete();
         $this->broadcastResync($watchedPath);

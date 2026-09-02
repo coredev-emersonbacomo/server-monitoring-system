@@ -17,6 +17,8 @@ class JwtAuthenticate
             throw new AuthenticationException('Invalid authentication guard');
         }
 
+        $guard->setRequest($request);
+
         if (! $guard->check()) {
             throw new AuthenticationException('Unauthenticated', guards: ['jwt']);
         }

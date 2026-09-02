@@ -8,6 +8,7 @@ use App\Events\ServerStatsUpdated;
 use App\Events\ServerStatusUpdated;
 use App\Models\ActionItem;
 use App\Models\Activity;
+use App\Models\Agent;
 use App\Models\AgentLifecycleEvent;
 use App\Models\CustomActivityLog;
 use App\Models\Server;

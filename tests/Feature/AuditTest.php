@@ -18,8 +18,8 @@ use Illuminate\Support\Str;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    Setting::create(['key' => 'offline_threshold', 'value' => '15']);
-    Setting::create(['key' => 'heartbeat_interval', 'value' => '5']);
+    Setting::set('offline_threshold', '15');
+    Setting::set('heartbeat_interval', '5');
 
     $this->client = Client::create([
         'name' => 'Audit Client',
@@ -251,15 +251,9 @@ test('watched path server scope requires server_id', function () {
         ->assertStatus(422);
 });
 
-test('non-admin cannot manage watched paths', function () {
-    $user = User::factory()->create([
-        'username' => 'viewer',
-        'email' => 'viewer@example.com',
-    ]);
-
-    $this->actingAs($user, 'jwt')
-        ->getJson('/api/v1/watched-paths')
-        ->assertForbidden();
+test('unauthenticated user cannot manage watched paths', function () {
+    $this->getJson('/api/v1/watched-paths')
+        ->assertUnauthorized();
 });
 
 test('unexpected disconnect recorded only when no graceful stop', function () {

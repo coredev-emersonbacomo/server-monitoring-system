@@ -11,15 +11,15 @@ class AdminSeeder extends Seeder
     public function run(): void
     {
         User::updateOrCreate(
-            ['username' => 'admin'],
+            ['username' => 'user'],
             [
                 'uuid' => (string) Str::uuid7(),
-                'first_name' => 'Admin',
+                'first_name' => 'User',
                 'last_name' => 'Surname',
-                'email' => 'admin@example.com',
+                'email' => 'user@example.com',
                 'phone_number' => '09517380165',
                 'timezone' => 'Asia/Manila',
-                'password' => bcrypt('admin123'),
+                'password' => bcrypt('user123'),
                 'last_login' => now(),
             ]
         );

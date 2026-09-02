@@ -20,7 +20,7 @@ export default function ServerLayout() {
     const isAllMode = clientParam === "all";
 
     // 1. Fetch current server details to get reliable client_uuid & client_name
-    const { data: currentServerData, isLoading: isServerLoading } = useServer(uuid ?? "");
+    const { data: currentServerData } = useServer(uuid ?? "");
 
     const clientUuid = isAllMode
         ? undefined

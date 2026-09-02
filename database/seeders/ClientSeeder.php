@@ -14,7 +14,7 @@ class ClientSeeder extends Seeder
      */
     public function run(): void
     {
-        $user = User::where('username', 'admin')->first();
+        $user = User::where('username', 'user')->first();
         if (! $user) {
             $this->command->error('Please run AdminSeeder first, no users found.');
 

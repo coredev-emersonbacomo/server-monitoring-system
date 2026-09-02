@@ -44,8 +44,8 @@ class HeartbeatFlowTest extends TestCase
     {
         parent::setUp();
 
-        Setting::create(['key' => 'offline_threshold', 'value' => '15']);
-        Setting::create(['key' => 'heartbeat_interval', 'value' => '5']);
+        Setting::set('offline_threshold', '15');
+        Setting::set('heartbeat_interval', '5');
 
         $this->client = Client::create([
             'name' => 'Test Client Corp',
@@ -67,9 +67,10 @@ class HeartbeatFlowTest extends TestCase
             'server_id' => $this->server->id,
             'version' => '1.0.0',
             'protocol_version' => '1',
-            'status' => 'online',
+            'status' => 'active',
             'last_seen_at' => now()->subMinutes(30),
         ]);
+        $this->server->update(['agent_id' => $this->agent->id]);
 
         $this->identity = AgentIdentity::create([
             'agent_id' => $this->agent->id,
@@ -246,7 +247,7 @@ class HeartbeatFlowTest extends TestCase
                     'server_name' => $this->server->name,
                     'client_name' => $this->client->name,
                     'metric_type' => 'cpu_usage',
-                ]));
+                ]), $this->server->id);
 
                 Log::info('[TEST] Timer fire result:', [
                     'success' => $timerResult['success'],

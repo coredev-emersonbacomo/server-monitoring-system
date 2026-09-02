@@ -196,7 +196,7 @@ export function EntityPickerModal({
                                                 ? "Active"
                                                 : value === "all"
                                                   ? "All"
-                                                  : (STATUS_CONFIG[value]?.label ?? value)}
+                                                  : ((STATUS_CONFIG as Record<string, { label: string }>)[value]?.label ?? value)}
                                         </span>
                                     </label>
                                 ))}

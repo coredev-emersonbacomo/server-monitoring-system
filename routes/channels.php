@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Server;
 use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
@@ -8,12 +9,23 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 
 Broadcast::channel('dashboard', fn ($user) => true, ['guards' => ['jwt']]);
 
-Broadcast::channel('server.{serverUuid}', fn ($user, $serverUuid) => true, ['guards' => ['jwt']]);
+Broadcast::channel('server.{serverUuid}', function ($user, $serverUuid) {
+    return Server::where('uuid', $serverUuid)
+        ->where(function ($query) use ($user) {
+            $query->whereNull('client_id')
+                ->orWhereHas('client.secopclients', fn ($q) => $q->where('users.id', $user->id));
+        })
+        ->exists();
+}, ['guards' => ['jwt']]);
 
-// Agent control channel — authenticated via agent identity token (not a user session).
+// Agent control channel — authenticated via agent identity token or authorized dashboard user.
 Broadcast::channel('agent.{serverUuid}', function ($user, $serverUuid) {
-    // Allow authenticated dashboard users to listen too (for future use)
-    return true;
+    return Server::where('uuid', $serverUuid)
+        ->where(function ($query) use ($user) {
+            $query->whereNull('client_id')
+                ->orWhereHas('client.secopclients', fn ($q) => $q->where('users.id', $user->id));
+        })
+        ->exists();
 }, ['guards' => ['jwt']]);
 
 Broadcast::channel('system-telemetry', fn ($user) => true, ['guards' => ['jwt']]);

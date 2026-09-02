@@ -15,6 +15,7 @@ use App\Models\CustomActivityLog;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\MediaUrlService;
+use App\Services\SessionManager;
 use App\Services\UploadIntentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
@@ -26,6 +27,7 @@ class UserController extends Controller
     public function __construct(
         private readonly UploadIntentService $uploadIntentService,
         private readonly MediaUrlService $mediaUrlService,
+        private readonly SessionManager $sessionManager,
     ) {}
 
     public function index(UsersIndexData $data)
@@ -163,6 +165,8 @@ class UserController extends Controller
         }
         if (! ($data->password instanceof Optional) && $data->password !== null) {
             $payload['password'] = Hash::make($data->password);
+            $currentSessionUuid = auth()->guard('jwt')->getSessionUuid() ?? '';
+            $this->sessionManager->revokeAllUserSessionsExcept($user, $currentSessionUuid);
         }
 
         if (! ($data->upload_intent_id instanceof Optional) && $data->upload_intent_id !== null) {

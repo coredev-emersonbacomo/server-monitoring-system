@@ -426,7 +426,7 @@ export function DashboardChartsSection() {
     const [pickerOpen, setPickerOpen] = useState(false);
     const queryClient = useQueryClient();
     const { data: serversData } = useServers();
-    const servers = serversData ?? [];
+    const servers = serversData?.data ?? [];
 
     const compareUuids = selected.join(",") || undefined;
 
@@ -434,7 +434,7 @@ export function DashboardChartsSection() {
         if (view === "perServer" && servers.length > 0 && selected.length === 0) {
             setSelected([servers[0].uuid]);
         }
-    }, [view, servers]);
+    }, [view, servers, selected.length]);
 
     return (
         <div>
