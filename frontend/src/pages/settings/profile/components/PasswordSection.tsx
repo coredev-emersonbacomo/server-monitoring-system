@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { PasswordStrength } from "./PasswordStrength";
-import { type FormStore } from "@/components/ui/form";
+import { useForm, type FormStore } from "@/components/ui/form";
 
 interface PasswordSectionProps {
     form: { password: string; password_confirmation: string };
@@ -11,6 +11,7 @@ interface PasswordSectionProps {
 
 export function PasswordSection({ form, store }: PasswordSectionProps) {
     const [showPassword, setShowPassword] = useState(false);
+    const errors = useForm(store, (s) => s.errors);
 
     return (
         <section className="space-y-4">
@@ -57,6 +58,7 @@ export function PasswordSection({ form, store }: PasswordSectionProps) {
                         label="Confirm Password"
                         value={form.password_confirmation}
                         onValueChange={store.set("password_confirmation")}
+                        error={errors.password_confirmation}
                     />
                 </div>
             </div>
