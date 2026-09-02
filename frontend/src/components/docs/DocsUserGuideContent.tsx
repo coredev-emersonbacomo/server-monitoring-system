@@ -732,6 +732,15 @@ export function DocsSettingsContent() {
                         agent binary version. Changing it triggers self-update
                         downloads on running agents.
                     </li>
+                    <li>
+                        <strong>Data Retention</strong> — how long the system
+                        keeps high-volume, low-retention data (agent
+                        heartbeats, metric samples, and file activity events;
+                        default 60 days / 2 months). Older rows are deleted
+                        automatically each day by a scheduled cleanup. Agent
+                        logs and other important records — CRUD operations,
+                        install/uninstall events — are never removed.
+                    </li>
                 </ul>
                 <p>
                     A heartbeat-interval change is pushed to all connected

@@ -20,6 +20,8 @@ const schema = z.object({
     secop_limit_per_client: z.string(),
 });
 
+type FormData = z.infer<typeof schema>;
+
 // ─── Settings field wrapper ───────────────────────────────────────────────────
 
 function SettingRow({
@@ -105,7 +107,7 @@ export default function SystemSettings() {
             />
 
             <SystemSettingsContent
-                store={store as FormStore<any>}
+                store={store as FormStore<FormData>}
                 updateSettings={updateSettings}
             />
         </PageLayout>
@@ -116,7 +118,7 @@ function SystemSettingsContent({
     store,
     updateSettings,
 }: {
-    store: FormStore<any>;
+    store: FormStore<FormData>;
     updateSettings: ReturnType<typeof useUpdateSettings>;
 }) {
     const form = useForm(store, (s) => s.form as z.infer<typeof schema>);
@@ -160,7 +162,7 @@ function SystemSettingsContent({
                     }
                     try {
                         await updateSettings.mutateAsync({
-                            secop_limit_per_client: String(limit),
+                            secop_limit_per_client: limit,
                         });
                         toast.success("System settings saved.");
                     } catch {

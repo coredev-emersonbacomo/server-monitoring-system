@@ -1,17 +1,11 @@
 import { useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import {
-    Cpu,
-    Save,
-    Loader2,
-    AlertTriangle,
-    Radio,
-} from "lucide-react";
+import { Cpu, Save, Loader2, AlertTriangle, Radio, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useJwtAuth } from "@/hooks/useJwtAuth";
-import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
+import { useSettings, useUpdateSettings, type SettingsUpdatePayload } from "@/hooks/useSettings";
 import IndexHeader from "@/components/IndexHeader";
 import PageLayout from "@/components/PageLayout";
 import { DurationInput } from "@/components/node-config/nodes/DurationInput";
@@ -26,6 +20,7 @@ const schema = z.object({
     heartbeat_interval: z.string(),
     offline_threshold: z.string(),
     port_ping_interval: z.string(),
+    agent_log_retention_days: z.string(),
 });
 
 // ─── Settings field wrapper ───────────────────────────────────────────────────
@@ -77,6 +72,7 @@ export default function AgentSettings() {
                     heartbeat_interval: "5",
                     offline_threshold: "15",
                     port_ping_interval: "60",
+                    agent_log_retention_days: "60",
                 },
                 initialMode: "edit",
             }),
@@ -89,10 +85,14 @@ export default function AgentSettings() {
             const hb = String(parseInt(settings.heartbeat_interval, 10) || 5);
             const off = String(parseInt(settings.offline_threshold, 10) || 15);
             const pp = String(parseInt(settings.port_ping_interval, 10) || 60);
+            const ret = String(
+                parseInt(settings.agent_log_retention_days, 10) || 60,
+            );
             const data = {
                 heartbeat_interval: hb,
                 offline_threshold: off,
                 port_ping_interval: pp,
+                agent_log_retention_days: ret,
             };
             store.setState({
                 originalData: data,
@@ -135,12 +135,12 @@ export default function AgentSettings() {
 }
 
 type FormData = z.infer<typeof schema>;
-function AgentSettingsContent<T extends FormData>({
+function AgentSettingsContent({
     store,
     updateSettings,
     agentVersion,
 }: {
-    store: FormStore<T>;
+    store: FormStore<FormData>;
     updateSettings: ReturnType<typeof useUpdateSettings>;
     agentVersion: string;
 }) {
@@ -150,6 +150,7 @@ function AgentSettingsContent<T extends FormData>({
     const heartbeatValue = parseInt(form.heartbeat_interval, 10) || 0;
     const offlineValue = parseInt(form.offline_threshold, 10) || 0;
     const portPingValue = parseInt(form.port_ping_interval, 10) || 0;
+    const retentionDaysValue = parseInt(form.agent_log_retention_days, 10) || 0;
     const offlineBelowHeartbeat = offlineValue < heartbeatValue;
 
     const isValid =
@@ -159,7 +160,9 @@ function AgentSettingsContent<T extends FormData>({
         offlineValue <= 3600 &&
         offlineValue >= heartbeatValue &&
         portPingValue >= 1 &&
-        portPingValue <= 3600;
+        portPingValue <= 3600 &&
+        retentionDaysValue >= 1 &&
+        retentionDaysValue <= 3650;
 
     return (
         <Form.Root store={store}>
@@ -186,6 +189,10 @@ function AgentSettingsContent<T extends FormData>({
                     const hb = parseInt(String(data.heartbeat_interval), 10);
                     const off = parseInt(String(data.offline_threshold), 10);
                     const pp = parseInt(String(data.port_ping_interval), 10);
+                    const ret = parseInt(
+                        String(data.agent_log_retention_days),
+                        10,
+                    );
 
                     if (isNaN(hb) || hb < 1 || hb > 1000) {
                         toast.error(
@@ -211,17 +218,30 @@ function AgentSettingsContent<T extends FormData>({
                         );
                         return;
                     }
+                    if (isNaN(ret) || ret < 1 || ret > 3650) {
+                        toast.error(
+                            "Agent log retention must be between 1 and 3650 days.",
+                        );
+                        return;
+                    }
 
                     try {
-                        const saved = {
+                        const formValues = {
                             heartbeat_interval: String(hb),
                             offline_threshold: String(off),
                             port_ping_interval: String(pp),
+                            agent_log_retention_days: String(ret),
                         };
-                        await updateSettings.mutateAsync(saved);
+                        const payload: SettingsUpdatePayload = {
+                            heartbeat_interval: hb,
+                            offline_threshold: off,
+                            port_ping_interval: pp,
+                            agent_log_retention_days: ret,
+                        };
+                        await updateSettings.mutateAsync(payload);
                         store.setState({
-                            originalData: saved as any,
-                            form: saved as any,
+                            originalData: formValues,
+                            form: formValues,
                             hasChanges: false,
                         });
                         toast.success("Agent settings saved.");
@@ -326,6 +346,53 @@ function AgentSettingsContent<T extends FormData>({
                         </div>
                     )}
 
+                    {/* Section: Data Retention */}
+                    <div className="bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
+                        <div className="flex items-center gap-3 px-6 py-4 border-b border-border/60 bg-muted/30">
+                            <div className="p-1.5 bg-primary/10 rounded-md">
+                                <Trash2 className="w-4 h-4 text-primary" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold">
+                                    Data Retention
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Automatically delete old agent heartbeats,
+                                    metric samples, and file activity events to
+                                    keep the database lean. Agent logs and other
+                                    important records (CRUD, install/uninstall)
+                                    are kept.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="px-6 divide-y divide-border/50">
+                            <SettingRow
+                                label="Data Retention"
+                                description="How many days of agent heartbeats, metric samples, and file activity events to keep. Data older than this is deleted daily by a scheduled cleanup. Agent logs and other long-term records are never removed."
+                            >
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        id="agent-retention-days-input"
+                                        type="number"
+                                        min={1}
+                                        max={3650}
+                                        value={retentionDaysValue}
+                                        onChange={(e) =>
+                                            store.set(
+                                                "agent_log_retention_days",
+                                            )(e.target.value)
+                                        }
+                                        className="w-20 h-9 rounded-md border border-border bg-background px-3 text-sm text-center font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
+                                    />
+                                    <span className="text-xs text-muted-foreground">
+                                        days
+                                    </span>
+                                </div>
+                            </SettingRow>
+                        </div>
+                    </div>
+
                     {/* Section: Agent Version Control */}
                     <div className="bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
                         <div className="flex items-center gap-3 px-6 py-4 border-b border-border/60 bg-muted/30">
@@ -334,12 +401,7 @@ function AgentSettingsContent<T extends FormData>({
                             </div>
                             <div>
                                 <p className="text-sm font-semibold">
-                                    Agent Update Control
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                    Set the latest agent binary version.
-                                    Outdated agents will download the new binary
-                                    and self-update.
+                                    Agent Update Info
                                 </p>
                             </div>
                         </div>
@@ -347,7 +409,7 @@ function AgentSettingsContent<T extends FormData>({
                         <div className="px-6 divide-y divide-border/50">
                             <SettingRow
                                 label="Latest Agent Version"
-                                description="Changing this version number triggers self-update downloads on running agent binaries."
+                                description="Read-only: this version is auto-incremented when npm run compileagent detects a binary change. Agents are then notified over the WebSocket control channel to download the new binary and self-update."
                             >
                                 <div className="flex items-center gap-2">
                                     <input
