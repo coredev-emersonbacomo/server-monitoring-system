@@ -81,20 +81,23 @@ function IndexToolbar({
     onClearViewByClient,
 }: IndexToolbarProps) {
     return (
-        <div className="flex items-center justify-between gap-2.5 sm:gap-3 flex-wrap sticky -top-8 z-10 bg-background pt-8 sm:pt-9 pb-3 -mt-8 pr-12 md:pr-0">
-            <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sticky -top-8 z-10 bg-background pt-8 sm:pt-9 pb-3 -mt-8 pr-12 md:pr-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1 min-w-0">
                 <DebouncedSearchInput
                     paramName={searchParamName}
                     placeholder={searchPlaceholder}
                     debounceMs={searchDebounceMs}
+                    className="w-full sm:w-64 shrink-0"
                 />
 
-                <Popover>
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <Popover>
                     <PopoverTrigger asChild>
                         <Button
                             variant="outline"
+                            size="sm"
                             icon={<Filter size={14} />}
-                            className="gap-1 cursor-pointer shrink-0 text-xs sm:text-sm"
+                            className="gap-1 cursor-pointer shrink-0 text-xs sm:text-sm h-8"
                         >
                             <span className="flex items-center gap-1 sm:gap-1.5 max-w-35 sm:max-w-none truncate">
                                 <span className="truncate">{filterLabel}</span>
@@ -198,13 +201,14 @@ function IndexToolbar({
                 </Popover>
 
                 {onViewByClient && (
-                    <div className="flex items-center">
+                    <div className="flex items-center shrink-0">
                         <Button
                             variant={isViewByClientActive ? "default" : "outline"}
+                            size="sm"
                             icon={<Landmark size={14} />}
                             label={viewByClientLabel}
                             className={cn(
-                                "cursor-pointer transition-colors",
+                                "cursor-pointer transition-colors text-xs sm:text-sm h-8",
                                 isViewByClientActive && "bg-primary text-primary-foreground font-semibold shadow-xs hover:bg-primary/90",
                                 onClearViewByClient &&
                                     "rounded-r-none border-r-0",
@@ -215,7 +219,7 @@ function IndexToolbar({
                             <button
                                 type="button"
                                 onClick={onClearViewByClient}
-                                className="h-9 px-2 flex items-center justify-center border border-border rounded-r-lg hover:bg-muted transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+                                className="h-8 px-2 flex items-center justify-center border border-border rounded-r-lg hover:bg-muted transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
                                 title="Clear client filter"
                             >
                                 <X size={13} />
@@ -223,11 +227,13 @@ function IndexToolbar({
                         )}
                     </div>
                 )}
+                </div>
             </div>
 
             {onCreate && (
                 <Button
-                    className="cursor-pointer"
+                    size="sm"
+                    className="w-full sm:w-auto cursor-pointer shrink-0 text-xs sm:text-sm h-8 bg-primary text-primary-foreground"
                     icon={<Plus size={15} />}
                     label={createLabel}
                     onClick={onCreate}
