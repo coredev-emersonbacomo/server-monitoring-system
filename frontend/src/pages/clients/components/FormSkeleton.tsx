@@ -1,3 +1,4 @@
+// File Path: frontend\src\pages\clients\components\FormSkeleton.tsx
 export default function FormSkeleton() {
     return (
         <div className="bg-card border border-border/60 rounded-xl shadow-sm p-6 sm:p-8 flex flex-col gap-6 animate-pulse">

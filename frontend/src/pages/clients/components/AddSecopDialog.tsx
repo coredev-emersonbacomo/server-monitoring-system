@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
-
+import { Search, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { DebouncedSearchInput } from "@/components/DebouncedSearchInput";
 import { useUrlState } from "@/hooks/useUrlState";
@@ -34,6 +34,8 @@ export function AddSecopDialog({
     onAddSecop,
     paramName = "secop_q",
 }: AddSecopDialogProps) {
+    const { data: currentUser } = useAuth();
+    const [secopSearch, setSecopSearch] = useState("");
     const [selectedSecopToAdd, setSelectedSecopToAdd] = useState<string | null>(
         null,
     );
@@ -106,6 +108,11 @@ export function AddSecopDialog({
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-foreground truncate">
                                             {user.first_name} {user.last_name}
+                                            {user.uuid === currentUser?.uuid && (
+                                                <span className="text-[12px] font-semibold ml-1 text-primary bg-primary/10 px-1.5 py-0.5 rounded-full shrink-0">
+                                                    (You)
+                                                </span>
+                                            )}
                                         </p>
                                         <p className="text-xs text-muted-foreground truncate">
                                             {user.email}
