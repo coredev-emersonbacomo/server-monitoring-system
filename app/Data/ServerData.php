@@ -374,7 +374,7 @@ class ServerData extends Data
                             'logable_type' => get_class($server),
                             'logable_id' => $server->id,
                             'user_id' => null,
-                            'user' => 'System',
+                            'user' => null,
                             'action' => 'Agent Offline',
                             'details' => json_encode([
                                 'message' => "Agent went offline for server: {$server->name}",

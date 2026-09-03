@@ -165,7 +165,7 @@ class SendNotification implements ShouldQueue
                         'type' => 'server_health',
                         'logable_type' => 'server',
                         'logable_id' => $this->serverId,
-                        'user' => 'system',
+                        'user' => null,
                         'action' => $title,
                         'title' => $title,
                         'details' => [

@@ -109,6 +109,7 @@ interface LogTableProps {
     onSelectLog: (log: ActivityLogData) => void;
     availableActions?: string[];
     availableUsers?: string[];
+    showUser?: boolean;
 }
 
 function LogTableBody({
@@ -137,7 +138,11 @@ function LogTableBody({
     onSelectLog,
     availableActions = ["created", "updated", "deleted", "login", "logout", "assigned", "removed"],
     availableUsers = [],
+    showUser = true,
 }: LogTableProps) {
+    const columns = showUser
+        ? COLUMNS
+        : COLUMNS.filter((col) => col.key !== "user");
     const [searchInput, setSearchInput] = useState(search);
     const searchTimer = useRef<number>();
 
@@ -418,7 +423,7 @@ function LogTableBody({
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b border-border/60 bg-muted/20">
-                            {COLUMNS.map((col) => {
+                            {columns.map((col) => {
                                 const isActive = sortField === col.key;
                                 return (
                                     <th
@@ -465,9 +470,8 @@ function LogTableBody({
                             ))
                         ) : data.length === 0 ? (
                             <tr>
-                                <td
-                                    colSpan={COLUMNS.length + 1}
-                                    className="px-4 py-12 text-center text-sm text-muted-foreground"
+<td
+                                    colSpan={columns.length + 1}
                                 >
                                     {emptyMessage}
                                 </td>
@@ -511,20 +515,22 @@ function LogTableBody({
                                             );
                                         })()}
                                     </td>
-                                    <td className="px-4 py-3 whitespace-nowrap">
-                                        {log.user_uuid ? (
-                                            <Link
-                                                to={`/users/${log.user_uuid}`}
-                                                className="rounded px-1 -mx-1 text-foreground hover:bg-muted/70 hover:text-primary underline-offset-2 hover:underline transition-colors"
-                                            >
-                                                <HighlightMatch text={log.user ?? "System"} query={searchInput} />
-                                            </Link>
-                                        ) : (
-                                            <span className="text-foreground">
-                                                <HighlightMatch text={log.user ?? "System"} query={searchInput} />
-                                            </span>
-                                        )}
-                                    </td>
+                                    {showUser && (
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            {log.user_uuid ? (
+                                                <Link
+                                                    to={`/users/${log.user_uuid}`}
+                                                    className="rounded px-1 -mx-1 text-foreground hover:bg-muted/70 hover:text-primary underline-offset-2 hover:underline transition-colors"
+                                                >
+                                                    <HighlightMatch text={log.user ?? "System"} query={searchInput} />
+                                                </Link>
+                                            ) : (
+                                                <span className="text-foreground">
+                                                    <HighlightMatch text={log.user ?? "System"} query={searchInput} />
+                                                </span>
+                                            )}
+                                        </td>
+                                    )}
                                     <td className="px-4 py-3 whitespace-nowrap text-foreground">
                                         <span
                                             className={cn(
