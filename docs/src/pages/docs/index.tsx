@@ -526,8 +526,8 @@ export default function Docs() {
                     if (h2) {
                         if (current) {
                             subtopics.push({
-                                id: current.id,
-                                text: current.text.join(" "),
+                                id: (current as { id: string; text: string[] }).id,
+                                text: (current as { id: string; text: string[] }).text.join(" "),
                             });
                         }
                         current = { id: h2.id, text: [h2.textContent ?? ""] };
@@ -778,23 +778,12 @@ export default function Docs() {
             {/* Top Navigation Bar */}
             <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md supports-backdrop-filter:bg-background/60">
                 <div className="flex h-14 items-center justify-between px-3 sm:px-6 gap-2 sm:gap-4">
-                    {/* Left Side: Back Button & Logo/Title */}
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <button
-                            type="button"
-                            onClick={() => navigate("/")}
-                            className="inline-flex items-center gap-1 sm:gap-1.5 rounded-lg border border-border/60 bg-card px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-foreground transition-all hover:bg-muted/50 hover:border-border cursor-pointer shrink-0"
-                        >
-                            <ChevronLeft className="size-4" />
-                            <span className="hidden xs:inline">Back</span>
-                        </button>
-
-                        <div className="flex items-center gap-2 min-w-0">
-                            <BookOpen className="size-4.5 text-primary shrink-0" />
-                            <span className="font-bold text-sm sm:text-base tracking-tight truncate">
-                                <span className="hidden sm:inline">Server Monitoring </span>Documentation
-                            </span>
-                        </div>
+                    {/* Left Side: Logo/Title */}
+                    <div className="flex items-center gap-2 min-w-0">
+                        <BookOpen className="size-4.5 text-primary shrink-0" />
+                        <span className="font-bold text-sm sm:text-base tracking-tight truncate">
+                            <span className="hidden sm:inline">Server Monitoring </span>Documentation
+                        </span>
                     </div>
 
                     {/* Right Side: Search & Mobile Menu */}
