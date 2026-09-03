@@ -1,30 +1,38 @@
 import { createBrowserRouter } from "react-router-dom";
-import Dashboard from "./pages/dashboard/index";
-import Login from "./pages/login";
-import ForgotPassword from "./pages/forgot-password";
+import { lazy, Suspense } from "react";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
 import { GuestLayout } from "./layouts/GuestLayout";
-import Clients from "./pages/clients/index";
-import UsersIndex from "./pages/users/index";
-import ClientDetail from "./pages/clients/detail";
-import LogsPage from "./pages/system-logs/index";
-import ServerLayout from "./layouts/ServerLayout";
-import ServerDetail from "./pages/servers/detail";
-import CreateServer from "./pages/servers/create";
-import ServersIndex from "./pages/servers/index";
 import RootLayout from "./layouts/RootLayout";
-import Settings from "./pages/settings/index";
-import Sessions from "./pages/settings/sessions";
-import Profile from "./pages/settings/profile";
-import UserDetail from "./pages/users/detail";
-import SystemSettings from "./pages/settings/system";
-import AgentSettings from "./pages/settings/agent";
-import FileActivitySettings from "./pages/settings/file-activity";
-import { NodeConfigEditor } from "./components/node-config/NodeConfigEditor";
-import AlertVisualizer from "./pages/settings/alerts";
-import ReportIndexPage from "./pages/reports/report-index.tsx";
-import { ReportsLayout } from "./layouts/ReportsLayout";
-import MultiReportsPreview from "./pages/reports/MultiReportsPreview.tsx";
+import ServerLayout from "./layouts/ServerLayout";
+
+const Dashboard = lazy(() => import("./pages/dashboard/index"));
+const Login = lazy(() => import("./pages/login"));
+const ForgotPassword = lazy(() => import("./pages/forgot-password"));
+const Clients = lazy(() => import("./pages/clients/index"));
+const UsersIndex = lazy(() => import("./pages/users/index"));
+const ClientDetail = lazy(() => import("./pages/clients/detail"));
+const LogsPage = lazy(() => import("./pages/system-logs/index"));
+const ServerDetail = lazy(() => import("./pages/servers/detail"));
+const CreateServer = lazy(() => import("./pages/servers/create"));
+const ServersIndex = lazy(() => import("./pages/servers/index"));
+const Settings = lazy(() => import("./pages/settings/index"));
+const Sessions = lazy(() => import("./pages/settings/sessions"));
+const Profile = lazy(() => import("./pages/settings/profile"));
+const UserDetail = lazy(() => import("./pages/users/detail"));
+const SystemSettings = lazy(() => import("./pages/settings/system"));
+const AgentSettings = lazy(() => import("./pages/settings/agent"));
+const FileActivitySettings = lazy(() => import("./pages/settings/file-activity"));
+const NodeConfigEditor = lazy(() =>
+    import("./components/node-config/NodeConfigEditor").then(
+        (m) => ({ default: m.NodeConfigEditor }),
+    ),
+);
+const AlertVisualizer = lazy(() => import("./pages/settings/alerts"));
+const ReportIndexPage = lazy(() => import("./pages/reports/report-index.tsx"));
+const ReportsLayout = lazy(() => import("./layouts/ReportsLayout").then(
+    (m) => ({ default: m.ReportsLayout }),
+));
+const MultiReportsPreview = lazy(() => import("./pages/reports/MultiReportsPreview.tsx"));
 
 const router = createBrowserRouter([
     {
@@ -35,11 +43,15 @@ const router = createBrowserRouter([
                 children: [
                     {
                         path: "/login",
-                        element: <Login />,
+                        element: (
+                            <Suspense><Login /></Suspense>
+                        ),
                     },
                     {
                         path: "/forgot-password",
-                        element: <ForgotPassword />,
+                        element: (
+                            <Suspense><ForgotPassword /></Suspense>
+                        ),
                     },
                 ],
             },
@@ -48,112 +60,159 @@ const router = createBrowserRouter([
                 children: [
                     {
                         path: "/",
-                        element: <Dashboard />,
+                        element: (
+                            <Suspense><Dashboard /></Suspense>
+                        ),
                     },
                     {
                         path: "/servers",
-                        element: <ServersIndex />,
+                        element: (
+                            <Suspense><ServersIndex /></Suspense>
+                        ),
                     },
                     {
                         path: "/servers/create",
-                        element: <CreateServer />,
+                        element: (
+                            <Suspense><CreateServer /></Suspense>
+                        ),
                     },
                     {
                         element: <ServerLayout />,
                         children: [
                             {
                                 path: "/servers/:uuid",
-                                element: <ServerDetail />,
+                                element: (
+                                    <Suspense><ServerDetail /></Suspense>
+                                ),
                             },
                         ],
                     },
                     {
                         path: "/clients",
-                        element: <Clients />,
+                        element: (
+                            <Suspense><Clients /></Suspense>
+                        ),
                     },
                     {
                         path: "/clients/create",
-                        element: <ClientDetail />,
+                        element: (
+                            <Suspense><ClientDetail /></Suspense>
+                        ),
                     },
                     {
                         path: "/clients/:uuid",
-                        element: <ClientDetail />,
+                        element: (
+                            <Suspense><ClientDetail /></Suspense>
+                        ),
                     },
                     {
                         path: "/users",
-                        element: <UsersIndex />,
+                        element: (
+                            <Suspense><UsersIndex /></Suspense>
+                        ),
                     },
                     {
                         path: "/users/create",
-                        element: <UserDetail />,
+                        element: (
+                            <Suspense><UserDetail /></Suspense>
+                        ),
                     },
                     {
                         path: "/users/:uuid",
-                        element: <UserDetail />,
+                        element: (
+                            <Suspense><UserDetail /></Suspense>
+                        ),
                     },
                     {
                         path: "/logs",
-                        element: <LogsPage />,
+                        element: (
+                            <Suspense><LogsPage /></Suspense>
+                        ),
                     },
                     {
                         path: "/settings",
-                        element: <Settings />,
+                        element: (
+                            <Suspense><Settings /></Suspense>
+                        ),
                     },
                     {
                         path: "/settings/sessions",
-                        element: <Sessions />,
+                        element: (
+                            <Suspense><Sessions /></Suspense>
+                        ),
                     },
                     {
                         path: "/settings/system",
-                        element: <SystemSettings />,
+                        element: (
+                            <Suspense><SystemSettings /></Suspense>
+                        ),
                     },
                     {
                         path: "/settings/agent",
-                        element: <AgentSettings />,
+                        element: (
+                            <Suspense><AgentSettings /></Suspense>
+                        ),
                     },
                     {
                         path: "/settings/file-activity",
-                        element: <FileActivitySettings />,
+                        element: (
+                            <Suspense><FileActivitySettings /></Suspense>
+                        ),
                     },
                     {
                         path: "/settings/alerts",
                         element: (
-                            <NodeConfigEditor
-                                configKey="alerts"
-                                alwaysMaximized
-                            />
+                            <Suspense>
+                                <NodeConfigEditor configKey="alerts" alwaysMaximized />
+                            </Suspense>
                         ),
                     },
                     {
                         path: "/settings/alerts/debugger",
-                        element: <AlertVisualizer />,
+                        element: (
+                            <Suspense><AlertVisualizer /></Suspense>
+                        ),
                     },
                     {
                         path: "/profile",
-                        element: <Profile />,
+                        element: (
+                            <Suspense><Profile /></Suspense>
+                        ),
                     },
                     {
-                        element: <ReportsLayout />,
+                        element: (
+                            <Suspense><ReportsLayout /></Suspense>
+                        ),
                         children: [
                             {
                                 path: "/report",
-                                element: <ReportIndexPage />,
+                                element: (
+                                    <Suspense><ReportIndexPage /></Suspense>
+                                ),
                             },
                             {
                                 path: "/report/servers/:uuid",
-                                element: <ReportIndexPage />,
+                                element: (
+                                    <Suspense><ReportIndexPage /></Suspense>
+                                ),
                             },
                             {
                                 path: "/report/clients/:uuid",
-                                element: <ReportIndexPage />,
+                                element: (
+                                    <Suspense><ReportIndexPage /></Suspense>
+                                ),
                             },
                             {
                                 path: "/report/servers",
-                                element: <MultiReportsPreview />,
+                                element: (
+                                    <Suspense><MultiReportsPreview /></Suspense>
+                                ),
                             },
                             {
                                 path: "/report/clients",
-                                element: <MultiReportsPreview />,
+                                element: (
+                                    <Suspense><MultiReportsPreview /></Suspense>
+                                ),
                             },
                         ],
                     },
@@ -163,7 +222,9 @@ const router = createBrowserRouter([
     },
     {
         path: "/printReport",
-        element: <ReportIndexPage />,
+        element: (
+            <Suspense><ReportIndexPage /></Suspense>
+        ),
     },
 ]);
 
