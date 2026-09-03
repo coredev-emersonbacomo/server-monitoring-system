@@ -17,6 +17,7 @@ import IndexHeader from "@/components/IndexHeader";
 import PageLayout from "@/components/PageLayout";
 
 const SHOW_PIPELINE_VISUALIZER = import.meta.env.VITE_ALERTS_VISUAL_DEBUGGER === "true";
+const DOCS_BASE_URL = import.meta.env.VITE_DOCS_URL || "http://localhost:5174";
 
 function Settings() {
     useDocumentTitle("Settings");
@@ -100,7 +101,8 @@ function Settings() {
             description:
                 "System documentation and reference guides.",
             icon: BookOpen,
-            href: "/docs",
+            href: `${DOCS_BASE_URL}/docs/overview`,
+            external: true,
         },
     ];
 
@@ -115,26 +117,48 @@ function Settings() {
 
             <main className="py-6 w-full flex-1">
                 <div className="max-w-2xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-3">
-                    {settingsSections.map((section) => (
-                        <Link
-                            key={section.href}
-                            to={section.href}
-                            className="flex items-center gap-4 p-4 bg-card border border-border/60 rounded-xl shadow-sm hover:shadow-md hover:border-border transition-all text-left group cursor-pointer"
-                        >
-                            <div className="p-2.5 bg-primary/10 rounded-lg shrink-0">
-                                <section.icon className="w-5 h-5 text-primary" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm">
-                                    {section.title}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                    {section.description}
-                                </p>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-                        </Link>
-                    ))}
+                    {settingsSections.map((section) => {
+                        const content = (
+                            <>
+                                <div className="p-2.5 bg-primary/10 rounded-lg shrink-0">
+                                    <section.icon className="w-5 h-5 text-primary" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-sm">
+                                        {section.title}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        {section.description}
+                                    </p>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+                            </>
+                        );
+
+                        if ('external' in section && section.external) {
+                            return (
+                                <a
+                                    key={section.href}
+                                    href={section.href}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex items-center gap-4 p-4 bg-card border border-border/60 rounded-xl shadow-sm hover:shadow-md hover:border-border transition-all text-left group cursor-pointer"
+                                >
+                                    {content}
+                                </a>
+                            );
+                        }
+
+                        return (
+                            <Link
+                                key={section.href}
+                                to={section.href}
+                                className="flex items-center gap-4 p-4 bg-card border border-border/60 rounded-xl shadow-sm hover:shadow-md hover:border-border transition-all text-left group cursor-pointer"
+                            >
+                                {content}
+                            </Link>
+                        );
+                    })}
                 </div>
             </main>
         </PageLayout>

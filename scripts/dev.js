@@ -88,6 +88,7 @@ for (const file of ['.env', '.env.development']) {
 const commands = [
   { command: 'redis-server || C:\\redis\\redis-server.exe', name: 'redis', prefixColor: 'yellow' },
   { command: 'npm run dev -w frontend', name: 'dev', prefixColor: 'green' },
+  { command: 'npm run dev -w docs', name: 'docs', prefixColor: 'cyan' },
 ];
 
 const { result } = concurrently(commands);

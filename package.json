@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "npm run build -w frontend && vite build",
+    "build": "npm run build -w frontend && npm run build -w docs && vite build",
     "start": "npm run build && node scripts/start.js",
     "dev": "node entry.js dev",
     "prod": "node entry.js prod",
@@ -24,7 +24,8 @@
     "loadtestfactory": "php artisan tinker --execute=\"require 'database/seeders/load-test-factory.php';\""
   },
   "workspaces": [
-    "frontend"
+    "frontend",
+    "docs"
   ],
   "devDependencies": {
     "concurrently": "^9.0.1",

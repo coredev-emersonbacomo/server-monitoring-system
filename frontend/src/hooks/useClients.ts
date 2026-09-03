@@ -134,7 +134,6 @@ export const useClientServers = (clientUuid: string) => {
             return data;
         },
         enabled: !!clientUuid,
-        refetchInterval: 5000,
     });
 };
 
