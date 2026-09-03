@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ArrowUp,
     ArrowDown,
@@ -138,14 +138,43 @@ function LogTableBody({
     availableActions = ["created", "updated", "deleted", "login", "logout", "assigned", "removed"],
     availableUsers = [],
 }: LogTableProps) {
+    const [searchInput, setSearchInput] = useState(search);
+    const searchTimer = useRef<number>();
+
+    useEffect(() => {
+        return () => window.clearTimeout(searchTimer.current);
+    }, []);
+
+    const commitSearch = (value: string) => {
+        window.clearTimeout(searchTimer.current);
+        searchTimer.current = window.setTimeout(() => {
+            onSearchChange(value);
+        }, 300);
+    };
+
+    /* Sync back when the URL value changes outside typing (e.g. page nav) but
+       never while the user is actively typing — that would clobber the input. */
+    useEffect(() => {
+        if (searchTimer.current !== undefined) return;
+        setSearchInput(search);
+    }, [search]);
+
+    const handleSearchChange = (value: string) => {
+        setSearchInput(value);
+        commitSearch(value);
+    };
+
     const hasActiveFilters =
         actionFilter !== "all" ||
         userFilter !== "all" ||
-        Boolean(search) ||
+        Boolean(searchInput) ||
         Boolean(startDate) ||
         Boolean(endDate);
 
     const clearFilters = () => {
+        window.clearTimeout(searchTimer.current);
+        searchTimer.current = undefined;
+        setSearchInput("");
         onSearchChange("");
         onActionFilterChange("all");
         onUserFilterChange("all");
@@ -174,15 +203,20 @@ function LogTableBody({
                             className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
                         />
                         <input
-                            value={search}
-                            onChange={(e) => onSearchChange(e.target.value)}
+                            value={searchInput}
+                            onChange={(e) => handleSearchChange(e.target.value)}
                             placeholder="Search logs by subject, user, action..."
                             className="w-full bg-background border border-border/70 rounded-md pl-8 pr-7 h-8 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/60"
                         />
-                        {search && (
+                        {searchInput && (
                             <button
                                 type="button"
-                                onClick={() => onSearchChange("")}
+                                onClick={() => {
+                                    window.clearTimeout(searchTimer.current);
+                                    searchTimer.current = undefined;
+                                    setSearchInput("");
+                                    onSearchChange("");
+                                }}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                             >
                                 <X size={12} />
@@ -453,11 +487,11 @@ function LogTableBody({
                                             const body = (
                                                 <div className="flex flex-col min-w-0">
                                                     <span className="text-foreground font-medium truncate max-w-[220px]">
-                                                        <HighlightMatch text={info.title} query={search} />
+                                                        <HighlightMatch text={info.title} query={searchInput} />
                                                     </span>
                                                     {info.subtitle && (
                                                         <span className="text-[10px] text-muted-foreground font-normal">
-                                                            <HighlightMatch text={info.subtitle} query={search} />
+                                                            <HighlightMatch text={info.subtitle} query={searchInput} />
                                                         </span>
                                                     )}
                                                 </div>
@@ -483,11 +517,11 @@ function LogTableBody({
                                                 to={`/users/${log.user_uuid}`}
                                                 className="rounded px-1 -mx-1 text-foreground hover:bg-muted/70 hover:text-primary underline-offset-2 hover:underline transition-colors"
                                             >
-                                                <HighlightMatch text={log.user ?? "System"} query={search} />
+                                                <HighlightMatch text={log.user ?? "System"} query={searchInput} />
                                             </Link>
                                         ) : (
                                             <span className="text-foreground">
-                                                <HighlightMatch text={log.user ?? "System"} query={search} />
+                                                <HighlightMatch text={log.user ?? "System"} query={searchInput} />
                                             </span>
                                         )}
                                     </td>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import PageLayout from "@/components/PageLayout";
@@ -59,6 +59,24 @@ function AuditFilters({
     to: string;
     setTo: (v: string) => void;
 }) {
+    const [pathInput, setPathInput] = useState(path ?? "");
+    const pathTimer = useRef<number>();
+
+    useEffect(() => {
+        return () => window.clearTimeout(pathTimer.current);
+    }, []);
+
+    useEffect(() => {
+        if (pathTimer.current !== undefined) return;
+        setPathInput(path ?? "");
+    }, [path]);
+
+    const handlePathChange = (value: string) => {
+        setPathInput(value);
+        window.clearTimeout(pathTimer.current);
+        pathTimer.current = window.setTimeout(() => setPath?.(value), 300);
+    };
+
     return (
         <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-border/60 bg-card">
             <select
@@ -75,8 +93,8 @@ function AuditFilters({
             </select>
             {showPath && (
                 <input
-                    value={path}
-                    onChange={(e) => setPath?.(e.target.value)}
+                    value={pathInput}
+                    onChange={(e) => handlePathChange(e.target.value)}
                     placeholder="Filter by path…"
                     className="h-8 w-56 rounded-md border border-border bg-background px-2 text-sm text-foreground"
                 />
