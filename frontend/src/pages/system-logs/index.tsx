@@ -347,6 +347,7 @@ export default function LogsPage() {
                             emptyMessage="No server health status logs recorded yet."
                             search={search}
                             onSearchChange={(v) => setLogParam("q", v, "health")}
+                            showUser={false}
                             actionFilter={actionFilter}
                             onActionFilterChange={(v) => setLogParam("action", v, "health")}
                             userFilter={userFilter}

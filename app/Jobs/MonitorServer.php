@@ -105,7 +105,7 @@ class MonitorServer implements ShouldQueue
                 'logable_type' => get_class($server),
                 'logable_id' => $server->id,
                 'user_id' => null,
-                'user' => 'System',
+                'user' => null,
                 'action' => 'Agent Offline',
                 'details' => json_encode([
                     'message' => "Agent went offline for server: {$server->name}",
@@ -171,7 +171,7 @@ class MonitorServer implements ShouldQueue
                 'logable_type' => get_class($server),
                 'logable_id' => $server->id,
                 'user_id' => null,
-                'user' => 'System',
+                'user' => null,
                 'action' => 'Agent Online',
                 'details' => json_encode([
                     'message' => "Agent came back online for server: {$server->name}",
