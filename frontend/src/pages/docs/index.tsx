@@ -534,12 +534,13 @@ export default function Docs() {
                         continue;
                     }
                 }
-                if (current) current.text.push(node.textContent ?? "");
+                if (current) (current as { id: string; text: string[] }).text.push(node.textContent ?? "");
             }
             if (current) {
+                const finalCurr = current as { id: string; text: string[] };
                 subtopics.push({
-                    id: current.id,
-                    text: current.text.join(" "),
+                    id: finalCurr.id,
+                    text: finalCurr.text.join(" "),
                 });
             }
             entries.push({
