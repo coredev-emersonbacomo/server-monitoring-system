@@ -1,9 +1,8 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import Dashboard from "./pages/dashboard/index";
 import Login from "./pages/login";
 import ForgotPassword from "./pages/forgot-password";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
-import { DocsLayout } from "./layouts/DocsLayout";
 import { GuestLayout } from "./layouts/GuestLayout";
 import Clients from "./pages/clients/index";
 import UsersIndex from "./pages/users/index";
@@ -23,7 +22,6 @@ import AgentSettings from "./pages/settings/agent";
 import FileActivitySettings from "./pages/settings/file-activity";
 import { NodeConfigEditor } from "./components/node-config/NodeConfigEditor";
 import AlertVisualizer from "./pages/settings/alerts";
-import Docs from "./pages/docs/index";
 import ReportIndexPage from "./pages/reports/report-index.tsx";
 import { ReportsLayout } from "./layouts/ReportsLayout";
 import MultiReportsPreview from "./pages/reports/MultiReportsPreview.tsx";
@@ -158,21 +156,6 @@ const router = createBrowserRouter([
                                 element: <MultiReportsPreview />,
                             },
                         ],
-                    },
-                ],
-            },
-            {
-                element: <DocsLayout />,
-                children: [
-                    {
-                        path: "/docs",
-                        element: (
-                            <Navigate to="/docs/overview" replace />
-                        ),
-                    },
-                    {
-                        path: "/docs/:sectionId",
-                        element: <Docs />,
                     },
                 ],
             },
