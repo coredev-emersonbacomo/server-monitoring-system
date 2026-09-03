@@ -33,7 +33,6 @@ import {
     useAddUserClient,
     useRemoveUserClient,
 } from "@/hooks/useUsers";
-import { useClients } from "@/hooks/useClients";
 import { useSettings } from "@/hooks/useSettings";
 import { Tab } from "@/components/ui/tab";
 import { LoadingOverlay } from "@/components/LoadingOverlay";
@@ -188,8 +187,6 @@ export default function UserDetail() {
 
     const { data: userClients = [], isLoading: clientsLoading } =
         useUserClients(uuid);
-    const { data: clientsResponse } = useClients();
-    const allClients = clientsResponse?.data ?? [];
     const assignedClientUuids = userClients.map((c) => c.uuid);
     const { data: settings } = useSettings();
 
@@ -534,12 +531,6 @@ export default function UserDetail() {
 
     const secopLimit =
         parseInt(settings?.secop_limit_per_client ?? "2", 10) || 2;
-
-    const availableClients = allClients.filter((client) => {
-        const isAssigned = userClients.some((uc) => uc.uuid === client.uuid);
-        const count = client.secops_count ?? 0;
-        return !isAssigned && count < secopLimit;
-    });
 
     return (
         <>

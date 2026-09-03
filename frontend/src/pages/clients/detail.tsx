@@ -15,7 +15,6 @@ import {
     useRemoveClientSecop,
 } from "@/hooks/useClients";
 
-import { useUsers } from "@/hooks/useUsers";
 import { useSettings } from "@/hooks/useSettings";
 import type { UserData } from "@/types/models";
 import { Tab } from "@/components/ui/tab";
@@ -52,8 +51,6 @@ export default function ClientDetail() {
     );
     const { data: currentSecops = [], isLoading: secopLoading } =
         useClientSecops(clientUuid!);
-    const { data: usersResponse, isLoading: usersLoading } = useUsers();
-    const allUsers = usersResponse?.data ?? [];
     const { data: settings } = useSettings();
     const secopLimit = Math.max(
         1,
@@ -344,10 +341,6 @@ export default function ClientDetail() {
     // ── Derived state ──────────────────────────────────────────────────────────
     const hasBanner = !!bannerPreview;
     const bannerInputId = "banner-upload";
-
-    const availableSecops = allUsers.filter(
-        (user) => !currentSecops.some((s) => s.uuid === user.uuid),
-    );
 
     return (
         <>

@@ -144,7 +144,7 @@ function LogTableBody({
         ? COLUMNS
         : COLUMNS.filter((col) => col.key !== "user");
     const [searchInput, setSearchInput] = useState(search);
-    const searchTimer = useRef<number>();
+    const searchTimer = useRef<number | undefined>(undefined);
 
     useEffect(() => {
         return () => window.clearTimeout(searchTimer.current);
