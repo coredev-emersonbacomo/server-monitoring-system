@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sun, Moon, Palette, Check, Sparkles } from "lucide-react";
+import { Sun, Moon, Palette, Check, Sparkles, X } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { useTheme } from "@/hooks/useTheme";
 import type { ThemeMode } from "@/contexts/themeContext";
@@ -86,21 +86,21 @@ export default function ThemeToggle({
                 type="button"
                 onClick={() => handleOpenModal(true)}
                 className={twMerge(
-                    "flex items-center justify-between px-4 py-2.5 rounded-lg transition-colors w-full hover:bg-muted cursor-pointer text-sm text-foreground group",
+                    "flex items-center justify-between gap-3 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg transition-colors w-full hover:bg-muted cursor-pointer text-xs sm:text-sm text-foreground group",
                     className,
                 )}
             >
-                <div className="flex items-center gap-3">
-                    <Palette className="size-5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                    <Palette className="size-4 sm:size-5 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
                     <span className="font-medium">Themes</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground/75">
+                <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground min-w-0">
+                    <span className="font-medium text-foreground/75 truncate min-w-[54px] sm:min-w-[80px]">
                         {currentOption.title}
                     </span>
                     <CurrentIcon
                         className={twMerge(
-                            "size-3.5 shrink-0",
+                            "size-3 sm:size-3.5 shrink-0",
                             theme.includes("coreDev")
                                 ? "text-orange-500"
                                 : "text-muted-foreground",
@@ -110,19 +110,29 @@ export default function ThemeToggle({
             </button>
 
             {/* Dedicated Theme Selection Modal */}
+            {/* Dedicated Theme Selection Modal */}
             <Dialog open={isModalOpen} onOpenChange={handleOpenModal}>
-                <DialogContent className="sm:max-w-md p-6 bg-card border border-border shadow-2xl rounded-2xl">
+                    <DialogContent className="sm:max-w-md w-[calc(100%-2rem)] sm:w-full p-4 sm:p-6 bg-card border border-border shadow-2xl rounded-2xl">
+                    <button
+                        type="button"
+                        onClick={() => handleOpenModal(false)}
+                        aria-label="Close theme selector"
+                        className="absolute top-3 right-3 sm:top-4 sm:right-4 flex size-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                    >
+                        <X className="size-4" />
+                    </button>
+
                     <DialogHeader className="mb-2">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                                <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                                    <Palette className="size-5" />
+                            <div className="flex items-center gap-2 sm:gap-2.5">
+                                <div className="p-1.5 sm:p-2 rounded-xl bg-primary/10 text-primary">
+                                    <Palette className="size-4 sm:size-5" />
                                 </div>
                                 <div>
-                                    <DialogTitle className="text-base font-semibold text-foreground">
+                                    <DialogTitle className="text-sm sm:text-base font-semibold text-foreground">
                                         Appearance & Themes
                                     </DialogTitle>
-                                    <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                                    <DialogDescription className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                                         Choose your preferred display theme and accent color
                                     </DialogDescription>
                                 </div>
@@ -130,7 +140,9 @@ export default function ThemeToggle({
                         </div>
                     </DialogHeader>
 
-                    <div className="grid grid-cols-1 gap-2.5 pt-2">
+                    {/* ...rest unchanged... */}
+
+                    <div className="grid grid-cols-1 gap-2 sm:gap-2.5 pt-2">
                         {THEME_OPTIONS.map((option) => {
                             const Icon = option.icon;
                             const isSelected = theme === option.id;
@@ -144,7 +156,7 @@ export default function ThemeToggle({
                                         setTheme(option.id);
                                     }}
                                     className={twMerge(
-                                        "relative flex items-center gap-3.5 p-3.5 rounded-xl border text-left transition-all cursor-pointer group",
+                                        "relative flex items-center gap-3 sm:gap-3.5 p-3 sm:p-3.5 rounded-xl border text-left transition-all cursor-pointer group",
                                         isSelected
                                             ? isCoreDev
                                                 ? "border-orange-500/80 bg-orange-500/5 shadow-sm ring-1 ring-orange-500/40"
@@ -155,25 +167,25 @@ export default function ThemeToggle({
                                     {/* Theme preview swatch */}
                                     <div
                                         className={twMerge(
-                                            "w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border shadow-xs relative overflow-hidden",
+                                            "w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center shrink-0 border shadow-xs relative overflow-hidden",
                                             option.previewBg,
                                             option.previewBorder,
                                         )}
                                     >
                                         <div
                                             className={twMerge(
-                                                "w-4 h-4 rounded-full flex items-center justify-center",
+                                                "w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full flex items-center justify-center",
                                                 option.previewAccent,
                                             )}
                                         >
                                             <Icon
                                                 className={twMerge(
-                                                    "size-2.5",
+                                                    "size-2 sm:size-2.5",
                                                     option.id === "light"
                                                         ? "text-white"
                                                         : option.id === "dark"
-                                                          ? "text-black"
-                                                          : "text-white",
+                                                            ? "text-black"
+                                                            : "text-white",
                                                 )}
                                             />
                                         </div>
@@ -184,7 +196,7 @@ export default function ThemeToggle({
                                         <div className="flex items-center gap-2">
                                             <span
                                                 className={twMerge(
-                                                    "text-sm font-semibold truncate",
+                                                    "text-xs sm:text-sm font-semibold truncate",
                                                     isSelected
                                                         ? "text-foreground font-bold"
                                                         : "text-foreground/90 group-hover:text-foreground",
@@ -193,7 +205,7 @@ export default function ThemeToggle({
                                                 {option.title}
                                             </span>
                                         </div>
-                                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                                        <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 line-clamp-1">
                                             {option.description}
                                         </p>
                                     </div>
@@ -201,7 +213,7 @@ export default function ThemeToggle({
                                     {/* Check icon */}
                                     <div
                                         className={twMerge(
-                                            "size-5 rounded-full flex items-center justify-center shrink-0 transition-colors",
+                                            "size-4 sm:size-5 rounded-full flex items-center justify-center shrink-0 transition-colors",
                                             isSelected
                                                 ? isCoreDev
                                                     ? "bg-orange-500 text-white"
@@ -210,7 +222,7 @@ export default function ThemeToggle({
                                         )}
                                     >
                                         {isSelected && (
-                                            <Check className="size-3 stroke-[3]" />
+                                            <Check className="size-2.5 sm:size-3 stroke-[3]" />
                                         )}
                                     </div>
                                 </button>
@@ -218,7 +230,7 @@ export default function ThemeToggle({
                         })}
                     </div>
                 </DialogContent>
-            </Dialog>
+            </Dialog >
         </>
     );
 }

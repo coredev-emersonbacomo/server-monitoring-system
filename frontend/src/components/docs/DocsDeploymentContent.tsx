@@ -140,7 +140,7 @@ pdo_pgsql   (required — the primary database driver)`}</CodeBlock>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
                         The primary database is <strong>PostgreSQL with
-                        TimescaleDB</strong>. The scheduler refreshes Timescale
+                            TimescaleDB</strong>. The scheduler refreshes Timescale
                         continuous aggregates via{" "}
                         <InlineCode>agg:refresh</InlineCode>.
                     </li>
@@ -237,7 +237,7 @@ npm run build`}</CodeBlock>
                 </p>
             </Section>
 
-             <Section title="(Optional) Rebuild the agent">
+            <Section title="(Optional) Rebuild the agent">
                 <p>
                     Pre-built agent binaries are committed to the repo (
                     <InlineCode>public/agent</InlineCode> and{" "}
@@ -440,9 +440,9 @@ export function DocsConfigurationContent() {
                     </li>
                     <li>
                         <strong>Notifications</strong> —{" "}
-<InlineCode>SEEDED_DISCORD_BOT_TOKEN</InlineCode>,{" "}
-<InlineCode>SEEDED_DISCORD_CHANNEL_ID</InlineCode>,{" "}
-<InlineCode>SEEDED_DISCORD_ROLE_ID</InlineCode>.
+                        <InlineCode>SEEDED_DISCORD_BOT_TOKEN</InlineCode>,{" "}
+                        <InlineCode>SEEDED_DISCORD_CHANNEL_ID</InlineCode>,{" "}
+                        <InlineCode>SEEDED_DISCORD_ROLE_ID</InlineCode>.
                     </li>
                     <li>
                         <strong>Frontend</strong> —{" "}
