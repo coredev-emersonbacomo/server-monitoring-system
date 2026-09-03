@@ -48,7 +48,6 @@ export const useServers = (params?: {
             if (error) throw error;
             return data as Paginator<ServerData>;
         },
-        refetchInterval: 5000,
     });
 };
 
@@ -106,7 +105,6 @@ export const useInfiniteServers = (params?: {
             }
             return undefined;
         },
-        refetchInterval: 5000,
     });
 };
 
