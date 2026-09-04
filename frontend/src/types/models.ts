@@ -47,19 +47,6 @@ export interface AgentData {
             is_alive: boolean;
         }
 
-/** AgentLifecycleEventResource */
-export interface AgentLifecycleEventResource {
-            uuid: string;
-            server_id: number | null;
-            server_uuid: string;
-            server_name: string;
-            agent_servers: string | string[];
-            agent_id: number;
-            event_type: string;
-            occurred_at: string;
-            created_at: string;
-        }
-
 /** AuthUserData */
 export interface AuthUserData {
             uuid: string;
@@ -138,26 +125,6 @@ export interface DashboardStatsData {
                 client_name: string;
                 value: number;
             }[];
-        }
-
-/** FileActivityLogResource */
-export interface FileActivityLogResource {
-            uuid: string;
-            server_id: number | null;
-            server_uuid: string;
-            server_name: string;
-            agent_servers: string | string[];
-            agent_id: number;
-            action: string;
-            file_name: string;
-            source_path: string;
-            destination_path: string | null;
-            is_directory: boolean;
-            username: string | null;
-            process_name: string | null;
-            process_id: number | null;
-            occurred_at: string;
-            created_at: string;
         }
 
 /** GlobalAlert */
@@ -418,20 +385,17 @@ export interface UserData {
             updated_at: string;
         }
 
-/** Laravel paginator response shape */
-export interface Paginator<T> {
-            current_page: number;
-            data: T[];
-            first_page_url: string;
-            from: number | null;
-            last_page: number;
-            last_page_url: string;
-            links: { url: string | null; label: string; active: boolean }[];
-            next_page_url: string | null;
+/** WatchedPathResource */
+export interface WatchedPathResource {
+            id: number;
             path: string;
-            per_page: number;
-            prev_page_url: string | null;
-            to: number | null;
-            total: number;
+            scope: string;
+            server_id: number | null;
+            server_uuid: string;
+            enabled: boolean;
+            exclude_patterns: unknown[];
+            description: string | null;
+            created_at: string;
+            updated_at: string;
         }
 
