@@ -2,7 +2,6 @@
 # Auto-HTTPS via Let's Encrypt. APP_DOMAIN comes from compose environment.
 # /app/* → Reverb websockets (Laravel Echo connects here in prod).
 # everything else → Laravel app.
-# Not used on Render (it terminates TLS and routes itself).
 
 {$APP_DOMAIN} {
     handle /app/* {

@@ -59,15 +59,7 @@ docker compose -f compose.yaml -f compose.prod.yaml exec -T postgres \
   pg_dump -U postgres server_monitoring | gzip > backup-$(date +%F).sql.gz
 ```
 
-### D. Production on Render (alternative, no server needed)
-
-Dashboard → New → Blueprint → connect repo (`render.yaml`).
-Secrets auto-generate once via the `server-monitoring-secrets` group;
-fill `sync: false` keys (`MAIL_*`, `CLOUDINARY_*`) in the dashboard.
-Set `APP_URL` to the Render URL after first deploy, redeploy once.
-`git push` to `main` rebuilds and redeploys automatically.
-
-## Secrets inventory (`.env.docker` / Render env)
+## Secrets inventory (`.env.docker`)
 
 | Key | Where to get it |
 |---|---|
@@ -90,8 +82,7 @@ Never commit `.env`, `.env.production`, or `.env.docker` (all gitignored).
 - `scripts/entry.js` — dev/prod process manager (`npm run dev` / `npm start`)
 - `scripts/tunnel.js` — Cloudflare quick tunnel (`npm run tunnel`)
 - `Dockerfile` — multi-stage (`dev` / `prod` targets)
-- `compose.yaml` / `compose.prod.yaml` — local / production stacks
-- `render.yaml` — Render blueprint
+- `compose.yaml` / `compose.prod.yaml` — dev / production stacks
 - `TODO/` — work backlog (source of truth for pending work)
 - `docs/architecture/` — ADRs (read before changing architecture)
 
@@ -115,7 +106,7 @@ npm run db:prod   # prod server (over SSH): psql into prod DB
 ```
 
 GUI (DBeaver/TablePlus/pgAdmin): dev → `localhost:5432` / `postgres` / `postgres` /
-`server_monitoring`. Render → postgres service → Connect → external string (SSL on).
+`server_monitoring`. Prod server → SSH tunnel or temporary port mapping.
 
 Useful when the UI can't answer it: inspect/revoke provision tokens, query
 hypertables directly (`time_bucket` checks), verify continuous aggregates are

@@ -1,7 +1,7 @@
 # server-monitoring-system — single Dockerfile, two targets.
 #
 #   dev:  `docker compose up` → bind mount, Xdebug, artisan serve + vite dev
-#   prod: `docker compose -f compose.yaml -f compose.prod.yaml up` (or Render)
+#   prod: `docker compose -f compose.yaml -f compose.prod.yaml up` on a server
 #         → baked deps + built assets, opcache, no dev packages
 #
 # Same base layers for both — no dev/prod drift.
@@ -82,7 +82,7 @@ COPY docs/package.json ./docs/
 RUN npm ci --no-audit --no-fund
 
 # App source (no build here — entrypoint builds at boot from RUNTIME env,
-# so Render dashboard / .env.docker values always win without image rebuilds)
+# so .env.docker values always win without image rebuilds)
 COPY . .
 
 # Entrypoint: migrate + conditional frontend build, then exec CMD
@@ -97,4 +97,6 @@ RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini \
     && php artisan view:clear
 
 ENTRYPOINT ["entrypoint.sh"]
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+
+# Bind $PORT when set (orchestrators); default 8000 for local/prod-server.
+CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
