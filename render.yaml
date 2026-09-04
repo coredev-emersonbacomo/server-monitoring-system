@@ -1,0 +1,211 @@
+# Render blueprint: https://render.com/docs/blueprint-spec
+# Deploy: dashboard → New → Blueprint → connect repo (render.yaml auto-detected).
+# Updates: git push → Render rebuilds prod target → migrate → redeploy.
+# TimescaleDB runs as a private Docker service (Render managed Postgres lacks it).
+#
+# ENV FEEDING (all runtime — entrypoint builds frontend at boot, so dashboard
+# values always win, no rebuild needed on env change):
+#   - generateValue keys: Render creates once on first deploy (shared via group).
+#   - sync:false keys: fill in dashboard → Environment (mail, Cloudinary).
+#   - APP_URL: set to the Render URL after first deploy, then redeploy once.
+
+envVarGroups:
+  - name: server-monitoring-secrets
+    envVars:
+      - key: APP_KEY
+        generateValue: true # base64:32
+      - key: DB_PASSWORD
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REVERB_APP_ID
+        generateValue: true
+      - key: REVERB_APP_KEY
+        generateValue: true
+      - key: REVERB_APP_SECRET
+        generateValue: true
+
+services:
+  - type: web
+    name: server-monitoring-app
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - fromGroup: server-monitoring-secrets
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_URL
+        value: https://server-monitoring-app.onrender.com # ← change after first deploy
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromService:
+          type: pserv
+          name: server-monitoring-postgres
+          property: host
+      - key: DB_PORT
+        value: 5432
+      - key: DB_DATABASE
+        value: server_monitoring
+      - key: DB_USERNAME
+        value: postgres
+      - key: CACHE_STORE
+        value: redis
+      - key: SESSION_DRIVER
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: BROADCAST_CONNECTION
+        value: reverb
+      - key: REDIS_CLIENT
+        value: predis
+      - key: REDIS_HOST
+        fromService:
+          type: pserv
+          name: server-monitoring-redis
+          property: host
+      - key: REDIS_PORT
+        value: 6379
+      - key: REVERB_HOST
+        fromService:
+          type: web
+          name: server-monitoring-reverb
+          property: host
+      - key: REVERB_PORT
+        value: 443
+      - key: REVERB_SCHEME
+        value: https
+      - key: VITE_REVERB_HOST
+        fromService:
+          type: web
+          name: server-monitoring-reverb
+          property: host
+      - key: VITE_REVERB_PORT
+        value: 443
+      - key: VITE_REVERB_SCHEME
+        value: https
+      - key: TELESCOPE_ENABLED
+        value: "false"
+      - key: MUTE_NOTIFICATION
+        value: "false"
+      - key: MAIL_MAILER
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+  - type: web
+    name: server-monitoring-reverb
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    dockerCommand: php artisan reverb:start
+    envVars:
+      - fromGroup: server-monitoring-secrets
+      - key: APP_ENV
+        value: production
+      - key: APP_URL
+        fromService:
+          type: web
+          name: server-monitoring-app
+          property: host
+      - key: DB_HOST
+        fromService:
+          type: pserv
+          name: server-monitoring-postgres
+          property: host
+      - key: REDIS_HOST
+        fromService:
+          type: pserv
+          name: server-monitoring-redis
+          property: host
+      - key: REVERB_SERVER_HOST
+        value: 0.0.0.0
+      - key: REVERB_SERVER_PORT
+        value: 8081
+
+  - type: worker
+    name: server-monitoring-queue
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    dockerCommand: php artisan queue:work
+    envVars:
+      - fromGroup: server-monitoring-secrets
+      - key: APP_ENV
+        value: production
+      - key: DB_HOST
+        fromService:
+          type: pserv
+          name: server-monitoring-postgres
+          property: host
+      - key: REDIS_HOST
+        fromService:
+          type: pserv
+          name: server-monitoring-redis
+          property: host
+
+  - type: worker
+    name: server-monitoring-scheduler
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    dockerCommand: php artisan schedule:work
+    envVars:
+      - fromGroup: server-monitoring-secrets
+      - key: APP_ENV
+        value: production
+      - key: DB_HOST
+        fromService:
+          type: pserv
+          name: server-monitoring-postgres
+          property: host
+      - key: REDIS_HOST
+        fromService:
+          type: pserv
+          name: server-monitoring-redis
+          property: host
+
+  - type: pserv
+    name: server-monitoring-postgres
+    runtime: docker
+    image:
+      url: timescale/timescaledb-ha:pg17
+    plan: starter
+    disk:
+      name: postgres-data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 10
+    envVars:
+      - key: POSTGRES_DB
+        value: server_monitoring
+      - key: POSTGRES_USER
+        value: postgres
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+
+  - type: pserv
+    name: server-monitoring-redis
+    runtime: docker
+    image:
+      url: redis:7
+    plan: starter
+    disk:
+      name: redis-data
+      mountPath: /data
+      sizeGB: 1

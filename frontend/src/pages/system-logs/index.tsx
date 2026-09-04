@@ -157,9 +157,8 @@ export default function LogsPage() {
     const sortField = (get("sort_field") || "created_at") as SortableKey;
     const sortDir = (get("sort_dir") || "desc") as "asc" | "desc";
 
-    const pageKeysFor = (id?: string) => (id ? [`${id}_page`, `${id}_per_page`] : ["page", "per_page"]);
 
-    const setLogParam = (key: string, value: string, scopeId?: string) => {
+    const setLogParam = (key: string, value: string, _scopeId?: string) => {
         const next = new URLSearchParams(searchParams);
         if (value && value !== "all") {
             next.set(key, value);
@@ -234,11 +233,6 @@ export default function LogsPage() {
         end_date: endDate || undefined,
         sort_field: sortField,
         sort_dir: sortDir,
-    };
-    const queryParams: ActivityLogsParams = {
-        page: page > 1 ? page : undefined,
-        per_page: perPage !== 15 ? perPage : undefined,
-        ...baseQueryParams,
     };
     const activityQueryParams: ActivityLogsParams = {
         page: activityPage > 1 ? activityPage : undefined,
