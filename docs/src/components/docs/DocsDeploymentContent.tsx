@@ -493,21 +493,6 @@ docker compose -f compose.yaml -f compose.prod.yaml up -d --build`}</CodeBlock>
                 </SubSection>
             </Section>
 
-            <Section title="Production: Render (no server needed)">
-                <p>
-                    Dashboard → New → Blueprint → connect the repo (
-                    <InlineCode>render.yaml</InlineCode>). Secrets
-                    auto-generate once via the shared env group; fill the{" "}
-                    <InlineCode>sync: false</InlineCode> keys (
-                    <InlineCode>MAIL_*</InlineCode>,{" "}
-                    <InlineCode>CLOUDINARY_*</InlineCode>) in the dashboard.
-                    Set <InlineCode>APP_URL</InlineCode> to the Render URL
-                    after first deploy, redeploy once.{" "}
-                    <InlineCode>git push</InlineCode> to{" "}
-                    <InlineCode>main</InlineCode> rebuilds and redeploys.
-                </p>
-            </Section>
-
             <Section title="Verify the installation">
                 <ol className="list-decimal pl-5 space-y-1.5">
                     <li>

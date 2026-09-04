@@ -1,5 +1,4 @@
 # CI: test + build on every push/PR.
-# Render deploys from main separately (render.yaml blueprint).
 
 name: CI
 

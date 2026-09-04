@@ -168,7 +168,7 @@ export function DocsRequirementsContent() {
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
                         The primary database is <strong>PostgreSQL with
-                            TimescaleDB</strong>. The scheduler refreshes Timescale
+                        TimescaleDB</strong>. The scheduler refreshes Timescale
                         continuous aggregates via{" "}
                         <InlineCode>agg:refresh</InlineCode>.
                     </li>
@@ -240,7 +240,7 @@ docker compose -f compose.yaml -f compose.prod.yaml up -d --build`}</CodeBlock>
                 <CodeBlock>{`docker compose exec app php artisan migrate:fresh --seed`}</CodeBlock>
             </Section>
 
-            <Section title="(Optional) Rebuild the agent">
+             <Section title="(Optional) Rebuild the agent">
                 <p>
                     Pre-built agent binaries are committed to the repo (
                     <InlineCode>public/agent</InlineCode> and{" "}
@@ -368,9 +368,9 @@ export function DocsConfigurationContent() {
                     </li>
                     <li>
                         <strong>Notifications</strong> —{" "}
-                        <InlineCode>SEEDED_DISCORD_BOT_TOKEN</InlineCode>,{" "}
-                        <InlineCode>SEEDED_DISCORD_CHANNEL_ID</InlineCode>,{" "}
-                        <InlineCode>SEEDED_DISCORD_ROLE_ID</InlineCode>.
+<InlineCode>SEEDED_DISCORD_BOT_TOKEN</InlineCode>,{" "}
+<InlineCode>SEEDED_DISCORD_CHANNEL_ID</InlineCode>,{" "}
+<InlineCode>SEEDED_DISCORD_ROLE_ID</InlineCode>.
                     </li>
                     <li>
                         <strong>Frontend</strong> —{" "}
@@ -491,21 +491,6 @@ docker compose -f compose.yaml -f compose.prod.yaml up -d --build`}</CodeBlock>
                     </p>
                     <CodeBlock>{`docker compose -f compose.yaml -f compose.prod.yaml exec -T postgres pg_dump -U postgres server_monitoring | gzip > backup-$(date +%F).sql.gz`}</CodeBlock>
                 </SubSection>
-            </Section>
-
-            <Section title="Production: Render (no server needed)">
-                <p>
-                    Dashboard → New → Blueprint → connect the repo (
-                    <InlineCode>render.yaml</InlineCode>). Secrets
-                    auto-generate once via the shared env group; fill the{" "}
-                    <InlineCode>sync: false</InlineCode> keys (
-                    <InlineCode>MAIL_*</InlineCode>,{" "}
-                    <InlineCode>CLOUDINARY_*</InlineCode>) in the dashboard.
-                    Set <InlineCode>APP_URL</InlineCode> to the Render URL
-                    after first deploy, redeploy once.{" "}
-                    <InlineCode>git push</InlineCode> to{" "}
-                    <InlineCode>main</InlineCode> rebuilds and redeploys.
-                </p>
             </Section>
 
             <Section title="Verify the installation">

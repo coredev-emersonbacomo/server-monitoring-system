@@ -2,7 +2,6 @@
 # Same services, prod target (baked code+assets, no mounts), restart policies.
 # Env comes from .env.docker — generate with `npm run setup:docker`.
 # Includes Caddy for auto-HTTPS (needs APP_DOMAIN pointing at this server).
-# Render uses render.yaml instead (same Dockerfile prod target).
 
 services:
   postgres:
@@ -98,7 +97,7 @@ services:
 
   # Reverse proxy with auto-HTTPS (Let's Encrypt). Requires DNS:
   # APP_DOMAIN (e.g. monitor.company.com) → this server's public IP,
-  # ports 80/443 reachable. Skip on Render (it terminates TLS itself).
+  # ports 80/443 reachable.
   caddy:
     image: caddy:2
     ports:

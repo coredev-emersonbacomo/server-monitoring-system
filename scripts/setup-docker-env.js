@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Generates .env.docker from .env.docker.example with everything generatable
 // filled in. Third-party keys (mail, Cloudinary, Discord) stay blank.
-// Platform-agnostic: works for Render, personal server, company VM — anywhere.
+// Platform-agnostic: works for personal server, company VM — anywhere.
 // Usage: npm run setup:docker [-- --force] [--app-url https://...]
 import fs from 'fs';
 import path from 'path';

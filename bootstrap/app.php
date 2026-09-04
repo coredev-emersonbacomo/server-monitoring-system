@@ -29,7 +29,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
 
 // .env holds personal overrides only (gitignored); the app config lives in
 // .env.development (or .env.production). Immutable loading: real process env
-// (Docker/Render/Herd) always wins, then .env, then .env.development.
+// (Docker/Herd) always wins, then .env, then .env.development.
 // The default loader is pointed at a file that never exists so it does not
 // re-load .env afterwards.
 $app->beforeBootstrapping(LoadEnvironmentVariables::class, function (Application $app): void {
