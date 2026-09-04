@@ -130,7 +130,7 @@ export function CodeBlock({
 
 export function InlineCode({ children }: { children: string }) {
     return (
-        <code className="relative rounded-md bg-muted/80 px-[0.35rem] py-[0.15rem] font-mono text-xs md:text-[13px] font-medium text-foreground border border-border/50">
+        <code className="relative rounded-md bg-muted/80 px-[0.35rem] py-[0.15rem] font-mono text-xs md:text-[13px] font-medium text-foreground border border-border/50 break-words">
             {children}
         </code>
     );
@@ -187,7 +187,7 @@ export function Callout({
             )}
         >
             <Icon className={cn("size-4.5 shrink-0 mt-0.5", config.text)} />
-            <div className="flex-1 space-y-1">
+            <div className="flex-1 min-w-0 space-y-1">
                 <p className={cn("font-semibold leading-none tracking-tight", config.text)}>
                     {title || config.defaultTitle}
                 </p>

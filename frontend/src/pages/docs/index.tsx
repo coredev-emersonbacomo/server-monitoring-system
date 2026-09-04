@@ -515,7 +515,7 @@ export default function Docs() {
             const section = DOC_SECTIONS.find((s) => s.id === id);
             const subtopics: { id: string; text: string }[] = [];
             let current: { id: string; text: string[] } | null = null;
-            el.childNodes.forEach((node) => {
+            for (const node of Array.from(el.childNodes)) {
                 if (node.nodeType === Node.ELEMENT_NODE) {
                     const child = node as HTMLElement;
                     const h2 =
@@ -531,11 +531,11 @@ export default function Docs() {
                             });
                         }
                         current = { id: h2.id, text: [h2.textContent ?? ""] };
-                        return;
+                        continue;
                     }
                 }
                 if (current) (current as { id: string; text: string[] }).text.push(node.textContent ?? "");
-            });
+            }
             if (current) {
                 const finalCurr = current as { id: string; text: string[] };
                 subtopics.push({
@@ -562,8 +562,8 @@ export default function Docs() {
     const current = inSidebar
         ? DOC_SECTIONS[index]
         : parentId
-          ? (DOC_SECTIONS.find((s) => s.id === parentId) ?? null)
-          : null;
+            ? (DOC_SECTIONS.find((s) => s.id === parentId) ?? null)
+            : null;
 
     let prev: DocPageRef | null = null;
     let next: DocPageRef | null = null;
@@ -589,8 +589,8 @@ export default function Docs() {
             subPos >= 0 && subPos < siblings.length - 1
                 ? ref(siblings[subPos + 1])
                 : parentIndex >= 0 && parentIndex < DOC_SECTIONS.length - 1
-                  ? DOC_SECTIONS[parentIndex + 1]
-                  : null;
+                    ? DOC_SECTIONS[parentIndex + 1]
+                    : null;
     }
 
     useEffect(() => {
@@ -775,117 +775,117 @@ export default function Docs() {
     return (
         <div className="flex h-full flex-col w-full bg-background text-foreground">
             <div className="relative">
-            {/* Top Navigation Bar */}
-            <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md supports-backdrop-filter:bg-background/60">
-                <div className="flex h-14 items-center justify-between px-3 sm:px-6 gap-2 sm:gap-4">
-                    {/* Left Side: Back Button & Logo/Title */}
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <button
-                            type="button"
-                            onClick={() => navigate("/")}
-                            className="inline-flex items-center gap-1 sm:gap-1.5 rounded-lg border border-border/60 bg-card px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-foreground transition-all hover:bg-muted/50 hover:border-border cursor-pointer shrink-0"
-                        >
-                            <ChevronLeft className="size-4" />
-                            <span className="hidden xs:inline">Back</span>
-                        </button>
-
-                        <div className="flex items-center gap-2 min-w-0">
-                            <BookOpen className="size-4.5 text-primary shrink-0" />
-                            <span className="font-bold text-sm sm:text-base tracking-tight truncate">
-                                <span className="hidden sm:inline">Server Monitoring </span>Documentation
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Right Side: Search & Mobile Menu */}
-                    <div className="flex items-center gap-2 shrink-0">
-                        <div className="relative w-32 xs:w-44 sm:w-64">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 sm:size-4 text-muted-foreground pointer-events-none" />
-                            <input
-                                ref={searchInputRef}
-                                type="text"
-                                placeholder="Search..."
-                                value={searchQuery}
-                                onChange={(e) => {
-                                    setSearchQuery(e.target.value);
-                                    setSearchOpen(true);
-                                    setActiveResultIndex(0);
-                                }}
-                                onFocus={() => {
-                                    if (searchQuery.length >= 2) setSearchOpen(true);
-                                }}
-                                onBlur={() => {
-                                    setTimeout(() => setSearchOpen(false), 150);
-                                }}
-                                onKeyDown={(e) => {
-                                    if (e.key === "ArrowDown") {
-                                        e.preventDefault();
-                                        setActiveResultIndex((i) => Math.min(i + 1, searchResults.length - 1));
-                                    } else if (e.key === "ArrowUp") {
-                                        e.preventDefault();
-                                        setActiveResultIndex((i) => Math.max(i - 1, 0));
-                                    } else if (e.key === "Enter" && searchResults[activeResultIndex]) {
-                                        navigateToResult(searchResults[activeResultIndex]);
-                                    }
-                                }}
-                                className="w-full h-8 sm:h-9 rounded-lg border border-border/60 bg-muted/30 pl-8 sm:pl-9 pr-2 sm:pr-14 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-border transition-colors"
-                            />
-                            <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border/60 bg-background px-1 text-[10px] font-medium text-muted-foreground">
-                                ⌘K
-                            </kbd>
-                        </div>
-
-                        <button
-                            type="button"
-                            aria-label="Toggle docs navigation"
-                            onClick={() => setMobileOpen((v) => !v)}
-                            className="lg:hidden flex size-8 sm:size-9 items-center justify-center rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
-                        >
-                            <Menu className="size-4.5" />
-                        </button>
-                    </div>
-                </div>
-            </header>
-
-            {/* Search Dropdown */}
-            {searchOpen && searchResults.length > 0 && (
-                <div className="absolute top-14 right-5 z-50 flex justify-center pointer-events-none">
-                    <div className="w-full max-w-md mx-4 sm:mx-auto mt-1 rounded-lg border border-border/60 bg-popover shadow-xl overflow-hidden pointer-events-auto">
-                        {searchResults.map((result, i) => (
+                {/* Top Navigation Bar */}
+                <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md supports-backdrop-filter:bg-background/60">
+                    <div className="flex h-14 items-center justify-between px-3 sm:px-6 gap-2 sm:gap-4">
+                        {/* Left Side: Back Button & Logo/Title */}
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                             <button
-                                key={result.id}
                                 type="button"
-                                onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    navigateToResult(result);
-                                }}
-                                onMouseEnter={() => setActiveResultIndex(i)}
-                                className={cn(
-                                    "w-full text-left px-4 py-3 flex flex-col gap-0.5 transition-colors cursor-pointer",
-                                    i === activeResultIndex
-                                        ? "bg-accent text-accent-foreground"
-                                        : "hover:bg-muted/50",
-                                )}
+                                onClick={() => navigate("/")}
+                                className="inline-flex items-center gap-1 sm:gap-1.5 rounded-lg border border-border/60 bg-card px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-foreground transition-all hover:bg-muted/50 hover:border-border cursor-pointer shrink-0"
                             >
-                                <div className="flex items-center gap-2">
-                                    <FileText className="size-3.5 text-muted-foreground shrink-0" />
-                                    <span className="text-sm font-medium truncate">
-                                        {result.title}
-                                    </span>
-                                    <span className="text-[10px] text-muted-foreground ml-auto shrink-0">
-                                        {result.group}
-                                    </span>
-                                </div>
-                                {result.description && (
-                                    <p className="text-xs text-muted-foreground truncate pl-5.5">
-                                        {result.description}
-                                    </p>
-                                )}
+                                <ChevronLeft className="size-4" />
+                                <span className="hidden xs:inline">Back</span>
                             </button>
-                        ))}
+
+                            <div className="flex items-center gap-2 min-w-0">
+                                <BookOpen className="size-4.5 text-primary shrink-0" />
+                                <span className="font-bold text-sm sm:text-base tracking-tight truncate">
+                                    <span className="hidden sm:inline">Server Monitoring </span>Documentation
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Right Side: Search & Mobile Menu */}
+                        <div className="flex items-center gap-2 shrink-0">
+                            <div className="relative w-32 xs:w-44 sm:w-64">
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 sm:size-4 text-muted-foreground pointer-events-none" />
+                                <input
+                                    ref={searchInputRef}
+                                    type="text"
+                                    placeholder="Search..."
+                                    value={searchQuery}
+                                    onChange={(e) => {
+                                        setSearchQuery(e.target.value);
+                                        setSearchOpen(true);
+                                        setActiveResultIndex(0);
+                                    }}
+                                    onFocus={() => {
+                                        if (searchQuery.length >= 2) setSearchOpen(true);
+                                    }}
+                                    onBlur={() => {
+                                        setTimeout(() => setSearchOpen(false), 150);
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "ArrowDown") {
+                                            e.preventDefault();
+                                            setActiveResultIndex((i) => Math.min(i + 1, searchResults.length - 1));
+                                        } else if (e.key === "ArrowUp") {
+                                            e.preventDefault();
+                                            setActiveResultIndex((i) => Math.max(i - 1, 0));
+                                        } else if (e.key === "Enter" && searchResults[activeResultIndex]) {
+                                            navigateToResult(searchResults[activeResultIndex]);
+                                        }
+                                    }}
+                                    className="w-full h-8 sm:h-9 rounded-lg border border-border/60 bg-muted/30 pl-8 sm:pl-9 pr-2 sm:pr-14 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-border transition-colors"
+                                />
+                                <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-border/60 bg-background px-1 text-[10px] font-medium text-muted-foreground">
+                                    ⌘K
+                                </kbd>
+                            </div>
+
+                            <button
+                                type="button"
+                                aria-label="Toggle docs navigation"
+                                onClick={() => setMobileOpen((v) => !v)}
+                                className="lg:hidden flex size-8 sm:size-9 items-center justify-center rounded-lg border border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted transition cursor-pointer"
+                            >
+                                <Menu className="size-4.5" />
+                            </button>
+                        </div>
                     </div>
-                </div>
-            )}
+                </header>
+
+                {/* Search Dropdown */}
+                {searchOpen && searchResults.length > 0 && (
+                    <div className="absolute top-14 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none sm:left-auto sm:right-5 sm:px-0">
+                        <div className="w-full max-w-md mt-1 rounded-lg border border-border/60 bg-popover shadow-xl overflow-hidden pointer-events-auto">
+                            {searchResults.map((result, i) => (
+                                <button
+                                    key={result.id}
+                                    type="button"
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        navigateToResult(result);
+                                    }}
+                                    onMouseEnter={() => setActiveResultIndex(i)}
+                                    className={cn(
+                                        "w-full text-left px-4 py-3 flex flex-col gap-0.5 transition-colors cursor-pointer",
+                                        i === activeResultIndex
+                                            ? "bg-accent text-accent-foreground"
+                                            : "hover:bg-muted/50",
+                                    )}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <FileText className="size-3.5 text-muted-foreground shrink-0" />
+                                        <span className="text-sm font-medium truncate">
+                                            {result.title}
+                                        </span>
+                                        <span className="text-[10px] text-muted-foreground ml-auto shrink-0">
+                                            {result.group}
+                                        </span>
+                                    </div>
+                                    {result.description && (
+                                        <p className="text-xs text-muted-foreground truncate pl-5.5">
+                                            {result.description}
+                                        </p>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
             </div>
 
@@ -999,12 +999,12 @@ export default function Docs() {
                                                 <button
                                                     key={sub.id}
                                                     type="button"
-                                                     onClick={() =>
-                                                         jumpToSub(
-                                                             routeId,
-                                                             sub.id,
-                                                         )
-                                                     }
+                                                    onClick={() =>
+                                                        jumpToSub(
+                                                            routeId,
+                                                            sub.id,
+                                                        )
+                                                    }
                                                     className={cn(
                                                         "block w-full text-left py-1 text-xs transition-colors cursor-pointer leading-normal",
                                                         activeSub === sub.id

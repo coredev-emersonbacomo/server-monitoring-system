@@ -162,7 +162,7 @@ export const FloatingInput = forwardRef<InputRef, InputProps>(
                     )}
 
                     {/* Wrapper to perfectly align highlighted text and input */}
-                    <div className={"relative flex-1 h-full flex items-center"}>
+                    <div className={"relative flex-1 min-w-0 h-full flex items-center"}>
                         <input
                             {...props}
                             ref={(element) => {
@@ -178,7 +178,7 @@ export const FloatingInput = forwardRef<InputRef, InputProps>(
                             onChange={handleChange}
                             value={internalValue}
                             className={twMerge(
-                                "relative flex-1 outline-none bg-transparent text-ellipsis text-foreground placeholder:text-muted-foreground/50 autofill:bg-transparent [&:-webkit-autofill]:bg-transparent",
+                                "relative flex-1 min-w-0 outline-none bg-transparent text-ellipsis text-foreground placeholder:text-muted-foreground/50 autofill:bg-transparent [&:-webkit-autofill]:bg-transparent",
                                 className,
                                 icon && "ml-2",
                             )}

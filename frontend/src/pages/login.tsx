@@ -75,22 +75,25 @@ export default function Login() {
     return (
         <div className="min-h-screen w-full flex bg-background text-foreground font-sans">
             {/* Left Pane */}
-            <div className="w-full lg:w-[40%] flex flex-col justify-center relative px-8 py-12 lg:px-20 lg:py-16">
+            <div className="w-full lg:w-[40%] flex flex-col min-h-screen overflow-y-auto px-6 py-8 sm:px-8 sm:py-12 lg:px-20 lg:py-16">
                 {/* Top Logo */}
-                <div className="absolute top-20 left-0 right-0 flex flex-col lg:flex-row justify-center items-center gap-1 lg:gap-3">
+                <div className="flex flex-col lg:flex-row justify-center items-center gap-1 lg:gap-3 shrink-0">
+
                     <img
                         src="/images/coreDevlogo.png"
                         alt="CoreDev Logo"
-                        className="w-15 h-15 object-contain"
+                        className="w-10 h-10 sm:w-12 sm:h-12 lg:w-15 lg:h-15 object-contain"
                     />
-                    <span className="font-bold text-2xl lg:text-3xl tracking-wide whitespace-nowrap">
+                    <span className="font-bold text-lg sm:text-xl lg:text-3xl tracking-wide whitespace-nowrap">
+
+
                         Server Monitoring
                     </span>
                 </div>
 
-                <div className="w-full max-w-sm mx-auto -mt-12">
-                    <h1 className="text-4xl font-semibold mb-8">Sign In</h1>
+                <div className="w-full max-w-sm mx-auto flex-1 flex flex-col justify-center py-8">
 
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold mb-6 sm:mb-8">Sign In</h1>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Email or Username */}
                         <div>
@@ -98,8 +101,8 @@ export default function Login() {
                                 id="email"
                                 name="email"
                                 label={
-                                    <span className="flex items-center gap-2">
-                                        <Mail className="w-4 h-4 text-primary" />
+                                    <span className="flex items-center gap-2 text-sm sm:text-base">
+                                        <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
                                         Email or Username
                                     </span>
                                 }
@@ -122,8 +125,8 @@ export default function Login() {
                                 id="password"
                                 name="password"
                                 label={
-                                    <span className="flex items-center gap-2">
-                                        <Lock className="w-4 h-4 text-primary" />
+                                    <span className="flex items-center gap-2 text-sm sm:text-base">
+                                        <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
                                         Password
                                     </span>
                                 }
@@ -142,7 +145,7 @@ export default function Login() {
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword((p) => !p)}
-                                    disabled={isPending}
+                                disabled={isPending}
                                     className="mr-2 text-muted-foreground hover:text-foreground disabled:opacity-50"
                                     tabIndex={-1}
                                 >
@@ -156,7 +159,7 @@ export default function Login() {
                         </div>
 
                         <div className="flex items-center justify-between pt-2">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 sm:gap-2">
                                 <input
                                     id="remember"
                                     type="checkbox"
@@ -165,18 +168,18 @@ export default function Login() {
                                         handleRememberChange(e.target.checked)
                                     }
                                     disabled={isPending}
-                                    className="h-4 w-4 rounded border-border bg-transparent text-primary focus:ring-primary focus:ring-offset-background"
+                                    className="h-3.5 w-3.5 sm:h-4 sm:w-4 rounded border-border bg-transparent text-primary focus:ring-primary focus:ring-offset-background"
                                 />
                                 <label
                                     htmlFor="remember"
-                                    className="text-sm text-foreground cursor-pointer select-none hover:text-primary transition-colors"
+                                    className="text-xs sm:text-sm text-foreground cursor-pointer select-none hover:text-primary transition-colors"
                                 >
                                     Remember me
                                 </label>
                             </div>
                             <Link
                                 to="/forgot-password"
-                                className="text-xs font-semibold text-foreground uppercase tracking-widest underline underline-offset-4 hover:text-primary transition-colors"
+                                className="text-[10px] sm:text-xs font-semibold text-foreground uppercase tracking-widest underline underline-offset-4 hover:text-primary transition-colors"
                             >
                                 Forgot password?
                             </Link>
@@ -186,7 +189,7 @@ export default function Login() {
                             id="auth-submit"
                             type="submit"
                             disabled={isPending}
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3.5 rounded-md mt-8 transition-colors flex items-center justify-center gap-2"
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-sm sm:text-base py-3 sm:py-3.5 rounded-md mt-6 sm:mt-8 transition-colors flex items-center justify-center gap-2"
                         >
                             {isPending && (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -197,7 +200,7 @@ export default function Login() {
                 </div>
 
                 {/* Theme Picker */}
-                <div className="absolute bottom-10 self-center w-[70%] lg:w-[55%]">
+                <div className="w-[70%] lg:w-[55%] mx-auto shrink-0 pb-2">
                     <ThemeToggle />
                 </div>
             </div>

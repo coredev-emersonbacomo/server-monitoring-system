@@ -796,7 +796,7 @@ export default function UserDetail() {
 
                 {/* ── Content ── */}
                 <div className="flex-1 -mt-12 relative z-20 px-6 sm:px-8 lg:px-10 pb-8">
-                    <div className="max-w-3xl mx-auto flex flex-col gap-6">
+                    <div className="max-w-7xl mx-auto flex flex-col gap-6">
                         {/* ── Form card ── */}
                         <Tab>
                             <Tab.Item icon={Info} title="Details">
