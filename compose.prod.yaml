@@ -1,0 +1,120 @@
+# Prod overlay: `docker compose -f compose.yaml -f compose.prod.yaml up -d --build`
+# Same services, prod target (baked code+assets, no mounts), restart policies.
+# Env comes from .env.docker — generate with `npm run setup:docker`.
+# Includes Caddy for auto-HTTPS (needs APP_DOMAIN pointing at this server).
+# Render uses render.yaml instead (same Dockerfile prod target).
+
+services:
+  postgres:
+    ports: [] # don't expose DB publicly in prod
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-server_monitoring}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+
+  redis:
+    ports: [] # internal only
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-}"]
+
+  app:
+    build:
+      context: .
+      target: prod
+    volumes: [] # baked code, no mounts
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: ${APP_URL:?APP_URL must be set}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-server_monitoring}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      REDIS_CLIENT: predis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      CACHE_STORE: redis
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: ${REVERB_APP_ID:?REVERB_APP_ID must be set}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:?REVERB_APP_KEY must be set}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:?REVERB_APP_SECRET must be set}
+      REVERB_HOST: ${VITE_REVERB_HOST:-}
+      REVERB_PORT: ${VITE_REVERB_PORT:-443}
+      REVERB_SCHEME: ${VITE_REVERB_SCHEME:-https}
+      REVERB_SERVER_HOST: 0.0.0.0
+      REVERB_SERVER_PORT: 8081
+      TELESCOPE_ENABLED: "false"
+      MUTE_NOTIFICATION: ${MUTE_NOTIFICATION:-false}
+    command: >
+      sh -c "php artisan migrate --force &&
+             php artisan serve --host=0.0.0.0 --port=8000"
+
+  reverb:
+    build:
+      context: .
+      target: prod
+    volumes: []
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      APP_URL: ${APP_URL:?APP_URL must be set}
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      REVERB_APP_ID: ${REVERB_APP_ID:?REVERB_APP_ID must be set}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:?REVERB_APP_KEY must be set}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:?REVERB_APP_SECRET must be set}
+      REVERB_SERVER_HOST: 0.0.0.0
+      REVERB_SERVER_PORT: 8081
+    command: ["php", "artisan", "reverb:start"]
+
+  queue:
+    build:
+      context: .
+      target: prod
+    volumes: []
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      DB_HOST: postgres
+      REDIS_HOST: redis
+    command: ["php", "artisan", "queue:work"]
+
+  scheduler:
+    build:
+      context: .
+      target: prod
+    volumes: []
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      DB_HOST: postgres
+      REDIS_HOST: redis
+    command: ["php", "artisan", "schedule:work"]
+
+  # Reverse proxy with auto-HTTPS (Let's Encrypt). Requires DNS:
+  # APP_DOMAIN (e.g. monitor.company.com) → this server's public IP,
+  # ports 80/443 reachable. Skip on Render (it terminates TLS itself).
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN must be set (e.g. monitor.company.com)}
+    restart: unless-stopped
+    depends_on:
+      - app
+      - reverb
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -10,10 +10,9 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 // final merged map, so a VITE_* var can borrow from a non-VITE_* var regardless
 // of file order (e.g. VITE_ALERTS_VISUAL_DEBUGGER="${ALERTS_VISUAL_DEBUGGER}").
 //
-// Precedence mirrors bootstrap/app.php:
-//   - The first file only seeds vars not already set in the real shell env.
-//   - A real shell env var always beats the first file (e.g. .env.development).
-//   - Later files (e.g. .env) always override.
+// Existing process.env values always win. This lets tunnel.js inject overrides
+// (e.g. VITE_REVERB_HOST=trycloudflare.com) before calling entry.js, which
+// loads .env.production — the file provides defaults, process.env stays authoritative.
 export function loadEnvIntoProcess(files) {
     const merged = {};
     for (const [index, file] of files.entries()) {
@@ -32,8 +31,8 @@ export function loadEnvIntoProcess(files) {
                 v = v.slice(1, -1);
             }
             if (v === '') continue;
-            // The first file only seeds vars not already present in the real env.
-            if (index === 0 && process.env[k] !== undefined) continue;
+            // Existing process.env values always win (tunnel overrides, shell env, etc.)
+            if (process.env[k] !== undefined) continue;
             merged[k] = v;
         }
     }

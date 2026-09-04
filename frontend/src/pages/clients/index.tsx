@@ -215,10 +215,6 @@ export default function ClientsIndex() {
     const currentSortLabel =
         sortOptions.find((o) => o.value === s.sort)?.label ?? "Name";
 
-    const handleSearchChange = useCallback(
-        (val: string) => setS({ q: val, page: 1 }),
-        [setS],
-    );
 
     const handleFilterChange = useCallback(
         (val: string) => setS({ filter: val as FilterTab, page: 1 }),

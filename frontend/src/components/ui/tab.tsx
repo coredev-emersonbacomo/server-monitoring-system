@@ -133,6 +133,7 @@ function Tab({ children, className, syncUrl = true, id }: TabProps) {
                                 <button
                                     key={item.props.title}
                                     type="button"
+                                    tabIndex={-1}
                                     onClick={() =>
                                         handleTabChange(item.props.title)
                                     }

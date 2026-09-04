@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// Health check for orchestrators (Render, Docker). No auth, no DB.
+Route::get('/health', fn () => response()->json(['status' => 'ok']));
+
 // Standard dashboard Broadcast auth (JWT users)
 Broadcast::routes(['middleware' => [JwtAuthenticate::class]]);
 

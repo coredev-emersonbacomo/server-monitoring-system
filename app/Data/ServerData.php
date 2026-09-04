@@ -122,8 +122,8 @@ class ServerData extends Data
                 $activeDetails = new ProvisionDetailData(
                     token: $token,
                     expires_at: $activeToken->expires_at->copy()->utc()->toIso8601String(),
-                    linux_command: 'sudo curl -fsSL '.url('/install/linux').' | sudo bash -s -- '.$token,
-                    windows_command: WindowsCommand::make('/install/windows.ps1', '-ProvisionToken', $token, rtrim(url('/'), '/')),
+                    linux_command: 'sudo curl -fsSL '.rtrim(env('APP_URL') ?: url('/'), '/').'/install/linux'.' | sudo bash -s -- '.$token,
+                    windows_command: WindowsCommand::make('/install/windows.ps1', '-ProvisionToken', $token, rtrim(env('APP_URL') ?: url('/'), '/')),
                 );
             }
         }
@@ -181,10 +181,10 @@ class ServerData extends Data
         // For uninstalled with past data we still show last agent via displayAgent,
         // but uninstall commands are only for the currently installed agent.
         $installationId = $agent?->installation_uuid;
-        $appUrl = rtrim(url('/'), '/');
+        $appUrl = rtrim(env('APP_URL') ?: url('/'), '/');
 
         $uninstallLinux = $installationId
-            ? 'sudo curl -fsSL '.url('/uninstall/linux').' | sudo bash -s -- '.$installationId
+            ? 'sudo curl -fsSL '.rtrim(env('APP_URL') ?: url('/'), '/').'/uninstall/linux'.' | sudo bash -s -- '.$installationId
             : null;
         $uninstallWindows = $installationId
             ? WindowsCommand::make('/uninstall/windows.ps1', '-Instance', $installationId, $appUrl)

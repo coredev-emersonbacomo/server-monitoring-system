@@ -10,7 +10,6 @@ use App\Models\Agent;
 use App\Models\AgentVersion;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class SettingController extends Controller
 {
@@ -29,15 +28,17 @@ class SettingController extends Controller
     /**
      * Bulk-update settings for authenticated users.
      */
-    public function update(UpdateSettingsData $data, Request $request): JsonResponse
+    public function update(UpdateSettingsData $data): JsonResponse
     {
-        $attributes = collect(request()->validate([
-            'secop_limit_per_client' => ['sometimes', 'integer', 'min:1', 'max:50'],
-            'heartbeat_interval' => ['sometimes', 'integer', 'min:1', 'max:1000'],
-            'offline_threshold' => ['sometimes', 'integer', 'min:1', 'max:3600'],
-            'port_ping_interval' => ['sometimes', 'integer', 'min:1', 'max:3600'],
-            'agent_version' => ['sometimes', 'string'],
-        ]));
+        $attributes = collect($data->toArray())->filter(fn ($value) => $value !== null);
+
+        if ($attributes->has('heartbeat_interval') && $attributes->has('offline_threshold')) {
+            if ((int) $attributes['offline_threshold'] < (int) $attributes['heartbeat_interval']) {
+                return response()->json([
+                    'message' => 'Offline threshold must be greater than or equal to the heartbeat interval.',
+                ], 422);
+            }
+        }
 
         $agentVersion = $attributes->pull('agent_version');
         if ($agentVersion !== null) {

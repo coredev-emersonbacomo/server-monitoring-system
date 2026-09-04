@@ -5,7 +5,6 @@ import {
     InlineCode,
     Callout,
 } from "./Section";
-import RedisDownloadLink from "./RedisDownloadLink";
 import { DocsGmailSmtpContent } from "./DocsGmailSmtpContent";
 
 export function DocsOverviewContent() {
@@ -90,50 +89,79 @@ export function DocsRequirementsContent() {
         <>
             <Section title="Required software">
                 <p>
-                    To get started, install the prerequisites below, then run{" "}
-                    <InlineCode>npm run setup</InlineCode> to install all
-                    dependencies.
+                    All services (PHP, PostgreSQL/TimescaleDB, Redis, Reverb,
+                    queue, scheduler) run in Docker — install it once and
+                    nothing else is required on the host:
                 </p>
-                <Callout>
-                    <InlineCode>npm run setup</InlineCode> runs{" "}
-                    <InlineCode>composer install && npm install</InlineCode>.
-                    For the full one-command setup (env, key, migrate, build),
-                    use <InlineCode>composer run setup</InlineCode>.
-                </Callout>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>PHP 8.4+</strong>
+                        <strong>Docker Desktop</strong> —{" "}
+                        <a
+                            className="text-blue-600 underline"
+                            href="https://www.docker.com/products/docker-desktop/"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            download here
+                        </a>{" "}
+                        (Windows/macOS). Linux: install{" "}
+                        <InlineCode>docker engine</InlineCode> +{" "}
+                        <InlineCode>docker compose plugin</InlineCode> from your
+                        package manager.
                     </li>
                     <li>
-                        <strong>Composer 2.x</strong>
-                    </li>
-                    <li>
-                        <strong>Node.js</strong> <InlineCode>^20.19.0 || &gt;=22.12.0</InlineCode>
-                    </li>
-                    <li>
-                        <strong>PostgreSQL 16+ with TimescaleDB extension</strong>
-                    </li>
-                    <li>
-                        <strong>Redis</strong> — auto-started in dev.
-                    </li>
-                    <li>
-                        <strong>Typst CLI</strong> (for PDF reports)
+                        <strong>Git</strong> — to clone the repository.
                     </li>
                 </ul>
+                <Callout>
+                    Windows needs WSL2 enabled for Docker Desktop: run{" "}
+                    <InlineCode>
+                        wsl --install --no-distribution
+                    </InlineCode>{" "}
+                    in an elevated PowerShell, reboot, then start Docker
+                    Desktop.
+                </Callout>
                 <p className="text-sm text-gray-500 mt-2">
                     Go toolchain is only needed to rebuild the monitoring agent
                     and is not required to run the system.
                 </p>
             </Section>
 
-            <Section title="PHP extensions">
+            <Section title="What Docker provides">
                 <p>
-                    The following PHP extensions must be enabled (the
-                    framework requires them):
+                    One command starts the full stack — no manual installs of
+                    PHP, PostgreSQL, Redis, or Node:
                 </p>
-                <CodeBlock>{`ctype, filter, hash, mbstring, openssl, session, tokenizer
-json, zlib
-pdo_pgsql   (required — the primary database driver)`}</CodeBlock>
+                <CodeBlock>{`docker compose up --build`}</CodeBlock>
+                <ul className="list-disc pl-5 space-y-1.5">
+                    <li>
+                        <strong>app</strong> — Laravel API + React SPA (
+                        <InlineCode>http://localhost:8000</InlineCode>)
+                    </li>
+                    <li>
+                        <strong>postgres</strong> — TimescaleDB (
+                        <InlineCode>timescale/timescaledb-ha:pg17</InlineCode>)
+                        with hypertables and continuous aggregates
+                    </li>
+                    <li>
+                        <strong>redis</strong> — cache and sessions
+                    </li>
+                    <li>
+                        <strong>reverb</strong> — WebSocket server (
+                        <InlineCode>ws://localhost:8081</InlineCode>)
+                    </li>
+                    <li>
+                        <strong>queue / scheduler</strong> — background jobs and
+                        cron (<InlineCode>system:monitor</InlineCode>,{" "}
+                        <InlineCode>agg:refresh</InlineCode>, etc.)
+                    </li>
+                </ul>
+                <p>
+                    Data persists in Docker volumes (
+                    <InlineCode>postgres_data</InlineCode>,{" "}
+                    <InlineCode>redis_data</InlineCode>). Source is bind-mounted
+                    so edits apply live.
+                </p>
             </Section>
 
             <Section title="Database requirements">
@@ -166,60 +194,17 @@ pdo_pgsql   (required — the primary database driver)`}</CodeBlock>
 export function DocsInstallationContent() {
     return (
         <>
-            <Section title="Install PHP dependencies">
-                <CodeBlock>{`composer install`}</CodeBlock>
+            <Section title="Clone and start">
+                <CodeBlock>{`git clone <repository-url>
+cd server-monitoring-system
+docker compose up --build`}</CodeBlock>
                 <p>
-                    A convenience command chains everything below:{" "}
-                    <InlineCode>composer install</InlineCode>, copies{" "}
-                    <InlineCode>.env</InlineCode> from{" "}
-                    <InlineCode>.env.example</InlineCode> if missing, generates
-                    an app key, runs migrations, installs npm packages, and
-                    builds the frontend:
+                    That is the whole install: images build (PHP 8.5,
+                    extensions, Composer + npm deps, frontend assets),
+                    TimescaleDB and Redis start, migrations run automatically,
+                    and the app serves on{" "}
+                    <InlineCode>http://localhost:8000</InlineCode>.
                 </p>
-                <CodeBlock>{`composer run setup`}</CodeBlock>
-            </Section>
-
-            <Section title="Select an environment">
-                <p>
-                    Laravel loads its base configuration from{" "}
-                    <InlineCode>.env.development</InlineCode> (or{" "}
-                    <InlineCode>.env.production</InlineCode>) and merges{" "}
-                    <InlineCode>.env</InlineCode> (gitignored) on top for
-                    personal overrides — <InlineCode>.env</InlineCode> is no
-                    longer the source of app config. The entry script switches
-                    the mode and regenerates{" "}
-                    <InlineCode>.env.example</InlineCode> from{" "}
-                    <InlineCode>.env.development</InlineCode> on every run:
-                </p>
-                <CodeBlock>{`npm run dev     # node entry.js dev  -> loads .env.development + .env, starts the dev stack
-npm run prod    # node entry.js prod -> loads .env.production  + .env, clears config cache, builds`}</CodeBlock>
-                <Callout type="warning">
-                    <InlineCode>.env.development</InlineCode> is committed and
-                    contains live secrets (JWT secret, Reverb keys, Cloudinary,
-                    Discord). Never commit{" "}
-                    <InlineCode>.env.production</InlineCode> or your real
-                    credentials.
-                </Callout>
-            </Section>
-
-            <Section title="Install JavaScript dependencies">
-                <p>
-                    Installing from the repo root covers the{" "}
-                    <InlineCode>frontend</InlineCode> workspace:
-                </p>
-                <CodeBlock>{`npm install`}</CodeBlock>
-            </Section>
-
-            <Section title="Run migrations and seeders">
-                <CodeBlock>{`php artisan migrate --seed`}</CodeBlock>
-                <p>
-                    Seeders create default settings, the admin account, sample
-                    clients, and a starter global alert config. To reset
-                    everything from scratch (drops aggregates, re-runs{" "}
-                    <InlineCode>migrate:fresh --seed</InlineCode>, dumps the
-                    schema, and reloads the monitor):
-                </p>
-                <CodeBlock>{`npm run resetdb`}</CodeBlock>
                 <Callout>
                     The default admin credentials are{" "}
                     <InlineCode>admin / admin123</InlineCode>. Change the
@@ -227,14 +212,32 @@ npm run prod    # node entry.js prod -> loads .env.production  + .env, clears co
                 </Callout>
             </Section>
 
-            <Section title="Link storage and build the frontend">
-                <CodeBlock>{`php artisan storage:link
-npm run build`}</CodeBlock>
+            <Section title="Environment files">
                 <p>
-                    The build compiles the React SPA to{" "}
-                    <InlineCode>frontend/dist</InlineCode> and the Laravel Vite
-                    assets to <InlineCode>public/build</InlineCode>.
+                    Dev needs no env setup — defaults in{" "}
+                    <InlineCode>compose.yaml</InlineCode> work out of the box.
+                    Production reads <InlineCode>.env.docker</InlineCode>{" "}
+                    (gitignored, copy from{" "}
+                    <InlineCode>.env.docker.example</InlineCode>):
                 </p>
+                <CodeBlock>{`cp .env.docker.example .env.docker   # fill in secrets
+docker compose -f compose.yaml -f compose.prod.yaml up -d --build`}</CodeBlock>
+                <p>
+                    Required prod values: <InlineCode>APP_URL</InlineCode>,{" "}
+                    <InlineCode>APP_KEY</InlineCode>,{" "}
+                    <InlineCode>DB_PASSWORD</InlineCode>,{" "}
+                    <InlineCode>REVERB_APP_ID/KEY/SECRET</InlineCode>,{" "}
+                    <InlineCode>JWT_SECRET</InlineCode>. See the secrets table
+                    in the README.
+                </p>
+            </Section>
+
+            <Section title="Reset the database">
+                <p>
+                    To reset from scratch inside Docker (drops aggregates,
+                    re-runs <InlineCode>migrate:fresh --seed</InlineCode>):
+                </p>
+                <CodeBlock>{`docker compose exec app php artisan migrate:fresh --seed`}</CodeBlock>
             </Section>
 
             <Section title="(Optional) Rebuild the agent">
@@ -242,7 +245,8 @@ npm run build`}</CodeBlock>
                     Pre-built agent binaries are committed to the repo (
                     <InlineCode>public/agent</InlineCode> and{" "}
                     <InlineCode>public/MonitorAgent.exe</InlineCode>), so this
-                    is only needed when you change agent code:
+                    is only needed when you change agent code (requires Go on
+                    the host, not in Docker):
                 </p>
                 <CodeBlock>{`npm run compileagent`}</CodeBlock>
                 <p>
@@ -251,82 +255,6 @@ npm run build`}</CodeBlock>
                     binaries change, and broadcasts an update to connected
                     agents.
                 </p>
-            </Section>
-
-            <Section title="Redis">
-                <p>
-                    Redis is used for application caching. It runs on{" "}
-                    <InlineCode>127.0.0.1:6379</InlineCode> by default and is
-                    read from <InlineCode>.env.development</InlineCode>{" "}
-                    (<InlineCode>REDIS_HOST</InlineCode>,{" "}
-                    <InlineCode>REDIS_PORT</InlineCode>). During development,
-                    <InlineCode>npm run dev</InlineCode> auto-starts Redis from{" "}
-                    <InlineCode>PATH</InlineCode>, falling back to{" "}
-                    <InlineCode>C:\redis\redis-server.exe</InlineCode> on Windows.
-                </p>
-                <SubSection title="Install via npm">
-                    <p>
-                        One command downloads and installs Redis for your
-                        platform:
-                    </p>
-                    <CodeBlock>{`npm run install-redis:windows   # Windows: extracts to C:\\redis
-npm run install-redis:linux     # Linux: package manager or source build`}</CodeBlock>
-                    <p>
-                        The Windows script downloads the non-Service ZIP
-                        release to <InlineCode>C:\redis\</InlineCode> and
-                        verifies <InlineCode>redis-server.exe</InlineCode>. The
-                        Linux script uses the system package manager (apt, dnf,
-                        yum, or pacman), falling back to a source build, then
-                        starts Redis as a daemon and verifies it responds to
-                        PING.
-                    </p>
-                    <Callout>
-                        The Windows build ships its MSYS2 runtime DLLs next to
-                        the executable — keep them in <InlineCode>C:\redis\</InlineCode>{" "}
-                        and do{" "}
-                        <strong>not</strong> move <InlineCode>redis-server.exe</InlineCode>
-                        without the DLLs.
-                    </Callout>
-                </SubSection>
-                <SubSection title="Manual: Windows">
-                    <ol className="list-decimal pl-5 space-y-1.5">
-                        <li>
-                            Click{" "}
-                            <RedisDownloadLink fallbackLabel="Download latest release" />{" "}
-                            to download the latest non-Service (MSYS2) ZIP.
-                            Skip the <InlineCode>-service</InlineCode> and{" "}
-                            <InlineCode>.msi</InlineCode> variants.
-                        </li>
-                        <li>
-                            Right-click the downloaded ZIP and choose{" "}
-                            <strong>Extract All…</strong>, then browse to{" "}
-                            <InlineCode>C:\redis\</InlineCode> and extract.
-                        </li>
-                        <li>
-                            Open <InlineCode>C:\redis\</InlineCode> in File
-                            Explorer and confirm{" "}
-                            <InlineCode>redis-server.exe</InlineCode> is there.
-                        </li>
-                    </ol>
-                </SubSection>
-                <SubSection title="Manual: Linux">
-                    <p>
-                        Install via your package manager or build from source,
-                        then start as a daemon:
-                    </p>
-                    <CodeBlock>{`# apt / Debian
-sudo apt-get install -y redis-server
-# dnf / Fedora
-sudo dnf install -y redis
-# pacman / Arch
-sudo pacman -Sy --noconfirm redis
-# build from source (latest stable)
-curl -fsSL https://download.redis.io/redis-stable.tar.gz | tar xz
-cd redis-stable && make && sudo make install`}</CodeBlock>
-                    <CodeBlock>{`# start (if not running as a service)
-redis-server --daemonize yes --bind 127.0.0.1 --port 6379
-redis-cli ping   # PONG`}</CodeBlock>
-                </SubSection>
             </Section>
         </>
     );
@@ -521,35 +449,62 @@ export function DocsRunningContent() {
     return (
         <>
             <Section title="Quick start">
-                <ul className="list-disc pl-5 space-y-1.5">
-                    <li>
-                        <InlineCode>npm run setup</InlineCode> — install all dependencies.
-                    </li>
-                    <li>
-                        <InlineCode>npm run dev</InlineCode> — full dev environment (Redis, Vite, Reverb, queue, scheduler auto-started).
-                    </li>
-                    <li>
-                        <InlineCode>npm start</InlineCode> — build and deploy frontend to <InlineCode>public/</InlineCode> for production.
-                    </li>
-                </ul>
+                <CodeBlock>{`docker compose up --build          # dev: app + db + redis + reverb + queue + scheduler
+docker compose logs -f app          # tail app logs
+docker compose exec app php artisan tinker   # REPL inside the container`}</CodeBlock>
+                <p>
+                    Rebuild after dependency changes (
+                    <InlineCode>composer.json</InlineCode> /{" "}
+                    <InlineCode>package.json</InlineCode>); source edits apply
+                    live through the bind mount.
+                </p>
             </Section>
 
-            <Section title="Production daemons">
+            <Section title="Production: physical server">
                 <p>
-                    Unlike <InlineCode>npm run dev</InlineCode>, production does not
-                    auto-start the queue, Reverb, or scheduler. Run them as
-                    supervised daemons:
+                    Prerequisites on the server: Docker Engine + compose
+                    plugin, a DNS <InlineCode>A</InlineCode> record (e.g.{" "}
+                    <InlineCode>monitor.company.com</InlineCode>) pointing at
+                    the server, ports 80/443 open.
                 </p>
-                <CodeBlock>{`php artisan queue:work
-php artisan reverb:start`}</CodeBlock>
+                <CodeBlock>{`git clone <repo> && cd server-monitoring-system
+npm run setup:docker -- --app-url https://monitor.company.com
+docker compose -f compose.yaml -f compose.prod.yaml up -d --build`}</CodeBlock>
                 <p>
-                    Scheduler via cron:{" "}
-                    <InlineCode>* * * * * php artisan schedule:run</InlineCode>.
+                    Caddy terminates HTTPS automatically (Let&apos;s Encrypt)
+                    and routes <InlineCode>/app/*</InlineCode> to Reverb
+                    websockets, everything else to Laravel. First boot
+                    migrates; data persists in Docker volumes. Fill{" "}
+                    <InlineCode>MAIL_*</InlineCode>/
+                    <InlineCode>CLOUDINARY_*</InlineCode> in{" "}
+                    <InlineCode>.env.docker</InlineCode> only if needed.
                 </p>
+                <SubSection title="Updates">
+                    <CodeBlock>{`git pull && docker compose -f compose.yaml -f compose.prod.yaml up -d --build`}</CodeBlock>
+                    <p>
+                        ~30s downtime; migrations run on boot.
+                    </p>
+                </SubSection>
+                <SubSection title="Backups">
+                    <p>
+                        Nightly cron on the host:
+                    </p>
+                    <CodeBlock>{`docker compose -f compose.yaml -f compose.prod.yaml exec -T postgres pg_dump -U postgres server_monitoring | gzip > backup-$(date +%F).sql.gz`}</CodeBlock>
+                </SubSection>
+            </Section>
+
+            <Section title="Production: Render (no server needed)">
                 <p>
-                    Enable HTTPS: set <InlineCode>REVERB_SCHEME=https</InlineCode>,
-                    <InlineCode>APP_DEBUG=false</InlineCode>, and{" "}
-                    <InlineCode>JWT_COOKIE_SECURE=true</InlineCode>.
+                    Dashboard → New → Blueprint → connect the repo (
+                    <InlineCode>render.yaml</InlineCode>). Secrets
+                    auto-generate once via the shared env group; fill the{" "}
+                    <InlineCode>sync: false</InlineCode> keys (
+                    <InlineCode>MAIL_*</InlineCode>,{" "}
+                    <InlineCode>CLOUDINARY_*</InlineCode>) in the dashboard.
+                    Set <InlineCode>APP_URL</InlineCode> to the Render URL
+                    after first deploy, redeploy once.{" "}
+                    <InlineCode>git push</InlineCode> to{" "}
+                    <InlineCode>main</InlineCode> rebuilds and redeploys.
                 </p>
             </Section>
 
@@ -583,13 +538,19 @@ php artisan reverb:start`}</CodeBlock>
                         PATH on the server.
                     </li>
                     <li>
-                        <strong>No realtime updates</strong> — confirm Reverb is
-                        running and the <InlineCode>VITE_REVERB_*</InlineCode>{" "}
-                        values match the backend.
+                        <strong>No realtime updates</strong> — confirm the{" "}
+                        <InlineCode>reverb</InlineCode> service is running (
+                        <InlineCode>docker compose ps</InlineCode>) and the{" "}
+                        <InlineCode>VITE_REVERB_*</InlineCode> build args match
+                        the deployment URL (they bake in at image build time —
+                        rebuild after changing them).
                     </li>
                     <li>
-                        <strong>Jobs never run</strong> — the queue worker,{" "}
-                        Reverb, and the scheduler must all be running.
+                        <strong>Jobs never run</strong> — the{" "}
+                        <InlineCode>queue</InlineCode>,{" "}
+                        <InlineCode>reverb</InlineCode>, and{" "}
+                        <InlineCode>scheduler</InlineCode> services must all be
+                        up: <InlineCode>docker compose ps</InlineCode>.
                     </li>
                     <li>
                         <strong>Agent shows "Waiting for Heartbeat"</strong> —{" "}
