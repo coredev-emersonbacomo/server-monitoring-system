@@ -29,7 +29,12 @@ export default defineConfig({
         host: "0.0.0.0",
         allowedHosts: ngrokDomain ? [ngrokDomain] : ["localhost", "127.0.0.1"],
         hmr: ngrokDomain ? {
+            // Tunnel serves https on 443 only: the browser must open
+            // wss://<domain> (no :5173 — ngrok free has no remote ports),
+            // otherwise the HMR client tries ws://host:5173 and fails.
             host: ngrokDomain,
+            protocol: "wss",
+            clientPort: 443,
         } : undefined,
         proxy: {
             "/api": {

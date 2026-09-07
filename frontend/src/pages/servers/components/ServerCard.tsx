@@ -57,21 +57,22 @@ export function ServerCard({ server }: ServerCardProps) {
                     </div>
                 </div>
 
-                {/* Bottom Badge Slot: Fixed height so bottom status is aligned */}
-                <div className="w-full h-6 flex items-center justify-center">
-                    <ServerStatusBadge
-                        status={server.status}
-                        record_status={server.record_status}
-                        agent_deleted={server.agent_deleted}
-                        size="sm"
-                    />
+                {/* Bottom stack: description above the badge, same gap rhythm
+                    as the center content. Fixed heights keep every card
+                    aligned with or without a description. */}
+                <div className="w-full flex flex-col items-center gap-2.5">
+                    <p className="text-xs text-muted-foreground text-center line-clamp-2 wrap-break-word w-full min-h-8" title={server.description ?? undefined}>
+                        {server.description || "\u00A0"}
+                    </p>
+                    <div className="w-full h-6 flex items-center justify-center">
+                        <ServerStatusBadge
+                            status={server.status}
+                            record_status={server.record_status}
+                            agent_deleted={server.agent_deleted}
+                            size="sm"
+                        />
+                    </div>
                 </div>
-
-                {/* Description below the badge, like ClientCard — fixed two-line
-                    slot so cards stay the same height with or without one */}
-                <p className="text-xs text-muted-foreground text-center line-clamp-2 wrap-break-word w-full min-h-8" title={server.description ?? undefined}>
-                    {server.description || "\u00A0"}
-                </p>
             </div>
         </Link>
     );
