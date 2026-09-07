@@ -23,6 +23,8 @@ export default defineConfig({
         allowedHosts: ngrokDomain ? [ngrokDomain] : true,
         hmr: ngrokDomain ? {
             host: ngrokDomain,
+            protocol: "wss",
+            clientPort: 443,
         } : undefined,
     },
 });
