@@ -25,6 +25,9 @@ services:
       APP_ENV: production
       APP_DEBUG: "false"
       APP_URL: ${APP_URL:?APP_URL must be set}
+      # Prod serves directly (no ngrok): agent install commands must never
+      # carry the interstitial-bypass header, even if leaked into the shell.
+      NGROK_SKIP_BROWSER_WARNING: "false"
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
@@ -49,9 +52,12 @@ services:
       REVERB_SERVER_PORT: 8081
       TELESCOPE_ENABLED: "false"
       MUTE_NOTIFICATION: ${MUTE_NOTIFICATION:-false}
-    command: >
-      sh -c "php artisan migrate --force &&
-             php artisan serve --host=0.0.0.0 --port=8000"
+      # Flip switch: "false" disables boot seeding in prod. Create the first
+      # prod user ONCE with:
+      #   docker compose -f compose.yaml -f compose.prod.yaml exec app \
+      #     php artisan db:seed --class=UserSeeder --force
+      SEED_ON_BOOT: "false"
+    # No command override: image CMD runs FrankenPHP; entrypoint migrates.
 
   reverb:
     build:

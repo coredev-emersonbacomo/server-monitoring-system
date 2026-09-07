@@ -3,6 +3,8 @@ import laravel from "laravel-vite-plugin";
 import { bunny } from "laravel-vite-plugin/fonts";
 import tailwindcss from "@tailwindcss/vite";
 
+const ngrokDomain = process.env.NGROK_DOMAIN || "";
+
 export default defineConfig({
     plugins: [
         laravel({
@@ -16,18 +18,11 @@ export default defineConfig({
         }),
         tailwindcss(),
     ],
-    //  server: {
-    //     host: "0.0.0.0",
-    //     allowedHosts: ["chip-colt-fretted.ngrok-free.dev"],
-    //     hmr: {
-    //         host: "chip-colt-fretted.ngrok-free.dev",
-    //     },
-    // },
     server: {
         host: "0.0.0.0",
-        allowhosts: true,
-        hmr: {
-            host: "https://urology-single-mantis.ngrok-free.dev",
-        },
+        allowedHosts: ngrokDomain ? [ngrokDomain] : true,
+        hmr: ngrokDomain ? {
+            host: ngrokDomain,
+        } : undefined,
     },
-}); 
+});

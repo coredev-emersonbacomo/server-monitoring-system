@@ -5,7 +5,13 @@ import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import { watchLaravelApi } from "./plugins/watchLaravelApi";
 
-// https://vite.dev/config/
+const ngrokDomain = process.env.NGROK_DOMAIN || "";
+// Backend for ALL proxy targets below. Set ONLY by `npm run ngrok` (exported
+// for its spawned Vite process). Plain `npm run dev` must NOT read
+// NGROK_UPSTREAM from .env — that value targets the Docker app, which is
+// dead air in Herd mode — so the fallback stays the Herd hostname.
+const upstream = process.env.VITE_BACKEND_URL || "http://server-monitoring-system.test";
+
 export default defineConfig({
     plugins: [
         react(),
@@ -20,16 +26,47 @@ export default defineConfig({
     },
     server: {
         port: 5173,
-        // allowedHosts: ["chip-colt-fretted.ngrok-free.dev"],
-        // target: "http://127.0.0.1:8000",
-        // target: "http://server-monitoring-system.test",
+        host: "0.0.0.0",
+        allowedHosts: ngrokDomain ? [ngrokDomain] : ["localhost", "127.0.0.1"],
+        hmr: ngrokDomain ? {
+            host: ngrokDomain,
+        } : undefined,
         proxy: {
             "/api": {
-                target: "http://server-monitoring-system.test",
+                target: upstream,
                 changeOrigin: true,
             },
             "/sanctum": {
-                target: "http://server-monitoring-system.test",
+                target: upstream,
+                changeOrigin: true,
+            },
+            // Agent lifecycle + binary downloads are Laravel-side (web routes
+            // and public/ files) with no Vite equivalent — proxy them too so
+            // install commands work through the tunnel end to end.
+            "/install": {
+                target: upstream,
+                changeOrigin: true,
+            },
+            "/uninstall": {
+                target: upstream,
+                changeOrigin: true,
+            },
+            "/detach": {
+                target: upstream,
+                changeOrigin: true,
+            },
+            "/agent": {
+                target: upstream,
+                changeOrigin: true,
+            },
+            "/MonitorAgent.exe": {
+                target: upstream,
+                changeOrigin: true,
+            },
+            // Laravel-only pages (no Vite equivalent) must also reach the
+            // backend through the tunnel, e.g. /telescope in HMR flow.
+            "/telescope": {
+                target: upstream,
                 changeOrigin: true,
             },
         },

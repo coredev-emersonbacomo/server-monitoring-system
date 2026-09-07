@@ -32,7 +32,17 @@ docker compose up --build
 
 App: http://localhost:8000 · Reverb: ws://localhost:8081.
 TimescaleDB + Redis included — nothing else to install.
-First boot runs migrations automatically. Source is bind-mounted (live edits).
+First boot migrates and seeds automatically (login: `user` / `user123`).
+Source is bind-mounted (live edits).
+
+Pre-prod testing (stable tunnel, expose to agents):
+
+```bash
+npm run ngrok   # starts Docker stack, builds with ngrok URL, tunnels to your reserved domain
+```
+
+Configure in your gitignored `.env`: `NGROK_DOMAIN` (reserved ngrok domain) and
+`NGROK_UPSTREAM=127.0.0.1:8000` (Docker app). For Herd: set `NGROK_UPSTREAM=127.0.0.1:80` instead.
 
 ### C. Production on a physical server (primary prod path)
 
@@ -48,7 +58,8 @@ docker compose -f compose.yaml -f compose.prod.yaml up -d --build
 
 Caddy terminates HTTPS automatically (Let's Encrypt) and routes
 `/app/*` → Reverb websockets, everything else → Laravel.
-First boot migrates; data persists in Docker volumes.
+First boot migrates and seeds (login: `user` / `user123`); data persists
+in Docker volumes.
 
 **Updates:** `git pull && docker compose -f compose.yaml -f compose.prod.yaml up -d --build`
 (~30s downtime; migrations run on boot).
@@ -95,6 +106,21 @@ vendor/bin/pint --dirty     # format PHP before committing
 ```
 
 CI (`.github/workflows/ci.yml`) runs Pest + Pint + frontend build on every push.
+
+## Seeding (`SEED_ON_BOOT` flip switch)
+
+- **Dev** (`compose.yaml` sets `SEED_ON_BOOT=true`): first boot seeds the full
+  `DatabaseSeeder` (default user `user` / `user123` + demo clients/servers) —
+  but **only when the users table is empty**. Reboots never duplicate or wipe.
+- **Prod** (`compose.prod.yaml` sets `SEED_ON_BOOT=false`): never auto-seeds.
+  Create the first prod user once with:
+  ```bash
+  docker compose -f compose.yaml -f compose.prod.yaml exec app \
+    php artisan db:seed --class=UserSeeder --force
+  ```
+  (`UserSeeder` is idempotent — safe to re-run. Never run `migrate:fresh`
+  or full `db:seed` in prod: factories would duplicate demo data.)
+- Local Herd dev: `npm run resetdb` (fresh migrate + seed + schema dump).
 
 ## Database access
 

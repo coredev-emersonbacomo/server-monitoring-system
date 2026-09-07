@@ -122,7 +122,7 @@ class ServerData extends Data
                 $activeDetails = new ProvisionDetailData(
                     token: $token,
                     expires_at: $activeToken->expires_at->copy()->utc()->toIso8601String(),
-                    linux_command: 'sudo curl -fsSL '.rtrim(env('APP_URL') ?: url('/'), '/').'/install/linux'.' | sudo bash -s -- '.$token,
+                    linux_command: 'sudo curl -fsSL'.(filter_var(env('NGROK_SKIP_BROWSER_WARNING', false), FILTER_VALIDATE_BOOLEAN) ? ' -H "ngrok-skip-browser-warning: true"' : '').' '.rtrim(env('APP_URL') ?: url('/'), '/').'/install/linux'.' | sudo bash -s -- '.$token,
                     windows_command: WindowsCommand::make('/install/windows.ps1', '-ProvisionToken', $token, rtrim(env('APP_URL') ?: url('/'), '/')),
                 );
             }
@@ -184,13 +184,13 @@ class ServerData extends Data
         $appUrl = rtrim(env('APP_URL') ?: url('/'), '/');
 
         $uninstallLinux = $installationId
-            ? 'sudo curl -fsSL '.rtrim(env('APP_URL') ?: url('/'), '/').'/uninstall/linux'.' | sudo bash -s -- '.$installationId
+            ? 'sudo curl -fsSL'.(filter_var(env('NGROK_SKIP_BROWSER_WARNING', false), FILTER_VALIDATE_BOOLEAN) ? ' -H "ngrok-skip-browser-warning: true"' : '').' '.rtrim(env('APP_URL') ?: url('/'), '/').'/uninstall/linux'.' | sudo bash -s -- '.$installationId
             : null;
         $uninstallWindows = $installationId
             ? WindowsCommand::make('/uninstall/windows.ps1', '-Instance', $installationId, $appUrl)
             : null;
         $detachLinux = $installationId
-            ? 'sudo curl -fsSL '.url('/detach/linux').' | sudo bash -s -- '.$installationId.' '.$server->uuid
+            ? 'sudo curl -fsSL'.(filter_var(env('NGROK_SKIP_BROWSER_WARNING', false), FILTER_VALIDATE_BOOLEAN) ? ' -H "ngrok-skip-browser-warning: true"' : '').' '.url('/detach/linux').' | sudo bash -s -- '.$installationId.' '.$server->uuid
             : null;
         $detachWindows = $installationId
             ? WindowsCommand::make('/detach/windows.ps1', '-Instance', $installationId, $appUrl, '-Server', $server->uuid)

@@ -369,3 +369,16 @@ html.coreDevDark,
         0 0 12px 4px #10b98140 !important;
     border-radius: 0.75rem !important;
 }
+
+/* Fix autofill background and text color: fill tracks text-foreground
+   (theme-aware via var(--foreground)); delayed background paint + inset
+   shadow keep the input transparent. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--foreground) !important;
+    transition: background-color 99999s ease-in-out 0s !important;
+    box-shadow: 0 0 0px 1000px transparent inset !important;
+    -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
+}

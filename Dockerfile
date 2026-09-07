@@ -65,10 +65,53 @@ COPY docs/package.json ./docs/
 # via `npm run docs` in repo root.
 RUN npm ci --no-audit --no-fund
 
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+# Same boot logic as prod: migrate + conditional seed + VITE build check.
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["entrypoint.sh"]
+
+CMD ["sh", "-c", "php -S 0.0.0.0:${PORT:-8000} -t public"]
 
 # ---------------------------------------------------------------- prod ---
-FROM base AS prod
+# FrankenPHP (Caddy + PHP worker-capable server). Multithreaded + opcache —
+# the prod answer to php -S (single-threaded dev only). Non-worker mode for
+# now (drop-in behavior); worker mode later after a state-leak audit.
+FROM dunglas/frankenphp:1-php8.5 AS prod
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    unzip \
+    libpq-dev \
+    libzip-dev \
+    libonig-dev \
+    libxml2-dev \
+    postgresql-client \
+    ca-certificates \
+    curl \
+    xz-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node 22 via official binary tarball (pinned to local version).
+# (Apt/nodejs splits npm into a separate package on trixie and NodeSource
+# has no trixie repo — tarball is deterministic everywhere.)
+RUN curl -fsSL https://nodejs.org/dist/v22.22.2/node-v22.22.2-linux-x64.tar.xz -o /tmp/node.tar.xz \
+    && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
+    && rm /tmp/node.tar.xz \
+    && node -v && npm -v
+
+RUN docker-php-ext-install -j$(nproc) \
+    pdo_pgsql \
+    pgsql \
+    mbstring \
+    xml \
+    bcmath \
+    zip \
+    sockets \
+    pcntl
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
 
 # PHP deps (no dev packages)
 COPY composer.json composer.lock ./
@@ -89,14 +132,15 @@ COPY . .
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Production PHP tuning
-RUN echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo "opcache.enable_cli=1" >> /usr/local/etc/php/conf.d/opcache.ini \
-    && php artisan config:clear \
+# FrankenPHP serves :8000 via the bundled Caddyfile (plain HTTP;
+# TLS terminates at the edge Caddy in compose.prod.yaml).
+COPY docker/frankenphp-Caddyfile /etc/caddy/Caddyfile
+
+RUN php artisan config:clear \
     && php artisan route:clear \
     && php artisan view:clear
 
-ENTRYPOINT ["entrypoint.sh"]
+EXPOSE 8000 8081
 
-# Bind $PORT when set (orchestrators); default 8000 for local/prod-server.
-CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-8000}"]
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]

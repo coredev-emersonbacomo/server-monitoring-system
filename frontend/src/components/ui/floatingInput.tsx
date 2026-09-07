@@ -178,7 +178,7 @@ export const FloatingInput = forwardRef<InputRef, InputProps>(
                             onChange={handleChange}
                             value={internalValue}
                             className={twMerge(
-                                "relative flex-1 min-w-0 outline-none bg-transparent text-ellipsis text-foreground placeholder:text-muted-foreground/50 autofill:bg-transparent [&:-webkit-autofill]:bg-transparent",
+                                "relative flex-1 min-w-0 outline-none bg-transparent text-ellipsis text-foreground placeholder:text-muted-foreground/50 [&:-webkit-autofill]:[-webkit-text-fill-color:var(--foreground)] [&:-webkit-autofill]:[transition:background-color_99999s_ease-in-out_0s] [&:-webkit-autofill]:shadow-[0_0_0px_1000px_transparent_inset]",
                                 className,
                                 icon && "ml-2",
                             )}

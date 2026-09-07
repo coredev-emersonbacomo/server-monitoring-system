@@ -44,7 +44,7 @@ $app->beforeBootstrapping(LoadEnvironmentVariables::class, function (Application
 
         return;
     }
-    Dotenv::createImmutable($app->environmentPath(), ['.env', '.env.development'], false)->load();
+    Dotenv::createImmutable($app->environmentPath(), ['.env', '.env.development'], false)->safeLoad();
     $app->loadEnvironmentFrom('__app_env_injected__.env');
 });
 
