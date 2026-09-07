@@ -103,7 +103,7 @@ class ProvisioningService
             'conflict' => false,
             'token' => $rawToken,
             'expires_at' => $expiresAt->toIso8601String(),
-            'linux_command' => 'sudo curl -fsSL '.rtrim(env('APP_URL') ?: url('/'), '/').'/install/linux'.' | sudo bash -s -- '.$rawToken,
+            'linux_command' => 'sudo curl -fsSL'.(filter_var(env('NGROK_SKIP_BROWSER_WARNING', false), FILTER_VALIDATE_BOOLEAN) ? ' -H "ngrok-skip-browser-warning: true"' : '').' '.rtrim(env('APP_URL') ?: url('/'), '/').'/install/linux'.' | sudo bash -s -- '.$rawToken,
             'windows_command' => WindowsCommand::make('/install/windows.ps1', '-ProvisionToken', $rawToken, rtrim(env('APP_URL') ?: url('/'), '/')),
             'token_expires_in' => $expiresAt->timestamp,
         ];
@@ -193,7 +193,7 @@ class ProvisioningService
             'token' => $rawToken,
             'installation_id' => $installationId,
             'expires_at' => $expiresAt->toIso8601String(),
-            'linux_command' => 'sudo curl -fsSL '.rtrim(env('APP_URL') ?: url('/'), '/').'/install/linux'.' | sudo bash -s -- '.$rawToken.' '.$installationId,
+            'linux_command' => 'sudo curl -fsSL'.(filter_var(env('NGROK_SKIP_BROWSER_WARNING', false), FILTER_VALIDATE_BOOLEAN) ? ' -H "ngrok-skip-browser-warning: true"' : '').' '.rtrim(env('APP_URL') ?: url('/'), '/').'/install/linux'.' | sudo bash -s -- '.$rawToken.' '.$installationId,
             'windows_command' => WindowsCommand::make('/install/windows.ps1', '-ProvisionToken', $rawToken, $appUrl, '-InstallationId', $installationId),
             'token_expires_in' => $expiresAt->timestamp,
         ];

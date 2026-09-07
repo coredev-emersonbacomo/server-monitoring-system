@@ -32,12 +32,34 @@ else
   echo "[entrypoint] Frontend up to date, skipping build."
 fi
 
-# Migrations on app boot only (matches `artisan serve` in any CMD form).
-# Idempotent (migrate --force), so harmless if another service matches.
+# Migrations + first-boot seeding on app boot only (matches frankenphp
+# serve / php -S in any form). migrate --force is idempotent.
+#
+# SEED_ON_BOOT flip switch (handover-critical):
+#   "true"  → run `php artisan db:seed --force`, but ONLY when the users
+#              table is empty (fresh volume). DatabaseSeeder factories are
+#              NOT idempotent — the empty check is what makes reboots safe.
+#              NEVER use migrate:fresh here: it would wipe prod on restart.
+#   unset/"false" → skip seeding entirely.
+# Dev sets SEED_ON_BOOT=true (self-provisioning). Prod sets false; create
+# the first prod admin ONCE with:
+#   docker compose -f compose.yaml -f compose.prod.yaml exec app \
+#     php artisan db:seed --class=UserSeeder --force   (idempotent, default user only)
 case "$*" in
-  *"artisan serve"*)
+  *"frankenphp"*|*"-S"*|*"artisan serve"*)
     echo "[entrypoint] Running migrations..."
     php artisan migrate --force
+    if [ "${SEED_ON_BOOT:-false}" = "true" ]; then
+      USERS=$(php artisan tinker --execute='echo App\Models\User::query()->count();' 2>/dev/null | tr -cd '0-9')
+      if [ "$USERS" = "0" ]; then
+        echo "[entrypoint] SEED_ON_BOOT=true and users table empty — seeding..."
+        php artisan db:seed --force
+      else
+        echo "[entrypoint] Users present (${USERS:-unknown}) — skipping seed."
+      fi
+    else
+      echo "[entrypoint] SEED_ON_BOOT!=true — skipping seed."
+    fi
     ;;
 esac
 

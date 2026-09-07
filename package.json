@@ -19,13 +19,16 @@
     "gpush": "scripts\\git\\git-push.bat",
     "pull": "git stash && git pull && git stash apply",
     "resetdb": "node scripts/reset-db.js",
+    "docker:resetdb": "node scripts/reset-db.js",
     "resetalerts": "php artisan tinker --execute=\"App\\NodeConfig\\Models\\NodeConfigState::query()->delete();\"",
     "compileagent:go": "powershell -ExecutionPolicy Bypass -File scripts/build-agent.ps1",
     "compileagent": "npm run compileagent:go",
     "install-redis:windows": "powershell -ExecutionPolicy Bypass -File scripts/install-redis.ps1",
     "install-redis:linux": "bash scripts/install-redis.sh",
     "loadtestfactory": "php artisan tinker --execute=\"require 'database/seeders/load-test-factory.php';\"",
-    "tunnel": "node scripts/tunnel.js"
+    "tunnel": "node scripts/tunnel.js",
+    "ngrok": "node scripts/ngrok.js",
+    "ngrok:build": "node scripts/ngrok-build.js"
   },
   "workspaces": [
     "frontend",

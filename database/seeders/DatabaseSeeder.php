@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             SettingSeeder::class,
-            AdminSeeder::class,
+            UserSeeder::class,
             ClientSeeder::class,
             GlobalAlertSeeder::class,
             NodeConfigSeeder::class,

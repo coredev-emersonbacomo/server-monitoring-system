@@ -4,7 +4,9 @@
 
 services:
   postgres:
-    image: timescale/timescaledb-ha:pg17
+    # Plain TimescaleDB (not -ha/Patroni: HA manager fights manual user
+    # management and is overkill for single-node dev/prod).
+    image: timescale/timescaledb:latest-pg17
     environment:
       POSTGRES_DB: server_monitoring
       POSTGRES_USER: postgres
@@ -46,7 +48,10 @@ services:
     environment:
       APP_ENV: local
       APP_DEBUG: "true"
-      APP_URL: http://localhost:8000
+      APP_URL: ${APP_URL:-http://localhost:8000}
+      # Set to "true" by `npm run ngrok` so generated agent install commands
+      # bypass ngrok's free-tier browser interstitial. Never true in prod.
+      NGROK_SKIP_BROWSER_WARNING: ${NGROK_SKIP_BROWSER_WARNING:-false}
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
@@ -60,6 +65,9 @@ services:
       SESSION_DRIVER: database
       QUEUE_CONNECTION: database
       BROADCAST_CONNECTION: reverb
+      # Flip switch: "true" seeds full DatabaseSeeder on empty DB (fresh
+      # volume). Safe on reboot — guarded by users-table-empty check.
+      SEED_ON_BOOT: "true"
       REVERB_HOST: 127.0.0.1
       REVERB_PORT: 8081
       REVERB_SCHEME: http
@@ -73,7 +81,7 @@ services:
     command: >
       sh -c "composer install --no-interaction &&
              php artisan migrate --force &&
-             php artisan serve --host=0.0.0.0 --port=$${PORT:-8000}"
+             php -S 0.0.0.0:$${PORT:-8000} -t public"
 
   reverb:
     build:
@@ -88,6 +96,9 @@ services:
     environment:
       APP_ENV: local
       DB_HOST: postgres
+      DB_DATABASE: server_monitoring
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
       REDIS_HOST: redis
       REVERB_SERVER_HOST: 0.0.0.0
       REVERB_SERVER_PORT: 8081
@@ -109,6 +120,9 @@ services:
     environment:
       APP_ENV: local
       DB_HOST: postgres
+      DB_DATABASE: server_monitoring
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
       REDIS_HOST: redis
     depends_on:
       postgres:
@@ -128,6 +142,9 @@ services:
     environment:
       APP_ENV: local
       DB_HOST: postgres
+      DB_DATABASE: server_monitoring
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
       REDIS_HOST: redis
     depends_on:
       postgres:

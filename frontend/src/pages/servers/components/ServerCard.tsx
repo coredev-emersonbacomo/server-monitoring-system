@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { UserCheck } from "lucide-react";
+import { Building2, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
     STATUS_CONFIG,
@@ -50,8 +50,9 @@ export function ServerCard({ server }: ServerCardProps) {
                         <p className="text-sm font-medium text-foreground truncate w-full" title={server.name}>
                             {server.name}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate w-full" title={server.client_name ?? undefined}>
-                            {server.client_name || "\u00A0"}
+                        <p className="flex items-center justify-center gap-1 text-xs text-muted-foreground w-full" title={server.client_name ?? undefined}>
+                            <Building2 className="size-3 shrink-0" />
+                            <span className="truncate">{server.client_name || "\u00A0"}</span>
                         </p>
                     </div>
                 </div>
@@ -65,6 +66,12 @@ export function ServerCard({ server }: ServerCardProps) {
                         size="sm"
                     />
                 </div>
+
+                {/* Description below the badge, like ClientCard — fixed two-line
+                    slot so cards stay the same height with or without one */}
+                <p className="text-xs text-muted-foreground text-center line-clamp-2 wrap-break-word w-full min-h-8" title={server.description ?? undefined}>
+                    {server.description || "\u00A0"}
+                </p>
             </div>
         </Link>
     );
