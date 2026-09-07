@@ -6,6 +6,7 @@
     "build": "npm run build -w frontend && npm run build -w docs && vite build",
     "start": "node scripts/entry.js prod",
     "dev": "node scripts/entry.js dev",
+    "tim": "cross-env VITE_BACKEND_URL=http://127.0.0.1:8000 node scripts/entry.js dev",
     "prod": "node scripts/entry.js prod",
     "setup": "composer install && npm install",
     "setup:docker": "node scripts/setup-docker-env.js",

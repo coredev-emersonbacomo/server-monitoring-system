@@ -44,6 +44,8 @@ npm run ngrok   # starts Docker stack, builds with ngrok URL, tunnels to your re
 Configure in your gitignored `.env`: `NGROK_DOMAIN` (reserved ngrok domain) and
 `NGROK_UPSTREAM=127.0.0.1:8000` (Docker app). For Herd: set `NGROK_UPSTREAM=127.0.0.1:80` instead.
 
+`npm run tim` is the Linux variant (no Herd there): same as `npm run dev`, but the Vite proxy targets `http://127.0.0.1:8000` — bring your own backend on :8000 (e.g. `docker compose up`).
+
 ### C. Production on a physical server (primary prod path)
 
 Prereqs on the server: Docker Engine + compose plugin, DNS `A` record
