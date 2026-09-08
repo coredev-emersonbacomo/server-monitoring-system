@@ -7,9 +7,23 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { spawn, spawnSync, execSync } from "child_process";
 import { loadEnvIntoProcess } from "./load-env.js";
+import * as ngrokSdk from "@ngrok/ngrok";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const logFile = path.join(root, ".ngrok.log");
+
+function getNgrokAuthtoken() {
+  if (process.env.NGROK_AUTHTOKEN) return process.env.NGROK_AUTHTOKEN;
+  try {
+    const configPath = path.join(process.env.LOCALAPPDATA || "", "ngrok", "ngrok.yml");
+    if (fs.existsSync(configPath)) {
+      const content = fs.readFileSync(configPath, "utf8");
+      const match = content.match(/^authtoken:\s*(\S+)/m);
+      if (match) return match[1];
+    }
+  } catch {}
+  return undefined;
+}
 
 // Reserved ngrok domain (stable URL) + upstream to expose. Both required,
 // no hardcoded fallback — load .env files first, then validate in main().
@@ -96,29 +110,39 @@ async function main() {
 
   // 5. Start ngrok. Host policy only matters for Herd on :80 (Herd routes by
   // Host); the docker app ignores it, so skip the policy file there.
-  try { fs.unlinkSync(logFile); } catch {}
-  const args = ["http", upstream, `--url=https://${domain}`];
-  if (/127\.0\.0\.1:80|localhost:80|server-monitoring-system\.test/.test(upstream)) {
-    args.push("--traffic-policy-file", path.join(root, "scripts", "ngrok-policy.yml"));
-  }
-  args.push(`--log=${logFile}`, "--log-format=json");
-  const child = spawn(findNgrok(), args, { stdio: "ignore", windowsHide: true, cwd: root });
-  child.on("error", (err) => {
-    console.error(`[ngrok:build] Failed to start: ${err.message}`);
-    process.exit(1);
-  });
-  child.unref();
+  let listener = null;
+  const authtoken = getNgrokAuthtoken();
+  try {
+    listener = await ngrokSdk.forward({
+      addr: upstream,
+      domain: domain,
+      ...(authtoken ? { authtoken } : { authtoken_from_env: true }),
+    });
+  } catch (sdkErr) {
+    try { fs.unlinkSync(logFile); } catch {}
+    const args = ["http", upstream, `--domain=${domain}`];
+    if (/127\.0\.0\.1:80|localhost:80|server-monitoring-system\.test/.test(upstream)) {
+      args.push("--traffic-policy-file", path.join(root, "scripts", "ngrok-policy.yml"));
+    }
+    args.push(`--log=${logFile}`, "--log-format=json");
+    const child = spawn(findNgrok(), args, { stdio: "ignore", windowsHide: true, cwd: root });
+    child.on("error", (err) => {
+      console.error(`[ngrok:build] Failed to start: ${sdkErr.message || err.message}`);
+      process.exit(1);
+    });
+    child.unref();
 
-  // 6. Wait for tunnel link-up (up to 20s).
-  let ready = false;
-  for (let i = 0; i < 20; i++) {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    if (tunnelReady()) { ready = true; break; }
-  }
-  if (!ready) {
-    console.error("[ngrok:build] Tunnel did not come up. Check .ngrok.log");
-    child.kill();
-    process.exit(1);
+    // 6. Wait for tunnel link-up (up to 20s).
+    let ready = false;
+    for (let i = 0; i < 20; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (tunnelReady()) { ready = true; break; }
+    }
+    if (!ready) {
+      console.error("[ngrok:build] Tunnel did not come up. Check .ngrok.log");
+      child.kill();
+      process.exit(1);
+    }
   }
 
   console.log("");

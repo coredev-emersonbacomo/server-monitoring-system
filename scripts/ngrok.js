@@ -17,6 +17,8 @@ import { fileURLToPath } from "url";
 import { spawn, spawnSync, execSync } from "child_process";
 import { loadEnvIntoProcess } from "./load-env.js";
 
+import * as ngrokSdk from "@ngrok/ngrok";
+
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const logFile = path.join(root, ".ngrok.log");
 const pidFile = path.join(root, ".ngrok.pid");
@@ -26,6 +28,19 @@ const pidFile = path.join(root, ".ngrok.pid");
 const viteBin = fs.existsSync(path.join(root, "frontend", "node_modules", "vite", "bin", "vite.js"))
   ? path.join(root, "frontend", "node_modules", "vite", "bin", "vite.js")
   : path.join(root, "node_modules", "vite", "bin", "vite.js");
+
+function getNgrokAuthtoken() {
+  if (process.env.NGROK_AUTHTOKEN) return process.env.NGROK_AUTHTOKEN;
+  try {
+    const configPath = path.join(process.env.LOCALAPPDATA || "", "ngrok", "ngrok.yml");
+    if (fs.existsSync(configPath)) {
+      const content = fs.readFileSync(configPath, "utf8");
+      const match = content.match(/^authtoken:\s*(\S+)/m);
+      if (match) return match[1];
+    }
+  } catch {}
+  return undefined;
+}
 
 function findNgrok() {
   // NB: fs.existsSync lies about MS Store aliases (unstatable reparse
@@ -378,22 +393,42 @@ async function main() {
 
   // 5. Start ngrok tunnel to Vite (port 5173).
   console.log("[ngrok] Starting ngrok tunnel to Vite (port 5173)...");
-  try { fs.unlinkSync(logFile); } catch {}
-  const args = ["http", "5173", `--url=https://${domain}`, `--log=${logFile}`, "--log-format=json"];
-  ngrokChild = spawn(findNgrok(), args, { stdio: "ignore", windowsHide: true, cwd: root });
-  ngrokChild.on("error", (err) => {
-    console.error(`[ngrok] Failed to start: ${err.message}`);
-    cleanup();
-    process.exit(1);
-  });
-  ngrokChild.unref();
+  let listener = null;
+  const authtoken = getNgrokAuthtoken();
+  try {
+    listener = await ngrokSdk.forward({
+      addr: 5173,
+      domain: domain,
+      ...(authtoken ? { authtoken } : { authtoken_from_env: true }),
+    });
+  } catch (sdkErr) {
+    try { fs.unlinkSync(logFile); } catch {}
+    const args = ["http", "5173", `--domain=${domain}`, `--log=${logFile}`, "--log-format=json"];
+    ngrokChild = spawn(findNgrok(), args, { stdio: "ignore", windowsHide: true, cwd: root });
+    ngrokChild.on("error", (err) => {
+      console.error(`[ngrok] Failed to start: ${sdkErr.message || err.message}`);
+      cleanup();
+      process.exit(1);
+    });
+    ngrokChild.unref();
 
-  const ready = await waitFor(() => tunnelReady(domain), 20, 1000);
-  if (!ready) {
-    console.error("[ngrok] Tunnel did not come up. Check .ngrok.log");
-    cleanup();
-    process.exit(1);
+    const ready = await waitFor(() => tunnelReady(domain), 20, 1000);
+    if (!ready) {
+      console.error("[ngrok] Tunnel did not come up. Check .ngrok.log");
+      cleanup();
+      process.exit(1);
+    }
   }
+
+  // Register listener close in cleanup if SDK was used
+  if (listener) {
+    const prevCleanup = cleanup;
+    cleanup = function() {
+      try { listener.close(); } catch {}
+      prevCleanup();
+    };
+  }
+
   statusLine("Tunnel", green("LIVE"));
 
   console.log("");
