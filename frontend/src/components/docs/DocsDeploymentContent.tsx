@@ -172,6 +172,40 @@ export function DocsRequirementsContent() {
                             </a>{" "}
                             to clone the repository.
                         </li>
+                        <li>
+                            <strong>Typst</strong> -{" "}
+                            <a
+                                className="text-blue-600 underline"
+                                href="https://github.com/typst/typst/releases"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                download Typst
+                            </a>{" "}
+                            for PDF report compilation.{" "}
+                            <strong>Windows:</strong> download the latest{" "}
+                            <InlineCode>typst-x86_64-pc-windows-msvc.zip</InlineCode>,
+                            extract it, and add the folder containing{" "}
+                            <InlineCode>typst.exe</InlineCode> to your{" "}
+                            <InlineCode>PATH</InlineCode> (search &quot;Edit
+                            environment variables for your account&quot; in
+                            Windows Settings, edit{" "}
+                            <InlineCode>Path</InlineCode> under User
+                            variables, click New, and paste the folder path).
+                            Alternatively, install via winget:{" "}
+                            <InlineCode>winget install Typst.Typst</InlineCode>.{" "}
+                            <strong>macOS:</strong>{" "}
+                            <InlineCode>brew install typst</InlineCode>.{" "}
+                            <strong>Linux:</strong>{" "}
+                            <InlineCode>cargo install --locked typst-cli</InlineCode>{" "}
+                            or download the{" "}
+                            <InlineCode>typst-x86_64-unknown-linux-musl.tar.xz</InlineCode>{" "}
+                            from the releases page, extract it, and copy{" "}
+                            <InlineCode>typst</InlineCode> to{" "}
+                            <InlineCode>/usr/local/bin/</InlineCode>. Verify
+                            with{" "}
+                            <InlineCode>typst --version</InlineCode>.
+                        </li>
                     </ul>
                 </Section>
                 
@@ -329,6 +363,7 @@ export function DocsInstallationContent() {
 # - Node.js v22+
 # - Redis (or use C:\\redis\\redis-server.exe on Windows)
 # - PostgreSQL with TimescaleDB extension
+# - Typst CLI (report compilation) - see Requirements > Option A
 
 # 2. Setup
 npm run setup     # composer install + npm install (first time only)
@@ -692,7 +727,8 @@ NGROK_UPSTREAM=http://127.0.0.1:8000
                     </ol>
                 </SubSection>
                 <SubSection title="Workflow (Docker)">
-                    <CodeBlock>{`npm run ngrok    # HMR flow: docker stack + Vite dev + tunnel to Vite`}</CodeBlock>
+                    <CodeBlock>{`npm run ngrok    # HMR flow: docker stack + Vite dev + tunnel to Vite
+npm run ngrok rebuild   # same, but rebuilds images from the current Dockerfile first`}</CodeBlock>
                     <p>
                         This command automatically:
                     </p>
@@ -719,6 +755,40 @@ NGROK_UPSTREAM=http://127.0.0.1:8000
                         install commands bake the tunnel URL and tunnel headers at
                         generation time.
                     </p>
+                    <p>
+                        <InlineCode>docker compose up</InlineCode> reuses the cached image, so{" "}
+                        <strong>Dockerfile changes never apply without a rebuild</strong> (and
+                        each machine caches its own image - after a{" "}
+                        <InlineCode>git pull</InlineCode>, run{" "}
+                        <InlineCode>npm run ngrok rebuild</InlineCode> once). Plain app/PHP code
+                        needs no rebuild: it is bind-mounted and read per request.
+                    </p>
+                    <p>
+                        Edge cases:</p>
+                    <ul className="list-disc pl-5 space-y-1.5">
+                        <li><strong>A slow/&ldquo;stuck&rdquo; cold boot is normal on Dockerfile/image
+                            changes</strong> - the entrypoint additionally runs{" "}
+                            <InlineCode>npm run build</InlineCode> (frontend assets) plus{" "}
+                            <InlineCode>composer install</InlineCode> and migrations before the app
+                            serves <InlineCode>:8000</InlineCode>. Give a fresh stack a few minutes.</li>
+                        <li><strong>Dependency changes</strong> (<InlineCode>package-lock.json</InlineCode> /
+                            <InlineCode>composer.lock</InlineCode>) are baked into the image. If you
+                            see &ldquo;module not found&rdquo; after a branch switch, run{" "}
+                            <InlineCode>npm run ngrok rebuild</InlineCode>.</li>
+                        <li><strong>Stale dependency volumes</strong>: the container mounts anonymous
+                            volumes for <InlineCode>vendor</InlineCode>/<InlineCode>node_modules</InlineCode>{" "}
+                            that survive image rebuilds. To refresh them drop only those volumes:
+                            <CodeBlock>{`docker compose down; docker volume prune  # removes unused anonymous volumes
+npm run ngrok rebuild`}</CodeBlock>
+                            Do <em>not</em> use <InlineCode>docker compose down -v</InlineCode> - it
+                            also wipes the PostgreSQL and Redis data volumes.</li>
+                        <li><strong>The &ldquo;Waiting for backend&rdquo; poll</strong> has a 600-retry
+                            (not 600-second) budget with per-request timeouts, so a very slow cold boot
+                            can outlast it. Re-run with{" "}
+                            <InlineCode>npm run ngrok rebuild</InlineCode> if the stack needs it, or
+                            check <InlineCode>docker compose ps</InlineCode> and{" "}
+                            <InlineCode>docker compose logs app</InlineCode>.</li>
+                    </ul>
                 </SubSection>
                 <SubSection title="Static variant">
                     <CodeBlock>{`npm run ngrok:build    # builds the SPA, tunnels straight to Laravel`}</CodeBlock>
@@ -844,17 +914,44 @@ docker compose -f compose.yaml -f compose.prod.yaml up -d --build`}</CodeBlock>
                         <InlineCode>docker</InlineCode> service instead.
                     </li>
                     <li>
-                        <strong>Reports fail to compile</strong> - install the{" "}
-                        <a
-                            className="text-blue-600 underline"
-                            href="https://typst.app"
-                            target="_blank"
-                            rel="noreferrer"
-                        >
-                            Typst
-                        </a>{" "}
-                        CLI (<InlineCode>typst</InlineCode>) on the server and ensure it is
-                        on PATH.
+                        <strong>Reports fail to compile</strong> - the{" "}
+                        <InlineCode>typst</InlineCode> CLI must be installed
+                        and on PATH. Docker users get it automatically; for
+                        Herd/native installs, see the Typst prerequisite in
+                        Requirements above. Quick check:{" "}
+                        <InlineCode>typst --version</InlineCode> should print
+                        a version number. If not found:
+                        <ul className="list-disc pl-5 space-y-1 mt-1">
+                            <li>
+                                <strong>Windows:</strong> download the latest{" "}
+                                <InlineCode>typst-x86_64-pc-windows-msvc.zip</InlineCode>{" "}
+                                from{" "}
+                                <a
+                                    className="text-blue-600 underline"
+                                    href="https://github.com/typst/typst/releases"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    github.com/typst/typst/releases
+                                </a>
+                                , extract it, and add the folder containing{" "}
+                                <InlineCode>typst.exe</InlineCode> to your{" "}
+                                <InlineCode>PATH</InlineCode> (or run{" "}
+                                <InlineCode>winget install Typst.Typst</InlineCode>
+                                ).
+                            </li>
+                            <li>
+                                <strong>macOS:</strong>{" "}
+                                <InlineCode>brew install typst</InlineCode>
+                            </li>
+                            <li>
+                                <strong>Linux:</strong>{" "}
+                                <InlineCode>cargo install --locked typst-cli</InlineCode>{" "}
+                                or download the release tarball and copy the
+                                binary to{" "}
+                                <InlineCode>/usr/local/bin/</InlineCode>.
+                            </li>
+                        </ul>
                     </li>
                     <li>
                         <strong>No realtime updates</strong> - confirm the{" "}

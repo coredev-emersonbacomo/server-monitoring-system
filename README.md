@@ -19,6 +19,10 @@ TimescaleDB hypertables for metrics history, and queue workers for alerts.
      enable TimescaleDB per the
      [self-hosted install docs](https://docs.timescale.com/self-hosted/latest/install/).
      (Or skip all of this with [Docker](#b-local-dev-with-docker-any-os).)
+   - [Typst](https://github.com/typst/typst/releases) — PDF report compilation.
+     Download the latest `typst-x86_64-pc-windows-msvc.zip`, extract it, and
+     add the directory containing `typst.exe` to your PATH. Or install via
+     winget: `winget install Typst.Typst`.
    - [Git](https://git-scm.com/downloads).
 
 ```powershell
