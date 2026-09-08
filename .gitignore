@@ -1,9 +1,11 @@
 *.log
+.ngrok.pid
 .DS_Store
 .env
 .env.backup
 .env.credentials
 .env.production
+.env.docker
 # frontend/.env
 frontend/src/api/api.json
 .phpactor.json

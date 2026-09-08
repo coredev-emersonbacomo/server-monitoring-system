@@ -40,9 +40,11 @@ export function AddSecopDialog({
         null,
     );
 
-    const [s] = useUrlState({ q: { default: "" } });
+    // NOTE: read the same param the search input writes (paramName, not "q")
+    // so dialog filtering doesn't clobber the parent page's own ?q= search.
+    const [s] = useUrlState({ [paramName]: { default: "" } });
     const { data: response, isLoading } = useUsers({
-        q: s.q || undefined,
+        q: s[paramName] || undefined,
         exclude_user_uuid: excludedUuids.join(",") || undefined,
         per_page: 50,
     });

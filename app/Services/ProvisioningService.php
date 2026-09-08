@@ -103,8 +103,8 @@ class ProvisioningService
             'conflict' => false,
             'token' => $rawToken,
             'expires_at' => $expiresAt->toIso8601String(),
-            'linux_command' => 'sudo curl -fsSL '.url('/install/linux').' | sudo bash -s -- '.$rawToken,
-            'windows_command' => WindowsCommand::make('/install/windows.ps1', '-ProvisionToken', $rawToken, rtrim(url('/'), '/')),
+            'linux_command' => 'sudo curl -fsSL'.(filter_var(env('NGROK_SKIP_BROWSER_WARNING', false), FILTER_VALIDATE_BOOLEAN) ? ' -H "ngrok-skip-browser-warning: true"' : '').' '.rtrim(env('APP_URL') ?: url('/'), '/').'/install/linux'.' | sudo bash -s -- '.$rawToken,
+            'windows_command' => WindowsCommand::make('/install/windows.ps1', '-ProvisionToken', $rawToken, rtrim(env('APP_URL') ?: url('/'), '/')),
             'token_expires_in' => $expiresAt->timestamp,
         ];
     }
@@ -186,14 +186,14 @@ class ProvisioningService
 
         event(new ProvisionTokenGenerated($server->uuid, $expiresAt->toIso8601String()));
 
-        $appUrl = rtrim(url('/'), '/');
+        $appUrl = rtrim(env('APP_URL') ?: url('/'), '/');
 
         return [
             'conflict' => false,
             'token' => $rawToken,
             'installation_id' => $installationId,
             'expires_at' => $expiresAt->toIso8601String(),
-            'linux_command' => 'sudo curl -fsSL '.url('/install/linux').' | sudo bash -s -- '.$rawToken.' '.$installationId,
+            'linux_command' => 'sudo curl -fsSL'.(filter_var(env('NGROK_SKIP_BROWSER_WARNING', false), FILTER_VALIDATE_BOOLEAN) ? ' -H "ngrok-skip-browser-warning: true"' : '').' '.rtrim(env('APP_URL') ?: url('/'), '/').'/install/linux'.' | sudo bash -s -- '.$rawToken.' '.$installationId,
             'windows_command' => WindowsCommand::make('/install/windows.ps1', '-ProvisionToken', $rawToken, $appUrl, '-InstallationId', $installationId),
             'token_expires_in' => $expiresAt->timestamp,
         ];
@@ -249,7 +249,7 @@ class ProvisioningService
             'download_url' => $downloadUrl,
             'expected_sha256' => $sha256,
             'agent_version' => $agentVersion,
-            'server_url' => url('/'),
+            'server_url' => env('APP_URL') ?: url('/'),
         ];
     }
 

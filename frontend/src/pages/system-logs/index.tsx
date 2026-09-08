@@ -19,9 +19,7 @@ import {
     type ActivityLogData,
     type ActivityLogsParams,
 } from "./hooks/useActivityLogs";
-import {
-    type SortableKey,
-} from "./constants/logHelpers";
+import { type SortableKey } from "./constants/logHelpers";
 import type {
     FileActivityLogData,
     AgentLifecycleLogData,
@@ -131,7 +129,8 @@ export default function LogsPage() {
         return v ? Number(v) : fallback;
     };
     const getIdPerPage = (id: string, fallback = 15) => {
-        const v = searchParams.get(`${id}_per_page`) ?? searchParams.get("per_page");
+        const v =
+            searchParams.get(`${id}_per_page`) ?? searchParams.get("per_page");
         return v ? Number(v) : fallback;
     };
 
@@ -304,26 +303,42 @@ export default function LogsPage() {
                             isLoading={isLoadingActivity}
                             emptyMessage="No general activity logs recorded yet."
                             search={search}
-                            onSearchChange={(v) => setLogParam("q", v, "activity")}
+                            onSearchChange={(v) =>
+                                setLogParam("q", v, "activity")
+                            }
                             actionFilter={actionFilter}
-                            onActionFilterChange={(v) => setLogParam("action", v, "activity")}
+                            onActionFilterChange={(v) =>
+                                setLogParam("action", v, "activity")
+                            }
                             userFilter={userFilter}
-                            onUserFilterChange={(v) => setLogParam("user", v, "activity")}
+                            onUserFilterChange={(v) =>
+                                setLogParam("user", v, "activity")
+                            }
                             startDate={startDate}
-                            onStartDateChange={(v) => setLogParam("start_date", v, "activity")}
+                            onStartDateChange={(v) =>
+                                setLogParam("start_date", v, "activity")
+                            }
                             endDate={endDate}
-                            onEndDateChange={(v) => setLogParam("end_date", v, "activity")}
+                            onEndDateChange={(v) =>
+                                setLogParam("end_date", v, "activity")
+                            }
                             sortField={sortField}
                             sortDir={sortDir}
                             onSort={(key) => {
                                 if (sortField === key) {
-                                    setSortParam(key, sortDir === "asc" ? "desc" : "asc", "activity");
+                                    setSortParam(
+                                        key,
+                                        sortDir === "asc" ? "desc" : "asc",
+                                        "activity",
+                                    );
                                 } else {
                                     setSortParam(key, "asc", "activity");
                                 }
                             }}
                             onPageChange={(p) => setPageParam(p, "activity")}
-                            onPerPageChange={(s) => setPerPageParam(s, "activity")}
+                            onPerPageChange={(s) =>
+                                setPerPageParam(s, "activity")
+                            }
                             onSelectLog={setSelectedLog}
                         />
                     </Tab.Item>
@@ -339,27 +354,43 @@ export default function LogsPage() {
                             isLoading={isLoadingHealth}
                             emptyMessage="No server health status logs recorded yet."
                             search={search}
-                            onSearchChange={(v) => setLogParam("q", v, "health")}
+                            onSearchChange={(v) =>
+                                setLogParam("q", v, "health")
+                            }
                             showUser={false}
                             actionFilter={actionFilter}
-                            onActionFilterChange={(v) => setLogParam("action", v, "health")}
+                            onActionFilterChange={(v) =>
+                                setLogParam("action", v, "health")
+                            }
                             userFilter={userFilter}
-                            onUserFilterChange={(v) => setLogParam("user", v, "health")}
+                            onUserFilterChange={(v) =>
+                                setLogParam("user", v, "health")
+                            }
                             startDate={startDate}
-                            onStartDateChange={(v) => setLogParam("start_date", v, "health")}
+                            onStartDateChange={(v) =>
+                                setLogParam("start_date", v, "health")
+                            }
                             endDate={endDate}
-                            onEndDateChange={(v) => setLogParam("end_date", v, "health")}
+                            onEndDateChange={(v) =>
+                                setLogParam("end_date", v, "health")
+                            }
                             sortField={sortField}
                             sortDir={sortDir}
                             onSort={(key) => {
                                 if (sortField === key) {
-                                    setSortParam(key, sortDir === "asc" ? "desc" : "asc", "health");
+                                    setSortParam(
+                                        key,
+                                        sortDir === "asc" ? "desc" : "asc",
+                                        "health",
+                                    );
                                 } else {
                                     setSortParam(key, "asc", "health");
                                 }
                             }}
                             onPageChange={(p) => setPageParam(p, "health")}
-                            onPerPageChange={(s) => setPerPageParam(s, "health")}
+                            onPerPageChange={(s) =>
+                                setPerPageParam(s, "health")
+                            }
                             onSelectLog={setSelectedLog}
                         />
                     </Tab.Item>
@@ -377,18 +408,30 @@ export default function LogsPage() {
                             search={search}
                             onSearchChange={(v) => setLogParam("q", v, "agent")}
                             actionFilter={actionFilter}
-                            onActionFilterChange={(v) => setLogParam("action", v, "agent")}
+                            onActionFilterChange={(v) =>
+                                setLogParam("action", v, "agent")
+                            }
                             userFilter={userFilter}
-                            onUserFilterChange={(v) => setLogParam("user", v, "agent")}
+                            onUserFilterChange={(v) =>
+                                setLogParam("user", v, "agent")
+                            }
                             startDate={startDate}
-                            onStartDateChange={(v) => setLogParam("start_date", v, "agent")}
+                            onStartDateChange={(v) =>
+                                setLogParam("start_date", v, "agent")
+                            }
                             endDate={endDate}
-                            onEndDateChange={(v) => setLogParam("end_date", v, "agent")}
+                            onEndDateChange={(v) =>
+                                setLogParam("end_date", v, "agent")
+                            }
                             sortField={sortField}
                             sortDir={sortDir}
                             onSort={(key) => {
                                 if (sortField === key) {
-                                    setSortParam(key, sortDir === "asc" ? "desc" : "asc", "agent");
+                                    setSortParam(
+                                        key,
+                                        sortDir === "asc" ? "desc" : "asc",
+                                        "agent",
+                                    );
                                 } else {
                                     setSortParam(key, "asc", "agent");
                                 }
@@ -426,7 +469,8 @@ export default function LogsPage() {
                                 params={{
                                     action: fileFilters.action,
                                     path: fileFilters.path,
-                                    occurred_at_from: fileFilters.occurred_at_from,
+                                    occurred_at_from:
+                                        fileFilters.occurred_at_from,
                                     occurred_at_to: fileFilters.occurred_at_to,
                                 }}
                                 emptyMessage="No file activity recorded yet."
@@ -457,7 +501,8 @@ export default function LogsPage() {
                                 url="/v1/audit/agent-lifecycle"
                                 params={{
                                     event_type: lifeFilters.event_type,
-                                    occurred_at_from: lifeFilters.occurred_at_from,
+                                    occurred_at_from:
+                                        lifeFilters.occurred_at_from,
                                     occurred_at_to: lifeFilters.occurred_at_to,
                                 }}
                                 emptyMessage="No agent lifecycle events recorded yet."

@@ -29,11 +29,13 @@ export function SelectClientDialog({
     onSelectClient,
     paramName = "client_q",
 }: SelectClientDialogProps) {
+    // NOTE: read the same param the search input writes (paramName, not "q")
+    // so dialog filtering doesn't clobber the parent page's own ?q= search.
     const [s] = useUrlState({
-        q: { default: "" },
+        [paramName]: { default: "" },
     });
     const { data: response, isLoading } = useClients({
-        q: s.q || undefined,
+        q: s[paramName] || undefined,
         per_page: 50,
     });
     const clients = useMemo(() => response?.data ?? [], [response]);

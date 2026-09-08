@@ -14,7 +14,12 @@ import type { ClientData } from "@/types/models";
 import { ClientCard, SkeletonGrid } from "./components/ClientCard";
 import { DeleteClientIndexModal } from "./components/DeleteClientIndexModal";
 import { useVirtualizer } from "@tanstack/react-virtual";
-type FilterTab = "all" | "assigned" | "with-servers" | "no-servers" | "archived";
+type FilterTab =
+    | "all"
+    | "assigned"
+    | "with-servers"
+    | "no-servers"
+    | "archived";
 
 const CARD_ESTIMATE_PX = 300;
 
@@ -145,7 +150,11 @@ export default function ClientsIndex() {
         page: { default: 1, parse: (v) => Number(v) },
         per_page: { default: 24, parse: (v) => Number(v) },
     });
-    const { data: response, isLoading, isError } = useClients({
+    const {
+        data: response,
+        isLoading,
+        isError,
+    } = useClients({
         q: s.q || undefined,
         filter: s.filter,
         sort: s.sort,
@@ -173,10 +182,13 @@ export default function ClientsIndex() {
         const active = clients.filter((c) => c.record_status !== "archived");
         return {
             all: response.total,
-            assigned: active.filter((c) => Boolean(c.is_assigned_to_current_user)).length,
+            assigned: active.filter((c) =>
+                Boolean(c.is_assigned_to_current_user),
+            ).length,
             "with-servers": active.filter((c) => c.servers_count > 0).length,
             "no-servers": active.filter((c) => c.servers_count === 0).length,
-            archived: clients.filter((c) => c.record_status === "archived").length,
+            archived: clients.filter((c) => c.record_status === "archived")
+                .length,
         };
     }, [clients]);
 
@@ -233,7 +245,10 @@ export default function ClientsIndex() {
         <PageLayout>
             <IndexHeader icon={Landmark} title="Clients" />
 
-            <main ref={mainRef} className="w-full flex-1 min-h-0 flex flex-col gap-5">
+            <main
+                ref={mainRef}
+                className="w-full flex-1 min-h-0 flex flex-col gap-5"
+            >
                 <IndexToolbar
                     searchParamName="q"
                     searchDebounceMs={300}

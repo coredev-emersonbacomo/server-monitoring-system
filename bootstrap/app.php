@@ -28,9 +28,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
     })->create();
 
 // .env holds personal overrides only (gitignored); the app config lives in
-// .env.development (or .env.production). Load the base file first, then let
-// .env override it so personal keys win. The default loader is pointed at a
-// file that never exists so it does not re-load .env immutably afterwards.
+// .env.development (or .env.production). Immutable loading: real process env
+// (Docker/Herd) always wins, then .env, then .env.development.
+// The default loader is pointed at a file that never exists so it does not
+// re-load .env afterwards.
 $app->beforeBootstrapping(LoadEnvironmentVariables::class, function (Application $app): void {
     // phpunit.xml/.env.testing own the test environment. Never load the dev
     // files there — they point DB_DATABASE at the dev DB, so a RefreshDatabase
@@ -43,7 +44,7 @@ $app->beforeBootstrapping(LoadEnvironmentVariables::class, function (Application
 
         return;
     }
-    Dotenv::createMutable($app->environmentPath(), ['.env.development', '.env'], false)->load();
+    Dotenv::createImmutable($app->environmentPath(), ['.env', '.env.development'], false)->safeLoad();
     $app->loadEnvironmentFrom('__app_env_injected__.env');
 });
 
