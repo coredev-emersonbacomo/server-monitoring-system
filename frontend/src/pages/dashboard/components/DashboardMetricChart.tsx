@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
     LineChart,
     Line,
@@ -10,7 +10,6 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { useDashboardUsage } from "../hooks/useDashboardUsage";
-import { useServers } from "@/hooks/useServers";
 import type { MetricKey, TimeUnit, UsageScope } from "@/types/dashboard";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -387,8 +386,6 @@ const CHARTS: {
 
 const TIME_SPANS: TimeSpan[] = ["1H", "1D", "1W"];
 
-type ChartView = "overview" | "perServer";
-
 function Segmented<T extends string>({
     options,
     value,
@@ -420,33 +417,30 @@ function Segmented<T extends string>({
 
 export function DashboardChartsSection() {
     const [timeSpan, setTimeSpan] = useState<TimeSpan>("1H");
-    const [view, setView] = useState<ChartView>("overview");
     const [selected, setSelected] = useState<string[]>([]);
     const [pickerOpen, setPickerOpen] = useState(false);
     const queryClient = useQueryClient();
-    const { data: serversData } = useServers();
-    const servers = useMemo(() => serversData?.data ?? [], [serversData]);
 
     const compareUuids = selected.join(",") || undefined;
-
-    useEffect(() => {
-        if (view === "perServer" && servers.length > 0 && selected.length === 0) {
-            setSelected([servers[0].uuid]);
-        }
-    }, [view, servers, selected.length]);
 
     return (
         <div>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2 flex-wrap">
-                    <Segmented<ChartView>
-                        options={[
-                            { value: "overview", label: "Overview (Avg)" },
-                            { value: "perServer", label: "Per Server" },
-                        ]}
-                        value={view}
-                        onChange={setView}
-                    />
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant={selected.length > 0 ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setPickerOpen(true)}
+                        >
+                            Select Servers
+                        </Button>
+                        {selected.length > 0 && (
+                            <span className="text-xs text-muted-foreground ml-1">
+                                {selected.length} selected
+                            </span>
+                        )}
+                    </div>
                     <Segmented<TimeSpan>
                         options={TIME_SPANS.map((s) => ({
                             value: s,
@@ -456,6 +450,7 @@ export function DashboardChartsSection() {
                         onChange={setTimeSpan}
                     />
                 </div>
+
                 <Button
                     variant="outline"
                     size="sm"
@@ -469,37 +464,8 @@ export function DashboardChartsSection() {
                 />
             </div>
 
-            {view === "perServer" && (
-                <div className="flex items-center gap-2 mb-4">
-                    <Button
-                        variant={selected.length > 0 ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setPickerOpen(true)}
-                    >
-                        Select Servers
-                    </Button>
-                    {selected.length > 0 && (
-                        <span className="text-xs text-muted-foreground ml-1">
-                            {selected.length} selected
-                        </span>
-                    )}
-                </div>
-            )}
-
             <div className="grid grid-cols-1 gap-6">
-                {view === "overview" ? (
-                    CHARTS.map((cfg) => (
-                        <DashboardMetricChart
-                            key={cfg.metric}
-                            title={cfg.title}
-                            metric={cfg.metric}
-                            unit={cfg.unit}
-                            yDomain={cfg.yDomain}
-                            timeSpan={timeSpan}
-                            scope="avg"
-                        />
-                    ))
-                ) : CHARTS.map((cfg) => (
+                {CHARTS.map((cfg) => (
                     <DashboardMetricChart
                         key={cfg.metric}
                         title={cfg.title}

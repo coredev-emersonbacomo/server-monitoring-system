@@ -271,12 +271,21 @@ export default function ServerDetail() {
         setTimeout(() => setCopiedKey(null), 2000);
     };
 
+    // WS status/registration pickup runs only while the server is in its
+    // provisioning lifecycle (unexpired provision token, or the brief
+    // waiting_for_first_heartbeat window after the token is consumed).
+    // Default to live while data is still loading so no event is missed.
+    const provisionLive =
+        !initial ||
+        Boolean(initial?.activeProvisionDetails) ||
+        initial?.status === "waiting_for_first_heartbeat";
+
     useServerSocket(uuid!, undefined, () => {
         // Agent uninstalled on the host — refetch in place so the status flips
         // to "Agent Uninstalled" and the installation guide reappears live.
         queryClient.invalidateQueries({ queryKey: ["server", uuid] });
         queryClient.invalidateQueries({ queryKey: ["servers"] });
-    });
+    }, provisionLive);
 
     const [confirmText, setConfirmText] = useState("");
     const deleteServer = useDeleteServer();

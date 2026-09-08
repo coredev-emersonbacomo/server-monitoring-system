@@ -52,7 +52,7 @@ if [[ -n "$EXPLICIT_INSTALLATION_ID" ]]; then
     INSTALLATION_ID="$EXPLICIT_INSTALLATION_ID"
     log "Using specified installation UUID (${INSTALLATION_ID}) for installation/reinstallation."
     ATTACH=0
-elif systemctl list-unit-files | grep -q "^${STABLE_UNIT} "; then
+elif [[ -f "$SERVICE_FILE" ]] || systemctl cat "$STABLE_UNIT" >/dev/null 2>&1; then
     # The stable service already exists on this host: reuse its installation UUID,
     # parsed from the service's ExecStart ("-instance <uuid>") using bash
     # parameter expansion so there is no grep|head pipeline under pipefail.
@@ -75,7 +75,8 @@ elif systemctl list-unit-files | grep -q "^${STABLE_UNIT} "; then
         # Legacy sanity check: warn (but do not block) if old per-instance template
         # units are still present — those require an explicit operator consolidation
         # (see ADR-0002 migration note) and are out of scope for a fresh attach.
-        if systemctl list-unit-files | grep -q '^monitor-agent@'; then
+        # Glob-filtered list-unit-files (no grep|q pipe → no pipefail SIGPIPE).
+        if [[ -n "$(systemctl list-unit-files --no-legend 'monitor-agent@*' 2>/dev/null || true)" ]]; then
             warn "Legacy per-instance units (monitor-agent@*) are present alongside the stable service."
             warn "Consolidate them manually before relying on the single-agent model."
         fi
