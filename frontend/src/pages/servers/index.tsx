@@ -137,6 +137,7 @@ export default function ServersIndex() {
 
     const groupedServers = useMemo(() => {
         if (!isGroupedByClient) return [];
+        const groupOrder: string[] = [];
         const groups: Record<
             string,
             {
@@ -149,6 +150,7 @@ export default function ServersIndex() {
         for (const server of servers) {
             const key = server.client_uuid || "unassigned";
             if (!groups[key]) {
+                groupOrder.push(key);
                 groups[key] = {
                     client_name: server.client_name || "Unassigned Client",
                     client_uuid: server.client_uuid || "",
@@ -158,10 +160,8 @@ export default function ServersIndex() {
             groups[key].servers.push(server);
         }
 
-        // Sort client groups alphabetically by client name
-        return Object.values(groups).sort((a, b) =>
-            a.client_name.localeCompare(b.client_name),
-        );
+        // Preserve arrival order so newly fetched clients on scroll appear at the bottom
+        return groupOrder.map((key) => groups[key]);
     }, [isGroupedByClient, servers]);
 
     // Reliable server status counts: static based on selected client(s) and their servers across all statuses

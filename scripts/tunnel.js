@@ -118,8 +118,18 @@ async function main() {
   // Compare what Laravel resolves for app.url (CLI) vs the tunnel URL.
   // If Herd's web workers are stale they'll serve the old URL in provision
   // commands even though files + CLI are correct.
-  const { spawnSync } = await import("child_process");
-  const php = process.platform === "win32" ? "C:\\tools\\php85\\php.exe" : "php";
+  const herdPhp = process.env.USERPROFILE
+    ? [
+        path.join(process.env.USERPROFILE, '.config', 'herd', 'bin', 'php84', 'php.exe'),
+        path.join(process.env.USERPROFILE, '.config', 'herd', 'bin', 'php83', 'php.exe'),
+        path.join(process.env.USERPROFILE, '.config', 'herd', 'bin', 'php82', 'php.exe'),
+      ].find((p) => fs.existsSync(p))
+    : null;
+  const php = (process.env.PHP_BINARY && fs.existsSync(process.env.PHP_BINARY))
+    ? process.env.PHP_BINARY
+    : (fs.existsSync('C:\\tools\\php85\\php.exe')
+        ? 'C:\\tools\\php85\\php.exe'
+        : (herdPhp || 'php'));
   const appUrl = spawnSync(php, ["artisan", "tinker", "--execute=echo config('app.url');"], {
     cwd: root,
     encoding: "utf8",

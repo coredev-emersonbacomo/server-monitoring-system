@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DocCard from "@/components/docs/DocCard";
+import ThemeToggle from "@/components/ThemeToggle";
 import {
     DocsSidebar,
     DocsNav,
@@ -824,6 +825,8 @@ export default function Docs() {
                             </kbd>
                         </div>
 
+                        <ThemeToggle variant="icon" />
+
                         <button
                             type="button"
                             aria-label="Toggle docs navigation"
@@ -1038,14 +1041,17 @@ export default function Docs() {
                                 Docs Navigation
                             </span>
                         </div>
-                        <button
-                            type="button"
-                            aria-label="Close docs navigation"
-                            onClick={() => setMobileOpen(false)}
-                            className="flex size-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground hover:text-foreground cursor-pointer"
-                        >
-                            <X className="size-4" />
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                            <ThemeToggle variant="icon" />
+                            <button
+                                type="button"
+                                aria-label="Close docs navigation"
+                                onClick={() => setMobileOpen(false)}
+                                className="flex size-7 items-center justify-center rounded-md border border-border/60 text-muted-foreground hover:text-foreground cursor-pointer"
+                            >
+                                <X className="size-4" />
+                            </button>
+                        </div>
                     </div>
                     <DocsNav
                         sections={DOC_SECTIONS}
