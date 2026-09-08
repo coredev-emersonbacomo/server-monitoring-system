@@ -20,30 +20,30 @@ export function DocsArchitectureContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Laravel backend</strong> — REST API (JWT auth),
+                        <strong>Laravel backend</strong> - REST API (JWT auth),
                         Reverb WebSockets, the node-based alert engine, queued
                         jobs, the scheduler, and Typst report compilation.
                     </li>
                     <li>
-                        <strong>React SPA</strong> — the dashboard and
+                        <strong>React SPA</strong> - the dashboard and
                         management UI, talking to the API through an
                         OpenAPI-generated typed client.
                     </li>
                     <li>
-                        <strong>Go agent</strong> — installed on monitored
+                        <strong>Go agent</strong> - installed on monitored
                         servers; collects metrics, heartbeats, executes
                         commands, and self-updates.
                     </li>
                     <li>
-                        <strong>PostgreSQL + TimescaleDB</strong> — relational
+                        <strong>PostgreSQL + TimescaleDB</strong> - relational
                         data plus time-series aggregates for charts and
                         reports.
                     </li>
                     <li>
-                        <strong>Redis</strong> — cache and broadcast support.
+                        <strong>Redis</strong> - cache and broadcast support.
                     </li>
                     <li>
-                        <strong>Reverb</strong> — Pusher-compatible WebSocket
+                        <strong>Reverb</strong> - Pusher-compatible WebSocket
                         server for realtime updates.
                     </li>
                 </ul>
@@ -110,7 +110,7 @@ export function DocsAdrContent() {
             <Section title="Architecture Decision Records">
                 <p>
                     This section will hold a decision log of the significant
-                    architecture choices behind the system — why the stack was
+                    architecture choices behind the system - why the stack was
                     chosen, how the alert engine works, how realtime updates
                     are delivered, and how reporting is compiled.
                 </p>
@@ -146,33 +146,33 @@ export function DocsAgentContent() {
                     servers. Its identity is an installation UUID plus an RSA
                     keypair stored in the OS keystore (
                     <InlineCode>MonitorAgentIdentity-&lt;uuid&gt;</InlineCode> on
-                    Windows, a 0600 file on Linux) — never in config files, the
+                    Windows, a 0600 file on Linux) - never in config files, the
                     database, or logs. Per-server monitoring settings (port and
                     process filters) are held in the agent's runtime memory,
                     with the backend as the source of truth.
                 </p>
                 <ol className="list-decimal pl-5 space-y-1.5">
                     <li>
-                        <strong>Register</strong> — the installer passes a
+                        <strong>Register</strong> - the installer passes a
                         one-time provision token; the agent registers its public
                         key.
                     </li>
                     <li>
-                        <strong>Authenticate</strong> — short-lived,
+                        <strong>Authenticate</strong> - short-lived,
                         single-use challenge-response; no persistent token.
                     </li>
                     <li>
-                        <strong>Heartbeat</strong> — one aggregated heartbeat
+                        <strong>Heartbeat</strong> - one aggregated heartbeat
                         per tick covering every owned server (CPU, memory,
                         disk, network sent once; processes/open ports filtered
                         per server inside its partition).
                     </li>
                     <li>
-                        <strong>Control</strong> — a WebSocket channel per
+                        <strong>Control</strong> - a WebSocket channel per
                         server receives config and binary updates.
                     </li>
                     <li>
-                        <strong>Self-update</strong> — the agent downloads a new
+                        <strong>Self-update</strong> - the agent downloads a new
                         binary, swaps it in, and restarts.
                     </li>
                 </ol>
@@ -185,16 +185,16 @@ export function DocsAgentContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Binary (read-only)</strong> — Windows{" "}
+                        <strong>Binary (read-only)</strong> - Windows{" "}
                         <InlineCode>C:\Program Files\MonitorAgent\&lt;uuid&gt;\MonitorAgent.exe</InlineCode>,
                         Linux <InlineCode>/opt</InlineCode> or{" "}
                         <InlineCode>/usr/local/bin</InlineCode>. The agent never
-                        writes here — Program Files is not writable by the
+                        writes here - Program Files is not writable by the
                         service, and this was the root cause of the historical
                         "missing config" reports.
                     </li>
                     <li>
-                        <strong>State (service-writable)</strong> — all config
+                        <strong>State (service-writable)</strong> - all config
                         and logs live in{" "}
                         <InlineCode>C:\ProgramData\MonitorAgent\instances\&lt;uuid&gt;\</InlineCode>{" "}
                         (Windows) or{" "}
@@ -214,7 +214,7 @@ C:\\ProgramData\\MonitorAgent\\
     uninstall.flag                                   # uninstall marker`}</CodeBlock>
                 <Callout type="warning">
                     Diagnose the agent in the ProgramData (or /var/lib) instance
-                    directory — <strong>not</strong> the Program Files folder
+                    directory - <strong>not</strong> the Program Files folder
                     where the binary lives. A missing{" "}
                     <InlineCode>config.json</InlineCode> there means the
                     installer never ran; the agent now self-creates a minimal
@@ -249,7 +249,7 @@ C:\\ProgramData\\MonitorAgent\\
                             <InlineCode>server_url</InlineCode>.
                         </li>
                         <li>
-                            Identity keys are never stored here — they live in
+                            Identity keys are never stored here - they live in
                             the OS keystore.
                         </li>
                     </ul>
@@ -268,7 +268,7 @@ C:\\ProgramData\\MonitorAgent\\
                         <InlineCode>agent.log</InlineCode> is wired up). It
                         records "loadConfig failed", "bootstrapDefaultConfig
                         failed", "agent.log open failed", and "runService
-                        error" — the first place to look when an agent produces
+                        error" - the first place to look when an agent produces
                         nothing.
                     </p>
                 </SubSection>
@@ -300,7 +300,7 @@ C:\\ProgramData\\MonitorAgent\\
                         >
                             Agent Architecture
                         </Link>{" "}
-                        — startup sequence, CLI, runtime behavior, source files.
+                        - startup sequence, CLI, runtime behavior, source files.
                     </li>
                     <li>
                         <Link
@@ -309,7 +309,7 @@ C:\\ProgramData\\MonitorAgent\\
                         >
                             Agent Identity
                         </Link>{" "}
-                        — the installation UUID and per-platform key storage.
+                        - the installation UUID and per-platform key storage.
                     </li>
                     <li>
                         <Link
@@ -318,7 +318,7 @@ C:\\ProgramData\\MonitorAgent\\
                         >
                             Agent Storage
                         </Link>{" "}
-                        — config, logs, keystore, and what survives what.
+                        - config, logs, keystore, and what survives what.
                     </li>
                     <li>
                         <Link
@@ -327,7 +327,7 @@ C:\\ProgramData\\MonitorAgent\\
                         >
                             Agent Monitoring
                         </Link>{" "}
-                        — heartbeats, filters, and backend port pinging.
+                        - heartbeats, filters, and backend port pinging.
                     </li>
                     <li>
                         <Link
@@ -336,13 +336,13 @@ C:\\ProgramData\\MonitorAgent\\
                         >
                             Agent Security
                         </Link>{" "}
-                        — challenge-response auth, channel authorization, and
+                        - challenge-response auth, channel authorization, and
                         local protection.
                     </li>
                 </ul>
                 <p>
-                    For the operator's view — install commands, statuses, and
-                    troubleshooting — see{" "}
+                    For the operator's view - install commands, statuses, and
+                    troubleshooting - see{" "}
                     <Link
                         to="/docs/agent-setup"
                         className="text-primary hover:underline"
@@ -377,12 +377,12 @@ export function DocsCredentialsContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <InlineCode>.env</InlineCode> (gitignored) — Gmail SMTP
+                        <InlineCode>.env</InlineCode> (gitignored) - Gmail SMTP
                         app credentials and other local secrets, loaded directly by
                         Laravel (overrides <InlineCode>.env.development</InlineCode>).
                     </li>
                     <li>
-                        <InlineCode>.env.production</InlineCode> (gitignored) —
+                        <InlineCode>.env.production</InlineCode> (gitignored) -
                         production secrets such as the JWT secret and Neon
                         database URL.
                     </li>
@@ -390,7 +390,7 @@ export function DocsCredentialsContent() {
                         Agent auth is <strong>challenge-response</strong>: the
                         agent keeps a private key in the OS keystore on the
                         machine, registers its public key with the backend, and
-                        authenticates with short-lived, single-use challenges —
+                        authenticates with short-lived, single-use challenges -
                         there is no persistent token.
                     </li>
                 </ul>
@@ -415,37 +415,37 @@ export function DocsSchedulingContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>system:monitor</strong> (every minute) — the
+                        <strong>system:monitor</strong> (every minute) - the
                         single entry point. Dispatches a MonitorServer job per
                         server with an agent, expires stale provision tokens,
                         syncs "no SecOps assigned" action items, and emits a
                         system telemetry event.
                     </li>
                     <li>
-                        <strong>agg:refresh</strong> (every minute) — refreshes
+                        <strong>agg:refresh</strong> (every minute) - refreshes
                         the Timescale continuous aggregates used by charts and
                         reports.
                     </li>
                     <li>
-                        <strong>node-tasks:process</strong> (every 5 seconds) —
+                        <strong>node-tasks:process</strong> (every 5 seconds) -
                         fires due alert-engine timer tasks (sustained / check
                         after / repeat).
                     </li>
                     <li>
-                        <strong>tokens:cleanup</strong> (hourly) — expires
+                        <strong>tokens:cleanup</strong> (hourly) - expires
                         provision tokens past their validity.
                     </li>
                     <li>
-                        <strong>uploads:cleanup</strong> (hourly) — removes
+                        <strong>uploads:cleanup</strong> (hourly) - removes
                         expired upload intents and their storage assets.
                     </li>
                     <li>
-                        <strong>uploads:consistency-check</strong> (daily) —
+                        <strong>uploads:consistency-check</strong> (daily) -
                         validates upload intents and entity references against
                         the storage provider.
                     </li>
                     <li>
-                        <strong>agent-data:cleanup</strong> (daily) — removes
+                        <strong>agent-data:cleanup</strong> (daily) - removes
                         high-volume, low-retention rows older than the
                         configured Data Retention window (default 60 days):
                         agent heartbeats, metric batches/samples, and file
@@ -458,25 +458,25 @@ export function DocsSchedulingContent() {
 
             <Section title="Queued jobs">
                 <p>
-                    <InlineCode>QUEUE_CONNECTION=database</InlineCode> — a queue
+                    <InlineCode>QUEUE_CONNECTION=database</InlineCode> - a queue
                     worker processes jobs asynchronously. Key jobs:
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>MonitorServer</strong> — resolves the alert
+                        <strong>MonitorServer</strong> - resolves the alert
                         config for one server and evaluates it (dispatched by
                         <InlineCode> system:monitor</InlineCode>).
                     </li>
                     <li>
-                        <strong>FireNodeTimer</strong> — fires a due alert timer
+                        <strong>FireNodeTimer</strong> - fires a due alert timer
                         against historical metric data.
                     </li>
                     <li>
-                        <strong>SendNotification</strong> — delivers alert
+                        <strong>SendNotification</strong> - delivers alert
                         notifications (email, SMS, Discord).
                     </li>
                     <li>
-                        <strong>CleanupExpiredUploadIntents</strong> — removes
+                        <strong>CleanupExpiredUploadIntents</strong> - removes
                         expired uploads.
                     </li>
                 </ul>
@@ -485,18 +485,18 @@ export function DocsSchedulingContent() {
             <Section title="WebSocket channels">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <InlineCode>dashboard</InlineCode> (private) — server
+                        <InlineCode>dashboard</InlineCode> (private) - server
                         status updates, action item updates, and usage
                         broadcasts.
                     </li>
                     <li>
-                        <InlineCode>{"server.{uuid}"}</InlineCode> (private) —
+                        <InlineCode>{"server.{uuid}"}</InlineCode> (private) -
                         live stat points, status updates, provision token
                         generation, registration completion, agent
                         uninstalled.
                     </li>
                     <li>
-                        <InlineCode>{"agent.{serverUuid}"}</InlineCode> (private) —
+                        <InlineCode>{"agent.{serverUuid}"}</InlineCode> (private) -
                         agent control channel (config updates, binary
                         updates).
                     </li>
@@ -506,16 +506,16 @@ export function DocsSchedulingContent() {
             <Section title="Utility commands">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <InlineCode>server:update-metrics</InlineCode> — dev
+                        <InlineCode>server:update-metrics</InlineCode> - dev
                         tool that injects simulated metrics (single-shot or{" "}
                         <InlineCode>--daemon</InlineCode>).
                     </li>
                     <li>
-                        <InlineCode>agent:version-sync</InlineCode> — syncs the
+                        <InlineCode>agent:version-sync</InlineCode> - syncs the
                         agent version records with the built binaries.
                     </li>
                     <li>
-                        <InlineCode>VerifyNodeConfig</InlineCode> — manual
+                        <InlineCode>VerifyNodeConfig</InlineCode> - manual
                         validation of a node config.
                     </li>
                 </ul>
@@ -559,14 +559,14 @@ php artisan schedule:work           # Task scheduler`}</CodeBlock>
                     builds). <InlineCode>npm start</InlineCode> additionally
                     deploys the built SPA into <InlineCode>public/</InlineCode>{" "}
                     via <InlineCode>scripts/start.js</InlineCode>, but does not
-                    start a web server — that must be handled by nginx/Apache.
+                    start a web server - that must be handled by nginx/Apache.
                 </p>
             </Section>
 
-            <Section title="Telescope — dev-only">
+            <Section title="Telescope - dev-only">
                 <Callout type="warning">
                     <strong>Only run Telescope in development</strong> or behind an
-                    admin gate. It records requests, jobs, queries, and logs — never
+                    admin gate. It records requests, jobs, queries, and logs - never
                     expose <InlineCode>/telescope</InlineCode> in production.
                 </Callout>
                 <ul className="list-disc pl-5 space-y-1.5">
@@ -583,7 +583,7 @@ php artisan schedule:work           # Task scheduler`}</CodeBlock>
                         Access is gated by{" "}
                         <InlineCode>Gate::define('viewTelescope')</InlineCode> in{" "}
                         <InlineCode>App\Providers\TelescopeServiceProvider</InlineCode>{" "}
-                        — in production it returns <InlineCode>false</InlineCode>{" "}
+                        - in production it returns <InlineCode>false</InlineCode>{" "}
                         unless you add admin emails via{" "}
                         <InlineCode>TELESCOPE_ADMIN_EMAILS</InlineCode>.
                     </li>
@@ -595,7 +595,7 @@ php artisan schedule:work           # Task scheduler`}</CodeBlock>
                 </ul>
             </Section>
 
-            <Section title="Alert visual debugger — dev-only">
+            <Section title="Alert visual debugger - dev-only">
                 <p>
                     The System Pipeline &amp; Telemetry Visualizer is an opt-in
                     debugging tool. It is <strong>off by default</strong> so the

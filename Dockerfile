@@ -1,13 +1,17 @@
-# server-monitoring-system — single Dockerfile, two targets.
+# server-monitoring-system — single Dockerfile, shared base, two targets.
 #
-#   dev:  `docker compose up` → bind mount, Xdebug, artisan serve + vite dev
+#   dev:  `docker compose up` → FrankenPHP (non-worker) + bind mount,
+#         Xdebug, dev composer packages; live edits apply per request
 #   prod: `docker compose -f compose.yaml -f compose.prod.yaml up` on a server
 #         → baked deps + built assets, opcache, no dev packages
 #
-# Same base layers for both — no dev/prod drift.
+# Same FrankenPHP base layers for both — no dev/prod drift. Non-worker mode
+# in both (each request boots fresh, multithreaded unlike php -S); worker
+# mode later after a state-leak audit (audited in dev first).
 
 # ---------------------------------------------------------------- base ---
-FROM php:8.5-cli-bookworm AS base
+# FrankenPHP (Caddy + PHP worker-capable server).
+FROM dunglas/frankenphp:1-php8.5 AS base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
@@ -19,14 +23,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     ca-certificates \
     curl \
-    gnupg \
-    && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" \
-        > /etc/apt/sources.list.d/nodesource.list \
-    && apt-get update && apt-get install -y --no-install-recommends nodejs \
+    xz-utils \
     && rm -rf /var/lib/apt/lists/*
+
+# Node 22 via official binary tarball (pinned to local version).
+# (Apt splits npm into a separate package on trixie and NodeSource has no
+# trixie repo — tarball is deterministic everywhere.)
+RUN curl -fsSL https://nodejs.org/dist/v22.22.2/node-v22.22.2-linux-x64.tar.xz -o /tmp/node.tar.xz \
+    && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
+    && rm /tmp/node.tar.xz \
+    && node -v && npm -v
 
 # pdo_pgsql/pgsql (TimescaleDB), mbstring/xml/bcmath/zip (Laravel),
 # sockets (Reverb), pcntl (queue/scheduler signals)
@@ -47,6 +53,9 @@ WORKDIR /var/www/html
 EXPOSE 8000 8081
 
 # ---------------------------------------------------------------- dev ----
+# Same server as prod (dev/prod parity): FrankenPHP non-worker mode serves
+# :8000 multithreaded, each request boots fresh so bind-mounted live edits
+# apply. Dev adds Xdebug + dev composer packages on top of base.
 FROM base AS dev
 
 # Xdebug for local debugging (VS Code / PhpStorm)
@@ -65,53 +74,17 @@ COPY docs/package.json ./docs/
 # via `npm run docs` in repo root.
 RUN npm ci --no-audit --no-fund
 
-# Same boot logic as prod: migrate + conditional seed + VITE build check.
+# Same boot logic + same server config as prod.
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY docker/frankenphp-Caddyfile /etc/caddy/Caddyfile
 ENTRYPOINT ["entrypoint.sh"]
 
-CMD ["sh", "-c", "php -S 0.0.0.0:${PORT:-8000} -t public"]
+CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
 
 # ---------------------------------------------------------------- prod ---
-# FrankenPHP (Caddy + PHP worker-capable server). Multithreaded + opcache —
-# the prod answer to php -S (single-threaded dev only). Non-worker mode for
-# now (drop-in behavior); worker mode later after a state-leak audit.
-FROM dunglas/frankenphp:1-php8.5 AS prod
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    unzip \
-    libpq-dev \
-    libzip-dev \
-    libonig-dev \
-    libxml2-dev \
-    postgresql-client \
-    ca-certificates \
-    curl \
-    xz-utils \
-    && rm -rf /var/lib/apt/lists/*
-
-# Node 22 via official binary tarball (pinned to local version).
-# (Apt/nodejs splits npm into a separate package on trixie and NodeSource
-# has no trixie repo — tarball is deterministic everywhere.)
-RUN curl -fsSL https://nodejs.org/dist/v22.22.2/node-v22.22.2-linux-x64.tar.xz -o /tmp/node.tar.xz \
-    && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
-    && rm /tmp/node.tar.xz \
-    && node -v && npm -v
-
-RUN docker-php-ext-install -j$(nproc) \
-    pdo_pgsql \
-    pgsql \
-    mbstring \
-    xml \
-    bcmath \
-    zip \
-    sockets \
-    pcntl
-
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-WORKDIR /var/www/html
+# Baked deps + built assets, opcache, no dev packages — same base as dev.
+FROM base AS prod
 
 # PHP deps (no dev packages)
 COPY composer.json composer.lock ./
@@ -139,8 +112,6 @@ COPY docker/frankenphp-Caddyfile /etc/caddy/Caddyfile
 RUN php artisan config:clear \
     && php artisan route:clear \
     && php artisan view:clear
-
-EXPOSE 8000 8081
 
 ENTRYPOINT ["entrypoint.sh"]
 CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]

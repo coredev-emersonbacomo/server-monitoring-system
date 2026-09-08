@@ -6,7 +6,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { spawn, spawnSync, execSync } from "child_process";
-import { loadEnvIntoProcess } from "./load-env.js";
+import { loadEnvIntoProcess, restoreEnvLine } from "./load-env.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const logFile = path.join(root, ".ngrok.log");
@@ -59,6 +59,12 @@ async function main() {
 
   tunnelUrl = `https://${domain}`;
 
+  // In memory BEFORE `docker compose up`: ${APP_URL} interpolation bakes the
+  // tunnel URL into the app container as real env (previously this assignment
+  // sat after `up`, so the container only ever saw the stale .env value).
+  process.env.APP_URL = tunnelUrl;
+  const isDockerUpstream = /127\.0\.0\.1:8000|localhost:8000/.test(upstream);
+
   // 1. Docker stack up (postgres/redis/reverb/queue/scheduler/app).
   console.log("[ngrok:build] Bringing docker stack up...");
   const docker = spawnSync("docker", ["compose", "up", "-d"], {
@@ -72,22 +78,29 @@ async function main() {
   }
 
   // 2. Env overrides for the build (VITE_* baked into bundles).
-  process.env.APP_URL = tunnelUrl;
   process.env.VITE_REVERB_HOST = domain;
   process.env.VITE_REVERB_PORT = "443";
   process.env.VITE_REVERB_SCHEME = "https";
 
-  // 3. Write APP_URL to .env so Laravel (reads files, not Node env)
-  // generates provision/install commands with the tunnel URL.
+  // 3. Herd only: .env is the only channel into the separate Herd PHP process
+  // tree (snapshot + restore on exit). Docker is covered by the in-memory
+  // APP_URL above, so nothing is written and a later plain
+  // `docker compose up` self-heals to localhost:8000.
   const envPath = path.join(root, ".env");
-  let envContent = "";
-  try { envContent = fs.readFileSync(envPath, "utf8"); } catch {}
-  if (envContent.match(/^APP_URL=.*$/m)) {
-    envContent = envContent.replace(/^APP_URL=.*$/m, `APP_URL=${tunnelUrl}`);
-  } else {
-    envContent += (envContent.endsWith("\n") || !envContent ? "" : "\n") + `APP_URL=${tunnelUrl}\n`;
+  let prevAppUrlLine = null;
+  let envFileTouched = false;
+  if (!isDockerUpstream) {
+    let envContent = "";
+    try { envContent = fs.readFileSync(envPath, "utf8"); } catch {}
+    prevAppUrlLine = envContent.match(/^APP_URL=.*$/m)?.[0] ?? null;
+    if (envContent.match(/^APP_URL=.*$/m)) {
+      envContent = envContent.replace(/^APP_URL=.*$/m, `APP_URL=${tunnelUrl}`);
+    } else {
+      envContent += (envContent.endsWith("\n") || !envContent ? "" : "\n") + `APP_URL=${tunnelUrl}\n`;
+    }
+    fs.writeFileSync(envPath, envContent);
+    envFileTouched = true;
   }
-  fs.writeFileSync(envPath, envContent);
 
   // 4. Rebuild frontend + root Vite assets with ngrok vars.
   console.log("[ngrok:build] Building and deploying...");
@@ -168,6 +181,13 @@ async function main() {
 
   process.on("SIGINT", () => {
     child.kill();
+    if (envFileTouched) {
+      try {
+        let content = fs.readFileSync(envPath, "utf8");
+        fs.writeFileSync(envPath, restoreEnvLine(content, "APP_URL", prevAppUrlLine));
+        console.log("[ngrok:build] Restored .env APP_URL.");
+      } catch {}
+    }
     process.exit();
   });
 }

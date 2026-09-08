@@ -45,7 +45,14 @@ $app->beforeBootstrapping(LoadEnvironmentVariables::class, function (Application
         return;
     }
     Dotenv::createImmutable($app->environmentPath(), ['.env', '.env.development'], false)->safeLoad();
-    $app->loadEnvironmentFrom('__app_env_injected__.env');
+    // Key commands write to environmentFilePath(), so keep them on the real
+    // .env — the dummy target below does not exist and makes them crash.
+    $argv = $_SERVER['argv'] ?? [];
+    $isKeyCommand = $app->runningInConsole()
+        && isset($argv[1]) && is_string($argv[1]) && str_starts_with($argv[1], 'key:');
+    if (! $isKeyCommand) {
+        $app->loadEnvironmentFrom('__app_env_injected__.env');
+    }
 });
 
 return $app;

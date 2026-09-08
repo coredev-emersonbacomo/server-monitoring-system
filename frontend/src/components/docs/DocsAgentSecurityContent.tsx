@@ -26,7 +26,7 @@ export function DocsAgentSecurityContent() {
                 </p>
             </Section>
 
-            <Section title="Authentication — challenge-response">
+            <Section title="Authentication - challenge-response">
                 <p>
                     The agent has no login and no stored password. Instead it
                     performs a challenge-response handshake each time it needs a
@@ -53,14 +53,14 @@ export function DocsAgentSecurityContent() {
                         The backend verifies the signature against the stored
                         public key, marks the challenge used, and returns a{" "}
                         <strong>short-lived JWT</strong> (
-                        <InlineCode>session_ttl</InlineCode> 900 seconds) — held{" "}
+                        <InlineCode>session_ttl</InlineCode> 900 seconds) - held{" "}
                         <strong>only in process memory</strong>, never on disk.
                     </li>
                 </ol>
                 <Callout>
                     Challenges are single-use and expire in 60 seconds, so a
                     captured challenge cannot be replayed, and the session token
-                    expires in 15 minutes with no refresh mechanism on disk — a
+                    expires in 15 minutes with no refresh mechanism on disk - a
                     stolen token is only useful for the few seconds of its
                     life. When the token is rejected (401) the agent silently
                     re-authenticates.
@@ -86,7 +86,7 @@ export function DocsAgentSecurityContent() {
                     </li>
                     <li>
                         The token is <strong>stripped from config.json</strong>{" "}
-                        after registration — the persistent config never holds a
+                        after registration - the persistent config never holds a
                         secret.
                     </li>
                 </ul>
@@ -106,16 +106,16 @@ export function DocsAgentSecurityContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Windows</strong> — the key lives in the{" "}
+                        <strong>Windows</strong> - the key lives in the{" "}
                         <em>per-user</em> keystore of the service account
                         (LocalSystem), preferring the TPM-backed provider. It is
                         never exported by the application, and TPM keys are
                         non-exportable at the hardware level. An administrator
-                        who stops the service cannot delete the key — only the
+                        who stops the service cannot delete the key - only the
                         service account can.
                     </li>
                     <li>
-                        <strong>Linux</strong> — a 0600 file owned by the{" "}
+                        <strong>Linux</strong> - a 0600 file owned by the{" "}
                         <InlineCode>monitor</InlineCode> user at{" "}
                         <InlineCode>/var/lib/monitor-agent/identity-&lt;uuid&gt;.pem</InlineCode>.
                         The systemd unit is hardened: no new privileges, empty
@@ -123,7 +123,7 @@ export function DocsAgentSecurityContent() {
                         to the program and data directories, home protected.
                     </li>
                     <li>
-                        <strong>Installers</strong> — refuse collisions by
+                        <strong>Installers</strong> - refuse collisions by
                         checking for an existing instance directory, service,
                         or keystore key before installing.
                     </li>
@@ -137,7 +137,7 @@ export function DocsAgentSecurityContent() {
                     <InlineCode>private-agent.&lt;serverUuid&gt;</InlineCode> ).
                     Subscription is authorized by{" "}
                     <InlineCode>/broadcasting/auth/agent</InlineCode>, which does
-                    <strong> not</strong> use the normal dashboard middleware — it
+                    <strong> not</strong> use the normal dashboard middleware - it
                     self-authenticates:
                 </p>
                 <ol className="list-decimal pl-5 space-y-1.5">
@@ -163,14 +163,14 @@ export function DocsAgentSecurityContent() {
 
             <Section title="Uninstall, detach & revocation">
                 <p>
-                    Removing an agent — or detaching one server from a shared
-                    host — is deliberately the one operation an unprivileged
+                    Removing an agent - or detaching one server from a shared
+                    host - is deliberately the one operation an unprivileged
                     operator <em>cannot</em> fake. Both are marker-based and
                     host-validated:
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Full uninstall</strong> —{" "}
+                        <strong>Full uninstall</strong> -{" "}
                         <InlineCode>/api/v1/agent/uninstall</InlineCode>{" "}
                         (agent JWT). Revokes the whole installation, deletes the
                         identity key, all servers on that host become{" "}
@@ -179,7 +179,7 @@ export function DocsAgentSecurityContent() {
                         restart → <InlineCode>handleUninstallMarker</InlineCode>.
                     </li>
                     <li>
-                        <strong>Per-server detach</strong> —{" "}
+                        <strong>Per-server detach</strong> -{" "}
                         <InlineCode>
                             /api/v1/agent/servers/&#123;uuid&#125;/uninstall
                         </InlineCode>{" "}
@@ -195,7 +195,7 @@ export function DocsAgentSecurityContent() {
                         <InlineCode>POST</InlineCode> try, else next heartbeat,
                         then <InlineCode>done</InlineCode>). When the last server
                         is detached the agent remains with zero servers until a
-                        full uninstall — it does <em>not</em> auto-revoke.
+                        full uninstall - it does <em>not</em> auto-revoke.
                     </li>
                     <li>
                         Both delegate the key operation to the running service
@@ -220,17 +220,17 @@ export function DocsAgentSecurityContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Installation UUID</strong> — an identifier; it
+                        <strong>Installation UUID</strong> - an identifier; it
                         names the instance, key, and service, and is safe to show
                         in logs and the UI.
                     </li>
                     <li>
-                        <strong>Public key &amp; fingerprint</strong> — safe to
+                        <strong>Public key &amp; fingerprint</strong> - safe to
                         transmit and store; possession of the private key is what
                         authenticates.
                     </li>
                     <li>
-                        <strong>Crash reports</strong> — explicitly exclude the
+                        <strong>Crash reports</strong> - explicitly exclude the
                         private key, signatures, and credentials.
                     </li>
                 </ul>
@@ -239,17 +239,17 @@ export function DocsAgentSecurityContent() {
             <Section title="Verification & troubleshooting">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Agent self-test</strong> — run the binary with{" "}
+                        <strong>Agent self-test</strong> - run the binary with{" "}
                         <InlineCode>-selftest</InlineCode> to exercise the
                         keystore round-trip (create/get key, sign, verify).
                     </li>
                     <li>
-                        <strong>Key presence</strong> —{" "}
+                        <strong>Key presence</strong> -{" "}
                         <InlineCode>-has-key -key &lt;keyName&gt;</InlineCode>{" "}
                         exits 0 if the keystore key exists.
                     </li>
                     <li>
-                        <strong>Auth failures</strong> — the agent logs "Authenticated
+                        <strong>Auth failures</strong> - the agent logs "Authenticated
                         with server." on success and the challenge/verify step
                         on failure in <InlineCode>agent.log</InlineCode>. A
                         reinstall is the fix for a lost key.

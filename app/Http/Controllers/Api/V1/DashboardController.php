@@ -347,7 +347,7 @@ class DashboardController extends Controller
                     'server_uuid' => $target->uuid,
                     'server_name' => $target->name,
                     'client_name' => $target->client?->name ?? '',
-                    'points' => $seriesMap[$target->id] ?? [],
+                    'points' => $this->padNullTimestamps($seriesMap[$target->id] ?? [], $unit),
                 ];
             }
 
@@ -388,6 +388,7 @@ class DashboardController extends Controller
                     'value' => round((float) $row->value, 1),
                 ];
             }
+            $points = $this->padNullTimestamps($points, $unit);
 
             $hasOlderData = DB::table($table)
                 ->whereIn('server_id', $serverIds)
@@ -440,7 +441,7 @@ class DashboardController extends Controller
                 continue;
             }
 
-            $points = $seriesMap[$server->id] ?? [];
+            $points = $this->padNullTimestamps($seriesMap[$server->id] ?? [], $unit);
 
             $series[] = [
                 'server_uuid' => $server->uuid,
@@ -485,6 +486,52 @@ class DashboardController extends Controller
     private function parseAggTimestamp(string $raw): int
     {
         return Carbon::parse($raw)->getPreciseTimestamp(3);
+    }
+
+    /**
+     * Fill offline gaps between a server's own data points with null entries
+     * so charts break the line instead of bridging across a gap.
+     *
+     * The grid is derived from the data's own min→max timestamps (stepped by
+     * the unit interval). Real agg points are already snapped to bucket
+     * boundaries, so stepping from the earliest point lands exactly on the
+     * interior points — no window-boundary/alignment mismatch from using the
+     * (unanchored) request startTime/endTime, which is what produced an all-null
+     * series and an empty chart.
+     *
+     * @param  array<int, array{timestamp: int, value: float}>  $points
+     * @return array<int, array{timestamp: int, value: float|null}>
+     */
+    private function padNullTimestamps(array $points, string $unit): array
+    {
+        if ($points === []) {
+            return [];
+        }
+
+        $intervalMs = match ($unit) {
+            'minute' => 60_000,
+            'hour' => 3_600_000,
+            'day' => 86_400_000,
+            'week' => 604_800_000,
+            'month' => 2_592_000_000,
+            default => 3_600_000,
+        };
+
+        usort($points, fn ($a, $b) => $a['timestamp'] <=> $b['timestamp']);
+        $min = $points[0]['timestamp'];
+        $max = $points[count($points) - 1]['timestamp'];
+
+        $byTs = [];
+        foreach ($points as $p) {
+            $byTs[$p['timestamp']] = $p;
+        }
+
+        $padded = [];
+        for ($ts = $min; $ts <= $max; $ts += $intervalMs) {
+            $padded[] = $byTs[$ts] ?? ['timestamp' => $ts, 'value' => null];
+        }
+
+        return $padded;
     }
 
     /**

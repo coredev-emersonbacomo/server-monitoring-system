@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
-import type { Paginator, UserData } from "@/types/models";
+import type { UserData } from "@/types/models";
+import type { Paginator } from "@/types/pagination";
 import type {
     UsersStorePayload as CreateUserPayload,
     UsersUpdatePayload as UpdateUserPayload,
@@ -24,7 +25,7 @@ export const useUsers = (params?: {
                 params: { query: (params ?? undefined) as never },
             });
             if (error) throw error;
-            return data as Paginator<UserData>;
+            return data as unknown as Paginator<UserData>;
         },
     });
 

@@ -15,11 +15,12 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { spawn, spawnSync, execSync } from "child_process";
-import { loadEnvIntoProcess } from "./load-env.js";
+import { loadEnvIntoProcess, restoreEnvLine } from "./load-env.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const logFile = path.join(root, ".ngrok.log");
 const pidFile = path.join(root, ".ngrok.pid");
+const envPath = path.join(root, ".env");
 
 // Vite bin (hoisted to root node_modules in this monorepo). Running it
 // directly with node avoids the npm.cmd/shell wrapper entirely.
@@ -84,9 +85,19 @@ async function waitFor(fn, tries, delayMs, onTick) {
 }
 
 async function httpOk(url) {
+  // AbortController: if the booting container accepts the TCP connection but
+  // never replies (Caddy/FrankenPHP mid-composer/mid-build), Node's fetch hangs
+  // forever — which stalls waitFor's loop past its 600s budget. A short timeout
+  // makes each poll resolve so the retry loop actually advances.
   try {
-    const res = await fetch(url, { cache: "no-store" });
-    return res.ok;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+    try {
+      const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+      return res.ok;
+    } finally {
+      clearTimeout(timer);
+    }
   } catch {
     return false;
   }
@@ -185,6 +196,12 @@ const dim = (s) => paint(2, s);
 let domain = "";
 let upstream = "";
 let tunnelUrl = "";
+// Previous .env lines overwritten for a Herd run (Docker runs never touch
+// the file). Restored in cleanup() so tunnel run-state never leaks into
+// later plain runs. Null = the line did not exist before.
+let prevAppUrlLine = null;
+let prevSkipLine = null;
+let envFileTouched = false;
 
 async function main() {
   // Load environment from .env.development + .env (gitignored overrides win).
@@ -214,14 +231,14 @@ async function main() {
   try { fs.writeFileSync(pidFile, String(process.pid)); } catch {}
 
   tunnelUrl = `https://${domain}`;
-  // Set BEFORE `docker compose up` so ${APP_URL} interpolation in
+  // Always in memory BEFORE `docker compose up`: ${APP_URL} interpolation in
   // compose.yaml bakes the tunnel URL into the app container as real env
   // (createImmutable: real env beats the bind-mounted .env file, which is
   // why the .env write alone never reached ProvisioningService).
   process.env.APP_URL = tunnelUrl;
   // Lets generated agent install commands bypass ngrok's free-tier browser
   // interstitial. compose.yaml interpolates this into the app container;
-  // the .env write below covers Herd. Never set in prod (pinned false).
+  // the .env write below covers Herd only. Never set in prod (pinned false).
   process.env.NGROK_SKIP_BROWSER_WARNING = "true";
   const isDockerUpstream = /127\.0\.0\.1:8000|localhost:8000/.test(upstream);
 
@@ -241,11 +258,33 @@ async function main() {
     if (isDockerUpstream) {
       // `stop`, never `down`: containers keep their volumes/images so the
       // next run restarts in seconds, but RAM goes back to zero now.
+      // Blocking spawnSync: docker fully finishes before we return (a prompt
+      // printed mid-cleanup is the parent shell's own Ctrl+C echo, which
+      // Windows delivers to every attached process — not an early exit).
       console.log("[ngrok] Stopping docker stack (containers kept, data safe)...");
       try {
-        spawnSync("docker", ["compose", "stop"], { stdio: "inherit", shell: true, cwd: root });
+        // ponytail: stdio ignore — matches iYu dev.mjs. "inherit" let docker's
+        // progress stream to the shared console AFTER PowerShell already
+        // printed its Ctrl+C prompt, interleaving output (the race below).
+        // Ignoring docker's stdout keeps cleanup silent so the prompt order is
+        // clean. No shell: true — cmd.exe intermediary on Windows intercepts
+        // SIGINT during the blocking stop and kills the parent shell.
+        spawnSync("docker", ["compose", "stop"], { stdio: "ignore", cwd: root });
+      } catch {}
+    } else if (envFileTouched) {
+      // Herd only: put .env back the way we found it (sync I/O is safe in
+      // exit handlers; only async work is banned there). Runs on
+      // SIGINT/SIGTERM/normal exit — not on hard kill, which skips cleanup.
+      try {
+        let content = fs.readFileSync(envPath, "utf8");
+        content = restoreEnvLine(content, "APP_URL", prevAppUrlLine);
+        content = restoreEnvLine(content, "NGROK_SKIP_BROWSER_WARNING", prevSkipLine);
+        fs.writeFileSync(envPath, content);
+        console.log("[ngrok] Restored .env tunnel values.");
       } catch {}
     }
+    console.log("");
+    console.log("[ngrok] Cleanup complete — safe to type.");
   }
 
   process.stdin.resume();
@@ -263,22 +302,30 @@ async function main() {
     cleanup();
   });
 
-  // 1. Write APP_URL to .env so Laravel generates provision/install
-  // commands with the tunnel URL (PHP re-reads env per request).
-  const envPath = path.join(root, ".env");
-  let envContent = "";
-  try { envContent = fs.readFileSync(envPath, "utf8"); } catch {}
-  if (envContent.match(/^APP_URL=.*$/m)) {
-    envContent = envContent.replace(/^APP_URL=.*$/m, `APP_URL=${tunnelUrl}`);
-  } else {
-    envContent += (envContent.endsWith("\n") || !envContent ? "" : "\n") + `APP_URL=${tunnelUrl}\n`;
+  // 1. Point the backend at the tunnel URL.
+  // Docker: memory-only (process.env above flows through compose.yaml
+  // interpolation into the recreated container). Nothing is written, so a
+  // later plain `docker compose up` self-heals to localhost:8000.
+  // Herd: the .env file is the only channel into the separate Herd PHP
+  // process tree — write it, snapshot the previous lines, restore on exit.
+  if (!isDockerUpstream) {
+    let envContent = "";
+    try { envContent = fs.readFileSync(envPath, "utf8"); } catch {}
+    prevAppUrlLine = envContent.match(/^APP_URL=.*$/m)?.[0] ?? null;
+    prevSkipLine = envContent.match(/^NGROK_SKIP_BROWSER_WARNING=.*$/m)?.[0] ?? null;
+    if (envContent.match(/^APP_URL=.*$/m)) {
+      envContent = envContent.replace(/^APP_URL=.*$/m, `APP_URL=${tunnelUrl}`);
+    } else {
+      envContent += (envContent.endsWith("\n") || !envContent ? "" : "\n") + `APP_URL=${tunnelUrl}\n`;
+    }
+    if (envContent.match(/^NGROK_SKIP_BROWSER_WARNING=.*$/m)) {
+      envContent = envContent.replace(/^NGROK_SKIP_BROWSER_WARNING=.*$/m, "NGROK_SKIP_BROWSER_WARNING=true");
+    } else {
+      envContent += (envContent.endsWith("\n") || !envContent ? "" : "\n") + "NGROK_SKIP_BROWSER_WARNING=true\n";
+    }
+    fs.writeFileSync(envPath, envContent);
+    envFileTouched = true;
   }
-  if (envContent.match(/^NGROK_SKIP_BROWSER_WARNING=.*$/m)) {
-    envContent = envContent.replace(/^NGROK_SKIP_BROWSER_WARNING=.*$/m, "NGROK_SKIP_BROWSER_WARNING=true");
-  } else {
-    envContent += (envContent.endsWith("\n") || !envContent ? "" : "\n") + "NGROK_SKIP_BROWSER_WARNING=true\n";
-  }
-  fs.writeFileSync(envPath, envContent);
 
   // 2. Ensure the backend behind the proxy is actually running.
   if (isDockerUpstream) {
@@ -332,6 +379,9 @@ async function main() {
       process.exit(1);
     }
     statusLine("Herd backend", green("REACHABLE"));
+    console.log("");
+    console.log("[ngrok] Restart Herd site/PHP so web workers pick up the new APP_URL from .env,");
+    console.log("[ngrok] then regenerate the provision token in the dashboard.");
     console.log("");
   }
 

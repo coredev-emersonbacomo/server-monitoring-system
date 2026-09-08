@@ -65,7 +65,7 @@ export function NodeSocket({
                         <span className="font-semibold">
                             {def?.label ?? id}
                         </span>
-                        <span className="text-muted-foreground">—</span>
+                        <span className="text-muted-foreground">-</span>
                         <span>{def?.type ?? "unknown"}</span>
                         {elongated && (
                             <span className="text-muted-foreground">

@@ -271,19 +271,19 @@ const PAGES: Record<
     "alert-editor": {
         title: "Alert Config Editor",
         description:
-            "The visual node editor for alerts — every node type, wiring, scopes, and templates.",
+            "The visual node editor for alerts - every node type, wiring, scopes, and templates.",
         Content: DocsAlertConfiguratorContent,
     },
     adrs: {
         title: "ADRs",
         description:
-            "Architecture decision records — the decision log behind the system.",
+            "Architecture decision records - the decision log behind the system.",
         Content: DocsAdrContent,
     },
     "agent-flow": {
         title: "Agent",
         description:
-            "The Go agent on each monitored server — overview, then deep dives into architecture, identity, storage, monitoring, and security.",
+            "The Go agent on each monitored server - overview, then deep dives into architecture, identity, storage, monitoring, and security.",
         Content: DocsAgentContent,
     },
     "agent-architecture": {
@@ -295,7 +295,7 @@ const PAGES: Record<
     "agent-identity": {
         title: "Agent Identity",
         description:
-            "Installation UUID and RSA keypair — how agent identity is generated and stored per platform.",
+            "Installation UUID and RSA keypair - how agent identity is generated and stored per platform.",
         Content: DocsAgentIdentityContent,
     },
     "agent-storage": {
@@ -329,7 +329,7 @@ const PAGES: Record<
     alerting: {
         title: "Alerting System",
         description:
-            "The node-based alert engine — configuration, evaluation, and scheduling.",
+            "The node-based alert engine - configuration, evaluation, and scheduling.",
         Content: DocsAlertsContent,
     },
     "storage-providers": {
