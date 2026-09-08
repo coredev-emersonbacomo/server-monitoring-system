@@ -44,3 +44,16 @@ export function loadEnvIntoProcess(files) {
     }
     return merged;
 }
+
+// Put one .env line back the way it was before a run overwrote it: the exact
+// previous line if one existed, otherwise remove the line the run added.
+// Pure string ops — sync-safe for use inside exit handlers.
+export function restoreEnvLine(content, key, prevLine) {
+    const re = new RegExp(`^${key}=.*$`, "m");
+    if (prevLine) {
+        return re.test(content)
+            ? content.replace(re, prevLine)
+            : content + (content.endsWith("\n") || !content ? "" : "\n") + prevLine + "\n";
+    }
+    return content.replace(new RegExp(`^${key}=.*$\n?`, "m"), "");
+}

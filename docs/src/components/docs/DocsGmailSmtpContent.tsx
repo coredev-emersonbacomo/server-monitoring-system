@@ -16,7 +16,7 @@ export function DocsGmailSmtpContent() {
                     credentials live in <InlineCode>.env</InlineCode> (gitignored,
                     overrides <InlineCode>.env.development</InlineCode>). Laravel
                     loads <InlineCode>.env</InlineCode> directly via its normal env
-                    loading — no runtime injection step is needed.
+                    loading - no runtime injection step is needed.
                 </p>
                 <CodeBlock>{`.env.development  -> MAIL_HOST, MAIL_PORT, MAIL_MAILER (tracked, non-secret)
 .env             -> MAIL_USERNAME, MAIL_PASSWORD, MAIL_FROM_ADDRESS (gitignored, secret)`}</CodeBlock>
@@ -47,7 +47,7 @@ export function DocsGmailSmtpContent() {
                 </Callout>
                 <ol start={3} className="list-decimal list-inside ml-2 space-y-1">
                     <li>
-                        You get a 16-character password — use that, with spaces
+                        You get a 16-character password - use that, with spaces
                         removed.
                     </li>
                 </ol>
@@ -56,7 +56,7 @@ export function DocsGmailSmtpContent() {
             <Section title="2. Configure the credentials file">
                 <p>
                     Put your secrets in <InlineCode>.env</InlineCode> (gitignored,
-                    in the project root) — it overrides the tracked{" "}
+                    in the project root) - it overrides the tracked{" "}
                     <InlineCode>.env.development</InlineCode> values:
                 </p>
                 <CodeBlock>{`MAIL_USERNAME="you@gmail.com"
@@ -68,7 +68,7 @@ MAIL_FROM_ADDRESS="you@gmail.com" # must be same as MAIL_USERNAME for Gmail
                     equals <InlineCode>MAIL_USERNAME</InlineCode> (or a verified
                     alias). If they differ Gmail will overwrite the From or reject
                     the mail. <InlineCode>MAIL_FROM_NAME</InlineCode> is only the
-                    display name — leave it unset to use{" "}
+                    display name - leave it unset to use{" "}
                     <InlineCode>APP_NAME</InlineCode> or set it to a plain name
                     like <InlineCode>"Server Monitor"</InlineCode>, never an email.
                 </Callout>
@@ -106,7 +106,7 @@ MAIL_FROM_NAME="Laravel"         # display name only, not an email; defaults to 
             <Section title="3. Run">
                 <p>
                     Credentials live in <InlineCode>.env</InlineCode>, which Laravel
-                    loads directly — both the dev stack and manual{" "}
+                    loads directly - both the dev stack and manual{" "}
                     <InlineCode>php artisan</InlineCode> commands pick them up. Start
                     everything with:
                 </p>
@@ -136,7 +136,7 @@ MAIL_FROM_NAME="Laravel"         # display name only, not an email; defaults to 
             <Section title="Alternatives">
                 <p>
                     If Gmail app passwords won't work for the account, any SMTP
-                    provider works with the same setup — e.g. Mailtrap (testing),
+                    provider works with the same setup - e.g. Mailtrap (testing),
                     Resend, Brevo, or Mailgun: just change{" "}
                     <InlineCode>MAIL_HOST</InlineCode>,{" "}
                     <InlineCode>MAIL_PORT</InlineCode>,{" "}

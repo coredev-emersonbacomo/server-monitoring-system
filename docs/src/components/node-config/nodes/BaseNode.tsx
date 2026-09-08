@@ -16,7 +16,7 @@ export const BaseNode = ({ width = 'w-[200px]', borderColor = '#e5e7eb', selecte
 
         const observer = new ResizeObserver((entries) => {
             for (const entry of entries) {
-                // Ring uses box-shadow and doesn't affect layout — no border offset needed
+                // Ring uses box-shadow and doesn't affect layout - no border offset needed
                 const contentHeight = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
                 const snapped = Math.ceil(contentHeight / 10) * 10;
                 setSnappedHeight(snapped);

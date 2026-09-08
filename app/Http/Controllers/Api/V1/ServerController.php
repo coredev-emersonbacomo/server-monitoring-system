@@ -343,6 +343,19 @@ class ServerController extends Controller
         return response()->json(['status' => 'success']);
     }
 
+    /**
+     * Exclude archived rows NULL-safely. `!= 'archived'` alone drops NULL
+     * statuses (NULL != x is NULL, not true), silently hiding servers.
+     */
+    private function scopeNotArchived($query): void
+    {
+        $query->where(function ($q) {
+            $q->where('record_status', '!=', 'archived')->orWhereNull('record_status');
+        })->where(function ($q) {
+            $q->where('status', '!=', 'archived')->orWhereNull('status');
+        });
+    }
+
     public function listAll(ServersIndexData $data)
     {
         $user = request()->user();
@@ -389,33 +402,31 @@ class ServerController extends Controller
                     if ($user) {
                         $q->where('users.id', $user->id);
                     }
-                })->whereNull('deleted_at')
-                    ->where('record_status', '!=', 'archived')
-                    ->where('status', '!=', 'archived');
+                })->whereNull('deleted_at');
+                $this->scopeNotArchived($query);
                 break;
             case 'pending_installation':
                 $query->where(function ($q) {
                     $q->whereNull('status')
                         ->orWhere('status', 'pending_installation')
                         ->orWhere('status', 'waiting_for_first_heartbeat');
-                })->whereNull('deleted_at')
-                    ->where('record_status', '!=', 'archived');
+                })->whereNull('deleted_at');
+                $this->scopeNotArchived($query);
                 break;
             case 'waiting_for_installation':
                 $query->where('status', 'waiting_for_installation')
-                    ->whereNull('deleted_at')
-                    ->where('record_status', '!=', 'archived');
+                    ->whereNull('deleted_at');
+                $this->scopeNotArchived($query);
                 break;
             case 'online':
                 $rawOffline = (int) Setting::get('offline_threshold', '15');
                 $offlineThresholdSec = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
                 $cutoff = Carbon::now()->subSeconds($offlineThresholdSec);
 
-                $query->where('status', '!=', 'archived')
-                    ->where('record_status', '!=', 'archived')
-                    ->whereNull('deleted_at')
-                    ->where('agent_deleted', false)
-                    ->where('status', '!=', 'agent_uninstalled')
+                $query->whereNull('deleted_at')
+                    ->where('agent_deleted', false);
+                $this->scopeNotArchived($query);
+                $query->where('status', '!=', 'agent_uninstalled')
                     ->where('status', '!=', 'waiting_for_installation')
                     ->where('status', '!=', 'pending_installation')
                     ->where('status', '!=', 'waiting_for_first_heartbeat')
@@ -431,11 +442,10 @@ class ServerController extends Controller
                 $offlineThresholdSec = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
                 $cutoff = Carbon::now()->subSeconds($offlineThresholdSec);
 
-                $query->where('status', '!=', 'archived')
-                    ->where('record_status', '!=', 'archived')
-                    ->whereNull('deleted_at')
-                    ->where('status', '!=', 'agent_uninstalled')
-                    ->where('status', '!=', 'waiting_for_installation')
+                $query->whereNull('deleted_at')
+                    ->where('status', '!=', 'agent_uninstalled');
+                $this->scopeNotArchived($query);
+                $query->where('status', '!=', 'waiting_for_installation')
                     ->where('status', '!=', 'pending_installation')
                     ->where('status', '!=', 'waiting_for_first_heartbeat')
                     ->where(function ($oq) use ($cutoff) {
@@ -452,28 +462,24 @@ class ServerController extends Controller
                 break;
             case 'pending_deletion':
                 $query->where('agent_deleted', true)
-                    ->whereNull('deleted_at')
-                    ->where('record_status', '!=', 'archived');
+                    ->whereNull('deleted_at');
+                $this->scopeNotArchived($query);
                 break;
             case 'agent_uninstalled':
                 $query->where('status', 'agent_uninstalled')
-                    ->whereNull('deleted_at')
-                    ->where('record_status', '!=', 'archived');
+                    ->whereNull('deleted_at');
+                $this->scopeNotArchived($query);
                 break;
             case 'all':
             default:
-                $query->whereNull('deleted_at')
-                    ->where('record_status', '!=', 'archived')
-                    ->where('status', '!=', 'archived');
+                $query->whereNull('deleted_at');
+                $this->scopeNotArchived($query);
                 break;
         }
 
-        $sort = $data->sort ?? 'created_at';
-        $dir = $data->dir ?? 'desc';
-        $allowedSorts = ['created_at', 'name', 'record_status'];
-        if (! in_array($sort, $allowedSorts, true)) {
-            $sort = 'created_at';
-        }
+        $sortColumns = ['created_at' => 'servers.created_at', 'name' => 'servers.name', 'record_status' => 'servers.record_status'];
+        $sort = $sortColumns[$data->sort ?? ''] ?? 'servers.created_at';
+        $dir = strtolower($data->dir ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
         $query->orderBy($sort, $dir);
 
@@ -485,7 +491,15 @@ class ServerController extends Controller
             );
         }
 
-        $page = $query->paginate(perPage: $data->per_page, page: $data->page);
+        // Unique tiebreak so LIMIT/OFFSET pages are stable when sort keys tie
+        // (e.g. mass-seeded rows sharing created_at). Without this Postgres
+        // returns tied rows in arbitrary order per page and rows go missing.
+        $query->orderBy('servers.id', $dir);
+
+        $perPage = min(max((int) ($data->per_page ?? 15), 1), 200);
+        $pageNum = max((int) ($data->page ?? 1), 1);
+
+        $page = $query->paginate(perPage: $perPage, page: $pageNum);
 
         // Refresh token expiration on the page's items
         foreach ($page as $server) {

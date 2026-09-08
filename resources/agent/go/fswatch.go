@@ -236,6 +236,13 @@ func (fw *FileWatcher) handleRawOp(op rawOp, pending map[string]rawOp, expiry ma
 // agent-owned files, user-supplied exclude patterns, and resolving the owning
 // server from the watched-path set.
 func (fw *FileWatcher) emitFile(path string, isDir bool, action, dest string) {
+	// A directory's mtime churns as a side effect of its children changing,
+	// so a directory "modified" carries no file information — only noise
+	// (this is what flooded the log with repo-root rows). Directory
+	// create/delete/rename are real structural changes and still emit.
+	if isDir && action == "modified" {
+		return
+	}
 	if fw.isExcluded(path) {
 		return
 	}

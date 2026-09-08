@@ -81,7 +81,7 @@ services:
     command: >
       sh -c "composer install --no-interaction &&
              php artisan migrate --force &&
-             php -S 0.0.0.0:$${PORT:-8000} -t public"
+             frankenphp run --config /etc/caddy/Caddyfile"
 
   reverb:
     build:
@@ -95,6 +95,9 @@ services:
       - /var/www/html/node_modules
     environment:
       APP_ENV: local
+      # Follows the tunnel URL like app (memory-only via ngrok process env);
+      # siblings have no other channel since only app gets recreated with it.
+      APP_URL: ${APP_URL:-http://localhost:8000}
       DB_HOST: postgres
       DB_DATABASE: server_monitoring
       DB_USERNAME: postgres
@@ -119,6 +122,7 @@ services:
       - /var/www/html/node_modules
     environment:
       APP_ENV: local
+      APP_URL: ${APP_URL:-http://localhost:8000}
       DB_HOST: postgres
       DB_DATABASE: server_monitoring
       DB_USERNAME: postgres
@@ -141,6 +145,7 @@ services:
       - /var/www/html/node_modules
     environment:
       APP_ENV: local
+      APP_URL: ${APP_URL:-http://localhost:8000}
       DB_HOST: postgres
       DB_DATABASE: server_monitoring
       DB_USERNAME: postgres

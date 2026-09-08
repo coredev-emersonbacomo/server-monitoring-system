@@ -276,7 +276,6 @@ function DashboardMetricChartInner({
                                 dot={false}
                                 strokeWidth={1.5}
                                 isAnimationActive={false}
-                                connectNulls
                             />
                         ))}
                     </LineChart>

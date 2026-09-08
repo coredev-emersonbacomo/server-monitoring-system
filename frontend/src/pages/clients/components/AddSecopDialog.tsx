@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { DebouncedSearchInput } from "@/components/DebouncedSearchInput";
@@ -35,7 +35,6 @@ export function AddSecopDialog({
     paramName = "secop_q",
 }: AddSecopDialogProps) {
     const { data: currentUser } = useAuth();
-    const [secopSearch, setSecopSearch] = useState("");
     const [selectedSecopToAdd, setSelectedSecopToAdd] = useState<string | null>(
         null,
     );

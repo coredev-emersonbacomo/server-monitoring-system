@@ -93,7 +93,10 @@ func parseWinEvents(buf []byte, root string, out chan<- rawOp) {
 		case windows.FILE_ACTION_REMOVED:
 			out <- rawOp{path: full, kind: "delete", isDir: false}
 		case windows.FILE_ACTION_MODIFIED:
-			out <- rawOp{path: full, kind: "modify", isDir: false}
+			// Stat the path like create/renameNew do: ReadDirectoryChangesW
+			// reports directory-mtime bumps as plain modify events, and without
+			// the stat the watcher can't tell them apart from file writes.
+			out <- rawOp{path: full, kind: "modify", isDir: isDirOrFalse(full)}
 		case windows.FILE_ACTION_RENAMED_OLD_NAME:
 			out <- rawOp{path: full, kind: "renameOld", isDir: false}
 		case windows.FILE_ACTION_RENAMED_NEW_NAME:

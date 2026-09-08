@@ -8,7 +8,7 @@ import {
     Callout,
 } from "@/components/docs/Section";
 
-// ── Static graph data (mirrors NodeConfigSeeder — 2026-08-25 single-agent + per-interface network) ──
+// ── Static graph data (mirrors NodeConfigSeeder - 2026-08-25 single-agent + per-interface network) ──
 
 const alertGraph: NodeConfigGraph = {
     nodes: [
@@ -199,7 +199,7 @@ const alertGraph: NodeConfigGraph = {
                 channel: "discord",
                 severity: "warning",
                 message:
-                    ":rotating_light: [{server.client.name}] {server.name} — port {runtime.port} ({runtime.portName}) ping **{runtime.ping} ms** is above the **{runtime.threshold} ms** threshold!\n\nEvent: <t:{runtime.eventTimestampUnix}:f>",
+                    ":rotating_light: [{server.client.name}] {server.name} - port {runtime.port} ({runtime.portName}) ping **{runtime.ping} ms** is above the **{runtime.threshold} ms** threshold!\n\nEvent: <t:{runtime.eventTimestampUnix}:f>",
             },
         },
         {
@@ -222,7 +222,7 @@ const alertGraph: NodeConfigGraph = {
                 channel: "discord",
                 severity: "critical",
                 message:
-                    ":rotating_light: [{server.client.name}] {server.name} — port {runtime.port} ({runtime.portName}) is unreachable.\n\nEvent: <t:{runtime.eventTimestampUnix}:f>",
+                    ":rotating_light: [{server.client.name}] {server.name} - port {runtime.port} ({runtime.portName}) is unreachable.\n\nEvent: <t:{runtime.eventTimestampUnix}:f>",
             },
         },
     ],
@@ -366,7 +366,7 @@ const alertGraph: NodeConfigGraph = {
 export function DocsAlertsContent() {
     return (
         <>
-            <Section title="Overview — what the alert engine is">
+            <Section title="Overview - what the alert engine is">
                 <p>
                     Alerts are a <strong>visual node graph</strong> compiled to
                     branches. Each branch is{" "}
@@ -383,22 +383,22 @@ export function DocsAlertsContent() {
                     server, with a latch so each incident fires once.
                 </p>
                 <p>
-                    See the editor for node types and wiring —{" "}
+                    See the editor for node types and wiring -{" "}
                     <InlineCode>NodeConfigEditor</InlineCode> +{" "}
                     <InlineCode>NodePalette</InlineCode> +{" "}
-                    <InlineCode>NodeSettingsPanel</InlineCode> — and the code
+                    <InlineCode>NodeSettingsPanel</InlineCode> - and the code
                     map below for where each piece lives.
                 </p>
             </Section>
 
-            <Section title="Default Alert Graph — seeded">
+            <Section title="Default Alert Graph - seeded">
                 <p className="mb-4">
                     <InlineCode>NodeConfigSeeder</InlineCode> seeds one global
                     config with three families:{" "}
                     <strong>metrics ≥85% chained 10s→20s→30s+repeat</strong>,{" "}
                     <strong>server_status offline</strong>, and{" "}
                     <strong>ports_ping</strong> (slow vs unreachable). It
-                    mirrors the <InlineCode>alertGraph</InlineCode> below — drag
+                    mirrors the <InlineCode>alertGraph</InlineCode> below - drag
                     to explore.
                 </p>
                 <div className="h-[520px] rounded-xl border border-border/60 bg-card overflow-hidden">
@@ -413,7 +413,7 @@ export function DocsAlertsContent() {
                 </div>
                 <Callout>
                     <InlineCode>metric_network</InlineCode> now feeds the same{" "}
-                    <InlineCode>compare_85</InlineCode> as CPU/memory/disk —
+                    <InlineCode>compare_85</InlineCode> as CPU/memory/disk -
                     network is per-interface (
                     <InlineCode>networks_dict</InlineCode> +{" "}
                     <InlineCode>available_interfaces</InlineCode>) but the alert
@@ -423,13 +423,13 @@ export function DocsAlertsContent() {
                 </Callout>
             </Section>
 
-            <Section title="Full Flow — install to alert to detach/uninstall">
+            <Section title="Full Flow - install to alert to detach/uninstall">
                 <ol className="list-decimal pl-5 space-y-2">
                     <li>
                         <strong>Install:</strong> dashboard →{" "}
                         <InlineCode>Generate Installation Command</InlineCode>{" "}
                         (one-time <InlineCode>ProvisionToken</InlineCode> 30
-                        min) → run on host — installer creates{" "}
+                        min) → run on host - installer creates{" "}
                         <InlineCode>config.json</InlineCode> with{" "}
                         <InlineCode>installation_id</InlineCode> + token → agent
                         registers (
@@ -442,7 +442,7 @@ export function DocsAlertsContent() {
                         <InlineCode>/auth/verify</InlineCode> → JWT 900s, memory
                         only). Auth response carries{" "}
                         <InlineCode>{"servers: [{server_uuid, port_filter, process_filter, network_filter}]"}</InlineCode>{" "}
-                        and <InlineCode>heartbeat_interval</InlineCode> — builds{" "}
+                        and <InlineCode>heartbeat_interval</InlineCode> - builds{" "}
                         <InlineCode>runtime.go</InlineCode> in-memory per-server
                         filters.
                     </li>
@@ -471,7 +471,7 @@ export function DocsAlertsContent() {
                         <strong>Backend ingest:</strong>{" "}
                         <InlineCode>AgentController::heartbeat</InlineCode> →{" "}
                         <InlineCode>HeartbeatService::processAgent</InlineCode>{" "}
-                        — one <InlineCode>Heartbeat</InlineCode> row per tick
+                        - one <InlineCode>Heartbeat</InlineCode> row per tick
                         (not per server), <InlineCode>MetricSample</InlineCode>{" "}
                         + <InlineCode>ServerUpdate</InlineCode> per server
                         (totals + <InlineCode>server_network_stats</InlineCode>{" "}
@@ -529,7 +529,7 @@ export function DocsAlertsContent() {
                         key); the <strong>dashboard</strong>’s{" "}
                         <InlineCode>DeleteModal</InlineCode> and{" "}
                         <InlineCode>AgentTab</InlineCode> for multi-server only
-                        show the host commands for validation — direct dashboard{" "}
+                        show the host commands for validation - direct dashboard{" "}
                         <InlineCode>DELETE</InlineCode> without host is blocked
                         (<InlineCode>422</InlineCode> until the host flag is
                         handled). After detach/uninstall the server flips to{" "}
@@ -540,7 +540,7 @@ export function DocsAlertsContent() {
                 </ol>
                 <Callout type="warning">
                     Detaching the last server does <strong>not</strong>{" "}
-                    auto-revoke the agent — it stays installed with zero servers
+                    auto-revoke the agent - it stays installed with zero servers
                     until a full <InlineCode>uninstall</InlineCode>. The UI
                     shows <InlineCode>Agent Uninstalled</InlineCode> for the
                     detached server but keeps last agent data (via{" "}
@@ -549,7 +549,7 @@ export function DocsAlertsContent() {
                 </Callout>
             </Section>
 
-            <Section title="Alert Flow Walkthrough — CPU 92% (chained 10s→20s→30s+repeat)">
+            <Section title="Alert Flow Walkthrough - CPU 92% (chained 10s→20s→30s+repeat)">
                 <ol className="list-decimal list-inside ml-2 space-y-2">
                     <li>
                         <strong>t=0 poll:</strong>{" "}
@@ -629,7 +629,7 @@ export function DocsAlertsContent() {
                 </p>
             </Section>
 
-            <Section title="Code Architecture — Engine">
+            <Section title="Code Architecture - Engine">
                 <SubSection title="Entry Points">
                     <p>
                         <InlineCode>system:monitor</InlineCode>{" "}
@@ -661,7 +661,7 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
 }`}</CodeBlock>
                 </SubSection>
 
-                <SubSection title="Engine: trigger() — app/NodeConfig/Engine/NodeConfigEngine.php:49">
+                <SubSection title="Engine: trigger() - app/NodeConfig/Engine/NodeConfigEngine.php:49">
                     <ol className="list-decimal list-inside ml-2 space-y-1">
                         <li>
                             Find `branches` where `metric_node_id ==
@@ -681,7 +681,7 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                             `evaluateSubBranch`: `timing` (`SustainedNode`
                             state-machine `idle→pending→firing`) → `action`
                             (`NotificationNode`) → `post_action`
-                            (`RepeatNode`/`CheckAfterNode`) — each returns
+                            (`RepeatNode`/`CheckAfterNode`) - each returns
                             `NodeResult`.
                         </li>
                     </ol>
@@ -749,7 +749,7 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                                     metric
                                 </td>
                                 <td className="px-3 py-1.5">passthrough `metric_value`</td>
-                                <td className="px-3 py-1.5">—</td>
+                                <td className="px-3 py-1.5">-</td>
                             </tr>
                             <tr>
                                 <td className="px-3 py-1.5 font-mono text-xs">
@@ -759,7 +759,7 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                                     {"value {>, <, between} threshold"} →
                                     `bool` / severity string
                                 </td>
-                                <td className="px-3 py-1.5">—</td>
+                                <td className="px-3 py-1.5">-</td>
                             </tr>
                             <tr>
                                 <td className="px-3 py-1.5 font-mono text-xs">
@@ -805,13 +805,13 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                                 <td className="px-3 py-1.5">
                                     email, webhook, log, action_item
                                 </td>
-                                <td className="px-3 py-1.5">—</td>
+                                <td className="px-3 py-1.5">-</td>
                             </tr>
                         </tbody>
                     </table>
                 </SubSection>
 
-                <SubSection title="State Persistence — node_config_states">
+                <SubSection title="State Persistence - node_config_states">
                     <p>
                         Each `NodeResult.state` is `updateOrCreate` on{" "}
                         <InlineCode>{"{node_config_id, node_id[:metric], server_id}"}</InlineCode>{" "}
@@ -827,18 +827,18 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                 <SubSection title="Jobs & Notifications">
                     <ul className="list-disc pl-5 space-y-1.5">
                         <li>
-                            <InlineCode>EvaluateNodeConfig</InlineCode> —
+                            <InlineCode>EvaluateNodeConfig</InlineCode> -
                             triggered per metric, schedules timers + dispatches{" "}
                             <InlineCode>SendNotification</InlineCode> for
                             `actions`.
                         </li>
                         <li>
-                            <InlineCode>FireNodeTimer</InlineCode> — delayed
+                            <InlineCode>FireNodeTimer</InlineCode> - delayed
                             queue job, `liveConditionStillHolds` re-check, then
                             `SendNotification` with expanded sustain.
                         </li>
                         <li>
-                            <InlineCode>SendNotification</InlineCode> —
+                            <InlineCode>SendNotification</InlineCode> -
                             `MUTE_NOTIFICATION` guard, `TemplateNode` rendering
                             (`server.name`, `metricName`, `sustainValue`,
                             `repeat.countOfMessage`), `mail`/`discord` via{" "}
@@ -848,7 +848,7 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                             .
                         </li>
                         <li>
-                            <InlineCode>CheckServerOffline</InlineCode> — per
+                            <InlineCode>CheckServerOffline</InlineCode> - per
                             heartbeat `delay(offline+2s)`, on offline triggers{" "}
                             <InlineCode>server_status:offline</InlineCode>{" "}
                             branch.

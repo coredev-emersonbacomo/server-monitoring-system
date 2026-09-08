@@ -17,8 +17,8 @@ export function DocsStorageProvidersContent() {
 MediaUrlService -> StorageProviderFactory -> StorageProvider::publicUrl()/temporaryUrl()/transformedUrl()
 DeleteStorageAsset (Job) -> StorageProviderFactory -> StorageProvider::delete()`}</CodeBlock>
                 <Callout>
-                    End-user setup — choosing a provider and configuring its
-                    keys — lives in the Configuration page of the Deployment
+                    End-user setup - choosing a provider and configuring its
+                    keys - lives in the Configuration page of the Deployment
                     Guide.
                 </Callout>
             </Section>

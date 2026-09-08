@@ -25,23 +25,23 @@ export function DocsOverviewContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <InlineCode>Laravel backend</InlineCode> — REST API,
+                        <InlineCode>Laravel backend</InlineCode> - REST API,
                         realtime broadcasting, alert engine, background jobs,
                         and PDF report compilation.
                     </li>
                     <li>
                         <InlineCode>React SPA</InlineCode> (in{" "}
-                        <InlineCode>frontend/</InlineCode>) — the dashboard and
+                        <InlineCode>frontend/</InlineCode>) - the dashboard and
                         management interface.
                     </li>
                     <li>
                         <InlineCode>Go agent</InlineCode> (in{" "}
-                        <InlineCode>resources/agent/go</InlineCode>) — installed
+                        <InlineCode>resources/agent/go</InlineCode>) - installed
                         on each monitored server.
                     </li>
                     <li>
                         <InlineCode>PostgreSQL (TimescaleDB) + Redis + Reverb</InlineCode>{" "}
-                        — storage, caching, and realtime messaging.
+                        - storage, caching, and realtime messaging.
                     </li>
                 </ul>
             </Section>
@@ -64,17 +64,17 @@ export function DocsOverviewContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Deployment Guide</strong> — prerequisites,
+                        <strong>Deployment Guide</strong> - prerequisites,
                         installation, configuration, and running the
                         application (this section).
                     </li>
                     <li>
-                        <strong>User Guide</strong> — a walkthrough of the app:
+                        <strong>User Guide</strong> - a walkthrough of the app:
                         the dashboard, then each management page (clients,
                         servers, users), logs, reports, and settings.
                     </li>
                     <li>
-                        <strong>Technical Reference</strong> — architecture,
+                        <strong>Technical Reference</strong> - architecture,
                         the alerting engine, storage providers, the agent, and
                         background scheduling.
                     </li>
@@ -102,7 +102,7 @@ export function DocsRequirementsContent() {
                     </p>
                     <ul className="list-disc pl-5 space-y-1.5">
                         <li>
-                            <strong>Laravel Herd</strong> �?"{" "}
+                            <strong>Laravel Herd</strong> -{" "}
                             <a
                                 className="text-blue-600 underline"
                                 href="https://herd.laravel.com"
@@ -114,27 +114,63 @@ export function DocsRequirementsContent() {
                             (includes PHP 8.5+)
                         </li>
                         <li>
-                            <strong>Node.js</strong> �?" v22+ (for Vite dev servers)
-                        </li>
-                        <li>
-                            <strong>Redis</strong> �?"{" "}
+                            <strong>Node.js</strong> -{" "}
                             <a
                                 className="text-blue-600 underline"
-                                href="https://redis.io/download"
+                                href="https://nodejs.org/en/download"
                                 target="_blank"
                                 rel="noreferrer"
                             >
-                                download Redis
+                                download Node.js 22 LTS
                             </a>{" "}
-                            or use <InlineCode>C:\redis\redis-server.exe</InlineCode>
-                            (Windows)
+                            (for Vite dev servers)
                         </li>
                         <li>
-                            <strong>PostgreSQL</strong> �?" with TimescaleDB
-                            extension installed
+                            <strong>Redis</strong> - run{" "}
+                            <InlineCode>npm run install-redis:windows</InlineCode>{" "}
+                            (fetches the{" "}
+                            <a
+                                className="text-blue-600 underline"
+                                href="https://github.com/redis-windows/redis-windows"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                redis-windows
+                            </a>{" "}
+                            build to <InlineCode>C:\redis\redis-server.exe</InlineCode>,
+                            which the dev tooling uses automatically)
                         </li>
                         <li>
-                            <strong>Git</strong> �?" to clone the repository.
+                            <strong>PostgreSQL 17</strong> -{" "}
+                            <a
+                                className="text-blue-600 underline"
+                                href="https://www.postgresql.org/download/windows/"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                Windows installer
+                            </a>{" "}
+                            plus TimescaleDB per the{" "}
+                            <a
+                                className="text-blue-600 underline"
+                                href="https://docs.timescale.com/self-hosted/latest/install/"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                self-hosted install docs
+                            </a>
+                        </li>
+                        <li>
+                            <strong>Git</strong> -{" "}
+                            <a
+                                className="text-blue-600 underline"
+                                href="https://git-scm.com/downloads"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                download Git
+                            </a>{" "}
+                            to clone the repository.
                         </li>
                     </ul>
                 </Section>
@@ -144,34 +180,105 @@ export function DocsRequirementsContent() {
                         Docker provides a consistent, isolated environment with
                         a single command to start the full stack. No host-level
                         service installation required beyond Docker itself.
+                        Install Docker first, then verify the CLI is on PATH
+                        before continuing to Installation below.
                     </p>
-                    <ul className="list-disc pl-5 space-y-1.5">
-                        <li>
-                            <strong>Docker Desktop</strong> �?"{" "}
+                    <SubSection title="Windows: enable virtualization, then WSL2, then Docker Desktop">
+                        <ol className="list-decimal pl-5 space-y-1.5">
+                            <li>
+                                Check Task Manager &gt; Performance &gt; CPU:{" "}
+                                <InlineCode>Virtualization</InlineCode> must say{" "}
+                                <InlineCode>Enabled</InlineCode>. If it says{" "}
+                                <InlineCode>Disabled</InlineCode>, reboot into
+                                BIOS/UEFI and enable{" "}
+                                <InlineCode>Intel VT-x</InlineCode> /{" "}
+                                <InlineCode>AMD-V (SVM)</InlineCode>, then Save
+                                &amp; Exit. No Windows command can bypass this
+                                step.
+                            </li>
+                            <li>
+                                In an elevated PowerShell, enable WSL2 and
+                                reboot when asked:
+                            </li>
+                        </ol>
+                        <CodeBlock>{`wsl --install --no-distribution
+# after reboot:
+wsl --update
+wsl --set-default-version 2
+wsl -l -v   # distro list should show VERSION 2`}</CodeBlock>
+                        <ol className="list-decimal pl-5 space-y-1.5" start={3}>
+                            <li>
+                                Install{" "}
+                                <a
+                                    className="text-blue-600 underline"
+                                    href="https://www.docker.com/products/docker-desktop/"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    Docker Desktop for Windows
+                                </a>
+                                , keeping{" "}
+                                <InlineCode>
+                                    Use WSL 2 instead of Hyper-V
+                                </InlineCode>{" "}
+                                checked. Then in Docker Desktop go to Settings
+                                &gt; General &gt;{" "}
+                                <InlineCode>
+                                    Use the WSL 2 based engine
+                                </InlineCode>{" "}
+                                plus Resources &gt; WSL integration, and start
+                                Docker Desktop.
+                            </li>
+                        </ol>
+                    </SubSection>
+                    <SubSection title="macOS: install Docker Desktop">
+                        <p>
+                            Download{" "}
                             <a
                                 className="text-blue-600 underline"
                                 href="https://www.docker.com/products/docker-desktop/"
                                 target="_blank"
                                 rel="noreferrer"
                             >
-                                download here
+                                Docker Desktop for Mac
                             </a>{" "}
-                            (Windows/macOS). Linux: install{" "}
+                            (pick Apple Silicon vs Intel), drag it to
+                            Applications, open it, and accept the prompts.
+                            Virtualization is handled by Apple&apos;s
+                            Virtualization framework - no BIOS step.
+                        </p>
+                    </SubSection>
+                    <SubSection title="Linux: install Engine + Compose plugin">
+                        <p>
+                            Install{" "}
                             <InlineCode>docker engine</InlineCode> +{" "}
-                            <InlineCode>docker compose plugin</InlineCode> from your
-                            package manager.
-                        </li>
+                            <InlineCode>docker compose plugin</InlineCode> from
+                            your package manager per the{" "}
+                            <a
+                                className="text-blue-600 underline"
+                                href="https://docs.docker.com/engine/install/"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                Engine install docs
+                            </a>
+                            , then enable and start the service. Add your user
+                            to the <InlineCode>docker</InlineCode> group if you
+                            want to run without{" "}
+                            <InlineCode>sudo</InlineCode>.
+                        </p>
+                    </SubSection>
+                    <ul className="list-disc pl-5 space-y-1.5">
                         <li>
-                            <strong>Git</strong> �?" to clone the repository.
+                            <strong>Git</strong> - to clone the repository.
                         </li>
                     </ul>
                     <Callout>
-                        Windows needs WSL2 enabled for Docker Desktop: run{" "}
-                        <InlineCode>
-                            wsl --install --no-distribution
-                        </InlineCode>{" "}
-                        in an elevated PowerShell, reboot, then start Docker
-                        Desktop.
+                        Downloading WSL alone is not enough on Windows: the
+                        chain is BIOS virtualization → Windows features/WSL2 →
+                        Docker Desktop with the WSL 2 engine. If Docker reports
+                        virtualization is disabled, start at step 1 above, not
+                        with a WSL reinstall.
                     </Callout>
                 </Section>
                 
@@ -197,7 +304,7 @@ export function DocsRequirementsContent() {
                     </li>
                 </ul>
                 <Callout type="warning">
-                    TimescaleDB is not optional — the aggregate-refresh command
+                    TimescaleDB is not optional - the aggregate-refresh command
                     queries{" "}
                     <InlineCode>timescaledb_information.continuous_aggregates</InlineCode>{" "}
                     and the reset-db script drops continuous aggregates before
@@ -233,14 +340,19 @@ npm run dev       # redis + vite + reverb + queue + scheduler`}</CodeBlock>
                         Frontend dev server: <InlineCode>http://localhost:5173</InlineCode>
                     </p>
                     <Callout>
+                        On Linux there is no Herd: run <InlineCode>npm run tim</InlineCode> instead
+                        (same services, Vite proxy targets <InlineCode>http://127.0.0.1:8000</InlineCode>) -
+                        bring your own backend on :8000 (e.g. <InlineCode>docker compose up</InlineCode>).
+                    </Callout>
+                    <Callout>
                         The default credentials are{" "}
-                        <InlineCode>user / user123</InlineCode> (UserSeeder �" there
+                        <InlineCode>user / user123</InlineCode> (UserSeeder - there
                         is no admin role). Change the password after first login.
                         Seeding is controlled by the{" "}
                         <InlineCode>SEED_ON_BOOT</InlineCode> flip switch:{" "}
                         <InlineCode>true</InlineCode> in dev (seeds once on empty
                         DB, safe on reboot), <InlineCode>false</InlineCode> in
-                        prod �" create the first prod user once with{" "}
+                        prod - create the first prod user once with{" "}
                         <InlineCode>
                             php artisan db:seed --class=UserSeeder --force
                         </InlineCode>
@@ -249,34 +361,68 @@ npm run dev       # redis + vite + reverb + queue + scheduler`}</CodeBlock>
                 </Section>
                 
                 <Section title="Option B: Docker (Containerized)">
-                    <CodeBlock>{`# 1. Install Docker Desktop
+                    <CodeBlock>{`# 1. Install Docker first (see Requirements > Option B above)
 # https://www.docker.com/products/docker-desktop/
+# Linux: https://docs.docker.com/engine/install/
 
-# 2. Setup and start
+# 2. Open a NEW terminal after install, then verify the CLI is on PATH:
+docker --version
+docker compose version
+
+# Windows:
+where.exe docker
+# macOS / Linux:
+which docker
+
+# 3. Start Docker Desktop (Windows/macOS) and wait for green/running,
+#    then start the stack:
 docker compose up --build          # build images and start all services
 `}</CodeBlock>
                     <p>
                         Access the application at: <InlineCode>http://localhost:8000</InlineCode><br/>
-                        TimescaleDB + Redis included �" nothing else to install.<br/>
+                        TimescaleDB + Redis included - nothing else to install.<br/>
                         First boot migrates and seeds automatically (login: <InlineCode>user</InlineCode> / <InlineCode>user123</InlineCode>).<br/>
                         Source is bind-mounted (live edits).
                     </p>
+                    <Callout>
+                        <InlineCode>where.exe docker</InlineCode> (Windows) or{" "}
+                        <InlineCode>which docker</InlineCode> (macOS/Linux) must
+                        print a path. If it prints nothing or the terminal says{" "}
+                        <InlineCode>&apos;docker&apos; is not recognized</InlineCode>,
+                        close and reopen the terminal first (the installer only
+                        adds PATH for new shells), then reinstall Docker Desktop
+                        with PATH integration enabled. See Troubleshooting below.
+                    </Callout>
                 </Section>
                 
-                <Section title="Reset the database">
-                    <p>
-                        To reset from scratch (drops aggregates, re-runs migrate:fresh --seed):
-                    </p>
-                    <CodeBlock>{`npm run resetdb`}</CodeBlock>
-                </Section>
+            <Section title="Reset the database">
+                <p>
+                    To reset from scratch (drops aggregates, re-runs migrate:fresh --seed,
+                    dumps schema, kicks off system:monitor):
+                </p>
+                <CodeBlock>{`npm run resetdb`}</CodeBlock>
+                <p>
+                    Works in both flows: with the Docker stack up it resets the Docker
+                    database (prints its target and asks [y/N] first) - otherwise the
+                    local Herd database.
+                </p>
+            </Section>
                 
                 <Section title="(Optional) Rebuild the agent">
                     <p>
                         Pre-built agent binaries are committed to the repo (
                         <InlineCode>public/agent</InlineCode> and{" "}
                         <InlineCode>public/MonitorAgent.exe</InlineCode>), so this
-                        is only needed when you change agent code (requires Go on
-                        the host, not in Docker):
+                        is only needed when you change agent code (requires the{" "}
+                        <a
+                            className="text-blue-600 underline"
+                            href="https://go.dev/dl/"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Go toolchain
+                        </a>{" "}
+                        on the host, not in Docker):
                     </p>
                     <CodeBlock>{`npm run compileagent`}</CodeBlock>
                     <p>
@@ -300,37 +446,49 @@ export function DocsConfigurationContent() {
                     <InlineCode>.env.development</InlineCode> (or{" "}
                     <InlineCode>.env.production</InlineCode>), which Laravel
                     loads on startup. <InlineCode>.env</InlineCode> holds{" "}
-                    <strong>personal overrides only</strong> — it is gitignored
+                    <strong>personal overrides only</strong> - it is gitignored
                     and merged on top, so it is no longer the main env holder.
                 </p>
+                <Callout type="warning">
+                    Docker twist: inside containers, <InlineCode>compose.yaml</InlineCode>{" "}
+                    <InlineCode>environment:</InlineCode> entries are real OS variables, and
+                    Laravel loads env files with <InlineCode>createImmutable</InlineCode> -
+                    real env beats <strong>every</strong> file. So editing{" "}
+                    <InlineCode>.env</InlineCode> reaches Herd immediately but never reaches
+                    a running container (this exact trap once froze{" "}
+                    <InlineCode>APP_URL</InlineCode> at <InlineCode>localhost:8000</InlineCode>).
+                    For Docker, change the value via <InlineCode>{"${VAR:-default}"}</InlineCode>{" "}
+                    interpolation in <InlineCode>compose.yaml</InlineCode> (or the prod overlay)
+                    and recreate the container.
+                </Callout>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <InlineCode>.env.development</InlineCode> — committed,
+                        <InlineCode>.env.development</InlineCode> - committed,
                         base dev config (contains dev secrets).
                     </li>
                     <li>
-                        <InlineCode>.env</InlineCode> — gitignored, personal
+                        <InlineCode>.env</InlineCode> - gitignored, personal
                         overrides that win on top.
                     </li>
                     <li>
-                        <InlineCode>.env.example</InlineCode> — regenerated from{" "}
+                        <InlineCode>.env.example</InlineCode> - regenerated from{" "}
                         <InlineCode>.env.development</InlineCode> with values
                         stripped by the entry script on every{" "}
                         <InlineCode>npm run dev</InlineCode> /{" "}
                         <InlineCode>npm run prod</InlineCode>.
                     </li>
                     <li>
-                        <InlineCode>.env.testing</InlineCode> — committed, test
+                        <InlineCode>.env.testing</InlineCode> - committed, test
                         config.
                     </li>
                     <li>
-                        <InlineCode>.env</InlineCode> — gitignored, local secrets
+                        <InlineCode>.env</InlineCode> - gitignored, local secrets
                         (e.g. Gmail SMTP) loaded directly by Laravel and overriding{" "}
-                        <InlineCode>.env.development</InlineCode> — see Gmail SMTP
+                        <InlineCode>.env.development</InlineCode> - see Gmail SMTP
                         below.
                     </li>
                     <li>
-                        <InlineCode>.env.production</InlineCode> — gitignored,
+                        <InlineCode>.env.production</InlineCode> - gitignored,
                         production values.
                     </li>
                 </ul>
@@ -344,7 +502,7 @@ export function DocsConfigurationContent() {
             <Section title="Key configuration variables">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Database</strong> — <InlineCode>DB_CONNECTION</InlineCode>,{" "}
+                        <strong>Database</strong> - <InlineCode>DB_CONNECTION</InlineCode>,{" "}
                         <InlineCode>DB_HOST</InlineCode>,{" "}
                         <InlineCode>DB_PORT</InlineCode>,{" "}
                         <InlineCode>DB_DATABASE</InlineCode>,{" "}
@@ -354,7 +512,7 @@ export function DocsConfigurationContent() {
                         URL with <InlineCode>sslmode=require</InlineCode>).
                     </li>
                     <li>
-                        <strong>Redis / cache</strong> —{" "}
+                        <strong>Redis / cache</strong> -{" "}
                         <InlineCode>CACHE_STORE=redis</InlineCode>,{" "}
                         <InlineCode>REDIS_CLIENT</InlineCode> (
                         <InlineCode>predis</InlineCode> in dev,{" "}
@@ -362,27 +520,27 @@ export function DocsConfigurationContent() {
                         <InlineCode>REDIS_HOST/PORT/PASSWORD</InlineCode>.
                     </li>
                     <li>
-                        <strong>Queue</strong> —{" "}
+                        <strong>Queue</strong> -{" "}
                         <InlineCode>QUEUE_CONNECTION=database</InlineCode>. A
                         queue worker must be running.
                     </li>
                     <li>
-                        <strong>Session</strong> —{" "}
+                        <strong>Session</strong> -{" "}
                         <InlineCode>SESSION_DRIVER=database</InlineCode>.
                     </li>
                     <li>
-                        <strong>JWT</strong> — <InlineCode>JWT_SECRET</InlineCode>{" "}
+                        <strong>JWT</strong> - <InlineCode>JWT_SECRET</InlineCode>{" "}
                         (HS256). Access tokens expire in 15 minutes, refresh
                         tokens in 30 days.
                     </li>
                     <li>
-                        <strong>Realtime</strong> —{" "}
+                        <strong>Realtime</strong> -{" "}
                         <InlineCode>BROADCAST_CONNECTION=reverb</InlineCode>{" "}
                         with <InlineCode>REVERB_APP_ID/KEY/SECRET</InlineCode>{" "}
                         and <InlineCode>REVERB_HOST/PORT/SCHEME</InlineCode>.
                     </li>
                     <li>
-                        <strong>Mail</strong> — <InlineCode>MAIL_MAILER</InlineCode>,{" "}
+                        <strong>Mail</strong> - <InlineCode>MAIL_MAILER</InlineCode>,{" "}
                         <InlineCode>MAIL_HOST</InlineCode>,{" "}
                         <InlineCode>MAIL_PORT</InlineCode>,{" "}
                         <InlineCode>MAIL_USERNAME</InlineCode>,{" "}
@@ -390,7 +548,7 @@ export function DocsConfigurationContent() {
                         <InlineCode>MAIL_FROM_ADDRESS</InlineCode>.
                     </li>
                     <li>
-                        <strong>Uploads</strong> —{" "}
+                        <strong>Uploads</strong> -{" "}
                         <InlineCode>UPLOAD_STORAGE_PROVIDER</InlineCode>{" "}
                         (defaults to <InlineCode>cloudinary</InlineCode>),{" "}
                         Cloudinary keys{" "}
@@ -398,13 +556,13 @@ export function DocsConfigurationContent() {
                         See Storage provider setup below.
                     </li>
                     <li>
-                        <strong>Notifications</strong> —{" "}
+                        <strong>Notifications</strong> -{" "}
 <InlineCode>SEEDED_DISCORD_BOT_TOKEN</InlineCode>,{" "}
 <InlineCode>SEEDED_DISCORD_CHANNEL_ID</InlineCode>,{" "}
 <InlineCode>SEEDED_DISCORD_ROLE_ID</InlineCode>.
                     </li>
                     <li>
-                        <strong>Frontend</strong> —{" "}
+                        <strong>Frontend</strong> -{" "}
                         <InlineCode>VITE_APP_NAME</InlineCode>,{" "}
                         <InlineCode>VITE_REVERB_*</InlineCode>, default profile
                         picture and client banner URLs.
@@ -523,32 +681,55 @@ docker compose exec app php artisan tinker   # REPL inside the container`}</Code
                             </a> or package manager.
                         </li>
                         <li>
-                            Add ngrok configuration to your <InlineCode>.env</InlineCode> (gitignored):
+                            Add ngrok configuration to your <InlineCode>.env</InlineCode> (gitignored, full URLs):
                             <CodeBlock>{`NGROK_DOMAIN=bottle-zippy-revivable.ngrok-free.dev
 # For Docker workflow:
-NGROK_UPSTREAM=127.0.0.1:8000
+NGROK_UPSTREAM=http://127.0.0.1:8000
 # For Herd workflow instead:
-# NGROK_UPSTREAM=127.0.0.1:80
+# NGROK_UPSTREAM=http://server-monitoring-system.test
 `}</CodeBlock>
                         </li>
                     </ol>
                 </SubSection>
                 <SubSection title="Workflow (Docker)">
-                    <CodeBlock>{`npm run ngrok    # builds frontend, starts docker stack, tunnels to ngrok domain`}</CodeBlock>
+                    <CodeBlock>{`npm run ngrok    # HMR flow: docker stack + Vite dev + tunnel to Vite`}</CodeBlock>
                     <p>
                         This command automatically:
                     </p>
                     <ol className="list-decimal pl-5 space-y-1.5">
                         <li>Brings up the Docker stack (<InlineCode>docker compose up -d</InlineCode>)
-                            for PostgreSQL, Redis, and Reverb backing services.</li>
-                        <li>Rebuilds frontend assets with the ngrok URL baked into VITE_REVERB_* vars.</li>
-                        <li>Writes <InlineCode>APP_URL</InlineCode> to <InlineCode>.env</InlineCode>.</li>
-                        <li>Starts a tunnel on your reserved ngrok domain pointing to <InlineCode>127.0.0.1:8000</InlineCode>.</li>
-                        <li>Verifies the connection and checks the Reverb (Pusher) key in built bundles.</li>
+                            for PostgreSQL, Redis, Reverb, queue, scheduler, and the app.</li>
+                        <li>Bakes the tunnel URL into the recreated app container
+                            from memory (nothing is written to{" "}
+                            <InlineCode>.env</InlineCode>, so a later plain{" "}
+                            <InlineCode>docker compose up</InlineCode> reverts
+                            cleanly). Herd instead: written to{" "}
+                            <InlineCode>.env</InlineCode>, restored on exit -
+                            restart Herd PHP workers to pick it up.</li>
+                        <li>Starts the Vite dev server with HMR and tunnels your reserved
+                            domain to it (<InlineCode>:5173</InlineCode>); API and agent paths
+                            proxy to the backend locally.</li>
+                        <li>Smoke-tests the public URL, then idles until Ctrl+C (tunnel +
+                            Vite stop; Docker stack parks stopped).</li>
                     </ol>
+                    <p>
+                        Only one run at a time (a second run refuses via the{" "}
+                        <InlineCode>.ngrok.pid</InlineCode> lock). After starting the tunnel,{" "}
+                        <strong>regenerate the provision token</strong> in the dashboard -
+                        install commands bake the tunnel URL and tunnel headers at
+                        generation time.
+                    </p>
+                </SubSection>
+                <SubSection title="Static variant">
+                    <CodeBlock>{`npm run ngrok:build    # builds the SPA, tunnels straight to Laravel`}</CodeBlock>
+                    <p>
+                        Production-like check: builds frontend assets with the ngrok URL
+                        baked in and tunnels directly to the backend (no HMR).
+                    </p>
                 </SubSection>
                 <SubSection title="Workflow (Herd)">
-                    <CodeBlock>{`NGROK_UPSTREAM=127.0.0.1:80 npm run ngrok    # Herd app on port 80`}</CodeBlock>
+                    <CodeBlock>{`# .env: NGROK_UPSTREAM=http://server-monitoring-system.test
+npm run ngrok    # tunnels to Vite, which proxies to the Herd app`}</CodeBlock>
                     <p>
                         Uses the host app directly instead of Docker. Requires a
                         ngrok traffic policy file (<InlineCode>scripts/ngrok-policy.yml</InlineCode>)
@@ -594,10 +775,11 @@ docker compose -f compose.yaml -f compose.prod.yaml up -d --build`}</CodeBlock>
                 <ol className="list-decimal pl-5 space-y-1.5">
                     <li>
                         Log in at <InlineCode>{"${APP_URL}"}</InlineCode> with
-                        the admin account.
+                        the seeded user (<InlineCode>user / user123</InlineCode> -
+                        there is no admin role).
                     </li>
                     <li>
-                        Open the Dashboard — stat cards and the Server Overview
+                        Open the Dashboard - stat cards and the Server Overview
                         donut should load.
                     </li>
                     <li>
@@ -615,27 +797,82 @@ docker compose -f compose.yaml -f compose.prod.yaml up -d --build`}</CodeBlock>
             <Section title="Troubleshooting">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Reports fail to compile</strong> — ensure the{" "}
-                        <InlineCode>typst</InlineCode> CLI is installed and on
-                        PATH on the server.
+                        <strong>
+                            Docker says virtualization / WSL2 must be enabled
+                        </strong>{" "}
+                        (Windows) - check Task Manager &gt; Performance &gt;
+                        CPU &gt; <InlineCode>Virtualization: Enabled</InlineCode>.
+                        If Disabled, enable VT-x / AMD-V in BIOS/UEFI first,
+                        then run <InlineCode>wsl --install --no-distribution</InlineCode>{" "}
+                        in an elevated PowerShell, reboot, run{" "}
+                        <InlineCode>wsl --update</InlineCode>, and set Docker
+                        Desktop to the WSL 2 engine. Reinstalling WSL alone
+                        never fixes a BIOS-disabled CPU. One exception with its
+                        own fix: if Task Manager already says{" "}
+                        <InlineCode>Enabled</InlineCode> but Docker/WSL still
+                        reports the hypervisor is missing, the hypervisor was
+                        switched off at boot (leftover VirtualBox/gaming tweak)
+                        - run{" "}
+                        <InlineCode>
+                            bcdedit /set hypervisorlaunchtype auto
+                        </InlineCode>{" "}
+                        in an elevated prompt and reboot.
                     </li>
                     <li>
-                        <strong>No realtime updates</strong> — confirm the{" "}
+                        <strong>
+                            &apos;docker&apos; is not recognized / command not
+                            found
+                        </strong>{" "}
+                        - open a NEW terminal after installing Docker Desktop
+                        (PATH only applies to new shells), then verify with{" "}
+                        <InlineCode>where.exe docker</InlineCode> (Windows) or{" "}
+                        <InlineCode>which docker</InlineCode> (macOS/Linux)
+                        plus <InlineCode>docker --version</InlineCode>. If still
+                        missing, reinstall Docker Desktop with PATH integration
+                        enabled, or on Linux check the Engine install step and
+                        your <InlineCode>docker</InlineCode> group /{" "}
+                        <InlineCode>sudo</InlineCode> setup.
+                    </li>
+                    <li>
+                        <strong>
+                            Docker Desktop is not running / cannot connect to
+                            the Docker daemon
+                        </strong>{" "}
+                        - start Docker Desktop and wait for green/running, then{" "}
+                        <InlineCode>docker ps</InlineCode> should list
+                        containers (empty is fine). On Linux start/enable the{" "}
+                        <InlineCode>docker</InlineCode> service instead.
+                    </li>
+                    <li>
+                        <strong>Reports fail to compile</strong> - install the{" "}
+                        <a
+                            className="text-blue-600 underline"
+                            href="https://typst.app"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Typst
+                        </a>{" "}
+                        CLI (<InlineCode>typst</InlineCode>) on the server and ensure it is
+                        on PATH.
+                    </li>
+                    <li>
+                        <strong>No realtime updates</strong> - confirm the{" "}
                         <InlineCode>reverb</InlineCode> service is running (
                         <InlineCode>docker compose ps</InlineCode>) and the{" "}
                         <InlineCode>VITE_REVERB_*</InlineCode> build args match
-                        the deployment URL (they bake in at image build time —
+                        the deployment URL (they bake in at image build time -
                         rebuild after changing them).
                     </li>
                     <li>
-                        <strong>Jobs never run</strong> — the{" "}
+                        <strong>Jobs never run</strong> - the{" "}
                         <InlineCode>queue</InlineCode>,{" "}
                         <InlineCode>reverb</InlineCode>, and{" "}
                         <InlineCode>scheduler</InlineCode> services must all be
                         up: <InlineCode>docker compose ps</InlineCode>.
                     </li>
                     <li>
-                        <strong>Agent shows "Waiting for Heartbeat"</strong> —{" "}
+                        <strong>Agent shows "Waiting for Heartbeat"</strong> -{" "}
                         check the agent service on the monitored machine and
                         that the provision token has not expired.
                     </li>
