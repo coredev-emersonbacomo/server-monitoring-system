@@ -44,8 +44,19 @@ function getNgrokAuthtoken() {
 }
 
 function findNgrok() {
-  // NB: fs.existsSync lies about MS Store aliases (unstatable reparse
-  // points) — detect via directory listing instead. Spawn resolves them.
+  // Check common Windows install paths
+  const commonPaths = [
+    path.join(process.env.LOCALAPPDATA || "", "Microsoft", "WindowsApps", "ngrok.exe"),
+    path.join(process.env.ProgramFiles || "C:\\Program Files", "ngrok", "ngrok.exe"),
+    path.join(process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)", "ngrok", "ngrok.exe"),
+    path.join(process.env.USERPROFILE || "", "bin", "ngrok.exe"),
+    path.join(process.env.LOCALAPPDATA || "", "ngrok", "ngrok.exe"),
+  ];
+  for (const p of commonPaths) {
+    try {
+      if (fs.existsSync(p)) return p;
+    } catch {}
+  }
   try {
     const dir = path.join(process.env.LOCALAPPDATA || "", "Microsoft", "WindowsApps");
     if (fs.readdirSync(dir).includes("ngrok.exe")) {
@@ -53,7 +64,7 @@ function findNgrok() {
     }
   } catch {}
   try {
-    const found = execSync("where.exe ngrok", { encoding: "utf8" }).split(/\r?\n/)[0]?.trim();
+    const found = execSync("where.exe ngrok", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).split(/\r?\n/)[0]?.trim();
     if (found) return found;
   } catch {}
   return "ngrok";
@@ -461,6 +472,7 @@ async function main() {
   let listener = null;
   const authtoken = getNgrokAuthtoken();
   try {
+    const ngrokSdk = await import("@ngrok/ngrok");
     listener = await ngrokSdk.forward({
       addr: 5173,
       domain: domain,
