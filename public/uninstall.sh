@@ -42,6 +42,11 @@ if [[ ! -d "$INSTANCE_DIR" ]]; then
 fi
 log "Uninstalling instance: ${INSTANCE}"
 
+# Service presence checks must never use `systemctl list-unit-files | grep -q`:
+# with `set -o pipefail`, grep -q closes the pipe on first match, systemctl is
+# killed by SIGPIPE, and the gate always evaluates false.
+unit_present() { [[ -f "$SERVICE_FILE" ]] || systemctl cat "$STABLE_UNIT" >/dev/null 2>&1; }
+
 # Marker-based uninstall: write the flag into the instance directory, then
 # restart the stable service. The agent (running as the service user) sees the
 # marker, revokes itself on the backend, deletes its own identity key, and
@@ -49,7 +54,7 @@ log "Uninstalling instance: ${INSTANCE}"
 if [[ -f "$AGENT_FILE" ]]; then
     touch "$INSTANCE_DIR/uninstall.flag"
     chown "$SERVICE_USER":"$SERVICE_USER" "$INSTANCE_DIR/uninstall.flag"
-    if systemctl list-unit-files | grep -q "^${STABLE_UNIT} "; then
+    if unit_present; then
         printf "Stopping service for cleanup"
         systemctl restart "$STABLE_UNIT" || warn "Service failed to restart for cleanup."
         for i in $(seq 1 30); do
@@ -63,12 +68,21 @@ else
     warn "Agent binary not found - skipping marker-based cleanup."
 fi
 
-# Remove the stable service registration (created once by the installer).
-if systemctl list-unit-files | grep -q "^${STABLE_UNIT} "; then
+# Remove the stable service registration unconditionally — a divergent or
+# orphaned unit must never keep an agent alive past uninstall.
+if unit_present; then
     systemctl disable "$STABLE_UNIT" 2>/dev/null || true
     systemctl stop "$STABLE_UNIT" 2>/dev/null || true
     rm -f "$SERVICE_FILE"
     systemctl daemon-reload
+    log "Removed service registration ${STABLE_UNIT}."
+fi
+
+# Last resort: an orphaned agent (deleted binary, no unit) would otherwise keep
+# heartbeating and pin the server to "online" indefinitely.
+if pgrep -x monitor-agent >/dev/null 2>&1; then
+    pkill -x monitor-agent 2>/dev/null || true
+    log "Killed lingering monitor-agent process."
 fi
 
 if [[ -d "$INSTANCE_DIR" ]]; then
