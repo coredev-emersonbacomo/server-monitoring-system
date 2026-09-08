@@ -30,12 +30,5 @@ export const useServer = (
         },
         enabled: !!serverUuid,
         placeholderData: keepPreviousData,
-        refetchInterval: (query) =>
-            query.state.data &&
-            (query.state.data.status === "pending_installation" ||
-                query.state.data.status === "waiting_for_installation") &&
-            query.state.data.activeProvisionDetails
-                ? 3000
-                : false,
     });
 };

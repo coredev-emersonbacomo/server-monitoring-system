@@ -87,6 +87,7 @@ export function useServerSocket(
     serverUuid: string,
     onStatus?: (status: WsStatus) => void,
     onAgentUninstalled?: () => void,
+    enabled = true,
 ) {
     const queryClient = useQueryClient();
     const onStatusRef = useRef(onStatus);
@@ -120,53 +121,62 @@ export function useServerSocket(
             onStatusRef.current?.("connected");
         }
 
-        echo.private(channelName)
-            .listen(
-                ".ServerStatsUpdated",
-                (e: {
-                    t: number;
-                    c: number;
-                    m: number;
-                    i: number;
-                    o: number;
-                    d: number;
-                    n?: { name: string; type?: string; state?: string; i: number; o: number }[];
-                }) => {
-                    globalMetrics.push(serverUuid, e);
-                    // queryClient.invalidateQueries({ queryKey: ["server", serverUuid] });
-                    // queryClient.invalidateQueries({ queryKey: ["servers"] });
-                },
-            )
-            .listen(".ServerStatusUpdated", () => {
-                queryClient.invalidateQueries({
-                    queryKey: ["server", serverUuid],
-                });
-                queryClient.invalidateQueries({ queryKey: ["servers"] });
-            })
-            .listen(".ProvisionTokenGenerated", () => {
-                // Handled by the caller's queryClient.invalidateQueries(...) instead —
-                // no full reload needed.
-            })
-            .listen(".RegistrationCompleted", () => {
-                // Agent registered — the server just flipped to
-                // waiting_for_first_heartbeat. Refetch in place instead of a
-                // full page reload so the install→heartbeat transition is smooth.
-                queryClient.invalidateQueries({
-                    queryKey: ["server", serverUuid],
-                });
-                queryClient.invalidateQueries({ queryKey: ["servers"] });
-            })
-            .listen(".AgentUninstalled", () => {
-                if (onAgentUninstalledRef.current) {
-                    onAgentUninstalledRef.current();
-                }
-            })
-            .listen(".FileActivityCreated", () => {
-                queryClient.invalidateQueries({ queryKey: ["paginated"] });
-            })
-            .listen(".AgentLifecycleCreated", () => {
-                queryClient.invalidateQueries({ queryKey: ["paginated"] });
+        const channel = echo.private(channelName);
+
+        const handleServerStatusUpdated = () => {
+            queryClient.invalidateQueries({
+                queryKey: ["server", serverUuid],
             });
+            queryClient.invalidateQueries({ queryKey: ["servers"] });
+        };
+
+        const handleRegistrationCompleted = () => {
+            // Agent registered — the server just flipped to
+            // waiting_for_first_heartbeat. Refetch in place instead of a
+            // full page reload so the install→heartbeat transition is smooth.
+            queryClient.invalidateQueries({
+                queryKey: ["server", serverUuid],
+            });
+            queryClient.invalidateQueries({ queryKey: ["servers"] });
+        };
+
+        // Status/registration pickup listeners only run while the server is in
+        // its provisioning lifecycle (unexpired provision token or the brief
+        // waiting_for_first_heartbeat window). Settled servers skip these so
+        // status events no longer trigger page refetches. The channel itself
+        // stays subscribed for live stats (ServerStatsUpdated) either way.
+        if (enabled) {
+            channel
+                .listen(".ServerStatusUpdated", handleServerStatusUpdated)
+                .listen(".RegistrationCompleted", handleRegistrationCompleted)
+                .listen(".AgentUninstalled", () => {
+                    if (onAgentUninstalledRef.current) {
+                        onAgentUninstalledRef.current();
+                    }
+                });
+        }
+
+        channel.listen(
+            ".ServerStatsUpdated",
+            (e: {
+                t: number;
+                c: number;
+                m: number;
+                i: number;
+                o: number;
+                d: number;
+                n?: { name: string; type?: string; state?: string; i: number; o: number }[];
+            }) => {
+                globalMetrics.push(serverUuid, e);
+            },
+        );
+
+        channel.listen(".FileActivityCreated", () => {
+            queryClient.invalidateQueries({ queryKey: ["paginated"] });
+        });
+        channel.listen(".AgentLifecycleCreated", () => {
+            queryClient.invalidateQueries({ queryKey: ["paginated"] });
+        });
 
         return () => {
             echo.connector.pusher.connection.unbind("connected", onConnected);
@@ -174,9 +184,15 @@ export function useServerSocket(
                 "disconnected",
                 onDisconnected,
             );
+            channel.stopListening(".ServerStatsUpdated");
+            channel.stopListening(".ServerStatusUpdated");
+            channel.stopListening(".RegistrationCompleted");
+            channel.stopListening(".AgentUninstalled");
+            channel.stopListening(".FileActivityCreated");
+            channel.stopListening(".AgentLifecycleCreated");
             echo.leaveChannel(channelName);
         };
-    }, [queryClient, serverUuid]);
+    }, [queryClient, serverUuid, enabled]);
 }
 
 export function useLiveStats(serverUuid: string): StatPoint | null {
