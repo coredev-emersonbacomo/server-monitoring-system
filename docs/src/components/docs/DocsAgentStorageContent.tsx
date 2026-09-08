@@ -68,7 +68,7 @@ const STORAGE_TIERS: {
         items: [
             {
                 label: "Session JWT",
-                detail: "Short-lived auth token (900s) — never written to disk",
+                detail: "Short-lived auth token (900s) - never written to disk",
                 restart: "lost",
                 reboot: "lost",
                 update: "lost",
@@ -206,16 +206,16 @@ export function DocsAgentStorageContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Persistent disk</strong> — the bootstrap{" "}
+                        <strong>Persistent disk</strong> - the bootstrap{" "}
                         <InlineCode>config.json</InlineCode> (non-secret) and
                         logs, in the instance directory.
                     </li>
                     <li>
-                        <strong>OS keystore</strong> — the private identity key,
+                        <strong>OS keystore</strong> - the private identity key,
                         protected by the platform.
                     </li>
                     <li>
-                        <strong>Process memory</strong> — the short-lived session
+                        <strong>Process memory</strong> - the short-lived session
                         token and per-server runtime filters, never written to
                         disk.
                     </li>
@@ -236,7 +236,7 @@ export function DocsAgentStorageContent() {
                     installation's config and logs. The binary lives separately
                     in the program directory and is read-only at runtime.
                 </p>
-                <CodeBlock>{`# Windows — single stable service per host
+                <CodeBlock>{`# Windows - single stable service per host
 C:\\Program Files\\MonitorAgent\\MonitorAgent.exe     # shared binary (read-only)
 C:\\ProgramData\\MonitorAgent\\
   startup.log                                        # early-startup log
@@ -247,7 +247,7 @@ C:\\ProgramData\\MonitorAgent\\
     uninstall.flag                                   # whole-host uninstall marker
     detach.flag                                      # per-server detach (contains server_uuid)
 
-# Linux — single stable unit per host
+# Linux - single stable unit per host
 /opt/monitor-agent/monitor-agent                     # shared binary (read-only)
 /var/lib/monitor-agent/
   startup.log                                        # early-startup log
@@ -294,11 +294,11 @@ C:\\ProgramData\\MonitorAgent\\
                         <InlineCode>{"{ installation_id }"}</InlineCode> and logs
                         that the installer still needs to supply{" "}
                         <InlineCode>server_url</InlineCode>. There is no legacy
-                        fallback — every installation writes its own config at
+                        fallback - every installation writes its own config at
                         install time.
                     </li>
                     <li>
-                        Identity keys are never stored here — they live in the OS
+                        Identity keys are never stored here - they live in the OS
                         keystore (see{" "}
                         <Link
                             to="/docs/agent-identity"
@@ -326,13 +326,13 @@ C:\\ProgramData\\MonitorAgent\\
                         before <InlineCode>agent.log</InlineCode> is wired up. It
                         records "loadConfig failed", "bootstrapDefaultConfig
                         failed", "agent.log open failed", and "runService error"
-                        — the first place to look when an agent produces nothing.
+                        - the first place to look when an agent produces nothing.
                     </p>
                 </SubSection>
                 <SubSection title="crash.log, uninstall.flag & detach.flag">
                     <p>
                         <InlineCode>crash.log</InlineCode> is a last-gasp panic
-                        stack — instance dir when known, else data root.{" "}
+                        stack - instance dir when known, else data root.{" "}
                         <InlineCode>uninstall.flag</InlineCode> (
                         <InlineCode>pending</InlineCode> →{" "}
                         <InlineCode>done</InlineCode>) drives whole-host
@@ -355,7 +355,7 @@ C:\\ProgramData\\MonitorAgent\\
                     The identity key and disk state are durable; the session and
                     filters are ephemeral by design. Because authentication is
                     challenge-response (no stored token), losing memory costs
-                    nothing — the agent re-authenticates on the next start. Only
+                    nothing - the agent re-authenticates on the next start. Only
                     uninstall removes the key and disk state, which is why
                     deleting the agent from the backend requires the marker flow
                     to run under the service account.

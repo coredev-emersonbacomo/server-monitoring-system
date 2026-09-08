@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
 import { getEchoInstance } from "@/hooks/useServerSocket";
-import type { Paginator, ServerData } from "@/types/models";
+import type { ServerData } from "@/types/models";
+import type { Paginator } from "@/types/pagination";
 
 export const useServers = (params?: {
     client_uuid?: string;
@@ -46,7 +47,7 @@ export const useServers = (params?: {
                 params: { query: (params ?? undefined) as never },
             });
             if (error) throw error;
-            return data as Paginator<ServerData>;
+            return data as unknown as Paginator<ServerData>;
         },
     });
 };
@@ -96,7 +97,7 @@ export const useInfiniteServers = (params?: {
                 params: { query: queryParams as never },
             });
             if (error) throw error;
-            return data as Paginator<ServerData>;
+            return data as unknown as Paginator<ServerData>;
         },
         initialPageParam: 1,
         getNextPageParam: (lastPage) => {

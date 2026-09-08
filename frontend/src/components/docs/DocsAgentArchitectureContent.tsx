@@ -18,7 +18,7 @@ export function DocsAgentArchitectureContent() {
                     and the identity key name derive from it. The OS service is{" "}
                     <strong>stable and single per host</strong>{" "}
                     <InlineCode>MonitorAgent</InlineCode> /{" "}
-                    <InlineCode>monitor-agent.service</InlineCode> — it is not
+                    <InlineCode>monitor-agent.service</InlineCode> - it is not
                     per-UUID. One agent installation monitors{" "}
                     <strong>multiple servers</strong> on that host; additional
                     servers are attached by re-running the installer with a new
@@ -27,20 +27,20 @@ export function DocsAgentArchitectureContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Binary</strong> — immutable, installed by the
+                        <strong>Binary</strong> - immutable, installed by the
                         installer and only replaced by self-update.
                     </li>
                     <li>
-                        <strong>State</strong> — config, logs, and the uninstall
+                        <strong>State</strong> - config, logs, and the uninstall
                         marker in a per-installation directory under the data
                         root.
                     </li>
                     <li>
-                        <strong>Identity</strong> — an RSA keypair held in the
+                        <strong>Identity</strong> - an RSA keypair held in the
                         OS keystore, used for challenge-response authentication.
                     </li>
                     <li>
-                        <strong>Runtime</strong> — the short-lived session and
+                        <strong>Runtime</strong> - the short-lived session and
                         per-server filters, kept in memory only.
                     </li>
                 </ul>
@@ -97,25 +97,25 @@ export function DocsAgentArchitectureContent() {
                         ).
                     </li>
                     <li>
-                        <strong>Redirect logging</strong> — stdout, stderr, and
+                        <strong>Redirect logging</strong> - stdout, stderr, and
                         the Go <InlineCode>log</InlineCode> package all write to{" "}
                         <InlineCode>agent.log</InlineCode> in the instance
                         directory.
                     </li>
                     <li>
-                        <strong>Load config</strong> — read{" "}
+                        <strong>Load config</strong> - read{" "}
                         <InlineCode>config.json</InlineCode>. If missing, a
                         minimal default is bootstrapped and the agent logs
                         clearly that the installer must supply{" "}
                         <InlineCode>server_url</InlineCode>.
                     </li>
                     <li>
-                        <strong>Obtain the identity key</strong> —{" "}
+                        <strong>Obtain the identity key</strong> -{" "}
                         <InlineCode>GetOrCreateKey</InlineCode> creates the RSA
                         keypair in the OS keystore on first run.
                     </li>
                     <li>
-                        <strong>Handle pending uninstall / detach</strong> — if{" "}
+                        <strong>Handle pending uninstall / detach</strong> - if{" "}
                         <InlineCode>uninstall.flag</InlineCode> is present the
                         agent revokes itself, deletes its key and exits; if{" "}
                         <InlineCode>detach.flag</InlineCode> (containing a{" "}
@@ -124,17 +124,17 @@ export function DocsAgentArchitectureContent() {
                         for that server (keeps the service for remaining servers).
                     </li>
                     <li>
-                        <strong>Register</strong> — if a{" "}
+                        <strong>Register</strong> - if a{" "}
                         <InlineCode>provision_token</InlineCode> is still in the
                         config, the agent registers its public key, then strips
                         the token from disk.
                     </li>
                     <li>
-                        <strong>Authenticate</strong> — challenge-response
+                        <strong>Authenticate</strong> - challenge-response
                         issues a short-lived session token (see Agent Security).
                     </li>
                     <li>
-                        <strong>Build the runtime</strong> — the auth response
+                        <strong>Build the runtime</strong> - the auth response
                         carries the list of owned servers and their per-server
                         filters (<InlineCode>port_filter</InlineCode>,{" "}
                         <InlineCode>process_filter</InlineCode>,{" "}
@@ -142,7 +142,7 @@ export function DocsAgentArchitectureContent() {
                         in <InlineCode>runtime.go</InlineCode> in memory.
                     </li>
                     <li>
-                        <strong>Run the heartbeat loop</strong> — one{" "}
+                        <strong>Run the heartbeat loop</strong> - one{" "}
                         <strong>aggregated</strong> heartbeat per tick (≈{" "}
                         <InlineCode>5s</InlineCode>) covering every owned server:
                         CPU, memory, disk, uptime and{" "}
@@ -185,7 +185,7 @@ monitor-agent -selftest                     # key-store round-trip self-test`}</
                         The service is single and stable:{" "}
                         <InlineCode>MonitorAgent</InlineCode> on Windows,{" "}
                         <InlineCode>monitor-agent.service</InlineCode> on Linux
-                        — the installation UUID is an argument, not part of the
+                        - the installation UUID is an argument, not part of the
                         service name.
                     </li>
                 </ul>
@@ -212,7 +212,7 @@ monitor-agent -selftest                     # key-store round-trip self-test`}</
                         <InlineCode>up</InlineCode> for non-disconnected) are
                         sent only on change (signature via{" "}
                         <InlineCode>processSetSignature</InlineCode> etc.), so{" "}
-                        <InlineCode>available_*</InlineCode> is details-only — the
+                        <InlineCode>available_*</InlineCode> is details-only - the
                         live data lives in the per-server partitions.
                     </p>
                     <p>
@@ -224,7 +224,7 @@ monitor-agent -selftest                     # key-store round-trip self-test`}</
                         empty for a server (e.g.{" "}
                         <InlineCode>network_filter=[]</InlineCode>), the per-server
                         network/ports/processes list is empty and the chart shows
-                        no lines — the Y-axis stays at <InlineCode>MB/s</InlineCode>
+                        no lines - the Y-axis stays at <InlineCode>MB/s</InlineCode>
                         .
                     </p>
                 </SubSection>
@@ -240,7 +240,7 @@ monitor-agent -selftest                     # key-store round-trip self-test`}</
                         its session via{" "}
                         <InlineCode>runtime.SyncFromSession</InlineCode>, which
                         restores the freshest server filters from the auth
-                        response — so nothing is missed while the socket is down.
+                        response - so nothing is missed while the socket is down.
                         Filter updates are applied via{" "}
                         <InlineCode>runtime.Upsert</InlineCode> ({" "}
                         <InlineCode>nil</InlineCode> = allow all,{" "}
@@ -260,8 +260,8 @@ monitor-agent -selftest                     # key-store round-trip self-test`}</
                 </SubSection>
                 <SubSection title="Rejected servers">
                     <p>
-                        Each heartbeat response lists revoked servers —
-                        decommissioned, reassigned, or no longer owned — which
+                        Each heartbeat response lists revoked servers -
+                        decommissioned, reassigned, or no longer owned - which
                         the agent removes from its monitored set rather than
                         leaving flapping. The agent resumes monitoring a server
                         only when it is assigned again.
@@ -272,50 +272,50 @@ monitor-agent -selftest                     # key-store round-trip self-test`}</
             <Section title="Key source files">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <InlineCode>main.go</InlineCode> — entry point, CLI
+                        <InlineCode>main.go</InlineCode> - entry point, CLI
                         commands, uninstall-marker flow, heartbeat loop.
                     </li>
                     <li>
-                        <InlineCode>util.go</InlineCode> — paths, config
+                        <InlineCode>util.go</InlineCode> - paths, config
                         load/bootstrap, process grouping, binary update.
                     </li>
                     <li>
-                        <InlineCode>client.go</InlineCode> — HTTP client,
+                        <InlineCode>client.go</InlineCode> - HTTP client,
                         challenge-response auth, session management, heartbeats,
                         revocation.
                     </li>
                     <li>
-                        <InlineCode>runtime.go</InlineCode> — in-memory server
+                        <InlineCode>runtime.go</InlineCode> - in-memory server
                         assignments and per-server filters.
                     </li>
                     <li>
-                        <InlineCode>ws.go</InlineCode> — WebSocket control
+                        <InlineCode>ws.go</InlineCode> - WebSocket control
                         channel.
                     </li>
                     <li>
                         <InlineCode>keystore.go</InlineCode> +{" "}
                         <InlineCode>keystore_windows.go</InlineCode> /{" "}
-                        <InlineCode>keystore_linux.go</InlineCode> — platform
+                        <InlineCode>keystore_linux.go</InlineCode> - platform
                         identity key storage.
                     </li>
                     <li>
                         <InlineCode>metrics_windows.go</InlineCode> /{" "}
-                        <InlineCode>metrics_linux.go</InlineCode> — CPU, memory,
+                        <InlineCode>metrics_linux.go</InlineCode> - CPU, memory,
                         disk, network, process, and port collection.
                     </li>
                     <li>
-                        <InlineCode>commands.go</InlineCode> — backend-issued
+                        <InlineCode>commands.go</InlineCode> - backend-issued
                         command execution.
                     </li>
                     <li>
                         <InlineCode>service_windows.go</InlineCode> +{" "}
-                        <InlineCode>restart_*.go</InlineCode> — service
+                        <InlineCode>restart_*.go</InlineCode> - service
                         registration and binary-update restarts.
                     </li>
                 </ul>
                 <p>
                     Platform differences (keystore, metrics, restart, service)
-                    are selected with Go build tags — the same codebase compiles
+                    are selected with Go build tags - the same codebase compiles
                     for Windows and Linux.
                 </p>
             </Section>

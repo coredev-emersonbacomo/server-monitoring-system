@@ -19,22 +19,22 @@ export function DocsDashboardContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Stat cards</strong> — total Servers, Clients,
+                        <strong>Stat cards</strong> - total Servers, Clients,
                         and Users. Click any card to open the matching
                         management page.
                     </li>
                     <li>
-                        <strong>Server Overview</strong> — a donut chart of
+                        <strong>Server Overview</strong> - a donut chart of
                         Online vs. Offline servers. The legend links to{" "}
                         <InlineCode>/servers?status=online</InlineCode> and{" "}
                         <InlineCode>/servers?status=offline</InlineCode>.
                     </li>
                     <li>
-                        <strong>Action Board</strong> — pending action items
+                        <strong>Action Board</strong> - pending action items
                         that need attention (see below).
                     </li>
                     <li>
-                        <strong>Usage</strong> — live CPU, Memory, and Disk
+                        <strong>Usage</strong> - live CPU, Memory, and Disk
                         charts with one colored line per server. A time-range
                         selector switches between 1H, 1D, and 1W views.
                     </li>
@@ -50,11 +50,11 @@ export function DocsDashboardContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>No SecOps assigned</strong> — a client has no
+                        <strong>No SecOps assigned</strong> - a client has no
                         SecOps users assigned.
                     </li>
                     <li>
-                        <strong>Server offline</strong> — a server went offline.
+                        <strong>Server offline</strong> - a server went offline.
                         Clicking the card opens the server.
                     </li>
                 </ul>
@@ -141,7 +141,7 @@ export function DocsClientsContent() {
                         auto-formatted)
                     </li>
                     <li>
-                        <strong>Upload Banner Image</strong> (optional — JPEG,
+                        <strong>Upload Banner Image</strong> (optional - JPEG,
                         PNG, JPG, GIF, or WebP)
                     </li>
                 </ul>
@@ -162,18 +162,18 @@ export function DocsClientsContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Details</strong> — Basic Information (location)
+                        <strong>Details</strong> - Basic Information (location)
                         and Contact Details (email, contact number).
                     </li>
                     <li>
-                        <strong>Sec Ops</strong> — the SecOps users assigned to
+                        <strong>Sec Ops</strong> - the SecOps users assigned to
                         this client. Use <strong>Add SecOps</strong> to search
                         and assign users, and <strong>Remove</strong> to
                         unassign. The number is capped by the{" "}
                         <em>SecOps limit per client</em> system setting.
                     </li>
                     <li>
-                        <strong>Alerts</strong> — choose an alert scope (
+                        <strong>Alerts</strong> - choose an alert scope (
                         <em>Global</em> or <em>Client</em>) and edit the
                         client's alert configuration (see the Settings section).
                     </li>
@@ -202,7 +202,7 @@ export function DocsClientsContent() {
                 <p>
                     Deleting permanently removes the client and all associated
                     data. You must type the client name to confirm. Deletion is
-                    blocked while any associated server still has a live agent —
+                    blocked while any associated server still has a live agent -
                     uninstall the agent on those servers first.
                 </p>
                 <DocImage
@@ -232,31 +232,31 @@ export function DocsServersContent() {
             <Section title="Server statuses">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Pending Installation</strong> — server created,
+                        <strong>Pending Installation</strong> - server created,
                         no installation command generated yet.
                     </li>
                     <li>
-                        <strong>Waiting for Installation</strong> — a provision
+                        <strong>Waiting for Installation</strong> - a provision
                         token has been generated; the agent has not installed.
                     </li>
                     <li>
-                        <strong>Waiting for First Heartbeat</strong> — the agent
+                        <strong>Waiting for First Heartbeat</strong> - the agent
                         registered but has not sent its first heartbeat.
                     </li>
                     <li>
-                        <strong>Online</strong> — the agent is reporting
+                        <strong>Online</strong> - the agent is reporting
                         heartbeats.
                     </li>
                     <li>
-                        <strong>Offline</strong> — no heartbeat within the
+                        <strong>Offline</strong> - no heartbeat within the
                         offline threshold.
                     </li>
                     <li>
-                        <strong>Archived</strong> — removed from active
+                        <strong>Archived</strong> - removed from active
                         monitoring.
                     </li>
                     <li>
-                        <strong>Agent Uninstalled</strong> — the agent was
+                        <strong>Agent Uninstalled</strong> - the agent was
                         uninstalled; the installation guide reappears so you can
                         reinstall and resume monitoring.
                     </li>
@@ -285,7 +285,7 @@ export function DocsServersContent() {
                         <strong>Server name</strong> (required)
                     </li>
                     <li>
-                        <strong>Subscription Fee</strong> (₱ / mo, optional —
+                        <strong>Subscription Fee</strong> (₱ / mo, optional -
                         used in client and general reports)
                     </li>
                     <li>
@@ -295,7 +295,7 @@ export function DocsServersContent() {
                 </ul>
                 <p>
                     After creating, the page opens the server detail with the{" "}
-                    <strong>Agent Installation Guide</strong> — that's the next
+                    <strong>Agent Installation Guide</strong> - that's the next
                     step.
                 </p>
                 <DocImage
@@ -334,7 +334,7 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1'
                 <p>
                     The token has a live countdown and can be{" "}
                     <strong>Regenerated</strong> if it expires. The agent then
-                    registers itself with the backend — the server moves to{" "}
+                    registers itself with the backend - the server moves to{" "}
                     <em>waiting for heartbeat</em>, then <em>online</em> once
                     the first heartbeat arrives (default every 5 seconds).
                 </p>
@@ -352,12 +352,12 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1'
                 <p>The server detail page has four tabs:</p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Info</strong> — edit the server name and
+                        <strong>Info</strong> - edit the server name and
                         description inline, and see hardware specs (CPU model,
                         cores, RAM, disk, OS) once the agent reports them.
                     </li>
                     <li>
-                        <strong>Metrics</strong> (once installed) — Top
+                        <strong>Metrics</strong> (once installed) - Top
                         Processes (PID, name, CPU %, RAM MB), Exposed Ports
                         (with per-port ping status), and System Resources: CPU,
                         Memory, Net In, Net Out, and Disk charts with time-range
@@ -365,12 +365,12 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1'
                         stream live via WebSocket.
                     </li>
                     <li>
-                        <strong>Alerts</strong> — choose the alert scope (
+                        <strong>Alerts</strong> - choose the alert scope (
                         Global / Client / Server) and edit this server's alert
                         configuration (see Settings → Alert Configs).
                     </li>
                     <li>
-                        <strong>Agent</strong> — the installed agent's
+                        <strong>Agent</strong> - the installed agent's
                         properties: version, heartbeat/metrics/port/service/
                         process scan intervals, update channel, auto-update
                         flag, first registration, and last heartbeat. Also
@@ -413,7 +413,7 @@ export function DocsUsersContent() {
                     Users are accounts that can sign in to the system. A user
                     becomes a <strong>SecOps</strong> member by being assigned
                     to a client (from the client's Sec Ops tab). There is no
-                    separate role picker — assignment to a client is what makes
+                    separate role picker - assignment to a client is what makes
                     a user SecOps.
                 </p>
                 <p>
@@ -438,7 +438,7 @@ export function DocsUsersContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Avatar</strong> (optional — JPEG, PNG, JPG, GIF,
+                        <strong>Avatar</strong> (optional - JPEG, PNG, JPG, GIF,
                         WebP)
                     </li>
                     <li>
@@ -457,13 +457,13 @@ export function DocsUsersContent() {
                         format: 11 digits starting with 09)
                     </li>
                     <li>
-                        <strong>Timezone</strong> (required — used to localize
+                        <strong>Timezone</strong> (required - used to localize
                         alert notification timestamps; defaults to the browser's
                         timezone)
                     </li>
                     <li>
                         <strong>Password</strong> (required on create, optional
-                        on edit — at least 8 characters with uppercase, number,
+                        on edit - at least 8 characters with uppercase, number,
                         and symbol for "Strong")
                     </li>
                     <li>
@@ -482,11 +482,11 @@ export function DocsUsersContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Details</strong> — Basic Information (email,
+                        <strong>Details</strong> - Basic Information (email,
                         username, phone), timezone, and change-password section.
                     </li>
                     <li>
-                        <strong>Clients</strong> — the client assignments for
+                        <strong>Clients</strong> - the client assignments for
                         this user. Use <strong>Assign Client</strong> to search
                         and assign, and <strong>Remove</strong> to unassign.
                         Users assigned to a client appear in that client's Sec
@@ -520,7 +520,7 @@ export function DocsLogsContent() {
             <Section title="What are logs?">
                 <p>
                     The Logs page (<InlineCode>/logs</InlineCode>) is an audit
-                    trail of everything that happens in the system — server
+                    trail of everything that happens in the system - server
                     lifecycle events, provisioning, alerts, auth events, user
                     and client changes, and more.
                 </p>
@@ -529,16 +529,16 @@ export function DocsLogsContent() {
             <Section title="Three log tabs">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Activity</strong> — general activity logs
+                        <strong>Activity</strong> - general activity logs
                         (server/client/user lifecycle, provisioning, alert
                         notifications).
                     </li>
                     <li>
-                        <strong>Server Health</strong> — server status
+                        <strong>Server Health</strong> - server status
                         transitions and health events.
                     </li>
                     <li>
-                        <strong>Agent</strong> — agent installation and update
+                        <strong>Agent</strong> - agent installation and update
                         events.
                     </li>
                 </ul>
@@ -589,16 +589,16 @@ export function DocsReportsContent() {
             <Section title="Three report scopes">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Global</strong> — a system-wide general report
+                        <strong>Global</strong> - a system-wide general report
                         covering every client and server (no selection needed).
                     </li>
                     <li>
-                        <strong>Clients</strong> — pick one or more clients to
+                        <strong>Clients</strong> - pick one or more clients to
                         generate a client report per client (one page each in
                         multi-reports).
                     </li>
                     <li>
-                        <strong>Servers</strong> — pick one or more servers for
+                        <strong>Servers</strong> - pick one or more servers for
                         a per-server report (one page each in multi-reports).
                     </li>
                 </ul>
@@ -638,25 +638,25 @@ export function DocsReportsContent() {
             <Section title="What each report contains">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Global</strong> — KPI summary (servers, clients,
+                        <strong>Global</strong> - KPI summary (servers, clients,
                         users, alerts, budget vs. subscription fee), servers
                         needing attention, 7-day metrics, top CPU / most alerts
                         / highest cost rankings, SLA uptime dashboard, recent
                         clients and servers, and diagnostic insights.
                     </li>
                     <li>
-                        <strong>Client</strong> — contact info, KPI summary
+                        <strong>Client</strong> - contact info, KPI summary
                         (servers, online/offline, alerts, avg CPU/memory,
                         budget, fees), a servers table, SLA uptime bars, metrics
                         chart, and insights.
                     </li>
                     <li>
-                        <strong>Server</strong> — hardware info, last-24-hour
+                        <strong>Server</strong> - hardware info, last-24-hour
                         metric summary (min/max/avg), SLA uptime percentage, CPU
                         chart, 7-day trends, and insights.
                     </li>
                     <li>
-                        <strong>Multi-reports</strong> — the same content, one
+                        <strong>Multi-reports</strong> - the same content, one
                         page per selected server or client with a page numbering
                         reset.
                     </li>
@@ -683,7 +683,7 @@ export function DocsSettingsContent() {
                     Update your personal information: avatar, first/last name,
                     email, username, phone number, and timezone (used to
                     localize alert timestamps). You can also change your
-                    password here — leave the password fields blank to keep the
+                    password here - leave the password fields blank to keep the
                     current one.
                 </p>
             </Section>
@@ -706,7 +706,7 @@ export function DocsSettingsContent() {
                     <strong>SecOps limit per client</strong> (1–50, default 2).
                     This caps how many SecOps users can be assigned to one
                     client. Lowering the limit does not remove existing
-                    assignments — it only blocks new ones that exceed it. Saving
+                    assignments - it only blocks new ones that exceed it. Saving
                     System Settings is admin-only.
                 </p>
             </Section>
@@ -714,32 +714,32 @@ export function DocsSettingsContent() {
             <Section title="Agent Settings">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Heartbeat Interval</strong> — how often agents
+                        <strong>Heartbeat Interval</strong> - how often agents
                         send heartbeats (default 5s; must be ≤ offline
                         threshold).
                     </li>
                     <li>
-                        <strong>Offline Threshold</strong> — time without a
+                        <strong>Offline Threshold</strong> - time without a
                         heartbeat before a server is marked offline (default
                         15s; must be ≥ heartbeat interval).
                     </li>
                     <li>
-                        <strong>Port Ping Interval</strong> — how often the
+                        <strong>Port Ping Interval</strong> - how often the
                         backend TCP-pings exposed ports (default 60s).
                     </li>
                     <li>
-                        <strong>Latest Agent Version</strong> — the current
+                        <strong>Latest Agent Version</strong> - the current
                         agent binary version. Changing it triggers self-update
                         downloads on running agents.
                     </li>
                     <li>
-                        <strong>Data Retention</strong> — how long the system
+                        <strong>Data Retention</strong> - how long the system
                         keeps high-volume, low-retention data (agent
                         heartbeats, metric samples, and file activity events;
                         default 60 days / 2 months). Older rows are deleted
                         automatically each day by a scheduled cleanup. Agent
-                        logs and other important records — CRUD operations,
-                        install/uninstall events — are never removed.
+                        logs and other important records - CRUD operations,
+                        install/uninstall events - are never removed.
                     </li>
                 </ul>
                 <p>
@@ -751,7 +751,7 @@ export function DocsSettingsContent() {
             <Section title="Alert Configs">
                 <p>
                     The Alert Configs page is the visual editor for the alerting
-                    engine — see the dedicated{" "}
+                    engine - see the dedicated{" "}
                     <strong>Alert Config Editor</strong> section for a full
                     walkthrough of the editor and every node type. This is the
                     most complex part of the system, so take your time there.
@@ -788,7 +788,7 @@ export function DocsSettingsContent() {
                     and scheduled timers. It shows current stats (heartbeats,
                     system sweeps, active timers, notifications), live backend
                     timers with countdowns, and a live event stream. You can
-                    pause/resume the pipeline and sync state — useful for
+                    pause/resume the pipeline and sync state - useful for
                     debugging alert timing.
                 </p>
                 <p>
@@ -827,7 +827,7 @@ export function DocsAlertConfiguratorContent() {
             <Section title="What is the alert config editor?">
                 <p>
                     The alerting system is configured visually as a{" "}
-                    <strong>node graph</strong> — a pipeline where{" "}
+                    <strong>node graph</strong> - a pipeline where{" "}
                     <strong>metrics</strong> flow through{" "}
                     <strong>conditions</strong> and <strong>time gates</strong>{" "}
                     and eventually trigger <strong>notifications</strong>. You
@@ -837,13 +837,13 @@ export function DocsAlertConfiguratorContent() {
                 <p>The same editor is used everywhere a config exists:</p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Global</strong> — Settings → Alert Configs.
+                        <strong>Global</strong> - Settings → Alert Configs.
                     </li>
                     <li>
-                        <strong>Client</strong> — a client's Alerts tab.
+                        <strong>Client</strong> - a client's Alerts tab.
                     </li>
                     <li>
-                        <strong>Server</strong> — a server's Alerts tab.
+                        <strong>Server</strong> - a server's Alerts tab.
                     </li>
                 </ul>
                 <p>
@@ -855,7 +855,7 @@ export function DocsAlertConfiguratorContent() {
             <Section title="The editor layout">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Node palette</strong> (left) — node types
+                        <strong>Node palette</strong> (left) - node types
                         grouped by category: <strong>Metrics</strong> (blue),{" "}
                         <strong>Compare</strong> (amber), <strong>Logic</strong>{" "}
                         (violet), <strong>Time</strong> (green),{" "}
@@ -863,7 +863,7 @@ export function DocsAlertConfiguratorContent() {
                         canvas or click to add.
                     </li>
                     <li>
-                        <strong>Canvas</strong> — dotted background,
+                        <strong>Canvas</strong> - dotted background,
                         snap-to-grid, zoom controls, a minimap, and box-select.{" "}
                         <InlineCode>Ctrl+A</InlineCode> selects everything;{" "}
                         <InlineCode>Delete</InlineCode>/
@@ -871,27 +871,27 @@ export function DocsAlertConfiguratorContent() {
                         selection.
                     </li>
                     <li>
-                        <strong>Undo/Redo</strong> — toolbar with an action
+                        <strong>Undo/Redo</strong> - toolbar with an action
                         history dropdown; shortcuts{" "}
                         <InlineCode>Ctrl+Z</InlineCode>,{" "}
                         <InlineCode>Ctrl+Shift+Z</InlineCode>,{" "}
                         <InlineCode>Ctrl+Y</InlineCode>.
                     </li>
                     <li>
-                        <strong>Wiring</strong> — drag from a node's output
+                        <strong>Wiring</strong> - drag from a node's output
                         socket to a compatible input socket. Socket types
                         (number, boolean, string, event, severity) must match
                         unless the target accepts anything.
                     </li>
                     <li>
-                        <strong>Save / Preview</strong> — Save persists the
+                        <strong>Save / Preview</strong> - Save persists the
                         config (enabled only when you have changes); Preview
                         compiles the graph and shows the resulting JSON.
                     </li>
                 </ul>
             </Section>
 
-            <Section title="Building an alert — step by step">
+            <Section title="Building an alert - step by step">
                 <ol className="list-decimal pl-5 space-y-1.5">
                     <li>
                         <strong>Start with a Metric node.</strong> Pick the
@@ -923,7 +923,7 @@ export function DocsAlertConfiguratorContent() {
                     </li>
                 </ol>
                 <Callout>
-                    New to this? Open the Global config first — it's seeded with
+                    New to this? Open the Global config first - it's seeded with
                     a working example (CPU/memory/disk/network above 85%, email
                     after 10s/20s, Discord after 30s, plus a server-offline
                     branch). Study it before building your own.
@@ -931,7 +931,7 @@ export function DocsAlertConfiguratorContent() {
             </Section>
 
             <Section title="Node reference">
-                <SubSection title="Metric (blue) — entry point">
+                <SubSection title="Metric (blue) - entry point">
                     <p>
                         Reads a value from the server. Choose the metric type:
                         CPU usage, memory usage, disk usage, network usage,
@@ -948,7 +948,7 @@ export function DocsAlertConfiguratorContent() {
                         or equal, less than, less than or equal, equal, or
                         between. Set a threshold (plus min/max for "between").
                         Outputs a boolean. Multiple metrics wired into one
-                        Compare behave as <strong>OR</strong> — any metric
+                        Compare behave as <strong>OR</strong> - any metric
                         exceeding the threshold makes it true.
                     </p>
                 </SubSection>
@@ -962,17 +962,17 @@ export function DocsAlertConfiguratorContent() {
 
                 <SubSection title="Severity">
                     <p>
-                        Tags a result with a severity level — notice, warning,
-                        or critical — used in notification templates.
+                        Tags a result with a severity level - notice, warning,
+                        or critical - used in notification templates.
                     </p>
                 </SubSection>
 
-                <SubSection title="Sustained (green) — time gate">
+                <SubSection title="Sustained (green) - time gate">
                     <p>
                         Requires the condition to hold continuously for a
                         duration before propagating. Settings:{" "}
                         <InlineCode>duration</InlineCode> (default 5 minutes)
-                        and <InlineCode>min_match_percent</InlineCode> — the
+                        and <InlineCode>min_match_percent</InlineCode> - the
                         minimum percentage of samples that must violate the
                         threshold within the window (default 100%; set 80 to
                         tolerate brief dips). Sustained nodes have Chain In /
@@ -981,18 +981,18 @@ export function DocsAlertConfiguratorContent() {
                     </p>
                 </SubSection>
 
-                <SubSection title="Check After (green) — delay">
+                <SubSection title="Check After (green) - delay">
                     <p>
                         Delays propagation for a fixed duration and cancels if
                         the input goes false before it fires. Good for
-                        debouncing — e.g. wait 10 seconds before alerting that a
+                        debouncing - e.g. wait 10 seconds before alerting that a
                         server is offline, to avoid flapping.
                     </p>
                 </SubSection>
 
                 <SubSection title="Repeat (capability)">
                     <p>
-                        Repeat is not a standalone node — it's a capability you{" "}
+                        Repeat is not a standalone node - it's a capability you{" "}
                         <strong>drop onto a time node</strong> (Sustained or
                         Check After). It injects an interval and a repeat cap ({" "}
                         <InlineCode>inf</InlineCode> = endless). After the
@@ -1009,21 +1009,21 @@ export function DocsAlertConfiguratorContent() {
                     </p>
                 </SubSection>
 
-                <SubSection title="Notify (red) — terminal">
+                <SubSection title="Notify (red) - terminal">
                     <p>
                         Sends a notification when its boolean input is true.
                         This node has no output. Channel options:
                     </p>
                     <ul className="list-disc pl-5 space-y-1.5">
                         <li>
-                            <strong>Email</strong> — channel, severity, subject,
+                            <strong>Email</strong> - channel, severity, subject,
                             message.
                         </li>
                         <li>
-                            <strong>SMS</strong> — channel, severity, message.
+                            <strong>SMS</strong> - channel, severity, message.
                         </li>
                         <li>
-                            <strong>Discord</strong> — channel, severity, bot
+                            <strong>Discord</strong> - channel, severity, bot
                             token, channel ID, optional role ID, message.
                         </li>
                     </ul>
@@ -1068,7 +1068,7 @@ export function DocsAlertConfiguratorContent() {
                     <InlineCode>30</InlineCode> (30s),{" "}
                     <InlineCode>5m</InlineCode>, <InlineCode>1h30m</InlineCode>,{" "}
                     <InlineCode>2d6h</InlineCode>, <InlineCode>1w2d</InlineCode>{" "}
-                    — units s, m, h, d, w, mo (30 days), y. Values are stored
+                    - units s, m, h, d, w, mo (30 days), y. Values are stored
                     and transmitted as milliseconds internally.
                 </p>
             </Section>
@@ -1080,19 +1080,19 @@ export function DocsAlertConfiguratorContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>server.*</strong> — name, host name, CPU model,
+                        <strong>server.*</strong> - name, host name, CPU model,
                         OS, status, uptime, and more.
                     </li>
                     <li>
-                        <strong>server.client.*</strong> — client name,
+                        <strong>server.client.*</strong> - client name,
                         location, email, budget, subscription fee, and more.
                     </li>
                     <li>
-                        <strong>metric.*</strong> — the triggering sample:
+                        <strong>metric.*</strong> - the triggering sample:
                         timestamp, cpu, memory, netIn, netOut, disk.
                     </li>
                     <li>
-                        <strong>runtime.*</strong> — severity, metric name,
+                        <strong>runtime.*</strong> - severity, metric name,
                         sustain value, event timestamps, offline duration, port
                         and ping, threshold, and repeat counts.
                     </li>

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf16"
 )
 
 // fakeSender records delivered events and optionally fails them all.
@@ -152,6 +154,87 @@ func TestWatcherCorrelation(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for create event")
+	}
+}
+
+func TestWatcherSkipsDirectoryModified(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("MONITOR_AGENT_DATA_DIR", tmp) // keep isExcluded from dropping our events
+
+	rt := &AgentRuntime{}
+	rt.SetWatchedPaths([]WatchedPath{{Path: tmp, Scope: "agent", Enabled: true}})
+
+	fw := NewFileWatcher(rt)
+	fw.Start()
+	defer fw.Stop()
+
+	// Directory mtime churn is noise, not file activity: no event expected.
+	fw.rawOps <- rawOp{path: filepath.Join(tmp, "subdir"), kind: "modify", isDir: true}
+	select {
+	case ev := <-fw.Events():
+		t.Fatalf("directory modified must not emit, got action %q for %q", ev.Action, ev.SourcePath)
+	case <-time.After(500 * time.Millisecond):
+	}
+
+	// Plain file modify still emits.
+	fw.rawOps <- rawOp{path: filepath.Join(tmp, "a.txt"), kind: "modify", isDir: false}
+	select {
+	case ev := <-fw.Events():
+		if ev.Action != "modified" || ev.IsDirectory {
+			t.Fatalf("expected file modified, got action %q isDir=%v", ev.Action, ev.IsDirectory)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for file modified event")
+	}
+
+	// Structural directory changes still emit.
+	fw.rawOps <- rawOp{path: filepath.Join(tmp, "newdir"), kind: "create", isDir: true}
+	select {
+	case ev := <-fw.Events():
+		if ev.Action != "created" || !ev.IsDirectory {
+			t.Fatalf("expected directory created, got action %q isDir=%v", ev.Action, ev.IsDirectory)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for directory created event")
+	}
+}
+
+func TestParseWinEventsModifyDirReportsIsDir(t *testing.T) {
+	tmp := t.TempDir()
+	dir := filepath.Join(tmp, "subdir")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	// Craft one FILE_NOTIFY_INFORMATION entry for the subdirectory:
+	// NextEntryOffset=0, Action=FILE_ACTION_MODIFIED (Win32 value 3),
+	// name "subdir" as UTF-16LE. Must be a real dir on disk so the
+	// production isDirOrFalse stat resolves true.
+	nameU16 := utf16.Encode([]rune("subdir"))
+	buf := make([]byte, 12+len(nameU16)*2)
+	binary.LittleEndian.PutUint32(buf[0:], 0)
+	binary.LittleEndian.PutUint32(buf[4:], 3)
+	binary.LittleEndian.PutUint32(buf[8:], uint32(len(nameU16)*2))
+	for i, v := range nameU16 {
+		binary.LittleEndian.PutUint16(buf[12+i*2:], v)
+	}
+
+	out := make(chan rawOp, 1)
+	parseWinEvents(buf, tmp, out)
+
+	select {
+	case op := <-out:
+		if op.kind != "modify" {
+			t.Fatalf("expected modify, got %q", op.kind)
+		}
+		if !op.isDir {
+			t.Fatalf("directory modify must report isDir=true, else the emitFile guard cannot drop it")
+		}
+		if op.path != dir {
+			t.Fatalf("expected path %q, got %q", dir, op.path)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for parsed modify op")
 	}
 }
 

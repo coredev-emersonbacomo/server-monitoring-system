@@ -2,7 +2,12 @@ import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
 import { getEchoInstance } from "@/hooks/useServerSocket";
-import type { ClientData, Paginator } from "@/types/models";
+import type { ClientData } from "@/types/models";
+import type { Paginator } from "@/types/pagination";
+
+// ponytail: /v1/clients returns a Laravel paginator at runtime; api.json
+// still declares it as an array, hence the cast below.
+export type PaginatedClients = Paginator<ClientData>;
 
 export const useClients = (params?: {
     exclude_user_uuid?: string;
@@ -15,27 +20,27 @@ export const useClients = (params?: {
     page?: number;
     per_page?: number;
 }) => {
-    return useQuery<Paginator<ClientData>>({
+    return useQuery<PaginatedClients>({
         queryKey: ["clients", params],
         queryFn: async () => {
             const { data, error } = await api.GET("/v1/clients", {
                 params: {
                     query: (params
                         ? {
-                            ...params,
-                            ...(params.available_only !== undefined
-                                ? {
-                                    available_only: params.available_only
-                                        ? 1
-                                        : 0,
-                                }
-                                : {}),
-                        }
+                              ...params,
+                              ...(params.available_only !== undefined
+                                  ? {
+                                        available_only: params.available_only
+                                            ? 1
+                                            : 0,
+                                    }
+                                  : {}),
+                          }
                         : undefined) as never,
                 },
             });
             if (error) throw error;
-            return data as unknown as Paginator<ClientData>;
+            return data as unknown as PaginatedClients;
         },
     });
 };

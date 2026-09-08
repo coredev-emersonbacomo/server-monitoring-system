@@ -301,7 +301,6 @@ html.coreDevDark,
     }
     html {
         @apply font-sans;
-        scrollbar-gutter: stable;
     }
     .recharts-wrapper .recharts-surface {
         overflow: visible;

@@ -111,7 +111,7 @@ function ServerCard({ server }: { server: FakeServer }) {
                     ))
                 ) : (
                     <span className="text-[10px] text-muted-foreground">
-                        — none —
+                        - none -
                     </span>
                 )}
             </div>
@@ -156,7 +156,7 @@ function MultiServerDemo() {
                             : "bg-card text-muted-foreground border-border/60 hover:bg-muted",
                     )}
                 >
-                    PROD — 2 servers, 1 agent
+                    PROD - 2 servers, 1 agent
                 </button>
                 <button
                     type="button"
@@ -168,7 +168,7 @@ function MultiServerDemo() {
                             : "bg-card text-muted-foreground border-border/60 hover:bg-muted",
                     )}
                 >
-                    DEV — 1 server, offline
+                    DEV - 1 server, offline
                 </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -200,7 +200,7 @@ export function DocsAgentMonitoringContent() {
                     <strong>single aggregated heartbeat</strong> for all of its
                     servers: usage stats travel once at the top level, and each
                     server contributes its own partition carrying that server's
-                    filtered processes and ports — so adding a server costs one
+                    filtered processes and ports - so adding a server costs one
                     extra partition inside the same request, not a second
                     collector or a second request.
                 </p>
@@ -210,33 +210,33 @@ export function DocsAgentMonitoringContent() {
             <Section title="What is collected">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>CPU, memory, disk, uptime</strong> — current
+                        <strong>CPU, memory, disk, uptime</strong> - current
                         usage stats sent once per tick at the top level.
                     </li>
                     <li>
-                        <strong>Network — per-interface</strong> — every
+                        <strong>Network - per-interface</strong> - every
                         non-loopback interface (Wi-Fi, Ethernet, VPN, etc.) with{" "}
                         <InlineCode>interface</InlineCode>,{" "}
                         <InlineCode>type</InlineCode>,{" "}
                         <InlineCode>state</InlineCode>,{" "}
                         <InlineCode>rx_bytes</InlineCode>/
-                        <InlineCode>tx_bytes</InlineCode> — deduped via{" "}
+                        <InlineCode>tx_bytes</InlineCode> - deduped via{" "}
                         <InlineCode>networks_dict</InlineCode> plus per-server{" "}
                         <InlineCode>network: ["Wi-Fi"]</InlineCode> keys.
                     </li>
                     <li>
-                        <strong>Processes</strong> — grouped by name (Task
+                        <strong>Processes</strong> - grouped by name (Task
                         Manager style): CPU and memory summed, PIDs collected.
                         Sent deduped via{" "}
                         <InlineCode>processes_dict</InlineCode> + per-server key
                         lists.
                     </li>
                     <li>
-                        <strong>Open database ports</strong> — listening TCP/UDP
+                        <strong>Open database ports</strong> - listening TCP/UDP
                         ports, deduped via <InlineCode>ports_dict</InlineCode>.
                     </li>
                     <li>
-                        <strong>Agent config</strong> — heartbeat interval and
+                        <strong>Agent config</strong> - heartbeat interval and
                         version.
                     </li>
                 </ul>
@@ -252,7 +252,7 @@ export function DocsAgentMonitoringContent() {
                     <InlineCode>{"available_processes: [{name,pids}]"}</InlineCode>{" "}
                     without <InlineCode>cpu/memory</InlineCode>;{" "}
                     <InlineCode>{"available_interfaces: [{interface,type,state}]"}</InlineCode>{" "}
-                    without <InlineCode>rx/tx</InlineCode>) — the live data lives
+                    without <InlineCode>rx/tx</InlineCode>) - the live data lives
                     in the per-server partitions.
                 </p>
             </Section>
@@ -270,11 +270,11 @@ export function DocsAgentMonitoringContent() {
                         <strong>
                             <InlineCode>null</InlineCode> (all checked)
                         </strong>{" "}
-                        — report everything the agent's built-in noise filter
+                        - report everything the agent's built-in noise filter
                         allows.
                     </li>
                     <li>
-                        <strong>an array</strong> — the exact set of
+                        <strong>an array</strong> - the exact set of
                         ports/processes to report;{" "}
                         <strong>an empty array</strong> filters to nothing.
                     </li>
@@ -298,13 +298,13 @@ export function DocsAgentMonitoringContent() {
                     </p>
                     <ol className="list-decimal pl-5 space-y-1.5">
                         <li>
-                            <strong>On auth/startup</strong> — the
+                            <strong>On auth/startup</strong> - the
                             challenge-response auth response carries every owned
                             server's filter.
                         </li>
                         <li>
                             <strong>Over the WebSocket control channel</strong>{" "}
-                            — a <InlineCode>config.update</InlineCode> event
+                            - a <InlineCode>config.update</InlineCode> event
                             pushes a changed filter live. On reconnect the agent
                             refreshes its session, restoring the freshest filters
                             from the auth response.
@@ -322,11 +322,11 @@ export function DocsAgentMonitoringContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <InlineCode>null</InlineCode> filter — probe{" "}
+                        <InlineCode>null</InlineCode> filter - probe{" "}
                         <em>every</em> TCP port the agent reports.
                     </li>
                     <li>
-                        non-null list — probe exactly the SecOps-checked ports
+                        non-null list - probe exactly the SecOps-checked ports
                         (empty = ping nothing).
                     </li>
                 </ul>
@@ -354,25 +354,25 @@ export function DocsAgentMonitoringContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>heartbeat_interval</strong> — a new interval to
+                        <strong>heartbeat_interval</strong> - a new interval to
                         adopt immediately (used to push global settings changes).
                     </li>
                     <li>
-                        <strong>configuration.version</strong> — a bump tells the
+                        <strong>configuration.version</strong> - a bump tells the
                         agent its view of configuration is stale.
                     </li>
                     <li>
-                        <strong>pending_update</strong> — a new agent version;
+                        <strong>pending_update</strong> - a new agent version;
                         the agent updates its binary and restarts, adopting any
                         new heartbeat interval included with it.
                     </li>
                     <li>
-                        <strong>pending_commands</strong> — backend-issued
+                        <strong>pending_commands</strong> - backend-issued
                         commands to execute; results are acknowledged in the
                         next aggregated heartbeat.
                     </li>
                     <li>
-                        <strong>revoked_server_uuids</strong> — servers that are
+                        <strong>revoked_server_uuids</strong> - servers that are
                         decommissioned, reassigned, or no longer owned; the
                         agent removes them from its monitored set instead of
                         retrying forever.
