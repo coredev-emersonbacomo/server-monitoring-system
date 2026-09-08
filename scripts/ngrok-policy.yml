@@ -1,0 +1,10 @@
+# ngrok traffic policy for `npm run ngrok`.
+# Rewrites Host to the Herd site name so Herd routes to this app
+# (same role as cloudflared's --http-host-header). `host` is a special
+# case in add-headers: it overrides instead of appending.
+on_http_request:
+  - actions:
+      - type: add-headers
+        config:
+          headers:
+            host: server-monitoring-system.test

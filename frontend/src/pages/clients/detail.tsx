@@ -1,7 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
-import { Pencil, Upload, AlertTriangle, Trash2, RefreshCw, Info, Shield, Bell, Landmark } from "lucide-react";
+import {
+    Pencil,
+    Upload,
+    AlertTriangle,
+    Trash2,
+    RefreshCw,
+    Info,
+    Shield,
+    Bell,
+    Landmark,
+} from "lucide-react";
 import { createFormStore, useForm } from "@/components/ui/form";
 import { toast } from "sonner";
 import {
@@ -62,7 +72,8 @@ export default function ClientDetail() {
         client?.alert_scope,
     );
 
-    const { inputRef, formatValue, handleChange, handleKeyDown, handlePaste } = useFormattedNumberInput();
+    const { inputRef, formatValue, handleChange, handleKeyDown, handlePaste } =
+        useFormattedNumberInput();
 
     // ── Mutations ──────────────────────────────────────────────────────────────
     const createClient = useCreateClient();
@@ -82,7 +93,8 @@ export default function ClientDetail() {
         clientUuid ? null : defaultBanner,
     );
 
-    const isSaving = createClient.isPending || updateClient.isPending || isSubmitting;
+    const isSaving =
+        createClient.isPending || updateClient.isPending || isSubmitting;
 
     // ── Form store ─────────────────────────────────────────────────────────────
     const isCreate = !clientUuid;
@@ -106,21 +118,21 @@ export default function ClientDetail() {
             schema: clientSchema,
             originalData: client
                 ? {
-                    name: client.name,
-                    description: client.description ?? "",
-                    location: client.location,
-                    email: client.email,
-                    contact_number: client.contact_number,
-                    budget: client.budget ?? 0,
-                }
+                      name: client.name,
+                      description: client.description ?? "",
+                      location: client.location,
+                      email: client.email,
+                      contact_number: client.contact_number,
+                      budget: client.budget ?? 0,
+                  }
                 : {
-                    name: "",
-                    description: "",
-                    location: "",
-                    email: "",
-                    contact_number: "",
-                    budget: 0,
-                },
+                      name: "",
+                      description: "",
+                      location: "",
+                      email: "",
+                      contact_number: "",
+                      budget: 0,
+                  },
             initialMode: "view",
         });
     }, [isCreate, client]);
@@ -272,8 +284,8 @@ export default function ClientDetail() {
             };
             toast.error(
                 e?.response?.data?.message ||
-                e?.message ||
-                "Failed to delete client.",
+                    e?.message ||
+                    "Failed to delete client.",
             );
         }
     };
@@ -357,14 +369,14 @@ export default function ClientDetail() {
                             style={
                                 hasBanner
                                     ? {
-                                        backgroundImage: `url(${bannerPreview})`,
-                                        backgroundSize: "cover",
-                                        backgroundPosition: "top center",
-                                    }
+                                          backgroundImage: `url(${bannerPreview})`,
+                                          backgroundSize: "cover",
+                                          backgroundPosition: "top center",
+                                      }
                                     : {
-                                        background:
-                                            "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
-                                    }
+                                          background:
+                                              "linear-gradient(135deg, oklch(0.18 0.04 260 / 0.6), oklch(0.12 0.03 280 / 0.4))",
+                                      }
                             }
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-background via-background/70 to-transparent" />
@@ -427,7 +439,7 @@ export default function ClientDetail() {
                                                     setBannerFile(null);
                                                     setBannerPreview(
                                                         client?.banner_image_url ??
-                                                        defaultBanner,
+                                                            defaultBanner,
                                                     );
                                                     const input =
                                                         document.getElementById(
@@ -534,7 +546,7 @@ export default function ClientDetail() {
                                         className={cn(
                                             "w-full rounded-md border border-input bg-background/60 backdrop-blur-sm px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none break-all",
                                             errors.description &&
-                                            "border-destructive",
+                                                "border-destructive",
                                         )}
                                     />
                                     {errors.description && (
@@ -561,26 +573,52 @@ export default function ClientDetail() {
                     <div className="max-w-7xl mx-auto relative flex flex-col gap-6">
                         <Tab>
                             <Tab.Item icon={Info} title="Details">
-                                <ClientDetailsTab store={store} isCreate={isCreate} client={client} onSubmit={handleSubmit} inputRef={inputRef} formatValue={formatValue} handleChange={handleChange} handleKeyDown={handleKeyDown} handlePaste={handlePaste} />
+                                <ClientDetailsTab
+                                    store={store}
+                                    isCreate={isCreate}
+                                    client={client}
+                                    onSubmit={handleSubmit}
+                                    inputRef={inputRef}
+                                    formatValue={formatValue}
+                                    handleChange={handleChange}
+                                    handleKeyDown={handleKeyDown}
+                                    handlePaste={handlePaste}
+                                />
                             </Tab.Item>
                             {mode === "view" && client && (
                                 <Tab.Item icon={Shield} title="Sec Ops">
-                                    <ClientDetailsSecOpsTab client={client} currentSecops={currentSecops} secopLoading={secopLoading} secopLimit={secopLimit} onAddClick={() => setShowSecopDialog(true)} removeSecop={removeSecop} />
+                                    <ClientDetailsSecOpsTab
+                                        client={client}
+                                        currentSecops={currentSecops}
+                                        secopLoading={secopLoading}
+                                        secopLimit={secopLimit}
+                                        onAddClick={() =>
+                                            setShowSecopDialog(true)
+                                        }
+                                        removeSecop={removeSecop}
+                                    />
                                 </Tab.Item>
                             )}
                             {mode === "view" && client && (
                                 <Tab.Item icon={Bell} title="Alerts">
-                                    <ClientDetailsAlertsTab client={client} clientAlertTab={clientAlertTab} />
+                                    <ClientDetailsAlertsTab
+                                        client={client}
+                                        clientAlertTab={clientAlertTab}
+                                    />
                                 </Tab.Item>
                             )}
                         </Tab>
                         {mode === "view" && client && (
-                            <ClientDetailsServersTab client={client} servers={servers} serversLoading={serversLoading} />
+                            <ClientDetailsServersTab
+                                client={client}
+                                servers={servers}
+                                serversLoading={serversLoading}
+                            />
                         )}
                     </div>
                 </div>
 
-                                {/* ── Delete dialog ── */}
+                {/* ── Delete dialog ── */}
                 <DeleteClientDialog
                     open={showDelete}
                     onOpenChange={setShowDelete}

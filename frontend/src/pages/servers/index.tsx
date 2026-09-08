@@ -87,7 +87,19 @@ export default function ServersIndex() {
 
     const servers = useMemo(() => {
         if (!infiniteData?.pages) return [];
-        return infiniteData.pages.flatMap((page) => page.data ?? []);
+        // Dedupe by uuid: page boundaries shift on background refetch when
+        // rows change server-side, and duplicates break React keys (rows
+        // render twice / go missing).
+        const seen = new Set<string>();
+        const out: ServerData[] = [];
+        for (const page of infiniteData.pages) {
+            for (const server of page.data ?? []) {
+                if (seen.has(server.uuid)) continue;
+                seen.add(server.uuid);
+                out.push(server);
+            }
+        }
+        return out;
     }, [infiniteData]);
 
     // IntersectionObserver sentinel for automatic infinite scrolling

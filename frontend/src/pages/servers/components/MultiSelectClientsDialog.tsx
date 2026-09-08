@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Landmark, Check, CheckSquare, Square, Search } from "lucide-react";
+import { Landmark, Check, CheckSquare, Square, Search, Loader2 } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -169,13 +169,8 @@ export function MultiSelectClientsDialog({
                     {/* Client List */}
                     <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 min-h-[220px] max-h-[340px] border border-border/40 rounded-lg p-1.5 bg-muted/20">
                         {isLoading ? (
-                            <div className="space-y-2 p-2">
-                                {[0, 1, 2, 3].map((i) => (
-                                    <div
-                                        key={i}
-                                        className="h-11 bg-muted/60 rounded-md animate-pulse"
-                                    />
-                                ))}
+                            <div className="flex items-center justify-center py-10">
+                                <Loader2 className="size-6 animate-spin text-primary" />
                             </div>
                         ) : clients.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-1">

@@ -1,0 +1,17 @@
+# FrankenPHP app server (compose.prod.yaml app service).
+# Plain HTTP on :8000 — TLS terminates at the edge Caddy.
+# Non-worker mode: each request boots fresh (same behavior as php -S,
+# but multithreaded). Worker mode later, after a state-leak audit.
+{
+	http_port 8000
+	https_port 8443
+	servers {
+		listen :8000
+	}
+}
+
+:8000 {
+	root * /var/www/html/public
+	encode gzip
+	php_server
+}

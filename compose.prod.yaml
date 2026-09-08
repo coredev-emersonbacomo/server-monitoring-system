@@ -1,0 +1,125 @@
+# Prod overlay: `docker compose -f compose.yaml -f compose.prod.yaml up -d --build`
+# Same services, prod target (baked code+assets, no mounts), restart policies.
+# Env comes from .env.docker — generate with `npm run setup:docker`.
+# Includes Caddy for auto-HTTPS (needs APP_DOMAIN pointing at this server).
+
+services:
+  postgres:
+    ports: [] # don't expose DB publicly in prod
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-server_monitoring}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+
+  redis:
+    ports: [] # internal only
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-}"]
+
+  app:
+    build:
+      context: .
+      target: prod
+    volumes: [] # baked code, no mounts
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: ${APP_URL:?APP_URL must be set}
+      # Prod serves directly (no ngrok): agent install commands must never
+      # carry the interstitial-bypass header, even if leaked into the shell.
+      NGROK_SKIP_BROWSER_WARNING: "false"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-server_monitoring}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
+      REDIS_CLIENT: predis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      CACHE_STORE: redis
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: ${REVERB_APP_ID:?REVERB_APP_ID must be set}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:?REVERB_APP_KEY must be set}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:?REVERB_APP_SECRET must be set}
+      REVERB_HOST: ${VITE_REVERB_HOST:-}
+      REVERB_PORT: ${VITE_REVERB_PORT:-443}
+      REVERB_SCHEME: ${VITE_REVERB_SCHEME:-https}
+      REVERB_SERVER_HOST: 0.0.0.0
+      REVERB_SERVER_PORT: 8081
+      TELESCOPE_ENABLED: "false"
+      MUTE_NOTIFICATION: ${MUTE_NOTIFICATION:-false}
+      # Flip switch: "false" disables boot seeding in prod. Create the first
+      # prod user ONCE with:
+      #   docker compose -f compose.yaml -f compose.prod.yaml exec app \
+      #     php artisan db:seed --class=UserSeeder --force
+      SEED_ON_BOOT: "false"
+    # No command override: image CMD runs FrankenPHP; entrypoint migrates.
+
+  reverb:
+    build:
+      context: .
+      target: prod
+    volumes: []
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      APP_URL: ${APP_URL:?APP_URL must be set}
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      REVERB_APP_ID: ${REVERB_APP_ID:?REVERB_APP_ID must be set}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:?REVERB_APP_KEY must be set}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:?REVERB_APP_SECRET must be set}
+      REVERB_SERVER_HOST: 0.0.0.0
+      REVERB_SERVER_PORT: 8081
+    command: ["php", "artisan", "reverb:start"]
+
+  queue:
+    build:
+      context: .
+      target: prod
+    volumes: []
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      DB_HOST: postgres
+      REDIS_HOST: redis
+    command: ["php", "artisan", "queue:work"]
+
+  scheduler:
+    build:
+      context: .
+      target: prod
+    volumes: []
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      DB_HOST: postgres
+      REDIS_HOST: redis
+    command: ["php", "artisan", "schedule:work"]
+
+  # Reverse proxy with auto-HTTPS (Let's Encrypt). Requires DNS:
+  # APP_DOMAIN (e.g. monitor.company.com) → this server's public IP,
+  # ports 80/443 reachable.
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN must be set (e.g. monitor.company.com)}
+    restart: unless-stopped
+    depends_on:
+      - app
+      - reverb
+
+volumes:
+  caddy_data:
+  caddy_config:

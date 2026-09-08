@@ -328,7 +328,7 @@ class AgentController extends Controller
     {
         $scriptPath = public_path('install.sh');
         $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
-        $script = str_replace('{{APP_URL}}', url('/'), $script);
+        $script = str_replace('{{APP_URL}}', env('APP_URL') ?: url('/'), $script);
 
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }
@@ -337,7 +337,7 @@ class AgentController extends Controller
     {
         $scriptPath = public_path('install.ps1');
         $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
-        $script = str_replace('{{APP_URL}}', url('/'), $script);
+        $script = str_replace('{{APP_URL}}', env('APP_URL') ?: url('/'), $script);
 
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }
@@ -571,7 +571,7 @@ class AgentController extends Controller
     {
         $scriptPath = public_path('uninstall.sh');
         $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
-        $script = str_replace('{{APP_URL}}', url('/'), $script);
+        $script = str_replace('{{APP_URL}}', env('APP_URL') ?: url('/'), $script);
 
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }
@@ -580,7 +580,7 @@ class AgentController extends Controller
     {
         $scriptPath = public_path('uninstall.ps1');
         $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
-        $script = str_replace('{{APP_URL}}', url('/'), $script);
+        $script = str_replace('{{APP_URL}}', env('APP_URL') ?: url('/'), $script);
 
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }
@@ -589,7 +589,7 @@ class AgentController extends Controller
     {
         $scriptPath = public_path('detach.sh');
         $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
-        $script = str_replace('{{APP_URL}}', url('/'), $script);
+        $script = str_replace('{{APP_URL}}', env('APP_URL') ?: url('/'), $script);
 
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }
@@ -598,7 +598,7 @@ class AgentController extends Controller
     {
         $scriptPath = public_path('detach.ps1');
         $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
-        $script = str_replace('{{APP_URL}}', url('/'), $script);
+        $script = str_replace('{{APP_URL}}', env('APP_URL') ?: url('/'), $script);
 
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }

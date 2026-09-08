@@ -170,8 +170,6 @@ function SectionHeader({
     );
 }
 
-
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function UserDetail() {
@@ -181,9 +179,7 @@ export default function UserDetail() {
     // ── Data fetching ──────────────────────────────────────────────────────────
     const { data: user, isLoading, isError } = useUser(uuid);
 
-    useDocumentTitle(
-        user ? `${user.first_name} ${user.last_name}` : undefined,
-    );
+    useDocumentTitle(user ? `${user.first_name} ${user.last_name}` : undefined);
 
     const { data: userClients = [], isLoading: clientsLoading } =
         useUserClients(uuid);
@@ -253,7 +249,8 @@ export default function UserDetail() {
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [localErrors, setErrors] = useState<Record<string, string>>({});
 
-    const isSaving = createUser.isPending || updateUser.isPending || isSubmitting;
+    const isSaving =
+        createUser.isPending || updateUser.isPending || isSubmitting;
 
     const form = useForm(store, (s) => s.form);
     const mode = useForm(store, (s) => s.mode);
@@ -1199,7 +1196,11 @@ export default function UserDetail() {
                 <VerifyRequiredModal
                     open={showVerifyRequired}
                     onOpenChange={setShowVerifyRequired}
-                    userName={user ? `${user.first_name} ${user.last_name}` : undefined}
+                    userName={
+                        user
+                            ? `${user.first_name} ${user.last_name}`
+                            : undefined
+                    }
                     userUuid={user?.uuid}
                 />
             </div>
