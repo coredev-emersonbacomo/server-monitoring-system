@@ -780,8 +780,8 @@ export default function Docs() {
             <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md supports-backdrop-filter:bg-background/60">
                 <div className="flex h-14 items-center justify-between px-3 sm:px-6 gap-2 sm:gap-4">
                     {/* Left Side: Logo/Title */}
-                    <div className="flex items-center gap-2 min-w-0">
-                        <BookOpen className="size-4.5 text-primary shrink-0" />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <img src="/coreDevlogo.png" alt="Server Monitoring Logo" className="size-5 shrink-0 object-contain" />
                         <span className="font-bold text-sm sm:text-base tracking-tight truncate">
                             <span className="hidden sm:inline">Server Monitoring </span>Documentation
                         </span>
