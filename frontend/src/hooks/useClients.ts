@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
 import { getEchoInstance } from "@/hooks/useServerSocket";
+import type { ClientData, Paginator } from "@/types/models";
 
 export const useClients = (params?: {
     exclude_user_uuid?: string;
@@ -14,7 +15,7 @@ export const useClients = (params?: {
     page?: number;
     per_page?: number;
 }) => {
-    return useQuery({
+    return useQuery<Paginator<ClientData>>({
         queryKey: ["clients", params],
         queryFn: async () => {
             const { data, error } = await api.GET("/v1/clients", {
@@ -34,7 +35,7 @@ export const useClients = (params?: {
                 },
             });
             if (error) throw error;
-            return data;
+            return data as unknown as Paginator<ClientData>;
         },
     });
 };

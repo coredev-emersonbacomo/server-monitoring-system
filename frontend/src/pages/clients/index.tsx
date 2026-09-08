@@ -167,7 +167,7 @@ export default function ClientsIndex() {
     const mainRef = useRef<HTMLElement>(null);
 
     // Paginated response from server: { data, current_page, per_page, total, last_page, ... }
-    const clients: ClientData[] = response?.data ?? [];
+    const clients = useMemo(() => response?.data ?? [], [response]);
     const totalClients = response?.total ?? 0;
 
     const counts = useMemo(() => {
@@ -190,7 +190,7 @@ export default function ClientsIndex() {
             archived: clients.filter((c) => c.record_status === "archived")
                 .length,
         };
-    }, [clients]);
+    }, [clients, response]);
 
     const filterOptions: FilterOption[] = useMemo(
         () => [

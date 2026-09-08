@@ -174,28 +174,42 @@ export default function LogsPage() {
     const sortField = (get("sort_field") || "created_at") as SortableKey;
     const sortDir = (get("sort_dir") || "desc") as "asc" | "desc";
 
-    const setLogParam = (key: string, value: string, _scopeId?: string) => {
+    const setLogParam = (key: string, value: string, scopeId?: string) => {
         const next = new URLSearchParams(searchParams);
         if (value && value !== "all") {
             next.set(key, value);
         } else {
             next.delete(key);
         }
-        // Clear pagination for all tables when filters change — scalable: remove any pagination key.
-        for (const k of Array.from(next.keys())) {
-            if (
-                k === "page" ||
-                k === "per_page" ||
-                k === "cursor" ||
-                k === "previous_cursor" ||
-                k.endsWith("_page") ||
-                k.endsWith("_per_page") ||
-                k.endsWith("_cursor") ||
-                k.endsWith("_previous_cursor")
+        // Clear pagination when filters change (scoped to table if provided, or all tables).
+        const keysToDelete: string[] = [];
+        next.forEach((_, k) => {
+            const keyName = String(k);
+            if (scopeId) {
+                if (
+                    keyName === `${scopeId}_page` ||
+                    keyName === `${scopeId}_per_page` ||
+                    keyName === `${scopeId}_cursor` ||
+                    keyName === `${scopeId}_previous_cursor` ||
+                    keyName === "page" ||
+                    keyName === "per_page"
+                ) {
+                    keysToDelete.push(keyName);
+                }
+            } else if (
+                keyName === "page" ||
+                keyName === "per_page" ||
+                keyName === "cursor" ||
+                keyName === "previous_cursor" ||
+                keyName.endsWith("_page") ||
+                keyName.endsWith("_per_page") ||
+                keyName.endsWith("_cursor") ||
+                keyName.endsWith("_previous_cursor")
             ) {
-                next.delete(k);
+                keysToDelete.push(keyName);
             }
-        }
+        });
+        keysToDelete.forEach((k) => next.delete(k));
         setSearchParams(next);
     };
 

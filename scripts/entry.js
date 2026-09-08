@@ -58,7 +58,19 @@ function logStatus() {
 
 logStatus();
 
-const php = 'C:\\tools\\php85\\php.exe';
+const herdPhp = process.env.USERPROFILE
+  ? [
+      path.join(process.env.USERPROFILE, '.config', 'herd', 'bin', 'php84', 'php.exe'),
+      path.join(process.env.USERPROFILE, '.config', 'herd', 'bin', 'php83', 'php.exe'),
+      path.join(process.env.USERPROFILE, '.config', 'herd', 'bin', 'php82', 'php.exe'),
+    ].find((p) => fs.existsSync(p))
+  : null;
+
+const php = (process.env.PHP_BINARY && fs.existsSync(process.env.PHP_BINARY))
+  ? process.env.PHP_BINARY
+  : (fs.existsSync('C:\\tools\\php85\\php.exe')
+      ? 'C:\\tools\\php85\\php.exe'
+      : (herdPhp || 'php'));
 
 // Recompile/drop the Laravel config cache so the swapped .env takes effect.
 // Avoid optimize:clear — its cache:clear step needs Redis, which starts later.
