@@ -193,6 +193,15 @@ const green = (s) => paint(32, s);
 const greenBold = (s) => paint("32;1", s);
 const dim = (s) => paint(2, s);
 
+// Exit-path output MUST be written synchronously. `console.log` buffers
+// asynchronously when stdout is a pipe (npm -> shell), and process.exit()
+// can truncate or reorder still-pending writes. writeSync blocks until the
+// bytes hit the console, so cleanup messages are guaranteed to reach the
+// terminal before the process exits - not after, and not fabricated delays.
+function exitLog(line = "") {
+  try { fs.writeSync(1, line + "\n"); } catch {}
+}
+
 let domain = "";
 let upstream = "";
 let tunnelUrl = "";
@@ -206,6 +215,10 @@ let envFileTouched = false;
 async function main() {
   // Load environment from .env.development + .env (gitignored overrides win).
   loadEnvIntoProcess([".env.development", ".env"]);
+
+  // `npm run ngrok rebuild`: Dockerfile changes don't apply to a running image;
+  // --build recreates images from the current Dockerfile before the stack starts.
+  const doRebuild = process.argv.slice(2).includes("rebuild");
 
   domain = process.env.NGROK_DOMAIN;
   upstream = (process.env.NGROK_UPSTREAM || "").replace(/\/+$/, "");
@@ -252,7 +265,7 @@ async function main() {
     if (cleanedUp) return;
     cleanedUp = true;
     try { fs.unlinkSync(pidFile); } catch {}
-    console.log("\n[ngrok] Stopping tunnel and dev server...");
+    exitLog("\n[ngrok] Stopping tunnel and dev server...");
     killTree(ngrokChild?.pid);
     killTree(viteChild?.pid);
     if (isDockerUpstream) {
@@ -261,7 +274,7 @@ async function main() {
       // Blocking spawnSync: docker fully finishes before we return (a prompt
       // printed mid-cleanup is the parent shell's own Ctrl+C echo, which
       // Windows delivers to every attached process — not an early exit).
-      console.log("[ngrok] Stopping docker stack (containers kept, data safe)...");
+      exitLog("[ngrok] Stopping docker stack (containers kept, data safe)...");
       try {
         // ponytail: stdio ignore — matches iYu dev.mjs. "inherit" let docker's
         // progress stream to the shared console AFTER PowerShell already
@@ -280,17 +293,17 @@ async function main() {
         content = restoreEnvLine(content, "APP_URL", prevAppUrlLine);
         content = restoreEnvLine(content, "NGROK_SKIP_BROWSER_WARNING", prevSkipLine);
         fs.writeFileSync(envPath, content);
-        console.log("[ngrok] Restored .env tunnel values.");
+        exitLog("[ngrok] Restored .env tunnel values.");
       } catch {}
     }
-    console.log("");
-    console.log("[ngrok] Cleanup complete — safe to type.");
+    exitLog("");
+    exitLog("[ngrok] Cleanup complete — safe to type.");
   }
 
   process.stdin.resume();
 
   process.on("SIGINT", () => {
-    console.log("\n[ngrok] Interrupted — cleaning up...");
+    exitLog("\n[ngrok] Interrupted — cleaning up...");
     cleanup();
     process.exit(0);
   });
@@ -345,7 +358,9 @@ async function main() {
     console.log("");
     console.log("[ngrok] Bringing docker stack up (app serves :8000)...");
     // Stream compose output: per-service lines show realtime startup/status.
-    const docker = spawnSync("docker", ["compose", "up", "-d"], {
+    const upArgs = ["compose", "up", "-d"];
+    if (doRebuild) upArgs.push("--build");
+    const docker = spawnSync("docker", upArgs, {
       stdio: "inherit",
       shell: true,
       cwd: root,

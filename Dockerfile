@@ -26,6 +26,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
+# Typst CLI (PDF report compilation)
+ARG TYPST_VERSION=0.15.1
+RUN curl -fsSL "https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-x86_64-unknown-linux-musl.tar.xz" -o /tmp/typst.tar.xz \
+    && tar -xJf /tmp/typst.tar.xz -C /tmp \
+    && mv /tmp/typst-x86_64-unknown-linux-musl/typst /usr/local/bin/typst \
+    && rm -rf /tmp/typst.tar.xz /tmp/typst-x86_64-unknown-linux-musl \
+    && typst --version
+
 # Node 22 via official binary tarball (pinned to local version).
 # (Apt splits npm into a separate package on trixie and NodeSource has no
 # trixie repo — tarball is deterministic everywhere.)
