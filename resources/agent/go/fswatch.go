@@ -262,6 +262,7 @@ func (fw *FileWatcher) emitFile(path string, isDir bool, action, dest string) {
 		ev.DestinationPath = dest
 	}
 	ev.ServerUUID = fw.serverUUIDForPath(path)
+	ev.Username = fileOwnerUsername(path)
 
 	select {
 	case fw.events <- ev:

@@ -13,7 +13,7 @@ func TestRuntimeFiltersArePerServer(t *testing.T) {
 	sess := &AgentSession{
 		Servers: []ServerAssignment{
 			{ServerUUID: "svr-a", PortFilter: []int{3306}, ProcessFilter: []string{"mysqld"}},
-			{ServerUUID: "svr-b"}, // nil filters → allow all
+			{ServerUUID: "svr-b"}, // nil filters â†’ allow all
 		},
 	}
 	rt := NewAgentRuntime(sess)
@@ -40,7 +40,7 @@ func TestRuntimeFiltersArePerServer(t *testing.T) {
 		t.Fatal("empty filter must block everything")
 	}
 
-	// svr-b (nil filter) is unaffected — everything still passes.
+	// svr-b (nil filter) is unaffected â€” everything still passes.
 	if !rt.IsPortAllowed("svr-b", 3306) {
 		t.Fatal("svr-b nil filter must allow any port")
 	}
@@ -76,7 +76,7 @@ func TestAgentRuntimeSyncFromSession(t *testing.T) {
 	})
 
 	// A fresh session (WS reconnect) carries the latest filters and must
-	// replace the in-memory ones — this is how a config change broadcast while
+	// replace the in-memory ones â€” this is how a config change broadcast while
 	// the socket was down is recovered.
 	rt.SyncFromSession(&AgentSession{
 		Servers: []ServerAssignment{
@@ -108,7 +108,7 @@ func TestAgentRuntimeHeartbeatFiltering(t *testing.T) {
 	rt := NewAgentRuntime(&AgentSession{
 		Servers: []ServerAssignment{
 			{ServerUUID: "svr-a", PortFilter: []int{3306}, ProcessFilter: []string{"mysqld"}},
-			{ServerUUID: "svr-b"}, // nil filters → everything passes
+			{ServerUUID: "svr-b"}, // nil filters â†’ everything passes
 		},
 	})
 
@@ -124,7 +124,7 @@ func TestAgentRuntimeHeartbeatFiltering(t *testing.T) {
 		t.Fatalf("svr-a processes must filter to [mysqld], got %+v", gotProcs)
 	}
 
-	// Server B (nil filter) is unaffected — everything still passes.
+	// Server B (nil filter) is unaffected â€” everything still passes.
 	if got := rt.FilterPorts("svr-b", ports); len(got) != 2 {
 		t.Fatalf("svr-b must pass all ports, got %+v", got)
 	}
@@ -272,5 +272,40 @@ func TestGroupProcesses(t *testing.T) {
 	}
 	if got[0].Cpu < got[1].Cpu {
 		t.Fatal("groups must be sorted by total cpu desc")
+	}
+}
+
+func TestFilterProcessesMatchesAcrossCase(t *testing.T) {
+	rt := &AgentRuntime{servers: map[string]*ServerRuntimeConfig{}}
+	// DB carries the available-list spelling; collected names keep platform
+	// case. Saving a filter must not empty the report.
+	rt.Upsert("svr", nil, []string{"monitoragent", "MYSQLD", " System "}, nil)
+
+	procs := []ProcessInfo{
+		{Name: "MonitorAgent", Pid: 10},
+		{Name: "mysqld", Pid: 20},
+		{Name: "system", Pid: 4},
+		{Name: "svchost", Pid: 30},
+	}
+	got := rt.FilterProcesses("svr", procs)
+	if len(got) != 3 {
+		names := []string{}
+		for _, p := range got {
+			names = append(names, p.Name)
+		}
+		t.Fatalf("expected 3 case-insensitive matches, got %v", names)
+	}
+	if !rt.IsProcessAllowed("svr", "MONITORAGENT") {
+		t.Fatal("IsProcessAllowed must match across case")
+	}
+
+	// Nil filter still reports everything; empty filter still reports nothing.
+	rt.Upsert("svr", nil, nil, nil)
+	if len(rt.FilterProcesses("svr", procs)) != 4 {
+		t.Fatal("nil filter must report all")
+	}
+	rt.Upsert("svr", nil, []string{}, nil)
+	if len(rt.FilterProcesses("svr", procs)) != 0 {
+		t.Fatal("explicit empty filter must report none")
 	}
 }
