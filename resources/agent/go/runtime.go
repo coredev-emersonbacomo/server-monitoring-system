@@ -181,13 +181,14 @@ func (rt *AgentRuntime) IsPortAllowed(serverUUID string, port int) bool {
 }
 
 // IsProcessAllowed reports whether a process should be sent for a server, by
-// name. A nil filter allows everything.
+// name. A nil filter allows everything. Comparison is case-insensitive: the
+// set is normalized at build time, collected names at lookup time.
 func (rt *AgentRuntime) IsProcessAllowed(serverUUID, name string) bool {
 	cfg := rt.config(serverUUID)
 	if cfg == nil || cfg.ProcessFilter == nil {
 		return true
 	}
-	return cfg.ProcessFilter[name]
+	return cfg.ProcessFilter[strings.ToLower(strings.TrimSpace(name))]
 }
 
 // HasServer reports whether the runtime still tracks a server.
@@ -242,7 +243,7 @@ func (rt *AgentRuntime) FilterProcesses(serverUUID string, procs []ProcessInfo) 
 	}
 	out := make([]ProcessInfo, 0, len(procs))
 	for _, p := range procs {
-		if cfg.ProcessFilter[p.Name] {
+		if cfg.ProcessFilter[strings.ToLower(strings.TrimSpace(p.Name))] {
 			out = append(out, p)
 		}
 	}
@@ -251,12 +252,13 @@ func (rt *AgentRuntime) FilterProcesses(serverUUID string, procs []ProcessInfo) 
 
 // IsNetworkAllowed reports whether an interface should be sent for a server. A nil
 // filter allows every non-disconnected interface; a non-nil filter allows only checked ones.
+// Interface names compare case-insensitively like process names.
 func (rt *AgentRuntime) IsNetworkAllowed(serverUUID, iface string) bool {
 	cfg := rt.config(serverUUID)
 	if cfg == nil || cfg.NetworkFilter == nil {
 		return true
 	}
-	return cfg.NetworkFilter[iface]
+	return cfg.NetworkFilter[strings.ToLower(strings.TrimSpace(iface))]
 }
 
 // FilterNetworks drops interfaces not checked for a server, mirroring FilterPorts.
@@ -267,7 +269,7 @@ func (rt *AgentRuntime) FilterNetworks(serverUUID string, nets []NetworkMetrics)
 	}
 	out := make([]NetworkMetrics, 0, len(nets))
 	for _, n := range nets {
-		if cfg.NetworkFilter[n.Interface] {
+		if cfg.NetworkFilter[strings.ToLower(strings.TrimSpace(n.Interface))] {
 			out = append(out, n)
 		}
 	}
@@ -289,9 +291,15 @@ func stringSet(list []string) map[string]bool {
 	if list == nil {
 		return nil
 	}
+	// Lowercase + trim: DB filters carry the UI/available-list spelling
+	// ("MonitorAgent") while collected names vary by platform ("monitoragent",
+	// "MONITORAGENT"). Without this, saving any filter silently matches
+	// nothing and the agent reports empty lists. Nil stays nil (report all).
 	set := make(map[string]bool, len(list))
 	for _, v := range list {
-		set[v] = true
+		if name := strings.ToLower(strings.TrimSpace(v)); name != "" {
+			set[name] = true
+		}
 	}
 	return set
 }
