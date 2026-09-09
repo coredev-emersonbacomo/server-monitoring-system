@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net"
 	"net/http"
@@ -14,11 +15,38 @@ import (
 	"runtime"
 	"runtime/debug"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 const configFileName = "config.json"
+
+// maxAgentLogBytes caps one agent.log generation; rotateAgentLog keeps
+// maxAgentLogFiles of them (10 MB × 3). An outage that logs every tick must
+// not fill the monitored host's disk.
+const (
+	maxAgentLogBytes = 10 << 20
+	maxAgentLogFiles = 3
+)
+
+// rotateAgentLog shifts agent.log → .1 → .2 (dropping the oldest) when the
+// current file exceeds the cap. Best-effort: failures just skip rotation.
+func rotateAgentLog(path string) {
+	st, err := os.Stat(path)
+	if err != nil || st.Size() < maxAgentLogBytes {
+		return
+	}
+	_ = os.Remove(path + ".3")
+	for i := maxAgentLogFiles - 1; i >= 1; i-- {
+		old := path + "." + strconv.Itoa(i)
+		if _, err := os.Stat(old); err == nil {
+			_ = os.Rename(old, path+"."+strconv.Itoa(i+1))
+		}
+	}
+	_ = os.Rename(path, path+".1")
+}
 
 // uuidV4 returns a random RFC 4122 v4 UUID string. Used for audit event ids so
 // the backend can dedupe at the database level.
@@ -26,6 +54,9 @@ func uuidV4() string {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
 		// crypto/rand failure is unrecoverable; fall back to a zeroed id.
+		// Loud on purpose: distinct events sharing one id would collapse
+		// under backend uuid dedupe.
+		log.Printf("WARNING: crypto/rand failed, using zero UUID: %v", err)
 		return "00000000-0000-0000-0000-000000000000"
 	}
 	b[6] = (b[6] & 0x0f) | 0x40
@@ -323,6 +354,55 @@ func updateBinary(binaryURL string) error {
 	return nil
 }
 
+// updateRetryCooldown spaces out re-downloads of a version that just failed:
+// the backend advertises pending_update on every heartbeat, so without this
+// a broken URL burns bandwidth and disk churn every tick.
+const updateRetryCooldown = 30 * time.Minute
+
+var (
+	updateCooldownMu      sync.Mutex
+	failedUpdateVersion   string
+	failedUpdateAt        time.Time
+	cooldownLoggedVersion string
+)
+
+// skipFailedUpdate reports whether version failed recently and should not be
+// retried yet. Safe for the heartbeat and WS goroutines.
+func skipFailedUpdate(version string) bool {
+	if version == "" {
+		return false
+	}
+	updateCooldownMu.Lock()
+	defer updateCooldownMu.Unlock()
+	if version != failedUpdateVersion {
+		return false
+	}
+	if time.Since(failedUpdateAt) >= updateRetryCooldown {
+		failedUpdateVersion = ""
+		return false
+	}
+	if cooldownLoggedVersion != version {
+		cooldownLoggedVersion = version
+		log.Printf("Skipping retry of failed update %s for %s", version, updateRetryCooldown)
+	}
+	return true
+}
+
+// noteUpdateResult clears the cooldown on success or starts it on failure.
+func noteUpdateResult(version string, err error) {
+	updateCooldownMu.Lock()
+	defer updateCooldownMu.Unlock()
+	if err == nil {
+		if failedUpdateVersion == version {
+			failedUpdateVersion = ""
+		}
+		cooldownLoggedVersion = ""
+		return
+	}
+	failedUpdateVersion = version
+	failedUpdateAt = time.Now()
+}
+
 func hasInternet() bool {
 	conn, err := net.DialTimeout("tcp", "1.1.1.1:443", 5*time.Second)
 	if err != nil {
@@ -330,12 +410,6 @@ func hasInternet() bool {
 	}
 	conn.Close()
 	return true
-}
-
-func waitForInternet() {
-	for !hasInternet() {
-		time.Sleep(5 * time.Second)
-	}
 }
 
 // reportAgentPanic reports a crash to the backend. It never includes the

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Data\CreateServerData;
 use App\Data\ServerData;
 use App\Data\ServerDataRequest;
+use App\Data\ServerListData;
 use App\Data\ServersIndexData;
 use App\Data\StatPointData;
 use App\Data\UpdateServerData;
@@ -34,17 +35,6 @@ use Spatie\LaravelData\Optional;
 
 class ServerController extends Controller
 {
-    public function index(string $clientUuid)
-    {
-        $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
-        $servers = Server::withTrashed()->where('client_id', $clientModel->id)->get();
-        foreach ($servers as $s) {
-            $s->checkTokenExpiration();
-        }
-
-        return ServerData::collect($servers->map(fn (Server $s) => ServerData::fromModel($s)));
-    }
-
     public function store(CreateServerData $data, string $clientUuid): ServerData
     {
         $clientModel = Client::where('uuid', $clientUuid)->firstOrFail();
@@ -360,21 +350,107 @@ class ServerController extends Controller
     {
         $user = request()->user();
 
-        $query = Server::withTrashed()
-            ->with(['client', 'latestUpdate', 'agent'])
-            ->withCount('agents');
+        // One shared threshold read for the whole request (cached in Setting).
+        $rawOffline = (int) Setting::get('offline_threshold', '15');
+        $offlineThresholdSec = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
+        $cutoff = Carbon::now()->subSeconds($offlineThresholdSec);
 
+        // Resolve the client scope once — the counts queries and the page share it.
+        $clientIds = $this->resolveListClientIds($data);
+
+        // Badge counts share the client/search scope but ignore status/sort/page,
+        // so the grid needs only this one request (indexed COUNTs, no N+1).
+        $counts = [];
+        foreach (['all', 'assigned', 'online', 'offline', 'pending_installation', 'waiting_for_installation', 'pending_deletion', 'agent_uninstalled', 'archived'] as $key) {
+            $countQuery = $this->baseListQuery($data, $clientIds);
+            $this->applyStatusFilter($countQuery, $key, $user, $cutoff);
+            $counts[$key] = $countQuery->count();
+        }
+
+        // Lean list path: cards render ~8 scalars, so eager only what the
+        // list mapper reads. (Full ServerData per row was 600+ duplicated
+        // queries via ports/processes/activities/monitoredServers.)
+        $query = $this->baseListQuery($data, $clientIds)
+            ->with([
+                'client.secopclients' => fn ($q) => $user ? $q->where('users.id', $user->id) : $q,
+                'agent',
+                'activeProvisionToken',
+            ]);
+
+        $this->applyStatusFilter($query, $data->status ?? 'all', $user, $cutoff);
+
+        $sortColumns = ['created_at' => 'servers.created_at', 'name' => 'servers.name', 'record_status' => 'servers.record_status'];
+        $sort = $sortColumns[$data->sort ?? ''] ?? 'servers.created_at';
+        $dir = strtolower($data->dir ?? 'desc') === 'asc' ? 'asc' : 'desc';
+
+        $query->orderBy($sort, $dir);
+
+        // Pin assigned-to-current-user rows to the top
+        if ($user) {
+            $query->orderByRaw(
+                'exists (select 1 from sec_op_clients inner join clients on sec_op_clients.client_id = clients.id where clients.id = servers.client_id and sec_op_clients.user_id = ?) desc',
+                [$user->id]
+            );
+        }
+
+        // Unique tiebreak so LIMIT/OFFSET pages are stable when sort keys tie
+        // (e.g. mass-seeded rows sharing created_at). Without this Postgres
+        // returns tied rows in arbitrary order per page and rows go missing.
+        $query->orderBy('servers.id', $dir);
+
+        $perPage = min(max((int) ($data->per_page ?? 15), 1), 200);
+        $pageNum = max((int) ($data->page ?? 1), 1);
+
+        $page = $query->paginate(perPage: $perPage, page: $pageNum);
+
+        // checkTokenExpiration only acts on waiting_for_installation rows;
+        // the relation is already eager, so anything else is a no-op compare.
+        foreach ($page as $server) {
+            $server->checkTokenExpiration();
+        }
+
+        $result = $page
+            ->through(fn (Server $s) => ServerListData::fromModel($s, $user?->id, $offlineThresholdSec))
+            ->toArray();
+        $result['counts'] = $counts;
+
+        return $result;
+    }
+
+    /**
+     * Client scope shared by the page query and every badge count.
+     * Returns null when no client filter applies (unknown single uuid keeps
+     * the legacy no-filter behaviour; an unmatched uuids list matches nothing).
+     */
+    private function resolveListClientIds(ServersIndexData $data): ?array
+    {
         if ($data->client_uuids) {
             $uuids = array_values(array_filter(explode(',', $data->client_uuids)));
             if (! empty($uuids)) {
-                $clientIds = Client::whereIn('uuid', $uuids)->pluck('id');
-                $query->whereIn('client_id', $clientIds);
+                return Client::whereIn('uuid', $uuids)->pluck('id')->all();
             }
-        } elseif ($data->client_uuid) {
+
+            return null;
+        }
+
+        if ($data->client_uuid) {
             $client = Client::where('uuid', $data->client_uuid)->first();
-            if ($client) {
-                $query->where('client_id', $client->id);
-            }
+
+            return $client ? [$client->id] : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Client + search scope, before status/sort/pagination.
+     */
+    private function baseListQuery(ServersIndexData $data, ?array $clientIds)
+    {
+        $query = Server::withTrashed();
+
+        if ($clientIds !== null) {
+            $query->whereIn('client_id', $clientIds);
         }
 
         if ($data->q) {
@@ -388,8 +464,15 @@ class ServerController extends Controller
             });
         }
 
-        // Status filter — a server is "assigned" if its client is assigned to the user via sec_op_clients
-        switch ($data->status) {
+        return $query;
+    }
+
+    /**
+     * Status filter — a server is "assigned" if its client is assigned to the user via sec_op_clients.
+     */
+    private function applyStatusFilter($query, ?string $status, mixed $user, Carbon $cutoff): void
+    {
+        switch ($status) {
             case 'archived':
                 $query->where(function ($q) {
                     $q->whereNotNull('deleted_at')
@@ -419,10 +502,6 @@ class ServerController extends Controller
                 $this->scopeNotArchived($query);
                 break;
             case 'online':
-                $rawOffline = (int) Setting::get('offline_threshold', '15');
-                $offlineThresholdSec = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
-                $cutoff = Carbon::now()->subSeconds($offlineThresholdSec);
-
                 $query->whereNull('deleted_at')
                     ->where('agent_deleted', false);
                 $this->scopeNotArchived($query);
@@ -438,10 +517,6 @@ class ServerController extends Controller
                     });
                 break;
             case 'offline':
-                $rawOffline = (int) Setting::get('offline_threshold', '15');
-                $offlineThresholdSec = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
-                $cutoff = Carbon::now()->subSeconds($offlineThresholdSec);
-
                 $query->whereNull('deleted_at')
                     ->where('status', '!=', 'agent_uninstalled');
                 $this->scopeNotArchived($query);
@@ -476,39 +551,6 @@ class ServerController extends Controller
                 $this->scopeNotArchived($query);
                 break;
         }
-
-        $sortColumns = ['created_at' => 'servers.created_at', 'name' => 'servers.name', 'record_status' => 'servers.record_status'];
-        $sort = $sortColumns[$data->sort ?? ''] ?? 'servers.created_at';
-        $dir = strtolower($data->dir ?? 'desc') === 'asc' ? 'asc' : 'desc';
-
-        $query->orderBy($sort, $dir);
-
-        // Pin assigned-to-current-user rows to the top
-        if ($user) {
-            $query->orderByRaw(
-                'exists (select 1 from sec_op_clients inner join clients on sec_op_clients.client_id = clients.id where clients.id = servers.client_id and sec_op_clients.user_id = ?) desc',
-                [$user->id]
-            );
-        }
-
-        // Unique tiebreak so LIMIT/OFFSET pages are stable when sort keys tie
-        // (e.g. mass-seeded rows sharing created_at). Without this Postgres
-        // returns tied rows in arbitrary order per page and rows go missing.
-        $query->orderBy('servers.id', $dir);
-
-        $perPage = min(max((int) ($data->per_page ?? 15), 1), 200);
-        $pageNum = max((int) ($data->page ?? 1), 1);
-
-        $page = $query->paginate(perPage: $perPage, page: $pageNum);
-
-        // Refresh token expiration on the page's items
-        foreach ($page as $server) {
-            $server->checkTokenExpiration();
-        }
-
-        return $page
-            ->through(fn (Server $s) => ServerData::fromModel($s, $user?->id))
-            ->toArray();
     }
 
     public function showWithStats(string $serverUuid, ServerDataRequest $requestData): ServerData

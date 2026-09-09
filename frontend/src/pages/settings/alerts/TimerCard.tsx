@@ -33,7 +33,8 @@ export function TimerCard({ task, offset }: { task: TelemetryTask; offset: numbe
         updateClock();
         const interval = setInterval(updateClock, 100);
         return () => clearInterval(interval);
-    }, [task, offset]);
+        // chainStepsMeta/isChain/maxDurationMs derive from task (a dep).
+    }, [task, offset, chainStepsMeta, isChain, maxDurationMs]);
 
     const stats = task.live_stats;
     const repeatCount = (task.context.repeat_count as number) ?? 0;

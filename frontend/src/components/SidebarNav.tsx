@@ -129,7 +129,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ links = [] }) => {
                 </TooltipContent>
             </Tooltip>
         );
-    }), [links, location.pathname, isCollapsed]);
+    }), [links, location, isCollapsed]);
 
     return (
         <>

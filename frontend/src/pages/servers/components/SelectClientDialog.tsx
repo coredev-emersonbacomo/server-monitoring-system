@@ -34,10 +34,13 @@ export function SelectClientDialog({
     const [s] = useUrlState({
         [paramName]: { default: "" },
     });
-    const { data: response, isLoading } = useClients({
-        q: s[paramName] || undefined,
-        per_page: 50,
-    });
+    const { data: response, isLoading } = useClients(
+        {
+            q: s[paramName] || undefined,
+            per_page: 50,
+        },
+        { enabled: open },
+    );
     const clients = useMemo(() => response?.data ?? [], [response]);
 
     return (

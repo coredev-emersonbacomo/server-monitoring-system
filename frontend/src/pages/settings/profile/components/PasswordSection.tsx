@@ -3,10 +3,11 @@ import { Eye, EyeOff } from "lucide-react";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import { PasswordStrength } from "./PasswordStrength";
 import { useForm, type FormStore } from "@/components/ui/form";
+import type { ProfileForm } from "../constants/profileSchema";
 
 interface PasswordSectionProps {
-    form: { password: string; password_confirmation: string };
-    store: FormStore<any>;
+    form: ProfileForm;
+    store: FormStore<ProfileForm>;
 }
 
 export function PasswordSection({ form, store }: PasswordSectionProps) {

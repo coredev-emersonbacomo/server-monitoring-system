@@ -267,6 +267,59 @@ monitor-agent -selftest                     # key-store round-trip self-test`}</
                         only when it is assigned again.
                     </p>
                 </SubSection>
+                <SubSection title="Failure handling & edge cases">
+                    <p>
+                        <strong>Backend offline.</strong> Heartbeat sends are
+                        bounded by the tick cadence: a stale payload is dropped
+                        and the next tick sends fresh data. Charts show a
+                        truthful gap for the outage — replaying hour-old
+                        snapshots stamped as now would corrupt the timeline.
+                        Retries back off (2s → 60s max) and wait for
+                        connectivity without blocking forever.
+                    </p>
+                    <p>
+                        <strong>Audit delivery.</strong> File-activity and
+                        lifecycle events append to a disk queue (fsynced JSON
+                        lines) drained every 5s in 500-event chunks. Delivery
+                        progress is a byte offset, so a drain never reads more
+                        than one batch into memory no matter how large the
+                        backlog; consumed prefixes compact away past 64 MB. A
+                        crash mid-send redelivers from the offset on next
+                        start, and duplicates are safe because the backend
+                        dedupes by event uuid. There is no queue size cap — a
+                        very long outage grows the file until the backend
+                        returns.
+                    </p>
+                    <p>
+                        <strong>Commands.</strong> The backend resends un-acked
+                        commands every heartbeat; the agent dedupes by command
+                        id so a failed tick never re-runs shell commands, and
+                        acks ride the next <em>successful</em> heartbeat. A
+                        crash between execute and ack re-runs the command once
+                        (results are in-memory only).
+                    </p>
+                    <p>
+                        <strong>Uninstall / detach.</strong> Both are marker
+                        files the service account owns: uninstall revokes and
+                        deletes the identity key, detach drops one server and
+                        keeps the agent alive. Markers retry on the next tick
+                        until confirmed; uninstall has an 8s revoke budget so
+                        OS service-stop timeouts are never blocked.
+                    </p>
+                    <p>
+                        <strong>Known limits.</strong> One hung collector
+                        (WMI, PowerShell, /proc) stalls the whole tick
+                        including acks and revocations; a long shell command
+                        delays the loop the same way. Servers removed without a
+                        revoke notice linger until reassigned. Linux service
+                        lifecycle is external (systemd) — install/uninstall
+                        flags are Windows-only. Marker files are trusted by
+                        presence, not ACL. <InlineCode>agent.log</InlineCode>{" "}
+                        rotates at 10 MB × 3 generations. Failed binary
+                        updates cool down 30 minutes per version instead of
+                        re-downloading every tick.
+                    </p>
+                </SubSection>
             </Section>
 
             <Section title="Key source files">

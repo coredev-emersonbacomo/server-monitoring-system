@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext } from "react";
 
 type NodeConfigGraphContextType = {
     isPreview: boolean;
@@ -20,8 +20,4 @@ export function NodeConfigGraphProvider({
             {children}
         </NodeConfigGraphContext.Provider>
     );
-}
-
-export function useNodeConfigGraph() {
-    return useContext(NodeConfigGraphContext);
 }

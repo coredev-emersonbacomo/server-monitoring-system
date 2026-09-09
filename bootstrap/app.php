@@ -20,6 +20,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             RequestLogger::class,
         ]);
+        // API+SPA app with no login route: framework default redirectGuestsTo
+        // calls route('login'), 500ing every unauthenticated non-JSON hit.
+        // Null redirect renders 401 instead.
+        $middleware->redirectGuestsTo(null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -44,7 +48,7 @@ $app->beforeBootstrapping(LoadEnvironmentVariables::class, function (Application
 
         return;
     }
-    Dotenv::createImmutable($app->environmentPath(), ['.env', '.env.development'], false)->safeLoad();
+    Dotenv::createImmutable($app->environmentPath(), ['.env.development', '.env'], false)->safeLoad();
     // Key commands write to environmentFilePath(), so keep them on the real
     // .env — the dummy target below does not exist and makes them crash.
     $argv = $_SERVER['argv'] ?? [];

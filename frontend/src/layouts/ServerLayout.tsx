@@ -182,7 +182,7 @@ export default function ServerLayout() {
     return (
         <div className="flex-1 flex flex-row gap-6">
             <div className="flex-1 min-w-0">
-                <Outlet key={uuid} />
+                <Outlet />
             </div>
 
             {/* Mobile Floating Server List Button (placed at top right next to burger) */}

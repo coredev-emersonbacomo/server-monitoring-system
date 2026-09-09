@@ -13,6 +13,8 @@ test('debug which db', function () {
         'ENV_DB= '.(getenv('DB_DATABASE') ?: 'unset'),
         'SERVER_APP_ENV= '.($_SERVER['APP_ENV'] ?? 'unset'),
     ];
-    file_put_contents(base_path('storage/debug-db.txt'), implode("\n", $lines));
+    // Gitignored path: writing to storage/debug-db.txt dirtied the working
+    // tree on every suite run.
+    file_put_contents(base_path('storage/framework/debug-db.txt'), implode("\n", $lines));
     expect(true)->toBeTrue();
 });

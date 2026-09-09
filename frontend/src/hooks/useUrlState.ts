@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
 export type UrlStateSchema<T extends Record<string, unknown>> = {
@@ -35,8 +35,12 @@ export function useUrlState<T extends Record<string, unknown>>(
     schema: UrlStateSchema<T>,
 ) {
     const [searchParams, setSearchParams] = useSearchParams();
+    // Latest schema for the stable callbacks below — assigned in an effect,
+    // never during render.
     const schemaRef = useRef(schema);
-    schemaRef.current = schema;
+    useEffect(() => {
+        schemaRef.current = schema;
+    });
 
     const state = useMemo(() => {
         const result = {} as T;

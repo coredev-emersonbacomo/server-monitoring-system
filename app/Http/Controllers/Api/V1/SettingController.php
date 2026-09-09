@@ -47,7 +47,7 @@ class SettingController extends Controller
                 AgentVersion::create([
                     'version' => $agentVersion,
                     'binary_url' => url('/MonitorAgent.exe'),
-                    'description' => 'Agent binary updated to version ' . $agentVersion,
+                    'description' => 'Agent binary updated to version '.$agentVersion,
                 ]);
             }
         }

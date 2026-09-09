@@ -151,7 +151,7 @@ func (c *AgentClient) authenticate() (*AgentSession, error) {
 
 func (c *AgentClient) requestChallenge(installationUUID string) (*ChallengeResponse, error) {
 	url := c.apiURL("/api/v1/agent/auth/challenge")
-	result, err := c.sendWithRetry(url, map[string]string{"installation_uuid": installationUUID}, nil, 3, nil)
+	result, err := c.sendWithRetry(url, map[string]string{"installation_uuid": installationUUID}, nil, 3, nil, time.Time{})
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func (c *AgentClient) verifyChallenge(challengeID int64, signature string) (*Aut
 		"challenge_id": challengeID,
 		"signature":    signature,
 	}
-	result, err := c.sendWithRetry(url, payload, nil, 3, nil)
+	result, err := c.sendWithRetry(url, payload, nil, 3, nil, time.Time{})
 	if err != nil {
 		return nil, err
 	}
@@ -337,18 +337,27 @@ func (c *AgentClient) doOnce(url string, payload interface{}, extraHeaders map[s
 // sendWithRetry posts payload, retrying on network errors (waiting for the
 // network to come back) and on non-2xx responses until maxAttempts (0 =
 // unlimited). stopOn, if set, short-circuits the retry for a given status.
-func (c *AgentClient) sendWithRetry(url string, payload interface{}, extraHeaders map[string]string, maxAttempts int, stopOn func(int) bool) (map[string]interface{}, error) {
+// A zero deadline means no timeout; otherwise the call gives up once the
+// deadline passes so stale payloads (heartbeats) are dropped instead of
+// blocking their loop forever. The next tick sends fresh data.
+func (c *AgentClient) sendWithRetry(url string, payload interface{}, extraHeaders map[string]string, maxAttempts int, stopOn func(int) bool, deadline time.Time) (map[string]interface{}, error) {
 	delay := 2 * time.Second
 	maxDelay := 60 * time.Second
 	attempt := 0
+	expired := func() bool {
+		return !deadline.IsZero() && !time.Now().Before(deadline)
+	}
 
 	for {
+		if expired() {
+			return nil, fmt.Errorf("send deadline exceeded for %s", url)
+		}
 		attempt++
 
 		status, respBody, err := c.doOnce(url, payload, extraHeaders)
 		if err != nil {
 			log.Printf("[attempt %d] network error: %v — waiting for internet...", attempt, err)
-			waitForInternet()
+			waitForInternetUntil(deadline)
 			continue
 		}
 
@@ -370,10 +379,39 @@ func (c *AgentClient) sendWithRetry(url string, payload interface{}, extraHeader
 			return nil, &httpStatusError{Status: status, Body: respBody}
 		}
 
-		time.Sleep(delay)
+		sleep := delay
+		if !deadline.IsZero() {
+			if remain := time.Until(deadline); remain < sleep {
+				sleep = remain
+			}
+		}
+		time.Sleep(sleep)
 		delay *= 2
 		if delay > maxDelay {
 			delay = maxDelay
+		}
+	}
+}
+
+// waitForInternetUntil blocks until connectivity returns or the deadline
+// passes. A zero deadline waits indefinitely (previous behavior for
+// non-heartbeat sends).
+func waitForInternetUntil(deadline time.Time) {
+	for {
+		if !deadline.IsZero() && !time.Now().Before(deadline) {
+			return
+		}
+		if hasInternet() {
+			return
+		}
+		sleep := 5 * time.Second
+		if !deadline.IsZero() {
+			if remain := time.Until(deadline); remain < sleep {
+				sleep = remain
+			}
+		}
+		if sleep > 0 {
+			time.Sleep(sleep)
 		}
 	}
 }
@@ -382,7 +420,7 @@ func (c *AgentClient) sendWithRetry(url string, payload interface{}, extraHeader
 
 func (c *AgentClient) register(req *RegisterRequest) (*RegisterResponse, error) {
 	url := c.apiURL("/api/v1/register")
-	result, err := c.sendWithRetry(url, req, nil, 5, nil)
+	result, err := c.sendWithRetry(url, req, nil, 5, nil, time.Time{})
 	if err != nil {
 		return nil, err
 	}
@@ -403,8 +441,15 @@ func (c *AgentClient) register(req *RegisterRequest) (*RegisterResponse, error) 
 // sendAgentHeartbeat sends one aggregated heartbeat covering every monitored
 // server. On a 401 the session is refreshed once and the call retried; all
 // other HTTP errors are returned for the caller to classify.
-func (c *AgentClient) sendAgentHeartbeat(payload *AgentHeartbeatRequest) (*AgentHeartbeatResponse, error) {
+// The send is bounded by timeout (stale payloads are dropped so the next tick
+// sends fresh data); a non-positive timeout keeps the old unbounded behavior.
+func (c *AgentClient) sendAgentHeartbeat(payload *AgentHeartbeatRequest, timeout time.Duration) (*AgentHeartbeatResponse, error) {
 	url := c.apiURL("/api/v1/agent/heartbeat")
+
+	deadline := time.Time{}
+	if timeout > 0 {
+		deadline = time.Now().Add(timeout)
+	}
 
 	for attempt := 0; attempt < 2; attempt++ {
 		sess, err := c.ensureSession()
@@ -413,7 +458,7 @@ func (c *AgentClient) sendAgentHeartbeat(payload *AgentHeartbeatRequest) (*Agent
 		}
 
 		headers := map[string]string{"Authorization": "Bearer " + sess.AccessToken}
-		result, err := c.sendWithRetry(url, payload, headers, 0, func(status int) bool { return status == 401 })
+		result, err := c.sendWithRetry(url, payload, headers, 0, func(status int) bool { return status == 401 }, deadline)
 		if err != nil {
 			var hse *httpStatusError
 			if errors.As(err, &hse) && hse.Status == http.StatusUnauthorized {
@@ -530,7 +575,7 @@ func (c *AgentClient) sendAuthenticated(path string, payload interface{}) error 
 			return err
 		}
 		headers := map[string]string{"Authorization": "Bearer " + sess.AccessToken}
-		_, err = c.sendWithRetry(url, payload, headers, 0, func(status int) bool { return status == 401 })
+		_, err = c.sendWithRetry(url, payload, headers, 0, func(status int) bool { return status == 401 }, time.Time{})
 		if err != nil {
 			var hse *httpStatusError
 			if errors.As(err, &hse) && hse.Status == http.StatusUnauthorized {
@@ -555,7 +600,7 @@ func (c *AgentClient) postNotification(url string, payload interface{}) error {
 	}
 
 	headers := map[string]string{"Authorization": "Bearer " + sess.AccessToken}
-	_, err = c.sendWithRetry(url, payload, headers, 3, nil)
+	_, err = c.sendWithRetry(url, payload, headers, 3, nil, time.Time{})
 	if err != nil {
 		var hse *httpStatusError
 		if errors.As(err, &hse) && hse.Status == http.StatusUnauthorized {
@@ -600,7 +645,7 @@ func (c *AgentClient) revokeInstallation() error {
 		return err
 	}
 	headers := map[string]string{"Authorization": "Bearer " + sess.AccessToken}
-	_, err = c.sendWithRetry(url, map[string]string{"reason": "uninstall"}, headers, 3, nil)
+	_, err = c.sendWithRetry(url, map[string]string{"reason": "uninstall"}, headers, 3, nil, time.Time{})
 	if err != nil {
 		var hse *httpStatusError
 		if errors.As(err, &hse) && hse.Status == http.StatusUnauthorized {
@@ -618,7 +663,7 @@ func (c *AgentClient) detachServer(serverUuid string) error {
 		return err
 	}
 	headers := map[string]string{"Authorization": "Bearer " + sess.AccessToken}
-	_, err = c.sendWithRetry(url, map[string]string{"reason": "detach"}, headers, 3, nil)
+	_, err = c.sendWithRetry(url, map[string]string{"reason": "detach"}, headers, 3, nil, time.Time{})
 	if err != nil {
 		var hse *httpStatusError
 		if errors.As(err, &hse) && hse.Status == http.StatusUnauthorized {

@@ -6,4 +6,6 @@ export interface Paginator<T> {
     last_page: number;
     per_page: number;
     total: number;
+    /** Badge counts for the servers list (same client/search scope, all statuses). */
+    counts?: Record<string, number>;
 }

@@ -28,7 +28,8 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { nodeTypes } from "./nodes";
-import { NodePalette, getNodeDefaults } from "./NodePalette";
+import { NodePalette } from "./NodePalette";
+import { getNodeDefaults } from "./nodeDefaults";
 import { NodeSettingsPanel } from "./NodeSettingsPanel";
 import { NodeConfigToolbar } from "./NodeConfigToolbar";
 import { getInputType, getOutputType } from "./nodes/socketTypes";

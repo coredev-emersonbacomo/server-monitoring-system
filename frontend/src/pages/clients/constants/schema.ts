@@ -19,3 +19,6 @@ export const clientSchema = z.object({
         return isNaN(num) ? 0 : Math.max(0, num);
     }),
 });
+
+
+export type ClientForm = z.infer<typeof clientSchema>;

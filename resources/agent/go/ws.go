@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"nhooyr.io/websocket"
@@ -32,21 +33,21 @@ type pusherMsg struct {
 // filter pointers distinguish "absent" (nil → leave current filters) from
 // "explicitly empty" (non-nil empty slice → filter to nothing).
 type configUpdatePayload struct {
-	Type              string    `json:"type"`
-	ServerUUID        string    `json:"server_uuid"`
-	HeartbeatInterval int       `json:"heartbeat_interval"`
-	Version           string    `json:"version"`
-	BinaryURL         string    `json:"binary_url"`
-	PortFilter        *[]int       `json:"port_filter"`
-	ProcessFilter     *[]string    `json:"process_filter"`
-	NetworkFilter     *[]string    `json:"network_filter"`
+	Type              string         `json:"type"`
+	ServerUUID        string         `json:"server_uuid"`
+	HeartbeatInterval int            `json:"heartbeat_interval"`
+	Version           string         `json:"version"`
+	BinaryURL         string         `json:"binary_url"`
+	PortFilter        *[]int         `json:"port_filter"`
+	ProcessFilter     *[]string      `json:"process_filter"`
+	NetworkFilter     *[]string      `json:"network_filter"`
 	WatchedPaths      *[]WatchedPath `json:"watched_paths"`
 }
 
 // connectControlChannel maintains a persistent WebSocket connection to Reverb.
 // All Reverb config and credentials come from the authenticated session, never
 // from disk.
-func connectControlChannel(client *AgentClient, runtime *AgentRuntime, heartbeatInterval *int, stop <-chan struct{}) {
+func connectControlChannel(client *AgentClient, runtime *AgentRuntime, heartbeatInterval *atomic.Int64, stop <-chan struct{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("[WS] PANIC RECOVERED in control channel: %v", r)
@@ -94,7 +95,7 @@ func connectControlChannel(client *AgentClient, runtime *AgentRuntime, heartbeat
 // A fresh session is forced on every (re)connect and its filters are synced
 // into the runtime, so any config change broadcast while the socket was down
 // is recovered from the auth response (the source of truth).
-func runWsSession(client *AgentClient, runtime *AgentRuntime, heartbeatInterval *int, stop <-chan struct{}) error {
+func runWsSession(client *AgentClient, runtime *AgentRuntime, heartbeatInterval *atomic.Int64, stop <-chan struct{}) error {
 	sess, err := client.refreshSession()
 	if err != nil {
 		return fmt.Errorf("session: %w", err)
@@ -255,7 +256,7 @@ func subscribeToPusherChannel(ctx context.Context, conn *websocket.Conn, channel
 }
 
 // handlePusherEvent dispatches a parsed Pusher message.
-func handlePusherEvent(client *AgentClient, runtime *AgentRuntime, msg pusherMsg, heartbeatInterval *int) {
+func handlePusherEvent(client *AgentClient, runtime *AgentRuntime, msg pusherMsg, heartbeatInterval *atomic.Int64) {
 	switch msg.Event {
 	case pusherSubscribed:
 		log.Printf("[WS] Subscribed to channel: %s", msg.Channel)
@@ -288,9 +289,9 @@ func handlePusherEvent(client *AgentClient, runtime *AgentRuntime, msg pusherMsg
 // effective heartbeat interval is persisted via the next heartbeat's
 // agent_config payload. Filters are applied per server (from the payload's
 // server_uuid); when the payload carries no filters the current ones are kept.
-func handleConfigUpdate(runtime *AgentRuntime, payload configUpdatePayload, heartbeatInterval *int) {
+func handleConfigUpdate(runtime *AgentRuntime, payload configUpdatePayload, heartbeatInterval *atomic.Int64) {
 	if payload.HeartbeatInterval > 0 {
-		*heartbeatInterval = payload.HeartbeatInterval
+		heartbeatInterval.Store(int64(payload.HeartbeatInterval))
 	}
 
 	if payload.ServerUUID != "" {
@@ -323,7 +324,7 @@ func handleConfigUpdate(runtime *AgentRuntime, payload configUpdatePayload, hear
 // handleBinaryUpdate downloads a new agent binary and restarts the process.
 // The heartbeat's pending_update is the fallback trigger; the WS broadcast
 // makes updates immediate after e.g. a compileagent run.
-func handleBinaryUpdate(client *AgentClient, payload configUpdatePayload, heartbeatInterval *int) {
+func handleBinaryUpdate(client *AgentClient, payload configUpdatePayload, heartbeatInterval *atomic.Int64) {
 	if payload.BinaryURL == "" {
 		log.Println("[WS] binary_update received but no binary_url provided — skipping.")
 		return
@@ -332,14 +333,19 @@ func handleBinaryUpdate(client *AgentClient, payload configUpdatePayload, heartb
 	log.Printf("[WS] Binary update received: version=%s url=%s", payload.Version, payload.BinaryURL)
 
 	if payload.HeartbeatInterval > 0 {
-		*heartbeatInterval = payload.HeartbeatInterval
+		heartbeatInterval.Store(int64(payload.HeartbeatInterval))
 	}
 
+	if skipFailedUpdate(payload.Version) {
+		return
+	}
 	log.Printf("[WS] Downloading new binary from %s...", payload.BinaryURL)
 	if err := updateBinary(payload.BinaryURL); err != nil {
 		log.Printf("[WS] Binary update failed: %v", err)
+		noteUpdateResult(payload.Version, err)
 		return
 	}
+	noteUpdateResult(payload.Version, nil)
 
 	log.Println("[WS] Binary updated successfully — exiting to allow restart...")
 	restartAgent()

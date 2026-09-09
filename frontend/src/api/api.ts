@@ -66,7 +66,7 @@ type FriendlyFetchResponse<Operation, Options, Media extends MediaType> =
       };
 
 type FriendlyClientMethod<
-    Paths extends {},
+    Paths extends object,
     Method extends HttpMethod,
     Media extends MediaType,
 > = <
@@ -79,7 +79,7 @@ type FriendlyClientMethod<
     FriendlyFetchResponse<OperationFor<Paths, Path, Method>, Init, Media>
 >;
 
-type FriendlyClient<Paths extends {}> = Omit<Client<Paths>, "GET"> & {
+type FriendlyClient<Paths extends object> = Omit<Client<Paths>, "GET"> & {
     GET: FriendlyClientMethod<Paths, "get", `${string}/json`>;
 };
 const rawApi = createClient<paths>({

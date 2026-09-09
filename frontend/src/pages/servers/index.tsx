@@ -13,9 +13,8 @@ import {
     ExternalLink,
     Loader2,
 } from "lucide-react";
-import { useServers, useInfiniteServers } from "@/hooks/useServers";
+import { useInfiniteServers } from "@/hooks/useServers";
 import { useUrlState } from "@/hooks/useUrlState";
-import { useDashboardStats } from "@/pages/dashboard/hooks/useDashboard";
 import IndexToolbar from "@/components/IndexToolbar";
 import type { SortOption } from "@/components/IndexToolbar";
 import IndexHeader from "@/components/IndexHeader";
@@ -55,18 +54,6 @@ export default function ServersIndex() {
         sort: { default: "created_at" },
         dir: { default: "desc" as "asc" | "desc" },
     });
-
-    // Global dashboard stats for consistent filter counts
-    const { data: stats } = useDashboardStats();
-
-    // Base query without status filter to calculate counts for all filter badges based on selected client(s)
-    const { data: baseResponse } = useServers({
-        client_uuid: selectedClientUuids.length === 1 ? selectedClientUuids[0] : undefined,
-        client_uuids: selectedClientUuids.length > 1 ? selectedClientUuids.join(",") : undefined,
-        q: s.q || undefined,
-        per_page: 200,
-    });
-    const baseServers = useMemo(() => baseResponse?.data ?? [], [baseResponse]);
 
     // Infinite servers query
     const {
@@ -164,28 +151,26 @@ export default function ServersIndex() {
         return groupOrder.map((key) => groups[key]);
     }, [isGroupedByClient, servers]);
 
-    // Reliable server status counts: static based on selected client(s) and their servers across all statuses
+    // Server-driven badge counts; before the first page lands, fall back to
+    // whatever rows are loaded.
     const counts = useMemo(() => {
-        const targetServers = baseServers.length > 0 ? baseServers : servers;
-
-        // When no client filter is applied and global stats exist, use stats for global counts
-        if (selectedClientUuids.length === 0 && stats && !s.q) {
+        const countsResponse = infiniteData?.pages[0]?.counts;
+        if (countsResponse) {
             return {
-                all: stats.total_servers ?? 0,
-                assigned: targetServers.filter((srv) =>
-                    Boolean(srv.is_assigned_to_current_user),
-                ).length,
-                online: stats.online_count ?? 0,
+                all: countsResponse.all ?? 0,
+                assigned: countsResponse.assigned ?? 0,
+                online: countsResponse.online ?? 0,
                 warning: 0,
-                offline: stats.offline_count ?? 0,
-                pending_installation: stats.pending_installation_count ?? 0,
-                waiting_for_installation: stats.waiting_for_installation_count ?? 0,
-                pending_deletion: stats.pending_deletion_count ?? 0,
-                agent_uninstalled: stats.agent_uninstalled_count ?? 0,
-                archived: 0,
+                offline: countsResponse.offline ?? 0,
+                pending_installation: countsResponse.pending_installation ?? 0,
+                waiting_for_installation: countsResponse.waiting_for_installation ?? 0,
+                pending_deletion: countsResponse.pending_deletion ?? 0,
+                agent_uninstalled: countsResponse.agent_uninstalled ?? 0,
+                archived: countsResponse.archived ?? 0,
             };
         }
 
+        const targetServers = servers;
         const activeServers = targetServers.filter(
             (srv) => srv.record_status !== "archived" && srv.status !== "archived",
         );
@@ -223,7 +208,7 @@ export default function ServersIndex() {
                 (srv) => srv.record_status === "archived" || srv.status === "archived",
             ).length,
         };
-    }, [selectedClientUuids, stats, s.q, baseServers, servers]);
+    }, [infiniteData, servers]);
 
     const handleApplyClientFilter = (selectedUuids: string[]) => {
         const next = new URLSearchParams(searchParams);

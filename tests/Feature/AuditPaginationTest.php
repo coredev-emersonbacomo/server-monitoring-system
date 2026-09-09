@@ -146,3 +146,150 @@ test('agent lifecycle also supports cursor pagination', function () {
         ->assertJsonCount(5, 'data')
         ->assertJsonPath('meta.pagination.has_next', true);
 });
+
+test('page and cursor together are rejected', function () {
+    seedFileActivity($this->server, $this->agent, 3);
+
+    $this->actingAs(auditAdminUser(), 'jwt')
+        ->getJson('/api/v1/audit/file-activity?page=2&cursor=abc')
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('pagination');
+});
+
+test('page and previous cursor together are rejected', function () {
+    seedFileActivity($this->server, $this->agent, 3);
+
+    $this->actingAs(auditAdminUser(), 'jwt')
+        ->getJson('/api/v1/audit/file-activity?page=1&previous_cursor=abc')
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('pagination');
+});
+
+test('garbage cursors are rejected, not silently restarted', function () {
+    seedFileActivity($this->server, $this->agent, 3);
+
+    $this->actingAs(auditAdminUser(), 'jwt')
+        ->getJson('/api/v1/audit/file-activity?cursor=!!!not-a-cursor!!!')
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('cursor');
+
+    $this->actingAs(auditAdminUser(), 'jwt')
+        ->getJson('/api/v1/audit/file-activity?previous_cursor=!!!not-a-cursor!!!')
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('previous_cursor');
+
+    // Decodable but wrong shape (needs [occurred_at, id]).
+    $shaped = rtrim(strtr(base64_encode(json_encode([1])), '+/=', '-_,'), ',');
+    $this->actingAs(auditAdminUser(), 'jwt')
+        ->getJson("/api/v1/audit/file-activity?cursor={$shaped}")
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('cursor');
+});
+
+test('invalid page and per_page are rejected', function () {
+    seedFileActivity($this->server, $this->agent, 3);
+
+    foreach (['page=0', 'page=-2', 'page=abc'] as $bad) {
+        $this->actingAs(auditAdminUser(), 'jwt')
+            ->getJson("/api/v1/audit/file-activity?{$bad}")
+            ->assertStatus(422);
+    }
+
+    foreach (['per_page=0', 'per_page=500'] as $bad) {
+        $this->actingAs(auditAdminUser(), 'jwt')
+            ->getJson("/api/v1/audit/file-activity?{$bad}")
+            ->assertStatus(422);
+    }
+});
+
+test('custom per_page is honored', function () {
+    seedFileActivity($this->server, $this->agent, 12);
+
+    $this->actingAs(auditAdminUser(), 'jwt')
+        ->getJson('/api/v1/audit/file-activity?per_page=3')
+        ->assertOk()
+        ->assertJsonCount(3, 'data')
+        ->assertJsonPath('meta.pagination.per_page', 3);
+});
+
+test('filters combine with both modes', function () {
+    seedFileActivity($this->server, $this->agent, 6);
+    FileActivityLog::create([
+        'uuid' => 'f-del',
+        'server_id' => $this->server->id,
+        'agent_id' => $this->agent->id,
+        'action' => 'deleted',
+        'file_name' => 'gone.txt',
+        'source_path' => 'C:\\gone.txt',
+        'occurred_at' => now(),
+    ]);
+
+    $this->actingAs(auditAdminUser(), 'jwt')
+        ->getJson('/api/v1/audit/file-activity?action=deleted')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.file_name', 'gone.txt')
+        ->assertJsonPath('meta.pagination.has_next', false);
+
+    $this->actingAs(auditAdminUser(), 'jwt')
+        ->getJson('/api/v1/audit/file-activity?action=deleted&page=1')
+        ->assertOk()
+        ->assertJsonPath('meta.pagination.mode', 'page')
+        ->assertJsonPath('meta.pagination.total', 1);
+});
+
+test('empty result and last page terminate cleanly', function () {
+    seedFileActivity($this->server, $this->agent, 12);
+
+    $this->actingAs(auditAdminUser(), 'jwt')
+        ->getJson('/api/v1/audit/file-activity?action=deleted')
+        ->assertOk()
+        ->assertJsonCount(0, 'data')
+        ->assertJsonPath('meta.pagination.has_next', false)
+        ->assertJsonPath('meta.pagination.has_previous', false);
+
+    $first = $this->actingAs(auditAdminUser(), 'jwt')
+        ->getJson('/api/v1/audit/file-activity?per_page=5')
+        ->assertOk();
+    $second = $this->actingAs(auditAdminUser(), 'jwt')
+        ->getJson('/api/v1/audit/file-activity?per_page=5&cursor='.$first->json('meta.pagination.next_cursor'))
+        ->assertOk();
+    $this->actingAs(auditAdminUser(), 'jwt')
+        ->getJson('/api/v1/audit/file-activity?per_page=5&cursor='.$second->json('meta.pagination.next_cursor'))
+        ->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('meta.pagination.has_next', false)
+        ->assertJsonPath('meta.pagination.has_previous', true);
+});
+
+test('cursor mode never exposes a total', function () {
+    seedFileActivity($this->server, $this->agent, 12);
+
+    $this->actingAs(auditAdminUser(), 'jwt')
+        ->getJson('/api/v1/audit/file-activity?per_page=5')
+        ->assertOk()
+        ->assertJsonMissingPath('meta.pagination.total')
+        ->assertJsonMissingPath('meta.pagination.last_page');
+});
+
+test('tied timestamps order by id descending', function () {
+    $at = now()->subMinute();
+    foreach (['t-a.txt', 't-b.txt', 't-c.txt'] as $i => $name) {
+        FileActivityLog::create([
+            'uuid' => "t-{$i}",
+            'server_id' => $this->server->id,
+            'agent_id' => $this->agent->id,
+            'action' => 'created',
+            'file_name' => $name,
+            'source_path' => "C:\\{$name}",
+            'occurred_at' => $at,
+        ]);
+    }
+
+    $this->actingAs(auditAdminUser(), 'jwt')
+        ->getJson('/api/v1/audit/file-activity?per_page=10')
+        ->assertOk()
+        ->assertJsonPath('data.0.file_name', 't-c.txt')
+        ->assertJsonPath('data.1.file_name', 't-b.txt')
+        ->assertJsonPath('data.2.file_name', 't-a.txt');
+});

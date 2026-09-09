@@ -1,6 +1,7 @@
 import { useCallback, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
-import { FormStoreProvider, useFormStoreForComponents } from "./FormStoreProvider";
+import { FormStoreProvider } from "./FormStoreProvider";
+import { useFormStoreForComponents } from "./useFormStoreForComponents";
 import type { FormStore } from "./createFormStore";
 
 // ─── Error extraction helper ─────────────────────────────────────────────────

@@ -1,15 +1,17 @@
 import { MapPin, Mail, Phone, Landmark } from "lucide-react";
-import { Form, useForm } from "@/components/ui/form";
+import { Form, useForm, type FormStore } from "@/components/ui/form";
 import { FloatingInput } from "@/components/ui/floatingInput";
 import Field from "../components/Field";
 import SectionHeader from "../components/SectionHeader";
 import { formatContactNumber, validateContactNumber } from "../utils/client-helper";
 import { formatCurrency } from "@/utils/helpers";
+import type { ClientData } from "@/types/models";
+import type { ClientForm } from "../constants/schema";
 
 interface ClientDetailsTabProps {
-    store: any;
+    store: FormStore<ClientForm>;
     isCreate: boolean;
-    client: any;
+    client?: ClientData;
     onSubmit: () => void;
     inputRef: React.RefObject<HTMLInputElement | null>;
     formatValue: (v: string) => string;
@@ -29,9 +31,9 @@ export function ClientDetailsTab({
     handleKeyDown,
     handlePaste,
 }: ClientDetailsTabProps) {
-    const form = useForm(store, (s: any) => s.form);
-    const errors = useForm(store, (s: any) => s.errors);
-    const mode = useForm(store, (s: any) => s.mode);
+    const form = useForm(store, (s) => s.form);
+    const errors = useForm(store, (s) => s.errors);
+    const mode = useForm(store, (s) => s.mode);
     const showEdit = mode !== "view";
 
     return (

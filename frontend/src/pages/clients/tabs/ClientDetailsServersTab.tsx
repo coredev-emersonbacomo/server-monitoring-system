@@ -6,12 +6,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { useServers } from "@/hooks/useServers";
 import ClientServerCard from "../components/ClientServerCard";
+import type { ClientData, ServerData } from "@/types/models";
 
 type ServerFilter = "all" | "online" | "offline" | "archived";
 
 interface ClientDetailsServersTabProps {
-    client: any;
-    servers?: any[];
+    client: ClientData;
+    servers?: ServerData[];
     serversLoading?: boolean;
 }
 
@@ -126,7 +127,7 @@ export function ClientDetailsServersTab({ client }: ClientDetailsServersTabProps
                 )
             ) : serverList.length > 0 ? (
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
-                    {serverList.map((s: any) => (
+                    {serverList.map((s: ServerData) => (
                         <ClientServerCard key={s.uuid} server={s} />
                     ))}
                 </div>

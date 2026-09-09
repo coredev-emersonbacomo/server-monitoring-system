@@ -16,7 +16,7 @@ import { useJwtAuth } from "@/hooks/useJwtAuth";
 import { Toaster } from "sonner";
 import { useOutletLayout } from "@/hooks/useOutletLayout";
 
-export const sidebarLinks: SidebarNavLink[] = [
+const sidebarLinks: SidebarNavLink[] = [
     { name: "Dashboard", href: "/", icon: Activity },
     {
         name: "Clients",

@@ -330,10 +330,12 @@ class ReportController extends Controller
      */
     private function buildClientData(string $uuid): ClientReportData
     {
+        $since24h = now()->subHours(24);
         $client = Client::with([
             'servers' => fn ($q) => $q->withTrashed(),
             'servers.agent',
             'servers.latestUpdate',
+            'servers.updates' => fn ($q) => $q->where('created_at', '>=', $since24h)->orderBy('created_at'),
         ])->where('uuid', $uuid)->firstOrFail();
 
         $offlineThresholdSec = (int) Setting::get('offline_threshold', '15');
@@ -378,11 +380,8 @@ class ReportController extends Controller
                 }
             }
 
-            // Per-server uptime: quick gap analysis over last 24h
-            $updates = $server->updates()
-                ->where('created_at', '>=', now()->subHours(24))
-                ->orderBy('created_at')
-                ->get();
+            // Per-server uptime: gap analysis over the pre-loaded last-24h updates.
+            $updates = $server->updates;
 
             // Total the subscription fee
             $totalSubscriptionFee += $server->subscription_fee;

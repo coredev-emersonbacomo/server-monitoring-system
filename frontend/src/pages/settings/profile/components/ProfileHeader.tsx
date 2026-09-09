@@ -2,12 +2,13 @@ import { ChevronLeft, Upload, BadgeCheck, ShieldAlert } from "lucide-react";
 import { Form, type FormStore } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import type { AuthUserData } from "@/types/models";
+import type { ProfileForm } from "../constants/profileSchema";
 
 interface ProfileHeaderProps {
     mode: "view" | "edit" | "create";
     user: AuthUserData;
-    form: Record<string, string>;
-    store: FormStore<any>;
+    form: ProfileForm;
+    store: FormStore<ProfileForm>;
     fullName: string;
     isVerified?: boolean;
     avatarSrc: string | null;

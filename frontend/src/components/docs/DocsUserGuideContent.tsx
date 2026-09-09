@@ -569,6 +569,43 @@ export function DocsLogsContent() {
                     </li>
                 </ul>
             </Section>
+
+            <Section title="File Activity">
+                <p>
+                    The System Logs page adds a <strong>File Activity</strong>{" "}
+                    tab: a near-real-time feed of filesystem events from
+                    monitored hosts (created, modified, moved, renamed,
+                    deleted). Read/access events are not monitored. Filter by
+                    action, path text, server, date range; click a row for the
+                    full entry.
+                </p>
+                <p>
+                    The agent watches the paths in <strong>Settings → File
+                    Activity</strong> (agent scope or per-server scope, each with
+                    enabled/recursive toggles and gitignore-style{" "}
+                    <InlineCode>exclude_patterns</InlineCode> such as{" "}
+                    <InlineCode>*.log</InlineCode>). Seeded defaults cover the
+                    agent state dir (<InlineCode>C:\ProgramData\MonitorAgent</InlineCode>{" "}
+                    on Windows, <InlineCode>/var/lib/monitor-agent</InlineCode>{" "}
+                    on Linux) plus the operator profile folders. Username and
+                    process attribution is best-effort (may be empty on Linux).
+                </p>
+            </Section>
+
+            <Section title="Agent Lifecycle">
+                <p>
+                    The <strong>Agent Lifecycle</strong> tab on the same page
+                    records <strong>started</strong>, <strong>stopping</strong>,{" "}
+                    <strong>stopped</strong>, and{" "}
+                    <strong>unexpectedly_disconnected</strong> events per agent.
+                    Graceful shutdowns send their event directly; anything else
+                    is detected backend-side when heartbeats stop, so an
+                    ungraceful kill still shows up (as unexpectedly
+                    disconnected, never duplicated with a graceful stop).
+                    Events queue on the agent and retry on failure, so brief
+                    outages don't lose them.
+                </p>
+            </Section>
         </>
     );
 }

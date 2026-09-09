@@ -5,16 +5,19 @@ import { getEchoInstance } from "@/hooks/useServerSocket";
 import type { ServerData } from "@/types/models";
 import type { Paginator } from "@/types/pagination";
 
-export const useServers = (params?: {
-    client_uuid?: string;
-    client_uuids?: string;
-    q?: string;
-    status?: string;
-    sort?: string;
-    dir?: "asc" | "desc";
-    page?: number;
-    per_page?: number;
-}) => {
+export const useServers = (
+    params?: {
+        client_uuid?: string;
+        client_uuids?: string;
+        q?: string;
+        status?: string;
+        sort?: string;
+        dir?: "asc" | "desc";
+        page?: number;
+        per_page?: number;
+    },
+    opts?: { enabled?: boolean },
+) => {
     const queryClient = useQueryClient();
 
     useEffect(() => {
@@ -49,6 +52,7 @@ export const useServers = (params?: {
             if (error) throw error;
             return data as unknown as Paginator<ServerData>;
         },
+        enabled: opts?.enabled ?? true,
     });
 };
 

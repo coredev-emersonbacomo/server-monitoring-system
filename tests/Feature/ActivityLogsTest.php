@@ -1,8 +1,11 @@
 <?php
 
+use App\Models\Client;
 use App\Models\CustomActivityLog;
+use App\Models\Server;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -88,4 +91,73 @@ test('server health logs do not expose a user', function () {
         ->getJson('/api/v1/server-health-logs')
         ->assertSuccessful()
         ->assertJsonPath('data.0.user', null);
+});
+
+test('activity logs return the standard envelope with page-number prev/next', function () {
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 12; $i++) {
+        CustomActivityLog::create([
+            'user_id' => $user->id,
+            'user' => $user->name,
+            'action' => "Action {$i}",
+            'details' => ['message' => "log {$i}"],
+        ]);
+    }
+
+    $this->actingAs($user, 'jwt')
+        ->getJson('/api/v1/activity-logs?per_page=5')
+        ->assertSuccessful()
+        ->assertJsonCount(5, 'data')
+        ->assertJsonPath('prev', null)
+        ->assertJsonPath('next', 2)
+        ->assertJsonPath('total', 12)
+        ->assertJsonPath('per_page', 5);
+
+    $this->actingAs($user, 'jwt')
+        ->getJson('/api/v1/activity-logs?per_page=5&page=3')
+        ->assertSuccessful()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('prev', 2)
+        ->assertJsonPath('next', null)
+        ->assertJsonPath('total', 12);
+});
+
+test('activity logs filter by server uuid', function () {
+    $user = User::factory()->create();
+    $client = Client::factory()->create();
+    $server = Server::create([
+        'uuid' => Str::uuid7()->toString(),
+        'client_id' => $client->id,
+        'name' => 'log-srv',
+        'host_name' => 'log-srv',
+        'status' => 'pending_installation',
+        'alert_scope' => 'global',
+    ]);
+
+    CustomActivityLog::create([
+        'user_id' => $user->id,
+        'user' => $user->name,
+        'action' => 'Linked action',
+        'logable_id' => $server->id,
+        'logable_type' => Server::class,
+        'details' => ['message' => 'linked'],
+    ]);
+    CustomActivityLog::create([
+        'user_id' => $user->id,
+        'user' => $user->name,
+        'action' => 'Unlinked action',
+        'details' => ['message' => 'unlinked'],
+    ]);
+
+    $this->actingAs($user, 'jwt')
+        ->getJson("/api/v1/activity-logs?server_uuid={$server->uuid}")
+        ->assertSuccessful()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.action', 'Linked action');
+
+    $this->actingAs($user, 'jwt')
+        ->getJson('/api/v1/activity-logs?server_uuid='.Str::uuid()->toString())
+        ->assertSuccessful()
+        ->assertJsonCount(0, 'data');
 });

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class Setting extends Model
 {
@@ -13,9 +14,13 @@ class Setting extends Model
      */
     public static function get(string $key, mixed $default = null): mixed
     {
-        $setting = static::where('key', $key)->first();
+        // ponytail: uncached this was 1 query per call — and ServerData calls
+        // it per server per list row. Cache forever, bust in set().
+        return Cache::rememberForever('setting:'.$key, function () use ($key, $default) {
+            $setting = static::where('key', $key)->first();
 
-        return $setting ? $setting->value : $default;
+            return $setting ? $setting->value : $default;
+        });
     }
 
     /**
@@ -24,5 +29,6 @@ class Setting extends Model
     public static function set(string $key, mixed $value): void
     {
         static::updateOrCreate(['key' => $key], ['value' => $value]);
+        Cache::forget('setting:'.$key);
     }
 }

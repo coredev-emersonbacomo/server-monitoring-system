@@ -12,8 +12,8 @@ use Tests\TestCase;
 
 uses(RefreshDatabase::class);
 
-// The custom JwtGuard resets actingAs state per request, so HTTP tests must
-// send a real Bearer token instead of actingAs($user, 'jwt').
+// HTTP tests send a real Bearer token (actingAs also works since the
+// JwtGuard honors setUser, but tokens exercise the real middleware path).
 function serversToken(User $user): string
 {
     return app(JwtService::class)->generateAccessToken($user->id, (string) Str::uuid());

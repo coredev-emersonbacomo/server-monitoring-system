@@ -126,14 +126,4 @@ export function NodePalette({ nodeTypes, onAddNode }: NodePaletteProps) {
     );
 }
 
-export function getNodeDefaults(type: string, definitions: NodeTypeDefinition[]): Record<string, unknown> {
-    const def = definitions.find((d) => d.type === type);
-    if (!def) return { label: type };
-    const settings: Record<string, unknown> = { label: def.label };
-    for (const setting of def.settings) {
-        if (setting.default !== undefined) {
-            settings[setting.key] = setting.default;
-        }
-    }
-    return settings;
-}
+

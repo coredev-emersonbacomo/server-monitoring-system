@@ -22,7 +22,7 @@ export const useServer = (
                         time_unit: timeUnit,
                         from_time: fromTime,
                         to_time: toTime,
-                    } as any,
+                    } as never,
                 },
             });
             if (error) throw error;

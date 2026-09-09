@@ -425,7 +425,7 @@ export function DashboardChartsSection() {
     const [pickerOpen, setPickerOpen] = useState(false);
     const queryClient = useQueryClient();
     const { data: serversData } = useServers();
-    const servers = serversData?.data ?? [];
+    const servers = useMemo(() => serversData?.data ?? [], [serversData]);
 
     const compareUuids = selected.join(",") || undefined;
 

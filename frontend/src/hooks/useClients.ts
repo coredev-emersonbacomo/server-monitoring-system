@@ -9,17 +9,20 @@ import type { Paginator } from "@/types/pagination";
 // still declares it as an array, hence the cast below.
 export type PaginatedClients = Paginator<ClientData>;
 
-export const useClients = (params?: {
-    exclude_user_uuid?: string;
-    user_uuid?: string;
-    available_only?: boolean;
-    q?: string;
-    filter?: string;
-    sort?: string;
-    dir?: "asc" | "desc";
-    page?: number;
-    per_page?: number;
-}) => {
+export const useClients = (
+    params?: {
+        exclude_user_uuid?: string;
+        user_uuid?: string;
+        available_only?: boolean;
+        q?: string;
+        filter?: string;
+        sort?: string;
+        dir?: "asc" | "desc";
+        page?: number;
+        per_page?: number;
+    },
+    opts?: { enabled?: boolean },
+) => {
     return useQuery<PaginatedClients>({
         queryKey: ["clients", params],
         queryFn: async () => {
@@ -42,6 +45,7 @@ export const useClients = (params?: {
             if (error) throw error;
             return data as unknown as PaginatedClients;
         },
+        enabled: opts?.enabled ?? true,
     });
 };
 

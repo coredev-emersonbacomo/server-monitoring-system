@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Cursor (default) + offset pagination over an Eloquent query.
@@ -24,6 +25,20 @@ class HybridPaginator
     public function paginate(Builder $query, Request $request, array $cursorColumns = ['occurred_at', 'id']): array
     {
         $perPage = min(max((int) $request->query('per_page', 50), 1), 200);
+
+        // Modes are mutually exclusive — never silently prefer one.
+        $hasPage = $request->filled('page');
+        $hasCursor = $request->filled('cursor') || $request->filled('previous_cursor');
+        if ($hasPage && $hasCursor) {
+            throw ValidationException::withMessages([
+                'pagination' => 'Parameters page and cursor/previous_cursor are mutually exclusive.',
+            ]);
+        }
+        if ($hasPage && (! is_numeric($request->query('page')) || (int) $request->query('page') < 1)) {
+            throw ValidationException::withMessages([
+                'page' => 'The page must be an integer greater than 0.',
+            ]);
+        }
 
         // Offset mode: explicit page request (used by the "jump to page" control).
         if ($request->filled('page')) {
@@ -53,7 +68,7 @@ class HybridPaginator
         // Backward navigation: previous_cursor points at the first row of the
         // current page; we fetch the page immediately before it.
         if ($request->filled('previous_cursor')) {
-            $key = $this->decode((string) $request->query('previous_cursor'));
+            $key = $this->mustDecode((string) $request->query('previous_cursor'), 'previous_cursor', $cursorColumns);
 
             $cloned = $query->clone();
             if ($key) {
@@ -73,7 +88,10 @@ class HybridPaginator
 
         // Forward navigation (default): cursor points at the last row of the
         // previous page; we fetch the page immediately after it.
-        $key = $request->filled('cursor') ? $this->decode((string) $request->query('cursor')) : null;
+        $key = null;
+        if ($request->filled('cursor')) {
+            $key = $this->mustDecode((string) $request->query('cursor'), 'cursor', $cursorColumns);
+        }
 
         $cloned = $query->clone();
         if ($key) {
@@ -157,6 +175,21 @@ class HybridPaginator
     private function encode(array $key): string
     {
         return strtr(base64_encode(json_encode($key)), '+/=', '-_,');
+    }
+
+    /**
+     * @return array<int,mixed>
+     */
+    private function mustDecode(string $cursor, string $field, array $cursorColumns): array
+    {
+        $key = $this->decode($cursor);
+        if ($key === null || count($key) !== count($cursorColumns)) {
+            throw ValidationException::withMessages([
+                $field => "The {$field} is invalid.",
+            ]);
+        }
+
+        return array_values($key);
     }
 
     private function decode(string $cursor): ?array
