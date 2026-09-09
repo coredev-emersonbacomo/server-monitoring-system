@@ -44,7 +44,6 @@ dump.rdb
 scripts/git/*
 personal-todo.txt
 .opencode
-TODO/
 
 # .NET build outputs
 **/bin/

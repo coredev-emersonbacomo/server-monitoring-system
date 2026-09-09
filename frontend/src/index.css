@@ -301,6 +301,10 @@ html.coreDevDark,
     }
     html {
         @apply font-sans;
+        /* Reserve scrollbar space permanently so Radix Dialog scroll-lock
+           (overflow hidden on open) never shifts layout. The TODO claimed
+           this rule existed — it did not; this is the fix. */
+        scrollbar-gutter: stable;
     }
     .recharts-wrapper .recharts-surface {
         overflow: visible;

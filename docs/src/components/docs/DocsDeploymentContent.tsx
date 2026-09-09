@@ -499,7 +499,9 @@ export function DocsConfigurationContent() {
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
                         <InlineCode>.env.development</InlineCode> - committed,
-                        base dev config (contains dev secrets).
+                        base dev config. Holds NO real secrets (placeholders
+                        only) - put personal credentials in{" "}
+                        <InlineCode>.env</InlineCode>.
                     </li>
                     <li>
                         <InlineCode>.env</InlineCode> - gitignored, personal
@@ -532,6 +534,92 @@ export function DocsConfigurationContent() {
                     <InlineCode>frontend/.env</InlineCode> (committed) at build
                     time.
                 </p>
+            </Section>
+
+            <Section title="Dev safety switches">
+                <p>
+                    Precedence (highest first): real process env (Docker
+                    compose <InlineCode>environment:</InlineCode>) &gt; personal
+                    gitignored <InlineCode>.env</InlineCode> &gt;{" "}
+                    <InlineCode>.env.development</InlineCode> defaults. Never
+                    copy a dev file to make a prod file — prod env is generated
+                    from <InlineCode>.env.docker.example</InlineCode> (
+                    <InlineCode>npm run setup:docker</InlineCode>), which pins
+                    safe values.
+                </p>
+                <ul className="list-disc pl-5 space-y-1.5">
+                    <li>
+                        <InlineCode>TELESCOPE_ENABLED</InlineCode> (default{" "}
+                        <InlineCode>true</InlineCode> in dev) - request/query
+                        inspector. Forced off in prod by the prod overlay plus
+                        a local-env code gate.
+                    </li>
+                    <li>
+                        <InlineCode>MUTE_NOTIFICATION</InlineCode> (default{" "}
+                        <InlineCode>false</InlineCode> = sends real alerts) -
+                        set <InlineCode>true</InlineCode> in{" "}
+                        <InlineCode>.env</InlineCode> to stay quiet locally.
+                    </li>
+                    <li>
+                        <InlineCode>ALERTS_VISUAL_DEBUGGER</InlineCode> (default{" "}
+                        <InlineCode>false</InlineCode>) - solo-debug overlay for
+                        the alerts visualizer.
+                    </li>
+                </ul>
+                <Callout type="warning">
+                    A fresh clone without a personal <InlineCode>.env</InlineCode>{" "}
+                    sends real notifications - that is intentional
+                    (staging-like behaves like prod). Prod is safe by
+                    construction, not convention: prod containers have no{" "}
+                    <InlineCode>.env*</InlineCode> files at all (no bind mounts),
+                    compose hard-forces <InlineCode>APP_ENV=production</InlineCode>,{" "}
+                    <InlineCode>APP_DEBUG=false</InlineCode> and{" "}
+                    <InlineCode>TELESCOPE_ENABLED=false</InlineCode>, and the
+                    Telescope provider refuses non-local environments in code.
+                </Callout>
+            </Section>
+
+            <Section title="File uploads (Cloudinary)">
+                <p>
+                    Client banners and user avatars upload through signed
+                    Cloudinary intents (<InlineCode>CLOUDINARY_*</InlineCode>{" "}
+                    stays server-side - the secret never reaches the browser).
+                    Without credentials, uploads fail at use-time with a
+                    toast; everything else works.
+                </p>
+                <ul className="list-disc pl-5 space-y-1.5">
+                    <li>
+                        Go to <strong>console.cloudinary.com</strong>, sign
+                        up/in (free tier is fine), open the Dashboard and copy{" "}
+                        <strong>Cloud name</strong>.
+                    </li>
+                    <li>
+                        Open <strong>Settings (gear) → API Keys</strong>, copy
+                        the <strong>API Key</strong> and reveal/copy the{" "}
+                        <strong>API Secret</strong> (needs upload + delete +
+                        admin-read; the default main key works).
+                    </li>
+                    <li>
+                        Paste into personal gitignored <InlineCode>.env</InlineCode>{" "}
+                        (Herd) or <InlineCode>.env.docker</InlineCode> (Docker) as{" "}
+                        <InlineCode>CLOUDINARY_CLOUD_NAME</InlineCode>,{" "}
+                        <InlineCode>CLOUDINARY_API_KEY</InlineCode>,{" "}
+                        <InlineCode>CLOUDINARY_API_SECRET</InlineCode>. Prod gets
+                        them via <InlineCode>npm run setup:docker</InlineCode>.
+                    </li>
+                    <li>
+                        Verify by uploading a client banner or avatar; delivery
+                        runs through <InlineCode>res.cloudinary.com</InlineCode>{" "}
+                        (sizes in <InlineCode>config/uploads.php</InlineCode>).
+                    </li>
+                </ul>
+                <Callout type="warning">
+                    A real Cloudinary secret was once committed in{" "}
+                    <InlineCode>.env.development</InlineCode> (since removed).
+                    It lives on in git history - rotate it at
+                    console.cloudinary.com → Settings → API Keys if that
+                    account is still in use.
+                </Callout>
             </Section>
 
             <Section title="Key configuration variables">
@@ -693,15 +781,76 @@ docker compose exec app php artisan tinker   # REPL inside the container`}</Code
                     <p>
                         Uses local PHP 8.5, Redis, and PostgreSQL. App served via
                         Herd at <InlineCode>http://server-monitoring-system.test</InlineCode>.
+                     </p>
+                 </SubSection>
+             </Section>
+
+            <Section title="Local development with Docker">
+                <p>
+                    <InlineCode>npm run docker</InlineCode> is the primary local development
+                    workflow: it boots the full Docker stack and starts the Vite dev server with
+                    HMR. No internet tunnel is needed.
+                </p>
+                <SubSection title="Workflow (Docker)">
+                    <CodeBlock>{`npm run docker          # Docker backend + Vite HMR (no tunnel)
+npm run docker rebuild   # same, but rebuilds images from the current Dockerfile first`}</CodeBlock>
+                    <p>
+                        This command automatically:
                     </p>
+                    <ol className="list-decimal pl-5 space-y-1.5">
+                        <li>Brings up the Docker stack (<InlineCode>docker compose up -d</InlineCode>)
+                            for PostgreSQL, Redis, Reverb, queue, scheduler, and the app.</li>
+                        <li>Waits for the backend to be healthy on <InlineCode>:8000</InlineCode>
+                            (cold boot runs composer + migrate, can take minutes).</li>
+                        <li>Starts the Vite dev server with HMR (<InlineCode>:5173</InlineCode>); API
+                            and agent paths proxy to the backend locally.</li>
+                        <li>Idles until Ctrl+C (Vite stops; Docker stack parks stopped).</li>
+                    </ol>
+                    <p>
+                        Only one run at a time (a second run refuses via the{" "}
+                        <InlineCode>.docker.pid</InlineCode> lock). On exit the stack is parked
+                        stopped (not torn down), so the next run restarts in seconds with no
+                        data loss.
+                    </p>
+                    <p>
+                        <InlineCode>docker compose up</InlineCode> reuses the cached image, so{" "}
+                        <strong>Dockerfile changes never apply without a rebuild</strong> (and
+                        each machine caches its own image - after a{" "}
+                        <InlineCode>git pull</InlineCode>,
+                        run{" "}
+                        <InlineCode>npm run docker rebuild</InlineCode> once). Plain app/PHP code
+                        needs no rebuild: it is bind-mounted and read per request.
+                    </p>
+                    <p>
+                        Edge cases:</p>
+                    <ul className="list-disc pl-5 space-y-1.5">
+                        <li><strong>A slow/&ldquo;stuck&rdquo; cold boot is normal</strong> - the
+                            entrypoint additionally runs{" "}
+                            <InlineCode>npm run build</InlineCode> (frontend assets) plus{" "}
+                            <InlineCode>composer install</InlineCode> and migrations before the app
+                            serves <InlineCode>:8000</InlineCode>. Give a fresh stack a few minutes.</li>
+                        <li><strong>Dependency changes</strong> (<InlineCode>package-lock.json</InlineCode> /
+                            <InlineCode>composer.lock</InlineCode>) are baked into the image. If you
+                            see "&ldquo;module not found&rdquo;" after a branch switch, run{" "}
+                            <InlineCode>npm run docker rebuild</InlineCode>.</li>
+                        <li><strong>Stale dependency volumes</strong>: the container mounts anonymous
+                            volumes for <InlineCode>vendor</InlineCode>/<InlineCode>node_modules</InlineCode>{" "}
+                            that survive image rebuilds. To refresh them drop only those volumes:
+                            <CodeBlock>{`docker compose down; docker volume prune  # removes unused anonymous volumes
+npm run docker rebuild`}</CodeBlock>
+                            Do <em>not</em> use <InlineCode>docker compose down -v</InlineCode> - it
+                            also wipes the PostgreSQL and Redis data volumes.</li>
+                    </ul>
                 </SubSection>
             </Section>
-            
+
             <Section title="Pre-production testing with ngrok">
                 <p>
                     Use <InlineCode>npm run ngrok</InlineCode> to expose your local
                     app via a stable ngrok domain for testing agent installations
-                    and external integrations.
+                    and external integrations. This extends the Docker dev flow with
+                    an internet tunnel and requires <InlineCode>NGROK_DOMAIN</InlineCode> +
+                    <InlineCode>NGROK_UPSTREAM</InlineCode> in your <InlineCode>.env</InlineCode>.
                 </p>
                 <SubSection title="Setup">
                     <ol className="list-decimal pl-5 space-y-1.5">
@@ -972,6 +1121,74 @@ docker compose -f compose.yaml -f compose.prod.yaml up -d --build`}</CodeBlock>
                         <strong>Agent shows "Waiting for Heartbeat"</strong> -{" "}
                         check the agent service on the monitored machine and
                         that the provision token has not expired.
+                    </li>
+                </ul>
+            </Section>
+
+            <Section title="Database access">
+                <p>
+                    <strong>Docker flow</strong> - from the repo root on the machine
+                    hosting the stack:
+                </p>
+                <CodeBlock>{`npm run db        # psql into the Docker TimescaleDB
+npm run db:prod   # prod server (over SSH): psql into the prod DB`}</CodeBlock>
+                <p>
+                    <strong>Herd flow</strong> (native postgres, defaults from{" "}
+                    <InlineCode>.env.development</InlineCode>):
+                </p>
+                <CodeBlock>{`$env:PGPASSWORD = '00000000'
+psql -h 127.0.0.1 -U postgres -d server_monitoring`}</CodeBlock>
+                <p>
+                    GUI clients (DBeaver / TablePlus / pgAdmin): dev →{" "}
+                    <InlineCode>localhost:5432</InlineCode> / <InlineCode>postgres</InlineCode>{" "}
+                    / <InlineCode>postgres</InlineCode> / <InlineCode>server_monitoring</InlineCode>. For
+                    production, use an SSH tunnel or a temporary port mapping.
+                </p>
+                <Callout type="warning">
+                    One port, two possible databases: a native{" "}
+                    <InlineCode>postgres.exe</InlineCode> owns{" "}
+                    <InlineCode>0.0.0.0:5432</InlineCode> while the Docker proxy holds
+                    only <InlineCode>[::]:5432</InlineCode>, so{" "}
+                    <InlineCode>127.0.0.1:5432</InlineCode> clients read the native DB
+                    and <InlineCode>localhost</InlineCode> may resolve to{" "}
+                    <InlineCode>::1</InlineCode> (the Docker DB). Stop one Postgres
+                    while working in the other flow, or point your GUI client at the
+                    address explicitly.
+                </Callout>
+            </Section>
+
+            <Section title="Diagnostic queries">
+                <p>
+                    Useful when the UI cannot answer it: inspect or revoke provision
+                    tokens, query hypertables directly (<InlineCode>time_bucket</InlineCode>{" "}
+                    checks), verify continuous aggregates are refreshing, or fix a
+                    failed migration row without a full reset.
+                </p>
+                <ul className="list-disc pl-5 space-y-1.5">
+                    <li>
+                        Provision tokens: check expiry and revoke stale
+                        rows in <InlineCode>provision_tokens</InlineCode>.
+                    </li>
+                    <li>
+                        Hypertables:{" "}
+                        <InlineCode>
+                            SELECT * FROM timescaledb_information.hypertables
+                        </InlineCode>
+                        and confirm <InlineCode>time_bucket</InlineCode> groupings match
+                        the metric resolution you expect.
+                    </li>
+                    <li>
+                        Continuous aggregates:{" "}
+                        <InlineCode>
+                            SELECT * FROM timescaledb_information.continuous_aggregates
+                        </InlineCode>
+                        and confirm <InlineCode>last_refresh</InlineCode> is advancing
+                        (refreshed each minute by <InlineCode>agg:refresh</InlineCode>).
+                    </li>
+                    <li>
+                        Failed migrations: inspect{" "}
+                        <InlineCode>migrations</InlineCode> rows and patch the specific
+                        row before reaching for <InlineCode>resetdb</InlineCode>.
                     </li>
                 </ul>
             </Section>

@@ -100,6 +100,67 @@ export function DocsArchitectureContent() {
                     engine internals.
                 </p>
             </Section>
+
+            <Section title="Repository layout">
+                <p>
+                    The codebase is a monorepo. Run everything from the repo root
+                    (<InlineCode>npm run dev</InlineCode>, <InlineCode>npm test</InlineCode>):
+                </p>
+                <ul className="list-disc pl-5 space-y-1.5">
+                    <li>
+                        <InlineCode>app/</InlineCode> - Laravel backend (API,
+                        agents, alerts, provisioning, reports).
+                    </li>
+                    <li>
+                        <InlineCode>frontend/</InlineCode> - React dashboard +
+                        embedded docs viewer (Vite, port 5173).
+                    </li>
+                    <li>
+                        <InlineCode>docs/</InlineCode> - standalone docs site,
+                        local-only (port 5174, never hosted).
+                    </li>
+                    <li>
+                        <InlineCode>resources/agent/go/</InlineCode> - the Go
+                        monitoring agent source.
+                    </li>
+                    <li>
+                        <InlineCode>scripts/entry.js</InlineCode> - dev/prod process
+                        manager (<InlineCode>npm run dev</InlineCode> /{" "}
+                        <InlineCode>npm start</InlineCode>).
+                    </li>
+                    <li>
+                        <InlineCode>scripts/tunnel.js</InlineCode> - Cloudflare quick
+                        tunnel (<InlineCode>npm run tunnel</InlineCode>).
+                    </li>
+                    <li>
+                        <InlineCode>scripts/ngrok.js</InlineCode> /{" "}
+                        <InlineCode>scripts/ngrok-build.js</InlineCode> - HMR / static
+                        tunnels (<InlineCode>npm run ngrok</InlineCode> /{" "}
+                        <InlineCode>npm run ngrok:build</InlineCode>).
+                    </li>
+                    <li>
+                        <InlineCode>scripts/reset-db.js</InlineCode> - dual-workflow DB
+                        reset (<InlineCode>npm run resetdb</InlineCode>).
+                    </li>
+                    <li>
+                        <InlineCode>Dockerfile</InlineCode> - multi-stage (<InlineCode>dev</InlineCode>
+                        {" "}/<InlineCode>prod</InlineCode> targets).
+                    </li>
+                    <li>
+                        <InlineCode>compose.yaml</InlineCode> /{" "}
+                        <InlineCode>compose.prod.yaml</InlineCode> - dev / production
+                        stacks.
+                    </li>
+                    <li>
+                        <InlineCode>TODO/</InlineCode> - work backlog (source of truth
+                        for pending work).
+                    </li>
+                    <li>
+                        <InlineCode>docs/architecture/</InlineCode> - ADRs (read before
+                        changing architecture).
+                    </li>
+                </ul>
+            </Section>
         </>
     );
 }
@@ -399,6 +460,102 @@ export function DocsCredentialsContent() {
                     handling will be documented here once the design settles.
                 </p>
             </Section>
+
+            <Section title="Production secrets (.env.docker)">
+                <p>
+                    The production stack runs off <InlineCode>.env.docker</InlineCode>
+                    (gitignored, supplied via <InlineCode>npm run setup:docker</InlineCode>). The
+                    image receives them as real OS variables, which beat every env file under
+                    Laravel's immutable loader - so this is the single source of prod secrets:
+                </p>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm border border-border/40 rounded-lg overflow-hidden">
+                        <thead className="bg-muted/30">
+                            <tr>
+                                <th className="text-left px-3 py-2 font-medium text-foreground">
+                                    Key
+                                </th>
+                                <th className="text-left px-3 py-2 font-medium text-foreground">
+                                    Where to get it
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/30">
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    APP_KEY
+                                </td>
+                                <td className="px-3 py-1.5">
+                                    <InlineCode>php artisan key:generate --show</InlineCode>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    APP_DOMAIN
+                                </td>
+                                <td className="px-3 py-1.5">
+                                    your public domain (required - Caddy auto-HTTPS and
+                                    compose.prod fail without it)
+                                </td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    JWT_SECRET
+                                </td>
+                                <td className="px-3 py-1.5">any 64-hex string</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    DB_PASSWORD / REDIS_PASSWORD
+                                </td>
+                                <td className="px-3 py-1.5">invent strong ones</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    REVERB_APP_ID / KEY / SECRET
+                                </td>
+                                <td className="px-3 py-1.5">
+                                    <InlineCode>php artisan reverb:install</InlineCode> or reuse
+                                    dev values
+                                </td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    MAIL_USERNAME / PASSWORD
+                                </td>
+                                <td className="px-3 py-1.5">Gmail app password</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET
+                                </td>
+                                <td className="px-3 py-1.5">cloudinary.com dashboard</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    DEFAULT_*_PICTURE / BANNER
+                                </td>
+                                <td className="px-3 py-1.5">any image URLs (defaults in <InlineCode>.env.development</InlineCode>)</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    SEEDED_DISCORD_BOT_TOKEN / CHANNEL_ID / ROLE_ID
+                                </td>
+                                <td className="px-3 py-1.5">Discord developer portal (seeded dev values in <InlineCode>.env.development</InlineCode>)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <Callout type="warning">
+                    Never commit <InlineCode>.env</InlineCode>,{" "}
+                    <InlineCode>.env.production</InlineCode>, or{" "}
+                    <InlineCode>.env.docker</InlineCode> - all are gitignored. A real
+                    Cloudinary secret once lived in{" "}
+                    <InlineCode>.env.development</InlineCode> (since removed); it still
+                    exists in git history - rotate it at console.cloudinary.com if that
+                    account is still in use.
+                </Callout>
+            </Section>
         </>
     );
 }
@@ -620,6 +777,34 @@ php artisan schedule:work           # Task scheduler`}</CodeBlock>
                         <InlineCode>/settings</InlineCode>.
                     </li>
                 </ul>
+            </Section>
+
+            <Section title="Testing">
+                <p>
+                    The test command is <InlineCode>npm test</InlineCode> (runs the full
+                    Pest suite). To run a single test or filter:
+                </p>
+                <CodeBlock>{`npm test                        # full Pest suite
+npm run test:filter -- Name        # single filter
+npm run test:auth                  # convenience alias
+npm run test:middleware            # convenience alias`}</CodeBlock>
+                <p>
+                    Format PHP before committing with{" "}
+                    <InlineCode>vendor/bin/pint --dirty --format agent</InlineCode>. The OpenAPI
+                    schema is regenerated on demand:
+                </p>
+                <CodeBlock>{`npm run types   # scramble:clear -> export -> patch-schema -> tsc`}</CodeBlock>
+                <Callout>
+                    CI (<InlineCode>.github/workflows/ci.yml</InlineCode>) runs Pest +
+                    Pint + the frontend build on every push. Go agent tests run
+                    locally from{" "}
+                    <InlineCode>resources/agent/go</InlineCode>
+                    {" "}(<InlineCode>go test ./...</InlineCode>); on Windows two cases
+                    are pre-existing flakiness under suite load{" "}
+                    (<InlineCode>TestWatcherSkipsDirectoryModified</InlineCode> and an
+                    intermittent <InlineCode>ReadDirectoryChangesW</InlineCode> handle
+                    race) - they pass in isolation and on Linux.
+                </Callout>
             </Section>
         </>
     );
