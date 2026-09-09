@@ -1,12 +1,14 @@
 import { Clock } from "lucide-react";
-import { TimezoneCombobox, tzOffsetLabel } from "@/components/TimezoneCombobox";
+import { TimezoneCombobox } from "@/components/TimezoneCombobox";
+import { tzOffsetLabel } from "@/components/timezoneOptions";
 import { InfoBlock } from "./InfoBlock";
 import { type FormStore } from "@/components/ui/form";
+import type { ProfileForm } from "../constants/profileSchema";
 
 interface TimezoneSectionProps {
     mode: "view" | "edit" | "create";
-    form: Record<string, string>;
-    store: FormStore<any>;
+    form: ProfileForm;
+    store: FormStore<ProfileForm>;
     timezone?: string | null;
 }
 

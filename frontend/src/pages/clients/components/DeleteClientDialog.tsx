@@ -30,12 +30,14 @@ export function DeleteClientDialog({
 }: DeleteClientDialogProps) {
     const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
+    // Lean list rows carry has_registered_agent instead of the full agent
+    // object; prefer it, fall back to the detail shape.
     const hasRunningAgents = servers.some(
-        (s) =>
+        (s: ServerData & { has_registered_agent?: boolean }) =>
             !s.agent_deleted &&
-            s.agent &&
-            s.status !== "agent_uninstalled" &&
-            s.agent.status !== "revoked",
+            (s.has_registered_agent ??
+                (s.agent && s.status !== "agent_uninstalled" && s.agent.status !== "revoked")) &&
+            s.status !== "agent_uninstalled",
     );
 
     return (

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getEchoInstance } from "@/hooks/useServerSocket";
 import jwtClient from "@/api/jwtClient";
 import { NODE_DEFS } from "./nodes";
@@ -66,7 +66,8 @@ export function useTelemetry(isPaused: boolean) {
         return () => clearInterval(interval);
     }, [lastMonitorSweep, monitorIntervalMs]);
 
-    const hydrateFromSnapshot = (data: Record<string, unknown>) => {
+    // Stable callbacks: only setState (stable) + module imports.
+    const hydrateFromSnapshot = useCallback((data: Record<string, unknown>) => {
         const backendNow = (data.server_now as number) * 1000;
         const clientNow = Date.now();
         setServerNowOffset(backendNow - clientNow);
@@ -85,16 +86,16 @@ export function useTelemetry(isPaused: boolean) {
         if (data.monitor_interval_seconds) {
             setMonitorIntervalMs((data.monitor_interval_seconds as number) * 1000);
         }
-    };
+    }, []);
 
-    const fetchInitialState = async () => {
+    const fetchInitialState = useCallback(async () => {
         try {
             const res = await jwtClient.get("/node-configs/telemetry-state");
             hydrateFromSnapshot(res.data);
         } catch (e) {
             console.error("Failed to load telemetry state", e);
         }
-    };
+    }, [hydrateFromSnapshot]);
 
     const spawnParticle = (
         fromId: string,
@@ -119,7 +120,7 @@ export function useTelemetry(isPaused: boolean) {
 
     useEffect(() => {
         fetchInitialState();
-    }, []);
+    }, [fetchInitialState]);
 
     // WebSocket listener for authentic backend events.
     useEffect(() => {
@@ -206,7 +207,7 @@ export function useTelemetry(isPaused: boolean) {
         return () => {
             channel.stopListening(".SystemTelemetryEvent");
         };
-    }, [isPaused]);
+    }, [isPaused, hydrateFromSnapshot]);
 
     const activeTaskList = Array.from(tasks.values());
 

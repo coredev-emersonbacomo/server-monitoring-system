@@ -282,6 +282,27 @@ export interface ServerData {
             is_assigned_to_current_user?: boolean;
         }
 
+/** ServerListData */
+export interface ServerListData {
+            uuid: string;
+            name: string;
+            description?: string | null;
+            host_name: string;
+            client_uuid: string;
+            client_name: string;
+            created_at: string;
+            updated_at: string;
+            record_status: string;
+            status?: string | null;
+            agent_deleted?: boolean;
+            is_assigned_to_current_user?: boolean;
+            operating_system?: string | null;
+            cpu_cores?: number | null;
+            ram?: string | null;
+            subscription_fee?: number;
+            has_registered_agent?: boolean;
+        }
+
 /** ServerReportData */
 export interface ServerReportData {
             uuid: string;

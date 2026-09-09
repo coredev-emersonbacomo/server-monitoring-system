@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -318,6 +319,12 @@ func handleUninstallMarker(instance, dir, keyName string, keystore KeyStore, cli
 }
 
 func detachWithMarker(instance, serverUuid string) error {
+	// The value is written to a marker file and concatenated into a request
+	// URL — reject path separators rather than breaking routing.
+	serverUuid = strings.TrimSpace(serverUuid)
+	if serverUuid == "" || strings.ContainsAny(serverUuid, "/\\") {
+		return fmt.Errorf("invalid server uuid %q", serverUuid)
+	}
 	dir := instanceDir(instance)
 	marker := filepath.Join(dir, detachFlagFile)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -408,7 +415,9 @@ func handleDetachMarker(dir string, client *AgentClient) bool {
 	if client != nil {
 		if err := client.detachServer(serverUuid); err != nil {
 			log.Printf("Warning: detach request failed for %s: %v", serverUuid, err)
-			// Leave marker as "pending" for retry on next loop
+			// Leave the uuid in place for retry on the next loop (the marker
+			// is only rewritten to "done" on success — never to "pending",
+			// which means "ignore").
 			return false
 		}
 		log.Printf("Server %s detached successfully.", serverUuid)
@@ -435,7 +444,9 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 	}
 
 	// Redirect stdout and stderr to agent.log in the instance directory. The
-	// log package writes timestamped lines to the same file.
+	// log package writes timestamped lines to the same file. Rotated at open
+	// so a chatty outage cannot fill the disk: 3 × 10 MB generations.
+	rotateAgentLog(filepath.Join(dir, "agent.log"))
 	logFile, err := os.OpenFile(filepath.Join(dir, "agent.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err == nil {
 		os.Stdout = logFile
@@ -561,18 +572,26 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 		_ = writeConfig(configPath, config)
 	}
 
-	heartbeatInterval := sess.HeartbeatInterval
-	if heartbeatInterval <= 0 {
-		heartbeatInterval = 5
+	// Shared with the WS goroutine (config/binary updates change it) — atomic
+	// so heartbeat and WS goroutines never race on it.
+	var heartbeatInterval atomic.Int64
+	heartbeatInterval.Store(int64(sess.HeartbeatInterval))
+	if heartbeatInterval.Load() <= 0 {
+		heartbeatInterval.Store(5)
 	}
 
-	log.Printf("Starting heartbeat loop (interval: %ds)...", heartbeatInterval)
+	log.Printf("Starting heartbeat loop (interval: %ds)...", heartbeatInterval.Load())
 
-	ticker := time.NewTicker(time.Duration(heartbeatInterval) * time.Second)
+	ticker := time.NewTicker(time.Duration(heartbeatInterval.Load()) * time.Second)
 	defer ticker.Stop()
 
-	// Run once initially to register the first heartbeat
+	// Run once initially to register the first heartbeat. Drain any tick that
+	// expired during that blocking collection so we don't double-fire.
 	sendHeartbeatStep(config, configPath, client, metrics, runtime, &heartbeatInterval)
+	select {
+	case <-ticker.C:
+	default:
+	}
 
 	// Start the WebSocket control channel goroutine
 	go connectControlChannel(client, runtime, &heartbeatInterval, stopChan)
@@ -593,7 +612,7 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 			for {
 				select {
 				case ev := <-watcher.Events():
-					_ = queue.Enqueue(ev)
+					enqueueLog(queue, ev)
 				case <-stopChan:
 					return
 				}
@@ -607,7 +626,9 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 			for {
 				select {
 				case <-drainTicker.C:
-					_ = queue.Drain(client)
+					if err := queue.Drain(client); err != nil {
+						log.Printf("[AUDIT] drain failed: %v", err)
+					}
 				case <-stopChan:
 					return
 				}
@@ -616,19 +637,19 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 
 		// Emit an agent "started" lifecycle event per monitored server.
 		for _, su := range runtime.ServerUUIDs() {
-			_ = queue.Enqueue(LifecycleEvent(su, "started"))
+			enqueueLog(queue, LifecycleEvent(su, "started"))
 		}
 
 		defer func() {
-			_ = queue.Enqueue(LifecycleEvent("", "stopping"))
+			enqueueLog(queue, LifecycleEvent("", "stopping"))
 			// Flush whatever the watcher still has buffered, then stop it.
 			watcher.Stop()
 			for {
 				select {
 				case ev := <-watcher.Events():
-					_ = queue.Enqueue(ev)
+					enqueueLog(queue, ev)
 				default:
-					_ = queue.Enqueue(LifecycleEvent("", "stopped"))
+					enqueueLog(queue, LifecycleEvent("", "stopped"))
 					// shutdown drain must not block SCM Stop – best-effort with hard timeout,
 					// durable queue file survives so missed events are sent on next start.
 					done := make(chan error, 1)
@@ -661,7 +682,7 @@ func runAgentLoop(instance string, stopChan <-chan struct{}) {
 			}
 			handleDetachMarker(dir, client)
 			sendHeartbeatStep(config, configPath, client, metrics, runtime, &heartbeatInterval)
-			ticker.Reset(time.Duration(heartbeatInterval) * time.Second)
+			ticker.Reset(time.Duration(heartbeatInterval.Load()) * time.Second)
 		}
 	}
 }
@@ -678,9 +699,18 @@ var (
 	// executes commands it received in the previous heartbeat and acks them
 	// on the NEXT aggregated heartbeat (a one-tick delay is acceptable).
 	pendingCompleted []CommandResult
+	// executedCommandIDs dedupes command execution: the backend resends
+	// un-acked commands on every heartbeat, so without this a failed tick
+	// would re-run non-idempotent shell commands. Bounded to avoid
+	// unbounded growth on a long outage (oldest IDs are forgotten first,
+	// re-allowing execution rather than leaking memory).
+	executedCommandIDs []int
 )
 
-func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *AgentClient, metrics *metricsCollector, runtime *AgentRuntime, heartbeatInterval *int) {
+// maxPendingCommands bounds the ack buffer and the dedup set.
+const maxPendingCommands = 200
+
+func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *AgentClient, metrics *metricsCollector, runtime *AgentRuntime, heartbeatInterval *atomic.Int64) {
 	// Collect agent-wide state ONCE per tick — the process collector samples
 	// over a controlled interval (~1s), so per-server collection would multiply
 	// that latency. Each server's DB filter is applied into its partition below.
@@ -699,11 +729,6 @@ func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *Agent
 	portSig := portSetSignature(openPorts)
 	ifaceSig := interfaceSetSignature(availableNetworks)
 	availableChanged := !slices.Equal(procSig, lastSentProcesses) || !slices.Equal(portSig, lastSentPorts) || !slices.Equal(ifaceSig, lastSentInterfaces)
-	if availableChanged {
-		lastSentProcesses = procSig
-		lastSentPorts = portSig
-		lastSentInterfaces = ifaceSig
-	}
 
 	// Build ONE partition per monitored server, applying that server's filter
 	// to the shared collected set. This is the only per-server work.
@@ -781,7 +806,7 @@ func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *Agent
 		Disk:                 metrics.GetDiskUsage(),
 		Uptime:               metrics.GetUptime(),
 		AgentConfig: &AgentConfigReport{
-			HeartbeatInterval: *heartbeatInterval,
+			HeartbeatInterval: int(heartbeatInterval.Load()),
 			AgentVersion:      config.AgentVersion,
 		},
 		ProcessesDict: procDict,
@@ -809,18 +834,29 @@ func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *Agent
 	}
 	if len(pendingCompleted) > 0 {
 		payload.CompletedCommands = pendingCompleted
-		pendingCompleted = nil
 	}
 
-	// Only bother sending if we actually monitor something.
-	if len(payload.Servers) == 0 && payload.AgentVersion == "" {
+	// Only bother sending if we actually monitor something — unless there
+	// are command acks to deliver, which must not be stranded.
+	if len(payload.Servers) == 0 && payload.AgentVersion == "" && len(pendingCompleted) == 0 {
 		return
 	}
 
-	response, err := client.sendAgentHeartbeat(payload)
+	// Bound the send by the tick cadence: a stale payload is dropped so the
+	// next tick sends fresh data instead of blocking on it.
+	response, err := client.sendAgentHeartbeat(payload, time.Duration(heartbeatInterval.Load())*time.Second)
 	if err != nil {
 		log.Printf("Aggregated heartbeat failed: %v", err)
 		return
+	}
+
+	// Send succeeded: drop acked commands and record the sent Available
+	// snapshot (a failed send must not consume them).
+	pendingCompleted = nil
+	if availableChanged {
+		lastSentProcesses = procSig
+		lastSentPorts = portSig
+		lastSentInterfaces = ifaceSig
 	}
 
 	// Drop servers the backend no longer wants this agent to monitor.
@@ -829,9 +865,9 @@ func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *Agent
 		runtime.Remove(uuid)
 	}
 
-	if response.HeartbeatInterval > 0 && *heartbeatInterval != response.HeartbeatInterval {
-		*heartbeatInterval = response.HeartbeatInterval
-		log.Printf("Heartbeat interval updated to %ds", *heartbeatInterval)
+	if response.HeartbeatInterval > 0 && int(heartbeatInterval.Load()) != response.HeartbeatInterval {
+		heartbeatInterval.Store(int64(response.HeartbeatInterval))
+		log.Printf("Heartbeat interval updated to %ds", response.HeartbeatInterval)
 	}
 
 	if v, ok := response.Configuration["version"].(float64); ok {
@@ -843,17 +879,19 @@ func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *Agent
 		log.Printf("Received agent update notification to version %s", response.PendingUpdate.Version)
 
 		if response.PendingUpdate.HeartbeatInterval > 0 {
-			*heartbeatInterval = response.PendingUpdate.HeartbeatInterval
+			heartbeatInterval.Store(int64(response.PendingUpdate.HeartbeatInterval))
 		}
 
 		config.AgentVersion = response.PendingUpdate.Version
 		_ = writeConfig(configPath, config)
 
-		if response.PendingUpdate.BinaryURL != "" {
+		if response.PendingUpdate.BinaryURL != "" && !skipFailedUpdate(response.PendingUpdate.Version) {
 			log.Printf("Updating agent binary from %s...", response.PendingUpdate.BinaryURL)
 			if err := updateBinary(response.PendingUpdate.BinaryURL); err != nil {
 				log.Printf("Binary update failed: %v", err)
+				noteUpdateResult(response.PendingUpdate.Version, err)
 			} else {
+				noteUpdateResult(response.PendingUpdate.Version, nil)
 				log.Println("Binary updated successfully! Exiting to allow restart.")
 				restartAgent()
 				os.Exit(0)
@@ -862,11 +900,35 @@ func sendHeartbeatStep(config *BootstrapConfig, configPath string, client *Agent
 	}
 
 	// Execute pending commands and ack them on the next aggregated tick.
+	// Already-executed IDs are skipped: the backend resends un-acked commands
+	// on every heartbeat, and re-running shell commands is not idempotent.
 	if len(response.PendingCommands) > 0 {
-		for _, cmd := range response.PendingCommands {
+		for _, cmd := range filterNewCommands(response.PendingCommands) {
 			log.Printf("Executing command: %s (id: %d)", cmd.Type, cmd.Id)
 			result := executeCommand(cmd)
 			pendingCompleted = append(pendingCompleted, result)
+			if len(pendingCompleted) > maxPendingCommands {
+				pendingCompleted = pendingCompleted[len(pendingCompleted)-maxPendingCommands:]
+			}
 		}
 	}
+}
+
+// filterNewCommands drops already-executed command IDs (backend resends
+// un-acked commands every heartbeat) and records the new ones, bounded so a
+// long outage cannot grow the set without limit. Pure for testability; the
+// caller owns the single-goroutine contract.
+func filterNewCommands(cmds []AgentCommand) []AgentCommand {
+	fresh := cmds[:0]
+	for _, cmd := range cmds {
+		if slices.Contains(executedCommandIDs, cmd.Id) {
+			continue
+		}
+		fresh = append(fresh, cmd)
+		executedCommandIDs = append(executedCommandIDs, cmd.Id)
+		if len(executedCommandIDs) > maxPendingCommands {
+			executedCommandIDs = executedCommandIDs[len(executedCommandIDs)-maxPendingCommands:]
+		}
+	}
+	return fresh
 }

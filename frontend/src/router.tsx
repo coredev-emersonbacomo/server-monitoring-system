@@ -1,57 +1,51 @@
 import { createBrowserRouter } from "react-router-dom";
-import { lazy, Suspense } from "react";
 import { ProtectedRoute } from "./layouts/ProtectedRoute";
+import RouteErrorBoundary from "./components/RouteErrorBoundary";
 import { GuestLayout } from "./layouts/GuestLayout";
 import RootLayout from "./layouts/RootLayout";
 import ServerLayout from "./layouts/ServerLayout";
+import { ReportsLayout } from "./layouts/ReportsLayout";
+import { NodeConfigEditor } from "./components/node-config/NodeConfigEditor";
+import Dashboard from "./pages/dashboard/index";
+import Login from "./pages/login";
+import ForgotPassword from "./pages/forgot-password";
+import Clients from "./pages/clients/index";
+import UsersIndex from "./pages/users/index";
+import ClientDetail from "./pages/clients/detail";
+import LogsPage from "./pages/system-logs/index";
+import ServerDetail from "./pages/servers/detail";
+import CreateServer from "./pages/servers/create";
+import ServersIndex from "./pages/servers/index";
+import Settings from "./pages/settings/index";
+import Sessions from "./pages/settings/sessions";
+import Profile from "./pages/settings/profile";
+import UserDetail from "./pages/users/detail";
+import SystemSettings from "./pages/settings/system";
+import AgentSettings from "./pages/settings/agent";
+import FileActivitySettings from "./pages/settings/file-activity";
+import AlertVisualizer from "./pages/settings/alerts";
+import ReportIndexPage from "./pages/reports/report-index.tsx";
+import MultiReportsPreview from "./pages/reports/MultiReportsPreview.tsx";
 
-const Dashboard = lazy(() => import("./pages/dashboard/index"));
-const Login = lazy(() => import("./pages/login"));
-const ForgotPassword = lazy(() => import("./pages/forgot-password"));
-const Clients = lazy(() => import("./pages/clients/index"));
-const UsersIndex = lazy(() => import("./pages/users/index"));
-const ClientDetail = lazy(() => import("./pages/clients/detail"));
-const LogsPage = lazy(() => import("./pages/system-logs/index"));
-const ServerDetail = lazy(() => import("./pages/servers/detail"));
-const CreateServer = lazy(() => import("./pages/servers/create"));
-const ServersIndex = lazy(() => import("./pages/servers/index"));
-const Settings = lazy(() => import("./pages/settings/index"));
-const Sessions = lazy(() => import("./pages/settings/sessions"));
-const Profile = lazy(() => import("./pages/settings/profile"));
-const UserDetail = lazy(() => import("./pages/users/detail"));
-const SystemSettings = lazy(() => import("./pages/settings/system"));
-const AgentSettings = lazy(() => import("./pages/settings/agent"));
-const FileActivitySettings = lazy(() => import("./pages/settings/file-activity"));
-const NodeConfigEditor = lazy(() =>
-    import("./components/node-config/NodeConfigEditor").then(
-        (m) => ({ default: m.NodeConfigEditor }),
-    ),
-);
-const AlertVisualizer = lazy(() => import("./pages/settings/alerts"));
-const ReportIndexPage = lazy(() => import("./pages/reports/report-index.tsx"));
-const ReportsLayout = lazy(() => import("./layouts/ReportsLayout").then(
-    (m) => ({ default: m.ReportsLayout }),
-));
-const MultiReportsPreview = lazy(() => import("./pages/reports/MultiReportsPreview.tsx"));
+// ponytail: no React.lazy — all routes ship in the first load so navigation
+// never waits on a chunk download. Revisit code-splitting if initial load
+// gets heavy (recharts + xyflow are the big weights).
 
 const router = createBrowserRouter([
     {
         element: <RootLayout />,
+        errorElement: <RouteErrorBoundary />,
         children: [
             {
                 element: <GuestLayout />,
                 children: [
                     {
                         path: "/login",
-                        element: (
-                            <Suspense><Login /></Suspense>
-                        ),
+                        element: <Login />,
                     },
                     {
                         path: "/forgot-password",
-                        element: (
-                            <Suspense><ForgotPassword /></Suspense>
-                        ),
+                        element: <ForgotPassword />,
                     },
                 ],
             },
@@ -60,159 +54,109 @@ const router = createBrowserRouter([
                 children: [
                     {
                         path: "/",
-                        element: (
-                            <Suspense><Dashboard /></Suspense>
-                        ),
+                        element: <Dashboard />,
                     },
                     {
                         path: "/servers",
-                        element: (
-                            <Suspense><ServersIndex /></Suspense>
-                        ),
+                        element: <ServersIndex />,
                     },
                     {
                         path: "/servers/create",
-                        element: (
-                            <Suspense><CreateServer /></Suspense>
-                        ),
+                        element: <CreateServer />,
                     },
                     {
                         element: <ServerLayout />,
                         children: [
                             {
                                 path: "/servers/:uuid",
-                                element: (
-                                    <Suspense><ServerDetail /></Suspense>
-                                ),
+                                element: <ServerDetail />,
                             },
                         ],
                     },
                     {
                         path: "/clients",
-                        element: (
-                            <Suspense><Clients /></Suspense>
-                        ),
+                        element: <Clients />,
                     },
                     {
                         path: "/clients/create",
-                        element: (
-                            <Suspense><ClientDetail /></Suspense>
-                        ),
+                        element: <ClientDetail />,
                     },
                     {
                         path: "/clients/:uuid",
-                        element: (
-                            <Suspense><ClientDetail /></Suspense>
-                        ),
+                        element: <ClientDetail />,
                     },
                     {
                         path: "/users",
-                        element: (
-                            <Suspense><UsersIndex /></Suspense>
-                        ),
+                        element: <UsersIndex />,
                     },
                     {
                         path: "/users/create",
-                        element: (
-                            <Suspense><UserDetail /></Suspense>
-                        ),
+                        element: <UserDetail />,
                     },
                     {
                         path: "/users/:uuid",
-                        element: (
-                            <Suspense><UserDetail /></Suspense>
-                        ),
+                        element: <UserDetail />,
                     },
                     {
                         path: "/logs",
-                        element: (
-                            <Suspense><LogsPage /></Suspense>
-                        ),
+                        element: <LogsPage />,
                     },
                     {
                         path: "/settings",
-                        element: (
-                            <Suspense><Settings /></Suspense>
-                        ),
+                        element: <Settings />,
                     },
                     {
                         path: "/settings/sessions",
-                        element: (
-                            <Suspense><Sessions /></Suspense>
-                        ),
+                        element: <Sessions />,
                     },
                     {
                         path: "/settings/system",
-                        element: (
-                            <Suspense><SystemSettings /></Suspense>
-                        ),
+                        element: <SystemSettings />,
                     },
                     {
                         path: "/settings/agent",
-                        element: (
-                            <Suspense><AgentSettings /></Suspense>
-                        ),
+                        element: <AgentSettings />,
                     },
                     {
                         path: "/settings/file-activity",
-                        element: (
-                            <Suspense><FileActivitySettings /></Suspense>
-                        ),
+                        element: <FileActivitySettings />,
                     },
                     {
                         path: "/settings/alerts",
                         element: (
-                            <Suspense>
-                                <NodeConfigEditor configKey="alerts" alwaysMaximized />
-                            </Suspense>
+                            <NodeConfigEditor configKey="alerts" alwaysMaximized />
                         ),
                     },
                     {
                         path: "/settings/alerts/debugger",
-                        element: (
-                            <Suspense><AlertVisualizer /></Suspense>
-                        ),
+                        element: <AlertVisualizer />,
                     },
                     {
                         path: "/profile",
-                        element: (
-                            <Suspense><Profile /></Suspense>
-                        ),
+                        element: <Profile />,
                     },
                     {
-                        element: (
-                            <Suspense><ReportsLayout /></Suspense>
-                        ),
+                        element: <ReportsLayout />,
                         children: [
                             {
                                 path: "/report",
-                                element: (
-                                    <Suspense><ReportIndexPage /></Suspense>
-                                ),
+                                element: <ReportIndexPage />,
                             },
                             {
                                 path: "/report/servers/:uuid",
-                                element: (
-                                    <Suspense><ReportIndexPage /></Suspense>
-                                ),
+                                element: <ReportIndexPage />,
                             },
                             {
                                 path: "/report/clients/:uuid",
-                                element: (
-                                    <Suspense><ReportIndexPage /></Suspense>
-                                ),
+                                element: <ReportIndexPage />,
                             },
                             {
                                 path: "/report/servers",
-                                element: (
-                                    <Suspense><MultiReportsPreview /></Suspense>
-                                ),
+                                element: <MultiReportsPreview />,
                             },
                             {
                                 path: "/report/clients",
-                                element: (
-                                    <Suspense><MultiReportsPreview /></Suspense>
-                                ),
+                                element: <MultiReportsPreview />,
                             },
                         ],
                     },
@@ -222,9 +166,7 @@ const router = createBrowserRouter([
     },
     {
         path: "/printReport",
-        element: (
-            <Suspense><ReportIndexPage /></Suspense>
-        ),
+        element: <ReportIndexPage />,
     },
 ]);
 

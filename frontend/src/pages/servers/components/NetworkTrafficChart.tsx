@@ -22,7 +22,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import type { StatPoint } from "@/types/stats";
-import { fmtDatetime, fmtTime } from "@/pages/dashboard/components/ServerStatChart";
+import { fmtDatetime, fmtTime } from "@/pages/dashboard/components/chartTime";
 import { useServerDetailContext } from "../context/ServerDetailContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";

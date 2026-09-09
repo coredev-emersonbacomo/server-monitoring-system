@@ -16,6 +16,7 @@ import type {
     SecopsUserData,
     SecurityActivityData,
     ServerData,
+    ServerListData,
     ServerReportData,
     ServerUptimeData,
     StatPointData,
@@ -32,6 +33,43 @@ import type {
  */
 
 export interface paths {
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @constant */
+                            status: "ok";
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/activity-logs": {
         parameters: {
             query?: never;
@@ -751,22 +789,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/clients/{clientUuid}/servers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1.client.servers_0"];
-        put?: never;
-        post: operations["v1.server.store_1"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/clients": {
         parameters: {
             query?: never;
@@ -815,6 +837,22 @@ export interface paths {
         patch: operations["v1.client.updateAlertScope_0"];
         trace?: never;
     };
+    "/v1/clients/{clientUuid}/servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.client.servers_0"];
+        put?: never;
+        post: operations["v1.server.store_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/clients/{clientUuid}/secops": {
         parameters: {
             query?: never;
@@ -842,22 +880,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete: operations["v1.client.removeSecop_0"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/clients/{clientUuid}/servers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1.client.servers_0"];
-        put?: never;
-        post: operations["v1.server.store_1"];
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -909,6 +931,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["v1.client.updateAlertScope_0"];
+        trace?: never;
+    };
+    "/clients/{clientUuid}/servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1.client.servers_0"];
+        put?: never;
+        post: operations["v1.server.store_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/clients/{clientUuid}/secops": {
@@ -2582,6 +2620,8 @@ export interface components {
         SecurityActivityData: SecurityActivityData;
         /** ServerData */
         ServerData: ServerData;
+        /** ServerListData */
+        ServerListData: ServerListData;
         /** ServerReportData */
         ServerReportData: ServerReportData;
         /** ServerUptimeData */
@@ -2977,10 +3017,6 @@ export interface operations {
                         token: string;
                         expires_at: string;
                         linux_command: string;
-                        /**
-                         * @description argValue is single-quoted so the emitted -Command string always stays
-                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
-                         */
                         windows_command: string;
                         token_expires_in: string;
                     } | {
@@ -3003,10 +3039,6 @@ export interface operations {
                         token: string;
                         expires_at: string;
                         linux_command: string;
-                        /**
-                         * @description argValue is single-quoted so the emitted -Command string always stays
-                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
-                         */
                         windows_command: string;
                         token_expires_in: string;
                     } | {
@@ -3051,10 +3083,6 @@ export interface operations {
                         token: string;
                         expires_at: string;
                         linux_command: string;
-                        /**
-                         * @description argValue is single-quoted so the emitted -Command string always stays
-                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
-                         */
                         windows_command: string;
                         token_expires_in: string;
                     } | {
@@ -3101,10 +3129,6 @@ export interface operations {
                         installation_id: string;
                         expires_at: string;
                         linux_command: string;
-                        /**
-                         * @description argValue is single-quoted so the emitted -Command string always stays
-                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
-                         */
                         windows_command: string;
                         token_expires_in: string;
                     };
@@ -3205,7 +3229,7 @@ export interface operations {
                         download_url: string;
                         expected_sha256: Record<string, never> | string;
                         agent_version: string;
-                        server_url: string;
+                        server_url: unknown;
                     };
                 };
             };
@@ -3686,10 +3710,6 @@ export interface operations {
                         token: string;
                         expires_at: string;
                         linux_command: string;
-                        /**
-                         * @description argValue is single-quoted so the emitted -Command string always stays
-                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
-                         */
                         windows_command: string;
                         token_expires_in: string;
                     } | {
@@ -3712,10 +3732,6 @@ export interface operations {
                         token: string;
                         expires_at: string;
                         linux_command: string;
-                        /**
-                         * @description argValue is single-quoted so the emitted -Command string always stays
-                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
-                         */
                         windows_command: string;
                         token_expires_in: string;
                     } | {
@@ -3760,10 +3776,6 @@ export interface operations {
                         token: string;
                         expires_at: string;
                         linux_command: string;
-                        /**
-                         * @description argValue is single-quoted so the emitted -Command string always stays
-                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
-                         */
                         windows_command: string;
                         token_expires_in: string;
                     } | {
@@ -3810,10 +3822,6 @@ export interface operations {
                         installation_id: string;
                         expires_at: string;
                         linux_command: string;
-                        /**
-                         * @description argValue is single-quoted so the emitted -Command string always stays
-                         *     balanced; $env:TEMP is left literal so PowerShell expands it at run time.
-                         */
                         windows_command: string;
                         token_expires_in: string;
                     };
@@ -3914,7 +3922,7 @@ export interface operations {
                         download_url: string;
                         expected_sha256: Record<string, never> | string;
                         agent_version: string;
-                        server_url: string;
+                        server_url: unknown;
                     };
                 };
             };
@@ -4745,74 +4753,6 @@ export interface operations {
             };
         };
     };
-    "v1.client.servers_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                clientUuid: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": ServerData[];
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-        };
-    };
-    "v1.server.store_1": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                clientUuid: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    name: string;
-                    description?: string | null;
-                    subscription_fee?: number | null;
-                };
-            };
-        };
-        responses: {
-            /** @description `ServerData` */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": ServerData;
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            /** @description An error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /**
-                         * @description Error overview.
-                         * @example Server creation failed. Please try again.
-                         */
-                        message: string;
-                    };
-                };
-            };
-        };
-    };
     "v1.client.index_0": {
         parameters: {
             query?: {
@@ -4998,6 +4938,74 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "v1.client.servers_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": ServerListData[];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.server.store_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    description?: string | null;
+                    subscription_fee?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `ServerData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": ServerData;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            /** @description An error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Error overview.
+                         * @example Server creation failed. Please try again.
+                         */
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
     "v1.client.secops_0": {
         parameters: {
             query?: never;
@@ -5114,74 +5122,6 @@ export interface operations {
                     "application/json": {
                         /** @constant */
                         error: "User not assigned to this client";
-                    };
-                };
-            };
-        };
-    };
-    "v1.client.servers_0": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                clientUuid: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": ServerData[];
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-        };
-    };
-    "v1.server.store_1": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                clientUuid: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    name: string;
-                    description?: string | null;
-                    subscription_fee?: number | null;
-                };
-            };
-        };
-        responses: {
-            /** @description `ServerData` */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": ServerData;
-                };
-            };
-            401: components["responses"]["AuthenticationException"];
-            /** @description An error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /**
-                         * @description Error overview.
-                         * @example Server creation failed. Please try again.
-                         */
-                        message: string;
                     };
                 };
             };
@@ -5372,6 +5312,74 @@ export interface operations {
             422: components["responses"]["ValidationException"];
         };
     };
+    "v1.client.servers_0": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": ServerListData[];
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+        };
+    };
+    "v1.server.store_1": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientUuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    description?: string | null;
+                    subscription_fee?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description `ServerData` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": ServerData;
+                };
+            };
+            401: components["responses"]["AuthenticationException"];
+            /** @description An error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Error overview.
+                         * @example Server creation failed. Please try again.
+                         */
+                        message: string;
+                    };
+                };
+            };
+        };
+    };
     "v1.client.secops_0": {
         parameters: {
             query?: never;
@@ -5542,7 +5550,10 @@ export interface operations {
                             server_uuid: string;
                             server_name: string;
                             client_name: string;
-                            points: string | string[];
+                            points: {
+                                timestamp: number;
+                                value: number | null;
+                            }[];
                         }[];
                         top: {
                             server_uuid: string;
@@ -5564,7 +5575,7 @@ export interface operations {
                                 client_name: string;
                                 points: {
                                     timestamp: number;
-                                    value: number;
+                                    value: number | null;
                                 }[];
                             }
                         ];
@@ -5578,7 +5589,10 @@ export interface operations {
                             server_uuid: string;
                             server_name: string;
                             client_name: string | "";
-                            points: string | string[];
+                            points: {
+                                timestamp: number;
+                                value: number | null;
+                            }[];
                         }[];
                         top: string[];
                         nextCursor: null;
@@ -5731,7 +5745,10 @@ export interface operations {
                             server_uuid: string;
                             server_name: string;
                             client_name: string;
-                            points: string | string[];
+                            points: {
+                                timestamp: number;
+                                value: number | null;
+                            }[];
                         }[];
                         top: {
                             server_uuid: string;
@@ -5753,7 +5770,7 @@ export interface operations {
                                 client_name: string;
                                 points: {
                                     timestamp: number;
-                                    value: number;
+                                    value: number | null;
                                 }[];
                             }
                         ];
@@ -5767,7 +5784,10 @@ export interface operations {
                             server_uuid: string;
                             server_name: string;
                             client_name: string | "";
-                            points: string | string[];
+                            points: {
+                                timestamp: number;
+                                value: number | null;
+                            }[];
                         }[];
                         top: string[];
                         nextCursor: null;
@@ -7365,7 +7385,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown[];
+                    "application/json": (unknown | string)[];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -7652,7 +7672,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown[];
+                    "application/json": (unknown | string)[];
                 };
             };
             401: components["responses"]["AuthenticationException"];
@@ -8351,6 +8371,17 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Offline threshold must be greater than or equal to the heartbeat interval.";
+                    };
+                };
+            };
         };
     };
     "v1.setting.index_0": {
@@ -8406,6 +8437,17 @@ export interface operations {
                 };
             };
             401: components["responses"]["AuthenticationException"];
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @constant */
+                        message: "Offline threshold must be greater than or equal to the heartbeat interval.";
+                    };
+                };
+            };
         };
     };
     "v1.uploadIntent.store_0": {

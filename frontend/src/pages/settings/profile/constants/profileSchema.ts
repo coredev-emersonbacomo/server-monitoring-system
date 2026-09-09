@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-export const profileSchema = z
-    .object({
+export const profileSchema = z    .object({
         first_name: z.string().min(1, "Required"),
         last_name: z.string().min(1, "Required"),
         email: z.string().min(1, "Required"),
@@ -22,3 +21,6 @@ export const profileSchema = z
             });
         }
     });
+
+
+export type ProfileForm = z.infer<typeof profileSchema>;

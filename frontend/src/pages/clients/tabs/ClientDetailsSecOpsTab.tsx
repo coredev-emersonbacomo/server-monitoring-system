@@ -2,14 +2,16 @@ import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import type { ClientData, SecopsUserData } from "@/types/models";
+import type { useRemoveClientSecop } from "@/hooks/useClients";
 
 interface ClientDetailsSecOpsTabProps {
-    client: any;
-    currentSecops: any[];
+    client: ClientData;
+    currentSecops: SecopsUserData[];
     secopLoading: boolean;
     secopLimit: number;
     onAddClick: () => void;
-    removeSecop: any;
+    removeSecop: ReturnType<typeof useRemoveClientSecop>;
 }
 
 export function ClientDetailsSecOpsTab({
@@ -51,7 +53,7 @@ export function ClientDetailsSecOpsTab({
                 </div>
             ) : currentSecops.length > 0 ? (
                 <div className="space-y-2">
-                    {currentSecops.map((secop: any) => (
+                    {currentSecops.map((secop: SecopsUserData) => (
                         <div
                             key={secop.uuid}
                             className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors"

@@ -27,10 +27,16 @@ TimescaleDB hypertables for metrics history, and queue workers for alerts.
 
 ```powershell
 npm run setup     # composer install + npm install (first time only)
+npm run resetdb   # migrate + seed the local DB (asks [y/N], wipes local data)
 npm run dev       # redis + vite + reverb + queue + scheduler
 ```
 
-App: http://server-monitoring-system.test · Frontend dev: http://localhost:5173
+App: http://server-monitoring-system.test · Frontend dev: http://localhost:5173 ·
+Docs site: http://localhost:5174. Login: `user` / `user123` (seeded by `resetdb`).
+
+The project must live in Herd's directory (or run `herd link` inside it) for
+the `.test` domain to resolve. `npm run dev` does not migrate — re-run
+`npm run resetdb` after pulling new migrations (it wipes local data).
 
 ```powershell
 npm run tunnel    # expose via Cloudflare quick tunnel (random URL, for agent testing)
@@ -126,6 +132,28 @@ docker compose -f compose.yaml -f compose.prod.yaml exec -T postgres \
 
 Never commit `.env`, `.env.production`, or `.env.docker` (all gitignored).
 
+## Environment layers & dev safety switches
+
+Precedence (highest first): real process env (Docker compose `environment:`)
+> personal gitignored `.env` > `.env.development` defaults. Never copy a dev
+file to make a prod file — prod env is generated from `.env.docker.example`
+(`npm run setup:docker`), which pins safe values.
+
+| Switch | Dev default (`.env.development`) | Personal `.env` | Prod |
+|---|---|---|---|
+| `TELESCOPE_ENABLED` | `true` (dev inspector) | `false` to opt out | forced `false` by compose.prod.yaml + local-env code gate |
+| `MUTE_NOTIFICATION` | `false` = **sends real alerts** | `true` to stay quiet | `${MUTE_NOTIFICATION:-false}` = sends (correct) |
+| `ALERTS_VISUAL_DEBUGGER` | `false` | `true` for solo debugging | unset = `false` via config default |
+
+⚠️ A fresh clone without a personal `.env` **sends real notifications** —
+that is intentional (staging-like behaves like prod). If you don't want that,
+set `MUTE_NOTIFICATION=true` in `.env`.
+
+Prod is safe by construction, not by convention: prod containers have no
+`.env*` files at all (no bind mounts — baked code), compose hard-forces
+`APP_ENV=production`, `APP_DEBUG=false`, `TELESCOPE_ENABLED=false`, and
+`TelescopeServiceProvider` refuses non-`local` environments in code.
+
 ## Repo map
 
 - `app/` — Laravel backend (API, agents, alerts, provisioning)
@@ -145,7 +173,7 @@ Never commit `.env`, `.env.production`, or `.env.docker` (all gitignored).
 ```powershell
 npm test                    # full Pest suite
 npm run test:filter -- Name # single filter
-vendor/bin/pint --dirty     # format PHP before committing
+vendor/bin/pint --dirty --format agent  # format PHP before committing
 ```
 
 CI (`.github/workflows/ci.yml`) runs Pest + Pint + frontend build on every push.
@@ -167,11 +195,18 @@ CI (`.github/workflows/ci.yml`) runs Pest + Pint + frontend build on every push.
 
 ## Database access
 
-Run from the repo root on the machine hosting the stack:
+Docker flow, from the repo root on the machine hosting the stack:
 
 ```powershell
-npm run db        # dev: psql into local TimescaleDB
+npm run db        # psql into the Docker TimescaleDB
 npm run db:prod   # prod server (over SSH): psql into prod DB
+```
+
+Herd flow (native postgres, defaults from `.env.development`):
+
+```powershell
+$env:PGPASSWORD = '00000000'
+psql -h 127.0.0.1 -U postgres -d server_monitoring
 ```
 
 GUI (DBeaver/TablePlus/pgAdmin): dev → `localhost:5432` / `postgres` / `postgres` /

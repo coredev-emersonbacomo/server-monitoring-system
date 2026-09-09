@@ -1,7 +1,7 @@
 import { useState, type ReactNode, type ComponentPropsWithoutRef } from "react";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useFormStoreForComponents } from "./FormStoreProvider";
+import { useFormStoreForComponents } from "./useFormStoreForComponents";
 import { useForm } from "./createFormStore";
 
 type ButtonProps = ComponentPropsWithoutRef<typeof Button>;

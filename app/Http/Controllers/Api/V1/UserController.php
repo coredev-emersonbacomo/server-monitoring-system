@@ -278,10 +278,20 @@ class UserController extends Controller
     /** @return ClientData[] */
     public function clients(string $userUuid): array
     {
+        $currentUserId = request()->user()?->id;
         $user = User::where('uuid', $userUuid)->firstOrFail();
-        $clients = $user->clients()->withCount('servers')->get();
+        // Same eager shape as ClientController@index: fromModel reads
+        // secopclients + counts per row, which was 2 queries/client.
+        $clients = $user->clients()
+            ->withCount([
+                'servers',
+                'secopclients',
+                'servers as servers_online_count' => fn ($q) => $q->where('status', 'online'),
+            ])
+            ->with(['secopclients' => fn ($q) => $currentUserId ? $q->where('users.id', $currentUserId) : $q])
+            ->get();
 
-        return ClientData::collect($clients->map(fn (Client $client) => ClientData::fromModel($client)))->toArray();
+        return ClientData::collect($clients->map(fn (Client $client) => ClientData::fromModel($client, $currentUserId)))->toArray();
     }
 
     public function addClient(AddClientData $data, string $userUuid): JsonResponse

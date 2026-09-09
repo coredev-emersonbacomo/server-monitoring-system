@@ -252,7 +252,7 @@ const PAGES: Record<
     },
     logs: {
         title: "Logs",
-        description: "Activity, server health, and agent audit logs.",
+        description: "Activity, server health, agent, file activity, and lifecycle logs.",
         Content: DocsLogsContent,
     },
     reports: {
@@ -490,7 +490,7 @@ export default function Docs() {
     const [searchQuery, setSearchQuery] = useState("");
     const [searchOpen, setSearchOpen] = useState(false);
     const [activeResultIndex, setActiveResultIndex] = useState(0);
-    const searchIndexRef = useRef<SearchIndexEntry[]>([]);
+    const [searchIndex, setSearchIndex] = useState<SearchIndexEntry[]>([]);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
     // Track desktop breakpoint so the sidebar panel is fully unmounted on
@@ -552,7 +552,7 @@ export default function Docs() {
                 subtopics,
             });
         });
-        searchIndexRef.current = entries;
+        setSearchIndex(entries);
     }, []);
 
     const routeId = sectionId ?? "";
@@ -626,7 +626,7 @@ export default function Docs() {
     const searchResults = useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
         if (!q || q.length < 2) return [];
-        return searchIndexRef.current
+        return searchIndex
             .map((entry) => {
                 let score = 0;
                 if (entry.title.toLowerCase().includes(q)) score += 10;
@@ -637,7 +637,7 @@ export default function Docs() {
             .filter((r) => r.score > 0)
             .sort((a, b) => b.score - a.score)
             .slice(0, 8);
-    }, [searchQuery]);
+    }, [searchQuery, searchIndex]);
 
     // Cmd/Ctrl+K to focus search
     useEffect(() => {

@@ -39,8 +39,16 @@ class JwtGuard implements Guard
 
     private ?string $currentToken = null;
 
+    // Set via setUser() (actingAs in tests). Survives the per-request reset
+    // below — by design actingAs bypasses token auth, like Laravel's guards.
+    // The app container is rebuilt per test, so this never leaks across tests.
+    private bool $actingAsUser = false;
+
     public function user(): ?Authenticatable
     {
+        if ($this->actingAsUser && $this->user !== null) {
+            return $this->user;
+        }
         // If the global request has changed (new HTTP request in tests or async context),
         // reset all cached state so revocation checks always run on a fresh request.
         $currentRequest = request();
@@ -101,6 +109,7 @@ class JwtGuard implements Guard
     {
         $this->user = $user;
         $this->validated = true;
+        $this->actingAsUser = true;
     }
 
     public function check(): bool

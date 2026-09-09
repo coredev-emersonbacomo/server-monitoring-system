@@ -7,7 +7,7 @@ use App\Data\ClientData;
 use App\Data\ClientsIndexData;
 use App\Data\CreateClientData;
 use App\Data\SecopsUserData;
-use App\Data\ServerData;
+use App\Data\ServerListData;
 use App\Data\UpdateClientData;
 use App\Http\Controllers\Controller;
 use App\Jobs\DeleteStorageAsset;
@@ -318,13 +318,25 @@ class ClientController extends Controller
         return ClientData::fromModel($client);
     }
 
-    /** @return ServerData[] */
+    /** @return ServerListData[] */
     public function servers(string $clientUuid): array
     {
+        $user = request()->user();
         $client = Client::where('uuid', $clientUuid)->firstOrFail();
-        $servers = $client->servers()->withTrashed()->get();
+        $servers = $client->servers()->withTrashed()
+            ->with([
+                'client.secopclients' => fn ($q) => $user ? $q->where('users.id', $user->id) : $q,
+                'agent',
+                'activeProvisionToken',
+            ])
+            ->get();
 
-        return ServerData::collect($servers->map(fn (Server $s) => ServerData::fromModel($s)))->toArray();
+        // Lean rows (same mapper as the servers list): the per-row detail
+        // payload here was ~9 queries/server with nothing rendering it.
+        $rawOffline = (int) Setting::get('offline_threshold', '15');
+        $offlineThresholdSec = $rawOffline >= 1000 ? intdiv($rawOffline, 1000) : ($rawOffline ?: 15);
+
+        return ServerListData::collect($servers->map(fn (Server $s) => ServerListData::fromModel($s, $user?->id, $offlineThresholdSec)))->toArray();
     }
 
     public function destroy(string $clientUuid): JsonResponse

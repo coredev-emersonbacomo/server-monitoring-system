@@ -1,11 +1,13 @@
 import { Mail, AtSign, User, BadgeCheck, ShieldAlert, Loader2 } from "lucide-react";
 import { FloatingInput } from "@/components/ui/floatingInput";
+import type { FormStore } from "@/components/ui/form";
+import type { ProfileForm } from "../constants/profileSchema";
 import { InfoBlock } from "./InfoBlock";
 
 interface BasicInformationSectionProps {
     mode: "view" | "edit" | "create";
-    form: any;
-    store: any;
+    form: ProfileForm;
+    store: FormStore<ProfileForm>;
     email: string;
     username: string;
     phone_number: string;

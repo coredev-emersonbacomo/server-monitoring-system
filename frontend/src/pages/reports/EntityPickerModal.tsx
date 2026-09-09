@@ -80,17 +80,23 @@ export function EntityPickerModal({
         ...queryParams,
     };
 
-    const clientsQuery = useClients(type === "clients" ? clientParams : undefined);
-    const serversQuery = type === "servers" ? useServers(serverParams) : null;
+    // Both hooks always run (rules-of-hooks); the inactive type stays
+    // disabled so only one request fires.
+    const clientsQuery = useClients(type === "clients" ? clientParams : undefined, {
+        enabled: type === "clients",
+    });
+    const serversQuery = useServers(type === "servers" ? serverParams : undefined, {
+        enabled: type === "servers",
+    });
 
-    const isLoading = type === "clients" ? clientsQuery.isLoading : (serversQuery?.isLoading ?? false);
-    const error = type === "clients" ? clientsQuery.error : (serversQuery?.error ?? null);
+    const isLoading = type === "clients" ? clientsQuery.isLoading : serversQuery.isLoading;
+    const error = type === "clients" ? clientsQuery.error : serversQuery.error;
     const items = useMemo<EntityItemData[]>(() => {
         if (type === "clients") {
             return (clientsQuery.data?.data ?? []) as unknown as EntityItemData[];
         }
-        return ((serversQuery?.data?.data ?? []) as unknown as EntityItemData[]);
-    }, [type, clientsQuery.data, serversQuery?.data]);
+        return ((serversQuery.data?.data ?? []) as unknown as EntityItemData[]);
+    }, [type, clientsQuery.data, serversQuery.data]);
 
     const toggle = (uuid: string) => {
         setSelected((prev) => {

@@ -119,13 +119,12 @@ func parseInotify(buf []byte, out chan<- rawOp,
 				out <- rawOp{path: full, kind: "create", isDir: isDir}
 			case mask&unix.IN_CLOSE_WRITE != 0 || mask&unix.IN_MODIFY != 0:
 				out <- rawOp{path: full, kind: "modify", isDir: isDir}
-			case mask&unix.IN_DELETE != 0 || mask&unix.IN_DELETE_SELF != 0:
-				if isDir {
-					wdMu.Lock()
-					delete(wdToPath, wd)
-					wdMu.Unlock()
-				}
-				out <- rawOp{path: full, kind: "delete", isDir: isDir}
+		case mask&unix.IN_DELETE != 0 || mask&unix.IN_DELETE_SELF != 0:
+			// NOTE: do NOT delete wdToPath[wd] here — wd is the parent being
+			// reported on, and wiping it would blind the whole subtree. The
+			// deleted child's own wd is cleaned via its IN_DELETE_SELF /
+			// IN_IGNORED events above.
+			out <- rawOp{path: full, kind: "delete", isDir: isDir}
 			case mask&unix.IN_MOVED_FROM != 0:
 				out <- rawOp{path: full, kind: "renameOld", isDir: isDir}
 			case mask&unix.IN_MOVED_TO != 0:

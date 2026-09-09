@@ -57,7 +57,7 @@ export function getLogSubjectInfo(log: ActivityLogData): { title: string; subtit
             } else if (typeof obj.message === "string" && obj.message) {
                 // e.g. "Updated client profile details for coreDev" or "Added secop to coreDev"
                 const match =
-                    obj.message.match(/(?:for|to|from|on)\s+([A-Za-z0-9_\-\.\s]+)$/i) ||
+                    obj.message.match(/(?:for|to|from|on)\s+([A-Za-z0-9_.\s-]+)$/i) ||
                     obj.message.match(/`([^`]+)`/);
                 if (match?.[1]) {
                     extractedName = match[1].trim();

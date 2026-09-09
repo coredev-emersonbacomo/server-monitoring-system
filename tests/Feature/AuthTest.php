@@ -111,6 +111,12 @@ test('me endpoint returns 401 without token', function () {
     $response->assertStatus(401);
 });
 
+test('me endpoint returns 401 without token even for non-JSON requests', function () {
+    // No Accept header: used to 500 on route('login') instead of 401.
+    $response = $this->get('/api/me');
+    $response->assertStatus(401);
+});
+
 test('me endpoint returns 401 with invalid token', function () {
     $response = $this->withHeaders([
         'Authorization' => 'Bearer invalid-token',
@@ -239,6 +245,7 @@ test('revoke session endpoint works', function () {
     ])->getJson('/api/sessions');
 
     $sessions = $sessionsResponse->json('data');
+    expect($sessions)->not->toBeEmpty();
     $nonCurrentSession = collect($sessions)->first(fn ($s) => ! $s['current_session']);
 
     if ($nonCurrentSession) {

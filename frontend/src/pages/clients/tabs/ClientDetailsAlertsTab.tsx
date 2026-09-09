@@ -1,8 +1,10 @@
 import { NodeConfigEditor } from "@/components/node-config/NodeConfigEditor";
+import type { ClientData } from "@/types/models";
+import type { useClientAlertTab } from "../hooks/useClientAlertTab";
 
 interface ClientDetailsAlertsTabProps {
-    client: any;
-    clientAlertTab: any;
+    client: ClientData;
+    clientAlertTab: ReturnType<typeof useClientAlertTab>;
 }
 
 export function ClientDetailsAlertsTab({ client, clientAlertTab }: ClientDetailsAlertsTabProps) {

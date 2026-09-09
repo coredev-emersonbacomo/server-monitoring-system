@@ -24,7 +24,7 @@ type FilterTab =
 const CARD_ESTIMATE_PX = 300;
 
 function useColumnCount(scrollRef: React.RefObject<HTMLElement | null>) {
-    const [cols, setCols] = useState(3);
+    const [cols, setCols] = useState<number | null>(null);
 
     useEffect(() => {
         if (!scrollRef.current) return;
@@ -59,10 +59,10 @@ function ClientGrid({
     "use no memo";
     const sentinelRef = useRef<HTMLDivElement>(null);
     const columnCount = useColumnCount(scrollRef);
-
     const visibleClients = clients.slice(0, visibleCount);
 
     const rows = useMemo(() => {
+        if (!columnCount) return [];
         const result: ClientData[][] = [];
         for (let i = 0; i < visibleClients.length; i += columnCount) {
             result.push(visibleClients.slice(i, i + columnCount));
@@ -71,7 +71,7 @@ function ClientGrid({
     }, [visibleClients, columnCount]);
 
     const virtualizer = useVirtualizer({
-        count: rows.length,
+        count: rows.length || 1,
         getScrollElement: () => document.documentElement,
         estimateSize: () => CARD_ESTIMATE_PX + 16,
         overscan: 3,
@@ -94,6 +94,8 @@ function ClientGrid({
         return () => observer.disconnect();
     }, [hasMore, onLoadMore]);
 
+    if (columnCount === null) return <SkeletonGrid />;
+
     const totalHeight = virtualizer.getTotalSize();
 
     return (
@@ -105,7 +107,6 @@ function ClientGrid({
                         <div
                             key={virtualRow.key}
                             data-index={virtualRow.index}
-                            ref={virtualizer.measureElement}
                             style={{
                                 position: "absolute",
                                 top: 0,

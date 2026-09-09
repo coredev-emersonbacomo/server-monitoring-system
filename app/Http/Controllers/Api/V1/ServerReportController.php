@@ -19,7 +19,7 @@ class ServerReportController extends Controller
     {
         $range = $request->integer('hours', 24);
 
-        $updates = $server->serverUpdates()
+        $updates = $server->updates()
             ->where('created_at', '>=', now()->subHours($range))
             ->orderBy('created_at')
             ->get();

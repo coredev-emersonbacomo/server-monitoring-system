@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import IndexHeader from "@/components/IndexHeader";
 import api from "@/api/api";
-import { Form, createFormStore, useForm } from "@/components/ui/form";
+import { Form, createFormStore, useForm, type FormStore } from "@/components/ui/form";
 import { useClient, useClientServers } from "@/hooks/useClients";
 import {
     Dialog,
@@ -37,6 +37,8 @@ const schema = z.object({
         return isNaN(num) ? 0 : Math.max(0, num);
     }),
 });
+
+type ServerForm = z.infer<typeof schema>;
 
 export default function CreateServer() {
     useDocumentTitle("Create Server");
@@ -165,7 +167,7 @@ export default function CreateServer() {
                                 </span>
                             </div>
 
-                            <CreateServerFields store={store as any} clientName={client?.name} clientLoading={clientLoading} />
+                            <CreateServerFields store={store} clientName={client?.name} clientLoading={clientLoading} />
                         </div>
 
                         <div className="px-6 py-4 flex items-center justify-between bg-muted/30 rounded-b-xl">
@@ -261,11 +263,11 @@ function CreateServerFields({
     clientName,
     clientLoading,
 }: {
-    store: ReturnType<typeof createFormStore>;
+    store: FormStore<ServerForm>;
     clientName?: string;
     clientLoading?: boolean;
 }) {
-    const form = useForm(store, (s) => s.form as z.infer<typeof schema>);
+    const form = useForm(store, (s) => s.form);
     const errors = useForm(store, (s) => s.errors);
     const { inputRef, formatValue, handleChange, handleKeyDown, handlePaste } = useFormattedNumberInput();
 

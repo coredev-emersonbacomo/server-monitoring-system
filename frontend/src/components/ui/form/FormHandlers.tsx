@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useFormStoreForComponents } from "./FormStoreProvider";
+import { useFormStoreForComponents } from "./useFormStoreForComponents";
 
 // ─── ValidationHandler ───────────────────────────────────────────────────────
 

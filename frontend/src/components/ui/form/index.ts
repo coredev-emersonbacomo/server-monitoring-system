@@ -9,7 +9,7 @@
 //   const mode = useForm(store, s => s.mode);
 
 import { createFormStore, useForm, type FormStore, type FormState } from "./createFormStore";
-import { useFormStoreForComponents } from "./FormStoreProvider";
+import { useFormStoreForComponents } from "./useFormStoreForComponents";
 import { FormRoot, type FormRootProps } from "./FormRoot";
 import {
     ValidationHandler,

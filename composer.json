@@ -16,10 +16,10 @@
         "laravel/reverb": "^1.0",
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^3.0",
-        "pjadanowski/scramble-extras": "*",
-        "predis/predis": "*",
+        "pjadanowski/scramble-extras": "^0.3",
+        "predis/predis": "^3.5",
         "spatie/laravel-data": "^4.23",
-        "tpetry/laravel-postgresql-enhanced": "*"
+        "tpetry/laravel-postgresql-enhanced": "^3.7"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.7",

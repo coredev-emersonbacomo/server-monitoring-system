@@ -31,10 +31,14 @@ export function DeleteClientIndexModal({
             toast.success(`${client.name} has been deleted.`);
             setConfirmText("");
             onClose();
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const apiError = err as {
+                response?: { data?: { message?: string } };
+                message?: string;
+            };
             toast.error(
-                err?.response?.data?.message ||
-                    err?.message ||
+                apiError?.response?.data?.message ||
+                    apiError?.message ||
                     "Failed to delete client. Please try again.",
             );
         }

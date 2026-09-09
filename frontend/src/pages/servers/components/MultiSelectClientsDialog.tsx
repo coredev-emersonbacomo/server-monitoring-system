@@ -50,10 +50,13 @@ export function MultiSelectClientsDialog({
         }
     }, [open, selectedClientUuids]);
 
-    const { data: response, isLoading } = useClients({
-        q: debouncedSearch || undefined,
-        per_page: 150,
-    });
+    const { data: response, isLoading } = useClients(
+        {
+            q: debouncedSearch || undefined,
+            per_page: 150,
+        },
+        { enabled: open },
+    );
     const clients = useMemo(() => response?.data ?? [], [response]);
 
     const allFilteredSelected = useMemo(() => {
