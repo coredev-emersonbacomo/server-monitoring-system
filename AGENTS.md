@@ -4,7 +4,9 @@
 
 You MUST read, in order:
 
-1. `.opencode/skills/work-state/SKILL.md`
+1. `TODO/WORKFLOW.md` (tracked mirror of the work-state skill; if a local
+   `.opencode/skills/work-state/SKILL.md` exists it takes precedence as the
+   live copy, but this file is the shared truth — keep them in sync)
 2. The relevant file under `TODO/`
 3. Relevant ADRs under `docs/architecture/` when the task involves an architectural decision.
 
