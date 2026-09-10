@@ -40,8 +40,8 @@
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="NGROK_SKIP_BROWSER_WARNING" value="false" force="true"/>
         <server name="NGROK_SKIP_BROWSER_WARNING" value="false" force="true"/>
-        <env name="CLOUDINARY_CLOUD_NAME" value="dwpiboxib"/>
-        <env name="CLOUDINARY_API_KEY" value="***REMOVED-CLOUDINARY-API-KEY***"/>
-        <env name="CLOUDINARY_API_SECRET" value="***REMOVED-CLOUDINARY-API-SECRET***"/>
+        <env name="CLOUDINARY_CLOUD_NAME" value="test-cloud"/>
+        <env name="CLOUDINARY_API_KEY" value="test-key"/>
+        <env name="CLOUDINARY_API_SECRET" value="test-secret"/>
     </php>
 </phpunit>

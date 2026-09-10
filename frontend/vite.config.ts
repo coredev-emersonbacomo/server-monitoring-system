@@ -37,15 +37,6 @@ export default defineConfig({
             clientPort: 443,
         } : undefined,
         proxy: {
-            // Reverb WebSocket (/app/<key>): the ngrok tunnel only reaches
-            // Vite :5173, so the WS upgrade must ride through like HMR does
-            // instead of hitting Reverb directly (localhost hits 127.0.0.1:8081
-            // and never touches this proxy).
-            "/app": {
-                target: "http://127.0.0.1:8081",
-                changeOrigin: true,
-                ws: true,
-            },
             "/api": {
                 target: upstream,
                 changeOrigin: true,
@@ -82,6 +73,26 @@ export default defineConfig({
             "/telescope": {
                 target: upstream,
                 changeOrigin: true,
+            },
+            // Reverb websockets through the tunnel (mirrors docker/Caddyfile:
+            // /app/* → reverb:8081 in prod). The tunnel only reaches Vite
+            // :5173, so the WS upgrade must ride through like HMR does.
+            // Reverb is always on host :8081 in dev (Herd binds
+            // 127.0.0.1:8081, Docker maps 8081:8081), so the target is
+            // fixed — only the public host/port/scheme the browser uses
+            // varies (VITE_REVERB_*).
+            "/app": {
+                target: "http://127.0.0.1:8081",
+                changeOrigin: true,
+                ws: true,
+            },
+            // Docs dev server (always on host :5174). Docs app uses
+            // base "/docs/", so paths arrive prefixed and pass through
+            // as-is — no rewrite. Same fixed-target argument as /app.
+            "/docs": {
+                target: "http://127.0.0.1:5174",
+                changeOrigin: true,
+                ws: true,
             },
         },
     },

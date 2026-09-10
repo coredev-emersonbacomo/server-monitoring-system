@@ -121,7 +121,16 @@ if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
     Write-Host "`rStopping service for cleanup...   "
     Wait-ServiceWithDots "Waiting for service to stop" $ServiceName 15
     sc.exe delete $ServiceName | Out-Null
-    Log "Removed service registration."
+    # sc delete only marks for deletion; SCM finalizes once all handles
+    # close. Wait bounded so a later reinstall never sees 1072, and warn
+    # when an open handle (Services console, Task Manager) pins it.
+    $deadline = (Get-Date).AddSeconds(30)
+    while ((Get-Date) -lt $deadline -and (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) { Start-Sleep -Milliseconds 500 }
+    if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
+        Log "Warning: service '$ServiceName' is still marked-for-deletion (a handle is open). Close Services console / Task Manager and ensure no MonitorAgent.exe runs; reboot before reinstalling if it persists."
+    } else {
+        Log "Removed service registration."
+    }
 }
 
 if (Test-Path $InstanceDir) {

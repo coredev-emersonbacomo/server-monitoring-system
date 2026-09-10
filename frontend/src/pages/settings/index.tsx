@@ -17,7 +17,9 @@ import IndexHeader from "@/components/IndexHeader";
 import PageLayout from "@/components/PageLayout";
 
 const SHOW_PIPELINE_VISUALIZER = import.meta.env.VITE_ALERTS_VISUAL_DEBUGGER === "true";
-const DOCS_BASE_URL = import.meta.env.VITE_DOCS_URL || "http://localhost:5174";
+// Empty fallback keeps the link relative (/docs/...) so it resolves through
+// the frontend /docs proxy on whatever origin serves the app.
+const DOCS_BASE_URL = import.meta.env.VITE_DOCS_URL || "";
 
 function Settings() {
     useDocumentTitle("Settings");

@@ -329,6 +329,7 @@ class AgentController extends Controller
         $scriptPath = public_path('install.sh');
         $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
         $script = str_replace('{{APP_URL}}', env('APP_URL') ?: url('/'), $script);
+        $script = str_replace('{{NGROK_SKIP_BROWSER_WARNING}}', filter_var(env('NGROK_SKIP_BROWSER_WARNING', false), FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false', $script);
 
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }
@@ -338,6 +339,7 @@ class AgentController extends Controller
         $scriptPath = public_path('install.ps1');
         $script = file_exists($scriptPath) ? file_get_contents($scriptPath) : '';
         $script = str_replace('{{APP_URL}}', env('APP_URL') ?: url('/'), $script);
+        $script = str_replace('{{NGROK_SKIP_BROWSER_WARNING}}', filter_var(env('NGROK_SKIP_BROWSER_WARNING', false), FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false', $script);
 
         return response($script, 200, ['Content-Type' => 'text/plain']);
     }

@@ -8,7 +8,7 @@ import type { ChannelAuthorizationCallback } from "pusher-js";
 type ChannelAuthorizationData = NonNullable<
     Parameters<ChannelAuthorizationCallback>[1]
 >;
-import { getAccessToken } from "@/api/tokenManager";
+import { getAccessToken, refreshAccessToken } from "@/api/tokenManager";
 import { globalMetrics } from "@/lib/metricsBuffer";
 import type { StatPoint } from "@/types/stats";
 
@@ -47,6 +47,9 @@ function getEcho(): Echo<"reverb"> {
         enabledTransports: ["ws", "wss"],
         // Use a custom authorizer so the JWT token is always read fresh at
         // subscription time — no stale token, no internal config mutation.
+        // Like the REST client, it self-heals on 401: the in-memory token may
+        // be missing (cold reload racing subscription) or expired, so refresh
+        // first when empty and retry the auth POST once after a 401.
         authorizer: (channel: { name: string }) => ({
             authorize: (
                 socketId: string,
@@ -55,27 +58,58 @@ function getEcho(): Echo<"reverb"> {
                     data: ChannelAuthorizationData | null,
                 ) => void,
             ) => {
-                fetch("/api/broadcasting/auth", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${getAccessToken()}`,
-                    },
-                    body: JSON.stringify({
-                        socket_id: socketId,
-                        channel_name: channel.name,
-                    }),
-                })
-                    .then((res) => res.json())
-                    .then((data: ChannelAuthorizationData) =>
-                        callback(null, data),
-                    )
-                    .catch((err) =>
+                const attempt = async (retried: boolean): Promise<void> => {
+                    const token =
+                        getAccessToken() ??
+                        (retried ? null : await refreshAccessToken());
+                    let res: Response;
+                    try {
+                        res = await fetch("/api/broadcasting/auth", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({
+                                socket_id: socketId,
+                                channel_name: channel.name,
+                            }),
+                        });
+                    } catch (err) {
                         callback(
                             err instanceof Error ? err : new Error(String(err)),
                             null,
-                        ),
-                    );
+                        );
+                        return;
+                    }
+                    if (res.status === 401 && !retried) {
+                        const fresh = await refreshAccessToken();
+                        if (fresh) {
+                            await attempt(true);
+                            return;
+                        }
+                        window.dispatchEvent(new CustomEvent("auth:logout"));
+                    }
+                    if (!res.ok) {
+                        callback(
+                            new Error(`Channel auth failed: ${res.status}`),
+                            null,
+                        );
+                        return;
+                    }
+                    try {
+                        callback(
+                            null,
+                            (await res.json()) as ChannelAuthorizationData,
+                        );
+                    } catch (err) {
+                        callback(
+                            err instanceof Error ? err : new Error(String(err)),
+                            null,
+                        );
+                    }
+                };
+                void attempt(false);
             },
         }),
     });

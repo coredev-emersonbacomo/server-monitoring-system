@@ -83,7 +83,7 @@ MAIL_PORT=587
 MAIL_USERNAME=null
 MAIL_PASSWORD=null
 MAIL_FROM_ADDRESS="hello@example.com"
-MAIL_FROM_NAME="Laravel"         # display name only, not an email; defaults to APP_NAME if removed`}</CodeBlock>
+MAIL_FROM_NAME="\${APP_NAME}"    # display name only, not an email; defaults to APP_NAME if removed`}</CodeBlock>
                 <p>
                     <InlineCode>MAIL_SCHEME=null</InlineCode> on port 587 uses
                     STARTTLS automatically. For port 465 use{" "}

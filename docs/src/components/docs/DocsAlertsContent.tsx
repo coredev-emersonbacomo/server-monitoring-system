@@ -438,8 +438,10 @@ export function DocsAlertsContent() {
                     </li>
                     <li>
                         <strong>Auth:</strong> challenge-response (
-                        <InlineCode>/auth/challenge</InlineCode> → sign →{" "}
-                        <InlineCode>/auth/verify</InlineCode> → JWT 900s, memory
+                        <InlineCode>/api/v1/agent/auth/challenge</InlineCode> →
+                        sign →{" "}
+                        <InlineCode>/api/v1/agent/auth/verify</InlineCode> → JWT
+                        900s, memory
                         only). Auth response carries{" "}
                         <InlineCode>{"servers: [{server_uuid, port_filter, process_filter, network_filter}]"}</InlineCode>{" "}
                         and <InlineCode>heartbeat_interval</InlineCode> - builds{" "}
@@ -489,9 +491,11 @@ export function DocsAlertsContent() {
                     </li>
                     <li>
                         <strong>Timers → notifications:</strong>{" "}
-                        <InlineCode>NodeTaskScheduler</InlineCode> inserts{" "}
-                        <InlineCode>node_config_tasks</InlineCode> (`run_at =
-                        now+delay`), <InlineCode>FireNodeTimer</InlineCode>{" "}
+                        <InlineCode>NodeTaskScheduler</InlineCode> stores
+                        cache-based tasks (<InlineCode>node_task:</InlineCode>{" "}
+                        keys with <InlineCode>fire_at</InlineCode>), fired every
+                        5 seconds by <InlineCode>node-tasks:process</InlineCode>{" "}
+                        through <InlineCode>FireNodeTimer</InlineCode>{" "}
                         (queue) re-evaluates with{" "}
                         <InlineCode>timer_fire:true</InlineCode> and historical
                         DB check, then <InlineCode>SendNotification</InlineCode>{" "}
@@ -638,26 +642,34 @@ export function DocsAlertsContent() {
                         <InlineCode>
                             NodeConfigCache::resolveForServer
                         </InlineCode>{" "}
-                        → <InlineCode>engine.trigger</InlineCode> per metric (
-                        <InlineCode>
-                            server_status, cpu, memory, disk, network_usage,
-                            ports_ping
-                        </InlineCode>
-                        ). Heartbeat path does the same via{" "}
+                        → on an offline transition triggers only the{" "}
+                        <InlineCode>server_status</InlineCode> metric (
+                        <InlineCode>MonitorServer::evaluateServerAlerts</InlineCode>
+                        , sync <InlineCode>engine.trigger</InlineCode> with{" "}
+                        <InlineCode>'offline'</InlineCode>). The heartbeat path
+                        dispatches <InlineCode>EvaluateNodeConfig</InlineCode>{" "}
+                        per metric via{" "}
                         <InlineCode>
                             HeartbeatService::evaluateMetricsForNodeConfig
                         </InlineCode>{" "}
-                        + <InlineCode>CheckServerOffline</InlineCode> (`delay
-                        offline_threshold+2s`).
+                        (<InlineCode>cpu_usage</InlineCode>,{" "}
+                        <InlineCode>memory_usage</InlineCode>,{" "}
+                        <InlineCode>disk_usage</InlineCode>) plus a separate{" "}
+                        <InlineCode>server_status</InlineCode>{" "}
+                        <InlineCode>'online'</InlineCode> trigger -{" "}
+                        <InlineCode>network_usage</InlineCode> /{" "}
+                        <InlineCode>ports_ping</InlineCode> are evaluated
+                        elsewhere (e.g. <InlineCode>PingServerPorts</InlineCode>
+                        ).
                     </p>
                     <CodeBlock>{`// routes/console.php
 Schedule::command('system:monitor')->everyMinute();
 
-// MonitorServer::handle()
-$config = NodeConfigCache::resolveForServer($server->uuid);
-foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage','ports_ping'] as $metric) {
-    $nodeId = $engine->findMetricNode($config, $metric);
-    EvaluateNodeConfig::dispatch($config->id, $nodeId, $value, ['server_id'=>$server->id]);
+// MonitorServer::evaluateServerAlerts() — offline transition only
+$sourceNodeId = $engine->findMetricNode($config, 'server_status');
+$result = $engine->trigger($config, $sourceNodeId, 'offline', $extraState, $server->id);
+foreach ($result['timers'] as $timer) {
+    NodeTaskScheduler::schedule(...); // cache, not a DB table
 }`}</CodeBlock>
                 </SubSection>
 
@@ -709,7 +721,7 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                             `SustainedNode` → `NotificationNode` / `ActionNode`.
                         </li>
                         <li>
-                            Collect `timers[]` (`node_config_tasks`) +
+                            Collect `timers[]` (cache via `NodeTaskScheduler`) +
                             `actions[]` (`ActionItem` via `NotificationNode`).
                         </li>
                     </ol>
@@ -719,12 +731,17 @@ foreach (['server_status','cpu_usage','memory_usage','disk_usage','network_usage
                     <p>
                         `SustainedNode`/`RepeatNode`/`CheckAfterNode` return{" "}
                         <InlineCode>{"NodeResult::withTimer(NodeTimer{delayMs, context})"}</InlineCode>
-                        . Caller (`MonitorServer`/`EvaluateNodeConfig`) does:
+                        . Caller (`MonitorServer`/`EvaluateNodeConfig`) hands
+                        each timer to the cache scheduler instead of dispatching
+                        a delayed job directly:
                     </p>
                     <CodeBlock>{`foreach ($result['timers'] as $timer) {
-    FireNodeTimer::dispatch($timer['node_config_id'], $timer['node_id'], $timer['context'])
-        ->delay(now()->addMilliseconds($timer['delay_ms']));
-}`}</CodeBlock>
+    NodeTaskScheduler::schedule(
+        $timer['node_config_id'], $timer['node_id'],
+        $timer['delay_ms'], $timer['context'], $serverId,
+    ); // cache key node_task:* with fire_at
+}
+// node-tasks:process (every 5s) fires due timers via FireNodeTimer`}</CodeBlock>
                     <p>
                         `FireNodeTimer::handle` calls{" "}
                         <InlineCode>

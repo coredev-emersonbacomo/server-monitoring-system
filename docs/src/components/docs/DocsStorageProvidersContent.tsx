@@ -68,11 +68,11 @@ class S3Provider implements StorageProvider
                         <InlineCode>providers</InlineCode>:
                     </p>
                     <CodeBlock>{`'s3' => [
-    'key' => env('S3_KEY'),
-    'secret' => env('S3_SECRET'),
-    'region' => env('S3_REGION'),
-    'bucket' => env('S3_BUCKET'),
-    'delivery_prefix' => env('S3_DELIVERY_PREFIX'),
+    'key' => env('AWS_ACCESS_KEY_ID'),
+    'secret' => env('AWS_SECRET_ACCESS_KEY'),
+    'region' => env('AWS_DEFAULT_REGION'),
+    'bucket' => env('AWS_BUCKET'),
+    'delivery_prefix' => env('AWS_DELIVERY_PREFIX'),
 ],`}</CodeBlock>
                 </SubSection>
 

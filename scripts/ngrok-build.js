@@ -7,6 +7,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { spawn, spawnSync, execSync } from "child_process";
 import { loadEnvIntoProcess, restoreEnvLine } from "./load-env.js";
+import { isDockerStale, markDockerFresh } from "./docker-build-state.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const logFile = path.join(root, ".ngrok.log");
@@ -66,8 +67,17 @@ async function main() {
   const isDockerUpstream = /127\.0\.0\.1:8000|localhost:8000/.test(upstream);
 
   // 1. Docker stack up (postgres/redis/reverb/queue/scheduler/app).
+  // Rebuild when build inputs went stale (Dockerfile/lockfiles); plain
+  // `up` never rebuilds a stale image, and compose itself recreates
+  // containers whose config changed.
   console.log("[ngrok:build] Bringing docker stack up...");
-  const docker = spawnSync("docker", ["compose", "up", "-d"], {
+  const upArgs = ["compose", "up", "-d"];
+  const staleBuild = isDockerStale(root);
+  if (staleBuild) {
+    console.log("[ngrok:build] Docker build inputs changed - rebuilding images...");
+    upArgs.push("--build");
+  }
+  const docker = spawnSync("docker", upArgs, {
     stdio: "inherit",
     shell: true,
     cwd: root,
@@ -76,6 +86,7 @@ async function main() {
     console.error("[ngrok:build] docker compose up failed — is Docker Desktop running?");
     process.exit(1);
   }
+  if (staleBuild) markDockerFresh(root);
 
   // 2. Env overrides for the build (VITE_* baked into bundles).
   process.env.VITE_REVERB_HOST = domain;

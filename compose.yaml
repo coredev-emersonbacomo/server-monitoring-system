@@ -1,4 +1,7 @@
 # Dev stack: `docker compose up --build`
+# (npm run docker / npm run ngrok / npm run ngrok:build detect a stale image
+# and add --build for you; manual --build is only needed when running compose
+# directly after dependency changes.)
 # App code comes from bind mount (live edits). Deps baked in image.
 # Mirrors scripts/entry.js dev services: redis, reverb, queue, scheduler.
 

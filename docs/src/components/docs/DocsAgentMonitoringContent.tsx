@@ -284,7 +284,7 @@ export function DocsAgentMonitoringContent() {
                     <strong>Monitoring Filter</strong> dialog on the server's
                     Metrics tab (one for ports, one for processes). Saving PATCHes{" "}
                     <InlineCode>
-                        {"/v1/clients/{clientUuid}/servers/{serverUuid}/monitoring"}
+                        {"/api/v1/clients/{clientUuid}/servers/{serverUuid}/monitoring"}
                     </InlineCode>
                     , which stores the filter and broadcasts an{" "}
                     <InlineCode>AgentConfigUpdated</InlineCode> event over the

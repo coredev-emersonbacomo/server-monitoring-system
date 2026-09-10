@@ -31,7 +31,9 @@
     "tunnel": "node scripts/tunnel.js",
     "ngrok": "node scripts/ngrok.js",
     "ngrok:build": "node scripts/ngrok-build.js",
-    "docker": "node scripts/docker.js"
+    "docker": "node scripts/ngrok.js docker",
+    "docker:clean": "node scripts/docker-clean.js",
+    "ngrok:clean": "node scripts/docker-clean.js"
   },
   "workspaces": [
     "frontend",

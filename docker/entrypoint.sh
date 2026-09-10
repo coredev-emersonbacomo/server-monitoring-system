@@ -1,6 +1,7 @@
 #!/bin/sh
-# Container entrypoint: migrate, rebuild frontend if VITE_* env changed,
-# then exec the service command (serve / reverb:start / queue:work / ...).
+# Container entrypoint: migrate, rebuild frontend if VITE_* env changed
+# (app only — workers never serve assets), then exec the service command
+# (serve / reverb:start / queue:work / ...).
 # This makes RUNTIME env (.env.docker) authoritative —
 # no image rebuild needed when URLs/keys change, just restart.
 set -e
@@ -22,15 +23,26 @@ CURRENT=$(env | grep '^VITE_' | sort | sha256sum | cut -d' ' -f1)
 CACHED=""
 [ -f "$CHECKSUM_FILE" ] && CACHED=$(cat "$CHECKSUM_FILE")
 
-if [ "$CURRENT" != "$CACHED" ]; then
-  echo "[entrypoint] VITE_* changed — rebuilding frontend..."
-  # Frontend workspace + root Laravel assets only. Docs site stays local-only
-  # (`npm run docs` in repo root) and is never built or hosted here.
-  npm run build -w frontend && npx vite build
-  echo "$CURRENT" > "$CHECKSUM_FILE"
-else
-  echo "[entrypoint] Frontend up to date, skipping build."
-fi
+# Frontend build on app boot only (same gate as migrations below): only the
+# HTTP server serves these assets, the output lands on the shared bind mount
+# for everyone, and a single builder avoids N parallel vite builds racing on
+# the same output dir. Workers skip straight to exec.
+case "$*" in
+  *"frankenphp"*|*"-S"*|*"artisan serve"*)
+    if [ "$CURRENT" != "$CACHED" ]; then
+      echo "[entrypoint] VITE_* changed — rebuilding frontend..."
+      # Frontend workspace + root Laravel assets only. Docs site stays local-only
+      # (`npm run docs` in repo root) and is never built or hosted here.
+      npm run build -w frontend && npx vite build
+      echo "$CURRENT" > "$CHECKSUM_FILE"
+    else
+      echo "[entrypoint] Frontend up to date, skipping build."
+    fi
+    ;;
+  *)
+    echo "[entrypoint] Non-serving command — skipping frontend build."
+    ;;
+esac
 
 # Migrations + first-boot seeding on app boot only (matches frankenphp
 # serve / php -S in any form). migrate --force is idempotent.

@@ -90,6 +90,16 @@ already goes through `make()`. Follow-up: double-quoted hashtable keys are strip
 - `frontend/src/components/ui/floatingInput.tsx`, `docs/src/components/ui/input.tsx`
 
 ### Verification
+- 2026-09-10: realtime-over-tunnel auth fix — `broadcasting/auth` 401d on every
+  private-channel subscribe (Echo authorizer fired once with the in-memory JWT:
+  null on cold reload, expired later) while REST self-healed via 401-refresh,
+  so no WS events (stats, AgentUninstalled) ever arrived. Fix in the one shared
+  authorizer (`frontend/src/hooks/useServerSocket.ts`): refresh when empty,
+  retry the auth POST once after a 401, `auth:logout` when refresh fails.
+  `npx tsc -b` clean. Needs: Vite restart + tunnel-tab reload, then confirm
+  401s gone and uninstall flips the detail page live. Also removed a duplicate
+  `/app` proxy entry in `frontend/vite.config.ts` (second won at runtime, but
+  tsc failed on the duplicate key).
 - `node -c scripts/ngrok.js`, `node -c scripts/ngrok-build.js`: passing
 - docs `npx tsc -b`: passing
 - Live `npm run ngrok` run: NOT yet verified (needs Docker + ngrok on operator machine)

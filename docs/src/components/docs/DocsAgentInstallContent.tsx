@@ -321,9 +321,10 @@ Get-Content "C:\\ProgramData\\MonitorAgent\\instances\\<uuid>\\agent.log"`}</Cod
                 </p>
                 <ol className="list-decimal pl-5 space-y-1.5">
                     <li>
-                        <InlineCode>uninstall.flag</InlineCode> /{" "}
-                        <InlineCode>detach.flag</InlineCode> (
-                        <InlineCode>pending</InlineCode>) written into{" "}
+                        <InlineCode>uninstall.flag</InlineCode> (
+                        <InlineCode>pending</InlineCode>) or{" "}
+                        <InlineCode>detach.flag</InlineCode> (containing the{" "}
+                        <InlineCode>server_uuid</InlineCode>) written into{" "}
                         <InlineCode>
                             C:\ProgramData\MonitorAgent\instances\&lt;uuid&gt;
                         </InlineCode>{" "}
@@ -491,11 +492,12 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/uninstall/windows.ps
                     <li>
                         <strong>System logs</strong> -{" "}
                         <InlineCode>
-                            journalctl -u monitor-agent@&lt;uuid&gt;.service
+                            journalctl -u monitor-agent.service
                         </InlineCode>{" "}
-                        on Linux, or the Windows Services snap-in for the{" "}
-                        <InlineCode>MonitorAgent-&lt;uuid&gt;</InlineCode>{" "}
-                        service.
+                        on Linux (per-instance{" "}
+                        <InlineCode>monitor-agent@*</InlineCode> units are
+                        legacy), or the Windows Services snap-in for the{" "}
+                        <InlineCode>MonitorAgent</InlineCode> service.
                     </li>
                 </ul>
                 <SubSection title="Common causes">

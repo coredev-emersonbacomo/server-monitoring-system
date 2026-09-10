@@ -45,17 +45,31 @@ export function DocsDashboardContent() {
                 <p>
                     The Action Board lists items that need a human decision.
                     Each card shows the action type, the affected client/server,
-                    the assignee, and a severity color (notice, warning, or
-                    critical).
+                    the assignee, and a severity color (critical, warning, or
+                    info).
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>No SecOps assigned</strong> - a client has no
-                        SecOps users assigned.
+                        <strong>No SecOps assigned</strong> (
+                        <InlineCode>no_secops</InlineCode>, warning) - a client
+                        has no SecOps users assigned. Resolved automatically
+                        when someone is assigned.
                     </li>
                     <li>
-                        <strong>Server offline</strong> - a server went offline.
-                        Clicking the card opens the server.
+                        <strong>Server offline</strong> (
+                        <InlineCode>server_offline</InlineCode>, critical) - a
+                        server went offline. Clicking the card opens the server.
+                    </li>
+                    <li>
+                        <strong>Alert notifications</strong> (
+                        <InlineCode>alert_&lt;metric&gt;[_&lt;threshold&gt;]</InlineCode>,
+                        e.g. <InlineCode>alert_cpu_usage_90</InlineCode>) -
+                        fired alert-engine notifications, one item per metric
+                        chain per server (sustained levels overwrite, they do
+                        not stack). Severity comes from the alert config
+                        (critical / warning / info) and the card shows the
+                        notification title. Items arrive{" "}
+                        <strong>unassigned</strong> - claiming is manual.
                     </li>
                 </ul>
                 <p>
@@ -63,7 +77,9 @@ export function DocsDashboardContent() {
                     unassigned item, <strong>Unclaim</strong> one assigned to
                     you, or <strong>Mark completed</strong>. The{" "}
                     <strong>Completed</strong> button shows the history of
-                    completed actions.
+                    completed actions. When an alert condition clears, its board
+                    item disappears if unclaimed, or is auto-completed if
+                    someone claimed it - same for servers coming back online.
                 </p>
             </Section>
 
@@ -315,8 +331,9 @@ export function DocsServersContent() {
                 <ol className="list-decimal pl-5 space-y-1.5">
                     <li>
                         Click <strong>Generate Installation Command</strong>.
-                        The backend creates a provision token (valid for 1 hour)
-                        and produces one-liner commands for the target OS.
+                        The backend creates a provision token (valid for 30
+                        minutes) and produces one-liner commands for the target
+                        OS.
                     </li>
                     <li>Run the appropriate command on the machine:</li>
                 </ol>
@@ -339,7 +356,7 @@ powershell -ExecutionPolicy Bypass -Command "irm '{APP_URL}/install/windows.ps1'
                     the first heartbeat arrives (default every 5 seconds).
                 </p>
                 <Callout>
-                    The provision token expires after 1 hour. If it expires
+                    The provision token expires after 30 minutes. If it expires
                     before you finish installing, generate a new one.
                 </Callout>
                 <DocImage
@@ -725,7 +742,8 @@ export function DocsSettingsContent() {
                     </li>
                     <li>
                         <strong>Port Ping Interval</strong> - how often the
-                        backend TCP-pings exposed ports (default 60s).
+                        backend TCP-pings exposed ports (seeded 5s in dev for
+                        observability; production default 60s).
                     </li>
                     <li>
                         <strong>Latest Agent Version</strong> - the current

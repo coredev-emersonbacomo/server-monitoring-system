@@ -148,9 +148,41 @@ class DashboardController extends Controller
 
                 return $aOrder <=> $bOrder ?: $b->created_at->timestamp <=> $a->created_at->timestamp;
             })
+            ->values()
+            // Auto-clear rows whose condition is already fixed, no matter which
+            // path fixed it (claimed → completed for history, unclaimed →
+            // deleted). Event-driven clears miss recoveries that flow through
+            // other paths, so the board reconciles on read and never serves
+            // a stale row.
+            ->filter(fn ($action) => ! $this->resolveIfConditionFixed($action))
             ->values();
 
         return ActionItemData::collect($actions)->toArray();
+    }
+
+    /**
+     * Resolve an open action item when its condition no longer holds.
+     * Returns true when the item was resolved (caller drops it).
+     */
+    private function resolveIfConditionFixed(ActionItem $action): bool
+    {
+        $fixed = match ($action->action_type) {
+            'server_offline' => ! $action->server || $action->server->status !== ServerStatus::Offline->value,
+            'no_secops' => ! $action->client || $action->client->secopclients()->exists(),
+            default => false,
+        };
+
+        if (! $fixed) {
+            return false;
+        }
+
+        if ($action->assigned_to) {
+            ActionItem::whereKey($action->id)->update(['status' => 'completed', 'completed_at' => now()]);
+        } else {
+            ActionItem::whereKey($action->id)->delete();
+        }
+
+        return true;
     }
 
     public function claim(int $actionId): ActionItemData

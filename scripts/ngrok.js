@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// npm run ngrok — HMR dev flow: backend (Docker app or Herd) + Vite HMR + ngrok tunnel to Vite.
+// npm run ngrok - HMR dev flow: backend (Docker app or Herd) + Vite HMR + ngrok tunnel to Vite.
+// npm run docker - same runner with no tunnel: Docker app on :8000 + Vite HMR on :5173.
 // Architecture:
 //   Internet → ngrok → Vite :5173 (HMR WebSocket included)
 //                    Vite proxy → Laravel API (local, never exposed)
@@ -16,6 +17,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { spawn, spawnSync, execSync } from "child_process";
 import { loadEnvIntoProcess, restoreEnvLine } from "./load-env.js";
+import { isDockerStale, markDockerFresh } from "./docker-build-state.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const logFile = path.join(root, ".ngrok.log");
@@ -76,8 +78,26 @@ function tunnelReady(domain) {
 
 function dockerDaemonOk() {
   try {
-    const r = spawnSync("docker", ["info"], { stdio: "ignore", shell: true, cwd: root });
+    // Timeout: a wedged daemon makes `docker info` hang forever, which used
+    // to stall the script with zero output. Unresponsive counts as down.
+    const r = spawnSync("docker", ["info"], { stdio: "ignore", shell: true, cwd: root, timeout: 15000 });
     return r.status === 0;
+  } catch {
+    return false;
+  }
+}
+
+// True when the compose service already has a local image (so `up` needs no
+// `--build`). Any failure means "not built" - a first-ever run then builds
+// automatically instead of failing on a missing image.
+function imageBuilt(service) {
+  try {
+    const r = spawnSync("docker", ["compose", "images", service, "-q"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      cwd: root,
+    });
+    return r.status === 0 && (r.stdout || "").trim().length > 0;
   } catch {
     return false;
   }
@@ -160,9 +180,13 @@ function liveNgrokPid() {
   try {
     let cmdline = "";
     if (process.platform === "win32") {
+      // Timeout: WMI hangs for minutes on a stressed box and this runs before
+      // the first log line (silent stall). Fail open — a stale pid file is
+      // simply overwritten.
       const r = spawnSync("powershell", ["-NoProfile", "-Command", `(Get-CimInstance Win32_Process -Filter 'ProcessId = ${pid}').CommandLine`], {
         encoding: "utf8",
         stdio: ["ignore", "pipe", "ignore"],
+        timeout: 10000,
       });
       cmdline = r.status === 0 ? r.stdout || "" : "";
     } else {
@@ -226,6 +250,34 @@ function exitLog(line = "") {
   try { fs.writeSync(1, line + "\n"); } catch {}
 }
 
+// Best-effort native-postgres guard (Herd path only): create DB_DATABASE if
+// missing, since `migrate:fresh` never creates it. Never fatal; the backend
+// wait is authoritative. Docker paths never call this (POSTGRES_DB auto-creates).
+function ensureDatabase() {
+  // Single argv to `php -r` (no shell): double quotes only inside, so the
+  // JS single-quoted string needs no escaping except \\n.
+  const code =
+    '$h=getenv("DB_HOST");$h=$h?$h:"127.0.0.1";' +
+    '$p=getenv("DB_PORT");$p=$p?$p:"5432";' +
+    '$d=getenv("DB_DATABASE");$d=$d?$d:"server_monitoring";' +
+    '$u=getenv("DB_USERNAME");$u=$u?$u:"postgres";' +
+    '$w=getenv("DB_PASSWORD");$w=$w===false?"":$w;' +
+    'try{$c=new PDO("pgsql:host=$h;port=$p;dbname=postgres",$u,$w);' +
+    '$c->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);' +
+    '$c->exec("CREATE DATABASE ".chr(34).str_replace(chr(34),chr(34).chr(34),$d).chr(34));' +
+    'echo "[ngrok] Created database $d - run `npm run resetdb` to migrate, then re-run.\\n";exit(0);}' +
+    'catch(PDOException $e){if(stripos($e->getMessage(),"already exists")!==false)' +
+    '{echo "[ngrok] Database $d exists.\\n";exit(0);}' +
+    'echo "[ngrok] WARNING: could not ensure database $d (".$e->getMessage().") - continuing.\\n";exit(0);}';
+  try {
+    const r = spawnSync("php", ["-r", code], { encoding: "utf8", cwd: root });
+    if (r.error) throw r.error;
+    if (r.stdout) process.stdout.write(r.stdout);
+  } catch {
+    console.log("[ngrok] WARNING: could not ensure the database (`php` unavailable) - continuing.");
+  }
+}
+
 let domain = "";
 let upstream = "";
 let tunnelUrl = "";
@@ -242,12 +294,20 @@ async function main() {
 
   // `npm run ngrok rebuild`: Dockerfile changes don't apply to a running image;
   // --build recreates images from the current Dockerfile before the stack starts.
-  const doRebuild = process.argv.slice(2).includes("rebuild");
+  const cliArgs = process.argv.slice(2);
+  // `npm run docker` reuses this runner with no tunnel (no domain, no ngrok binary).
+  const useTunnel = !cliArgs.includes("docker");
+  const doRebuild = cliArgs.includes("rebuild");
 
   domain = process.env.NGROK_DOMAIN;
   upstream = (process.env.NGROK_UPSTREAM || "").replace(/\/+$/, "");
 
-  if (!domain) {
+  if (!useTunnel) {
+    // No tunnel: the backend is always the local Docker app; no reserved domain needed.
+    upstream = "http://127.0.0.1:8000";
+  }
+
+  if (useTunnel && !domain) {
     console.error("[ngrok] ERROR: NGROK_DOMAIN environment variable is required");
     console.error("[ngrok] Add NGROK_DOMAIN=your-reserved.ngrok-free.dev to your .env");
     process.exit(1);
@@ -261,22 +321,27 @@ async function main() {
 
   const otherNgrok = liveNgrokPid();
   if (otherNgrok) {
-    console.error(`[ngrok] Another ngrok.js run is already active (PID ${otherNgrok}). Stop it first (Ctrl+C), then re-run.`);
-    console.error("[ngrok] If no ngrok run is active, delete .ngrok.pid and re-run.");
+    console.error(`[ngrok] Another ngrok.js run is already active (PID ${otherNgrok}). From the repo root, paste this to stop it and clear the lock:`);
+    console.error(`[ngrok]   Stop-Process -Id ${otherNgrok} -Force -ErrorAction SilentlyContinue; Remove-Item .\\.ngrok.pid -Force -ErrorAction SilentlyContinue`);
     process.exit(1);
   }
   try { fs.writeFileSync(pidFile, String(process.pid)); } catch {}
 
-  tunnelUrl = `https://${domain}`;
-  // Always in memory BEFORE `docker compose up`: ${APP_URL} interpolation in
-  // compose.yaml bakes the tunnel URL into the app container as real env
-  // (createImmutable: real env beats the bind-mounted .env file, which is
-  // why the .env write alone never reached ProvisioningService).
-  process.env.APP_URL = tunnelUrl;
-  // Lets generated agent install commands bypass ngrok's free-tier browser
-  // interstitial. compose.yaml interpolates this into the app container;
-  // the .env write below covers Herd only. Never set in prod (pinned false).
-  process.env.NGROK_SKIP_BROWSER_WARNING = "true";
+  if (useTunnel) {
+    tunnelUrl = `https://${domain}`;
+    // Always in memory BEFORE `docker compose up`: ${APP_URL} interpolation in
+    // compose.yaml bakes the tunnel URL into the app container as real env
+    // (createImmutable: real env beats the bind-mounted .env file, which is
+    // why the .env write alone never reached ProvisioningService).
+    process.env.APP_URL = tunnelUrl;
+    // Lets generated agent install commands bypass ngrok's free-tier browser
+    // interstitial. compose.yaml interpolates this into the app container;
+    // the .env write below covers Herd only. Never set in prod (pinned false).
+    process.env.NGROK_SKIP_BROWSER_WARNING = "true";
+  } else {
+    // No tunnel: provision/install URLs point at the local Docker app.
+    process.env.APP_URL = upstream;
+  }
   const isDockerUpstream = /127\.0\.0\.1:8000|localhost:8000/.test(upstream);
 
   // Track spawned children from here so Ctrl+C cleans up even mid-build
@@ -284,14 +349,16 @@ async function main() {
   // phase that can block, not at the end of main().
   let ngrokChild = null;
   let viteChild = null;
+  let docsChild = null;
   let cleanedUp = false;
   function cleanup() {
     if (cleanedUp) return;
     cleanedUp = true;
     try { fs.unlinkSync(pidFile); } catch {}
-    exitLog("\n[ngrok] Stopping tunnel and dev server...");
+    exitLog(useTunnel ? "\n[ngrok] Stopping tunnel and dev server..." : "\n[ngrok] Stopping dev server...");
     killTree(ngrokChild?.pid);
     killTree(viteChild?.pid);
+    killTree(docsChild?.pid);
     if (isDockerUpstream) {
       // `stop`, never `down`: containers keep their volumes/images so the
       // next run restarts in seconds, but RAM goes back to zero now.
@@ -372,7 +439,12 @@ async function main() {
         console.error("[ngrok] Could not open Docker Desktop automatically. Start it manually, then re-run.");
         process.exit(1);
       }
-      const daemonUp = await waitFor(() => dockerDaemonOk(), 120, 1000);
+      const daemonUp = await waitFor(
+        () => dockerDaemonOk(),
+        120,
+        1000,
+        (s) => { if (s % 15 === 0) console.log(`[ngrok] Still waiting for Docker Desktop... (${s}s elapsed)`); }
+      );
       if (!daemonUp) {
         console.error("[ngrok] Docker Desktop did not start within 120s. Start it manually, then re-run.");
         process.exit(1);
@@ -382,8 +454,19 @@ async function main() {
     console.log("");
     console.log("[ngrok] Bringing docker stack up (app serves :8000)...");
     // Stream compose output: per-service lines show realtime startup/status.
+    // Auto-build on first run (missing app image) and whenever build inputs
+    // went stale (Dockerfile/lockfiles); `rebuild` forces it every time.
+    const stale = isDockerStale(root);
+    const needsBuild = doRebuild || !imageBuilt("app") || stale;
+    if (needsBuild && !doRebuild) {
+      console.log(
+        stale
+          ? "[ngrok] Docker build inputs changed - rebuilding images..."
+          : "[ngrok] App image not found - building it first (one-time)..."
+      );
+    }
     const upArgs = ["compose", "up", "-d"];
-    if (doRebuild) upArgs.push("--build");
+    if (needsBuild) upArgs.push("--build");
     const docker = spawnSync("docker", upArgs, {
       stdio: "inherit",
       shell: true,
@@ -393,6 +476,7 @@ async function main() {
       console.error("[ngrok] docker compose up failed.");
       process.exit(1);
     }
+    if (needsBuild) markDockerFresh(root);
     statusLine("Docker stack", green("UP"));
     console.log("");
     console.log("[ngrok] Waiting for the Docker app on :8000 (cold boot runs composer + migrate, can take minutes)...");
@@ -411,7 +495,9 @@ async function main() {
     statusLine("Backend :8000", green(`READY (${elapsedSec(backendT0)}s)`));
     console.log("");
   } else {
-    console.log(`[ngrok] Using Herd backend at ${upstream} — make sure Herd is running.`);
+    console.log(`[ngrok] Using Herd backend at ${upstream} - make sure Herd is running.`);
+    // Native postgres only: ensure the database exists before waiting on it.
+    ensureDatabase();
     const herdUp = await waitFor(() => httpOk(`${upstream}/api/health`), 15, 1000);
     if (!herdUp) {
       console.error(`[ngrok] Backend at ${upstream} is not responding. Start Herd, then re-run.`);
@@ -424,16 +510,24 @@ async function main() {
     console.log("");
   }
 
-  // 3. Env for the Vite dev server (HMR host + Reverb via tunnel).
-  process.env.NGROK_DOMAIN = domain;
+  // 3. Env for the Vite dev server (HMR host + Reverb).
   process.env.NGROK_UPSTREAM = upstream;
   // Tells the spawned Vite where to proxy /api + /sanctum (+ agent paths).
-  // A dedicated var (not NGROK_UPSTREAM) so plain `npm run dev` — which also
-  // loads .env — keeps proxying to Herd instead of a dead :8000.
+  // A dedicated var (not NGROK_UPSTREAM) so plain `npm run dev` - which also
+  // loads .env - keeps proxying to Herd instead of a dead :8000.
   process.env.VITE_BACKEND_URL = upstream;
-  process.env.VITE_REVERB_HOST = domain;
-  process.env.VITE_REVERB_PORT = "443";
-  process.env.VITE_REVERB_SCHEME = "https";
+  if (useTunnel) {
+    // Reverb reaches the browser through the tunnel (wss over 443).
+    process.env.NGROK_DOMAIN = domain;
+    process.env.VITE_REVERB_HOST = domain;
+    process.env.VITE_REVERB_PORT = "443";
+    process.env.VITE_REVERB_SCHEME = "https";
+    // Settings links docs via VITE_DOCS_URL — point it at the tunnel so it
+    // resolves through the frontend /docs proxy instead of dead localhost.
+    process.env.VITE_DOCS_URL = tunnelUrl;
+  }
+  // Docker mode: VITE_REVERB_* keep the loaded .env.development defaults
+  // (127.0.0.1:8081 over plain ws), which is exactly the local Docker Reverb.
 
   // 4. Start Vite dev server for frontend (with HMR). Run node directly
   // on the Vite bin with no shell: an npm.cmd/shell wrapper is a cmd.exe
@@ -464,6 +558,46 @@ async function main() {
   }
   statusLine("Vite dev server", green(`READY (${elapsedSec(viteT0)}s)`));
   console.log("");
+
+  // Docs dev server (:5174), reached through the frontend /docs proxy.
+  // Same spawn shape as Vite above: plain node, no shell wrapper.
+  console.log("[ngrok] Starting docs dev server...");
+  docsChild = spawn(process.execPath, [viteBin], {
+    stdio: "inherit",
+    windowsHide: true,
+    cwd: path.join(root, "docs"),
+    env: { ...process.env },
+  });
+  docsChild.on("error", (err) => {
+    console.error(`[ngrok] Failed to start docs: ${err.message}`);
+    cleanup();
+    process.exit(1);
+  });
+
+  console.log("[ngrok] Waiting for the docs dev server...");
+  const docsT0 = Date.now();
+  const docsUp = await waitFor(() => httpOk("http://127.0.0.1:5174/docs/"), 60, 1000);
+  if (!docsUp) {
+    console.error("[ngrok] Docs dev server did not respond on :5174 within 60s.");
+    cleanup();
+    process.exit(1);
+  }
+  statusLine("Docs dev server", green(`READY (${elapsedSec(docsT0)}s)`));
+  console.log("");
+
+  if (!useTunnel) {
+    // `npm run docker`: local Docker dev with HMR. No tunnel, no public URL.
+    console.log(dim("========================================"));
+    console.log(`  ${greenBold("docker dev is live (HMR mode, no tunnel)")}`);
+    console.log(`  ${dim("➜")}  App:     ${cyan(upstream)}`);
+    console.log(`  ${dim("➜")}  API:     ${cyan(`${upstream}/api`)}`);
+    console.log(`  ${dim("➜")}  Docs:    ${cyan("http://127.0.0.1:5173/docs")}`);
+    console.log(`  ${dim("➜")}  Backend: ${cyan(upstream)}`);
+    console.log(dim("========================================"));
+    console.log("");
+    console.log("[ngrok] Press Ctrl+C to stop dev server and docker stack.");
+    return;
+  }
 
   // 5. Start ngrok tunnel to Vite (port 5173).
   console.log("[ngrok] Starting ngrok tunnel to Vite (port 5173)...");
@@ -510,6 +644,7 @@ async function main() {
   console.log(`  ${greenBold("ngrok tunnel is live (HMR mode)")}`);
   console.log(`  ${dim("➜")}  URL:     ${cyan(tunnelUrl)}`);
   console.log(`  ${dim("➜")}  API:     ${cyan(`${tunnelUrl}/api`)}`);
+  console.log(`  ${dim("➜")}  Docs:    ${cyan(`${tunnelUrl}/docs`)}`);
   console.log(`  ${dim("➜")}  Backend: ${cyan(upstream)}`);
   console.log(dim("========================================"));
   console.log("");

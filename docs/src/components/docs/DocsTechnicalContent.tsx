@@ -870,40 +870,264 @@ export function DocsCredentialsContent() {
                     Secrets are never committed to the repository. They live in
                     gitignored environment files and are injected into the
                     process at runtime, and sensitive values are stored hashed
-                    where applicable.
+                    where applicable: user passwords are bcrypt hashes,
+                    refresh-token secrets and password-reset codes/tokens are
+                    SHA-256 hashes, and agent private keys never leave the
+                    monitored machine at all.
                 </p>
             </Section>
-            <Section title="Under construction">
-                <Callout type="warning">
-                    The credentials-storing design is being updated and is not
-                    ready yet. This is currently a placeholder.
-                </Callout>
+            <Section title="Environment layers">
                 <p>
-                    Today, the high-level picture is:
+                    Loading is immutable - the first source that sets a variable
+                    wins. Precedence, highest first:
                 </p>
+                <ol className="list-decimal pl-5 space-y-1.5">
+                    <li>
+                        <strong>Real process environment</strong> (Docker, Herd,
+                        CI) - always wins, which is why{" "}
+                        <InlineCode>.env.docker</InlineCode> works: the image
+                        receives secrets as real OS variables that beat every
+                        env file (see{" "}
+                        <InlineCode>bootstrap/app.php</InlineCode>).
+                    </li>
+                    <li>
+                        <InlineCode>.env</InlineCode> (gitignored) - personal
+                        overrides only: Gmail SMTP app credentials, real
+                        Cloudinary keys, <InlineCode>MUTE_NOTIFICATION=true</InlineCode>.
+                    </li>
+                    <li>
+                        <InlineCode>.env.development</InlineCode> (tracked) -
+                        shared dev defaults. Committed secrets here are dummies
+                        (<InlineCode>JWT_SECRET=dev-only-…</InlineCode>);{" "}
+                        <InlineCode>.env.example</InlineCode> is regenerated from
+                        it on every <InlineCode>node entry.js</InlineCode> run.
+                    </li>
+                </ol>
+                <Callout>
+                    <InlineCode>VITE_*</InlineCode> variables are mirrored into
+                    the browser bundle by <InlineCode>scripts/entry.js</InlineCode> -
+                    they are public by design. Never put a secret behind a{" "}
+                    <InlineCode>VITE_</InlineCode> prefix.
+                </Callout>
+            </Section>
+            <Section title="User passwords">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <InlineCode>.env</InlineCode> (gitignored) - Gmail SMTP
-                        app credentials and other local secrets, loaded directly by
-                        Laravel (overrides <InlineCode>.env.development</InlineCode>).
+                        Stored as <strong>bcrypt hashes</strong> only, via the{" "}
+                        <InlineCode>hashed</InlineCode> cast on{" "}
+                        <InlineCode>App\Models\User</InlineCode> (
+                        <InlineCode>BCRYPT_ROUNDS=12</InlineCode> in dev).
+                        Plaintext passwords never touch the database and are
+                        never logged.
                     </li>
                     <li>
-                        <InlineCode>.env.production</InlineCode> (gitignored) -
-                        production secrets such as the JWT secret and Neon
-                        database URL.
-                    </li>
-                    <li>
-                        Agent auth is <strong>challenge-response</strong>: the
-                        agent keeps a private key in the OS keystore on the
-                        machine, registers its public key with the backend, and
-                        authenticates with short-lived, single-use challenges -
-                        there is no persistent token.
+                        Changing a password (profile update) revokes all other
+                        sessions; resetting a password revokes{" "}
+                        <strong>all</strong> sessions, so a compromised session
+                        does not survive recovery.
                     </li>
                 </ul>
+            </Section>
+            <Section title="Sessions and tokens">
+                <ul className="list-disc pl-5 space-y-1.5">
+                    <li>
+                        <strong>Access token</strong> - HS256 JWT signed with{" "}
+                        <InlineCode>JWT_SECRET</InlineCode> (15 min TTL), with{" "}
+                        <InlineCode>sub</InlineCode> (user id) and{" "}
+                        <InlineCode>sid</InlineCode> (session UUID) claims. The{" "}
+                        <InlineCode>JwtGuard</InlineCode> re-checks{" "}
+                        <InlineCode>user_sessions</InlineCode> on every request,
+                        so a revoked or compromised session is rejected
+                        immediately, not at token expiry.
+                    </li>
+                    <li>
+                        <strong>Refresh token</strong> - a ULID id plus a 256-bit
+                        random secret (<InlineCode>id.secret</InlineCode>). Only
+                        the <strong>SHA-256 hash</strong> of the secret is stored
+                        (<InlineCode>refresh_token_hash</InlineCode>); the raw
+                        value travels only in an <strong>HttpOnly, SameSite=lax
+                        cookie</strong> scoped to <InlineCode>/api</InlineCode>.
+                    </li>
+                    <li>
+                        <strong>Rotation</strong> - each refresh rotates the
+                        pair and keeps the previous hash for a{" "}
+                        <strong>30-second grace window</strong> (multi-tab
+                        safety). Presenting an older token after that is treated
+                        as reuse: the session is marked compromised and revoked.
+                    </li>
+                    <li>
+                        <strong>Logout / logout-all</strong> revoke the current
+                        session / every other session via{" "}
+                        <InlineCode>SessionManager</InlineCode>.
+                    </li>
+                </ul>
+            </Section>
+            <Section title="Password reset">
+                <ul className="list-disc pl-5 space-y-1.5">
+                    <li>
+                        <strong>6-digit code</strong>, stored as a SHA-256 hash,
+                        valid 10 minutes, with a 60-second resend cooldown and
+                        throttled endpoints. Responses never reveal whether an
+                        account exists (masked email only) and every attempt is
+                        audit-logged.
+                    </li>
+                    <li>
+                        Verifying the code mints a <strong>64-character reset
+                        token</strong> (also SHA-256 hashed at rest, 15-minute
+                        TTL) for the actual password change.
+                    </li>
+                    <li>
+                        A successful reset revokes all sessions and deletes the
+                        reset row, so the token cannot be replayed.
+                    </li>
+                </ul>
+            </Section>
+            <Section title="Agent identity and auth">
+                <ul className="list-disc pl-5 space-y-1.5">
+                    <li>
+                        Each installation generates its own <strong>RSA keypair
+                        </strong> at install time. The private key never leaves
+                        the machine: Windows keeps it as a persisted CNG key (
+                        <InlineCode>NCrypt</InlineCode>, named{" "}
+                        <InlineCode>MonitorAgentIdentity-&lt;installation-uuid&gt;</InlineCode>
+                        , non-exportable); Linux keeps it as a{" "}
+                        <InlineCode>0600</InlineCode> file owned by the service
+                        account, outside the instance config directory.
+                        Uninstall deletes the OS key.
+                    </li>
+                    <li>
+                        The backend stores only the <strong>public half</strong>:
+                        the SPKI DER (base64) plus its <strong>SHA-256
+                        fingerprint</strong> (<InlineCode>agents.public_key</InlineCode> /{" "}
+                        <InlineCode>public_key_hash</InlineCode>, plus{" "}
+                        <InlineCode>agent_identities</InlineCode>). The
+                        fingerprint is an identifier, not a secret - possession
+                        of the private key is what authenticates.
+                    </li>
+                    <li>
+                        <strong>Challenge-response</strong>: the agent asks for a
+                        challenge by fingerprint, receives a random single-use
+                        challenge (60 s TTL,{" "}
+                        <InlineCode>AGENT_CHALLENGE_TTL</InlineCode>), and signs
+                        it with RSA-SHA256 (PKCS#1 v1.5). The backend verifies
+                        the signature against the registered public key.
+                    </li>
+                    <li>
+                        On success the backend issues a short-lived{" "}
+                        <strong>agent JWT</strong> (HS256, same{" "}
+                        <InlineCode>JWT_SECRET</InlineCode>,{" "}
+                        <InlineCode>kind=agent</InlineCode>, 15 min TTL via{" "}
+                        <InlineCode>AGENT_SESSION_TTL=900</InlineCode>) that the
+                        agent keeps <strong>in process memory only</strong> for
+                        heartbeats, updates, and the Reverb private-channel
+                        subscription. There is no persistent agent token.
+                    </li>
+                </ul>
+            </Section>
+            <Section title="Provision tokens">
                 <p>
-                    The detailed credential lifecycle, rotation, and provider
-                    handling will be documented here once the design settles.
+                    Dashboard-generated install tokens are 64 random characters,
+                    single-use, with a 30-minute TTL. Regenerating revokes any
+                    previous active token for the server; expired tokens are
+                    swept hourly (<InlineCode>tokens:cleanup</InlineCode>) and
+                    on every <InlineCode>system:monitor</InlineCode> tick, and
+                    registration marks them used inside a transaction so they
+                    cannot be replayed.
                 </p>
+            </Section>
+            <Section title="What is hashed, what is short-lived">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm border border-border/40 rounded-lg overflow-hidden">
+                        <thead className="bg-muted/30">
+                            <tr>
+                                <th className="text-left px-3 py-2 font-medium text-foreground">
+                                    Credential
+                                </th>
+                                <th className="text-left px-3 py-2 font-medium text-foreground">
+                                    At rest
+                                </th>
+                                <th className="text-left px-3 py-2 font-medium text-foreground">
+                                    Lifetime
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/30">
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    User password
+                                </td>
+                                <td className="px-3 py-1.5">bcrypt hash</td>
+                                <td className="px-3 py-1.5">until changed</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    Refresh secret
+                                </td>
+                                <td className="px-3 py-1.5">SHA-256 hash</td>
+                                <td className="px-3 py-1.5">rotated per refresh (30 d session)</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    Reset code / token
+                                </td>
+                                <td className="px-3 py-1.5">SHA-256 hash</td>
+                                <td className="px-3 py-1.5">10 min / 15 min, single use</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    Agent private key
+                                </td>
+                                <td className="px-3 py-1.5">OS keystore only, never in DB</td>
+                                <td className="px-3 py-1.5">until uninstall</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    Agent challenge
+                                </td>
+                                <td className="px-3 py-1.5">pending row, consumed on verify</td>
+                                <td className="px-3 py-1.5">60 s, single use</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    Agent session JWT
+                                </td>
+                                <td className="px-3 py-1.5">memory only, never persisted</td>
+                                <td className="px-3 py-1.5">15 min</td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-1.5 font-mono text-xs">
+                                    Provision token
+                                </td>
+                                <td className="px-3 py-1.5">DB row with status + expiry</td>
+                                <td className="px-3 py-1.5">30 min, single use</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </Section>
+            <Section title="Rotation">
+                <ul className="list-disc pl-5 space-y-1.5">
+                    <li>
+                        Rotating <InlineCode>JWT_SECRET</InlineCode> or{" "}
+                        <InlineCode>APP_KEY</InlineCode> invalidates all user
+                        and agent sessions - plan a maintenance window.
+                    </li>
+                    <li>
+                        Infrastructure secrets (<InlineCode>DB_PASSWORD</InlineCode>,{" "}
+                        <InlineCode>REDIS_PASSWORD</InlineCode>,{" "}
+                        <InlineCode>REVERB_APP_*</InlineCode>,{" "}
+                        <InlineCode>MAIL_USERNAME / MAIL_PASSWORD</InlineCode>{" "}
+                        Gmail app password,{" "}
+                        <InlineCode>CLOUDINARY_*</InlineCode>) rotate in the env
+                        file / container environment, then restart or redeploy.
+                    </li>
+                    <li>
+                        A compromised user account is recovered with password
+                        reset (global logout); a compromised host is recovered by
+                        uninstalling the agent (deletes the OS key) and
+                        deregistering it, then provisioning fresh.
+                    </li>
+                </ul>
             </Section>
 
             <Section title="Production secrets (.env.docker)">
@@ -1102,6 +1326,10 @@ export function DocsSchedulingContent() {
                         agent control channel (config updates, binary
                         updates).
                     </li>
+                    <li>
+                        <InlineCode>system-telemetry</InlineCode> (private) -
+                        aggregate system telemetry broadcasts.
+                    </li>
                 </ul>
             </Section>
 
@@ -1117,7 +1345,7 @@ export function DocsSchedulingContent() {
                         agent version records with the built binaries.
                     </li>
                     <li>
-                        <InlineCode>VerifyNodeConfig</InlineCode> - manual
+                        <InlineCode>node-config:verify</InlineCode> - manual
                         validation of a node config.
                     </li>
                 </ul>
@@ -1129,14 +1357,16 @@ export function DocsSchedulingContent() {
                     <InlineCode>node entry.js dev</InlineCode>, which loads{" "}
                     <InlineCode>.env.development</InlineCode> + personal{" "}
                     <InlineCode>.env</InlineCode> overrides, clears the config
-                    cache, then spawns <InlineCode>scripts/dev.js</InlineCode>{" "}
-                    via <InlineCode>concurrently</InlineCode>:
+                    cache, spawns the artisan workers directly (Reverb
+                    broadcaster, queue worker, task scheduler), and runs the
+                    rest via <InlineCode>concurrently</InlineCode>:
                 </p>
                 <CodeBlock>{`redis-server                    # Redis cache
 npm run dev -w frontend            # Vite dev server (HMR)
-php artisan reverb:start            # WebSocket broadcaster
-php artisan queue:work -q           # Queue worker
-php artisan schedule:work           # Task scheduler`}</CodeBlock>
+npm run dev -w docs                # Docs site
+php artisan reverb:start            # WebSocket broadcaster (spawned by entry.js)
+php artisan queue:work -q           # Queue worker (spawned by entry.js)
+php artisan schedule:work           # Task scheduler (spawned by entry.js)`}</CodeBlock>
                 <p>
                     Secrets (e.g. Gmail SMTP credentials) live in{" "}
                     <InlineCode>.env</InlineCode> (gitignored), which Laravel loads
@@ -1145,8 +1375,10 @@ php artisan schedule:work           # Task scheduler`}</CodeBlock>
                     proxies <InlineCode>/api</InlineCode> and{" "}
                     <InlineCode>/sanctum</InlineCode> to the backend at{" "}
                     <InlineCode>APP_URL</InlineCode>. The SPA connects to Reverb
-                    using <InlineCode>VITE_REVERB_*</InlineCode> values from{" "}
-                    <InlineCode>frontend/.env</InlineCode>.
+                    using <InlineCode>VITE_REVERB_*</InlineCode> values injected
+                    from the root env by the entry script (there is no{" "}
+                    <InlineCode>frontend/.env</InlineCode> - only{" "}
+                    <InlineCode>frontend/.env.example</InlineCode>).
                 </p>
                 <Callout>
                     Set <InlineCode>MUTE_NOTIFICATION=true</InlineCode> in{" "}
@@ -1160,8 +1392,9 @@ php artisan schedule:work           # Task scheduler`}</CodeBlock>
                     <InlineCode>.env.production</InlineCode>, clears config cache,
                     builds). <InlineCode>npm start</InlineCode> additionally
                     deploys the built SPA into <InlineCode>public/</InlineCode>{" "}
-                    via <InlineCode>scripts/start.js</InlineCode>, but does not
-                    start a web server - that must be handled by nginx/Apache.
+                    via <InlineCode>scripts/deploy-spa.js</InlineCode>, but does
+                    not start a web server - that must be handled by
+                    nginx/Apache.
                 </p>
             </Section>
 
@@ -1241,7 +1474,9 @@ npm run test:middleware            # convenience alias`}</CodeBlock>
                 <CodeBlock>{`npm run types   # scramble:clear -> export -> patch-schema -> tsc`}</CodeBlock>
                 <Callout>
                     CI (<InlineCode>.github/workflows/ci.yml</InlineCode>) runs Pest +
-                    Pint + the frontend build on every push. Go agent tests run
+                    Pint + the frontend build on pushes to{" "}
+                    <InlineCode>main</InlineCode> (and pull requests). Go agent
+                    tests run
                     locally from{" "}
                     <InlineCode>resources/agent/go</InlineCode>
                     {" "}(<InlineCode>go test ./...</InlineCode>); on Windows two cases

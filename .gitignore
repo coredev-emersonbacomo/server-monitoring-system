@@ -1,5 +1,6 @@
 *.log
 .ngrok.pid
+.docker-build-hash
 .DS_Store
 .env
 .env.backup

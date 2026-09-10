@@ -29,6 +29,17 @@ readonly LOG_FILE="/var/log/monitor-agent-install.log"
 readonly SERVICE_USER="monitor"
 readonly PROVISION_URL="$APP_URL/api/v1/provision"
 
+# Tunnel bypass header for the curl calls below (provision POST, binary
+# download). The server replaces {{NGROK_SKIP_BROWSER_WARNING}} with
+# "true"/"false" when serving this script; PowerShell-style browser UAs get
+# ngrok's interstitial HTML, and error statuses can arrive flattened to 200,
+# so every HTTP call carries the header and every rejection is surfaced.
+# Raw file (unreplaced) sends no header and stays valid syntax.
+NGROK_CURL_ARGS=()
+if [[ "{{NGROK_SKIP_BROWSER_WARNING}}" == "true" ]]; then
+    NGROK_CURL_ARGS=(-H "ngrok-skip-browser-warning: true")
+fi
+
 log()  { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]  $*" | tee -a "$LOG_FILE"; }
 warn() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [WARN]  $*" | tee -a "$LOG_FILE"; }
 fail() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR] $*" | tee -a "$LOG_FILE" >&2; exit 1; }
@@ -99,7 +110,7 @@ INSTANCE_DIR="${DATA_ROOT}/instances/${INSTALLATION_ID}"
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]  Contacting provision endpoint..." | tee -a "$LOG_FILE" >/dev/null
 printf "Contacting provision endpoint"
 PROVISION_TMP=$(mktemp)
-( curl -fsSL -X POST -H "Content-Type: application/json" -d "{\"token\":\"$TOKEN\",\"hostname\":\"$(hostname)\",\"platform\":\"linux\",\"architecture\":\"$(uname -m)\",\"installer_version\":\"3.0\"}" "$PROVISION_URL" > "$PROVISION_TMP" 2>/dev/null ) &
+( curl -fsSL "${NGROK_CURL_ARGS[@]}" -X POST -H "Content-Type: application/json" -d "{\"token\":\"$TOKEN\",\"hostname\":\"$(hostname)\",\"platform\":\"linux\",\"architecture\":\"$(uname -m)\",\"installer_version\":\"3.0\"}" "$PROVISION_URL" > "$PROVISION_TMP" 2>/dev/null ) &
 curl_pid=$!
 animate_while_pid "Contacting provision endpoint" $curl_pid
 wait $curl_pid || fail "Failed to contact provision API or token invalid."
@@ -110,8 +121,13 @@ DOWNLOAD_URL=$(echo "$PROVISION_RESPONSE" | python3 -c 'import sys, json; print(
 EXPECTED_SHA256=$(echo "$PROVISION_RESPONSE" | python3 -c 'import sys, json; print(json.load(sys.stdin).get("expected_sha256", ""))')
 SERVER_URL=$(echo "$PROVISION_RESPONSE" | python3 -c 'import sys, json; print(json.load(sys.stdin).get("server_url", ""))')
 AGENT_VERSION=$(echo "$PROVISION_RESPONSE" | python3 -c 'import sys, json; print(json.load(sys.stdin).get("agent_version", "3.0"))')
+# Rejection may arrive as 2xx JSON carrying only a message (see above).
+PROVISION_ERROR=$(echo "$PROVISION_RESPONSE" | python3 -c 'import sys, json; print(json.load(sys.stdin).get("message", ""))' 2>/dev/null || true)
 
 if [[ -z "$DOWNLOAD_URL" ]] || [[ -z "$SERVER_URL" ]]; then
+    if [[ -n "$PROVISION_ERROR" ]]; then
+        fail "Provision rejected by server: $PROVISION_ERROR"
+    fi
     fail "Invalid bootstrap configuration returned by server."
 fi
 
@@ -154,7 +170,7 @@ fi
 if [[ "$NEED_DOWNLOAD" == true ]]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]  Downloading agent from $DOWNLOAD_URL..." | tee -a "$LOG_FILE" >/dev/null
     printf "Downloading agent"
-    ( curl -fsSL -o "$AGENT_FILE.tmp" "$DOWNLOAD_URL" 2>/dev/null ) &
+    ( curl -fsSL "${NGROK_CURL_ARGS[@]}" -o "$AGENT_FILE.tmp" "$DOWNLOAD_URL" 2>/dev/null ) &
     dl_pid=$!
     animate_while_pid "Downloading agent" $dl_pid
     wait $dl_pid || fail "Failed to download agent."

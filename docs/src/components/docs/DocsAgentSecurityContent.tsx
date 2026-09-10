@@ -61,8 +61,8 @@ export function DocsAgentSecurityContent() {
                     Challenges are single-use and expire in 60 seconds, so a
                     captured challenge cannot be replayed, and the session token
                     expires in 15 minutes with no refresh mechanism on disk - a
-                    stolen token is only useful for the few seconds of its
-                    life. When the token is rejected (401) the agent silently
+                    stolen token is useful at most until that expiry. When the
+                    token is rejected (401) the agent silently
                     re-authenticates.
                 </Callout>
             </Section>
@@ -70,7 +70,7 @@ export function DocsAgentSecurityContent() {
             <Section title="Registration & provisioning">
                 <p>
                     First contact uses a <strong>one-time provision token</strong>{" "}
-                    (valid 1 hour) generated per server from the dashboard:
+                    (valid 30 minutes) generated per server from the dashboard:
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
@@ -136,7 +136,8 @@ export function DocsAgentSecurityContent() {
                     server ({" "}
                     <InlineCode>private-agent.&lt;serverUuid&gt;</InlineCode> ).
                     Subscription is authorized by{" "}
-                    <InlineCode>/broadcasting/auth/agent</InlineCode>, which does
+                    <InlineCode>/api/broadcasting/auth/agent</InlineCode>, which
+                    does
                     <strong> not</strong> use the normal dashboard middleware - it
                     self-authenticates:
                 </p>
@@ -206,9 +207,9 @@ export function DocsAgentSecurityContent() {
                     <li>
                         After revocation the backend refuses{" "}
                         <InlineCode>/api/v1/agent/auth/*</InlineCode> and{" "}
-                        <InlineCode>/heartbeat</InlineCode> for that agent, and
-                        its servers stay <em>agent uninstalled</em> until a fresh
-                        provision token re-registers the host.
+                        <InlineCode>/api/v1/agent/heartbeat</InlineCode> for that
+                        agent, and its servers stay <em>agent uninstalled</em>{" "}
+                        until a fresh provision token re-registers the host.
                     </li>
                 </ul>
             </Section>
