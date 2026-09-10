@@ -6,10 +6,10 @@ export interface NetworkPoint {
 
 export interface StatPoint {
     timestamp: number
-    cpu: number
-    memory: number
-    disk: number
-    netIn?: number
-    netOut?: number
+    cpu: number | null
+    memory: number | null
+    disk: number | null
+    netIn?: number | null
+    netOut?: number | null
     networks?: NetworkPoint[]
 }

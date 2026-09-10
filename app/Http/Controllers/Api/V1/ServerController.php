@@ -578,6 +578,8 @@ class ServerController extends Controller
             ])
         )->values()->all();
 
+        $stats = self::padStatPointTimestamps($stats, $tableUnit);
+
         $data = ServerData::fromModel($server);
         $data->stats = $stats;
 
@@ -719,6 +721,58 @@ class ServerController extends Controller
                 ? "Server detached; agent remains for {$remaining} other server(s)."
                 : 'Server detached; agent now has no servers and can be fully uninstalled.',
         ]);
+    }
+
+    /**
+     * Fill offline gaps between the server's own data points with null-metric
+     * entries so charts break the line instead of bridging across a gap.
+     *
+     * Mirrors DashboardController::padNullTimestamps. The grid is derived from
+     * the data's own min→max timestamps stepped by the unit interval; agg rows
+     * are snapped to bucket boundaries, so interior points land exactly on grid
+     * ticks without an alignment mismatch from the request window.
+     *
+     * @param  StatPointData[]  $stats
+     * @return StatPointData[]
+     */
+    public static function padStatPointTimestamps(array $stats, string $tableUnit): array
+    {
+        if ($stats === []) {
+            return [];
+        }
+
+        $intervalMs = match (true) {
+            str_contains($tableUnit, 'minute') => 60_000,
+            str_contains($tableUnit, 'hour') => 3_600_000,
+            str_contains($tableUnit, 'day') => 86_400_000,
+            str_contains($tableUnit, 'week') => 604_800_000,
+            str_contains($tableUnit, 'month') => 2_592_000_000,
+            default => 3_600_000,
+        };
+
+        usort($stats, fn ($a, $b) => $a->timestamp <=> $b->timestamp);
+        $min = $stats[0]->timestamp;
+        $max = $stats[count($stats) - 1]->timestamp;
+
+        $byTs = [];
+        foreach ($stats as $point) {
+            $byTs[$point->timestamp] = $point;
+        }
+
+        $padded = [];
+        for ($ts = $min; $ts <= $max; $ts += $intervalMs) {
+            $padded[] = $byTs[$ts] ?? StatPointData::from([
+                'timestamp' => $ts,
+                'cpu' => null,
+                'memory' => null,
+                'netIn' => null,
+                'netOut' => null,
+                'disk' => null,
+                'networks' => [],
+            ]);
+        }
+
+        return $padded;
     }
 
     public static function computeStatPointFromAgg(object $row, string $tableUnit): array
