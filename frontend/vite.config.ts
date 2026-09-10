@@ -37,6 +37,15 @@ export default defineConfig({
             clientPort: 443,
         } : undefined,
         proxy: {
+            // Reverb WebSocket (/app/<key>): the ngrok tunnel only reaches
+            // Vite :5173, so the WS upgrade must ride through like HMR does
+            // instead of hitting Reverb directly (localhost hits 127.0.0.1:8081
+            // and never touches this proxy).
+            "/app": {
+                target: "http://127.0.0.1:8081",
+                changeOrigin: true,
+                ws: true,
+            },
             "/api": {
                 target: upstream,
                 changeOrigin: true,
