@@ -148,13 +148,17 @@ export function useServerSocket(
         if (enabled) {
             channel
                 .listen(".ServerStatusUpdated", handleServerStatusUpdated)
-                .listen(".RegistrationCompleted", handleRegistrationCompleted)
-                .listen(".AgentUninstalled", () => {
-                    if (onAgentUninstalledRef.current) {
-                        onAgentUninstalledRef.current();
-                    }
-                });
+                .listen(".RegistrationCompleted", handleRegistrationCompleted);
         }
+
+        // AgentUninstalled is a terminal lifecycle event (uninstall/detach/deregister
+        // on the host). It must always be heard so an online server flips to
+        // agent_uninstalled in realtime and the typed-name delete is unlocked.
+        channel.listen(".AgentUninstalled", () => {
+            if (onAgentUninstalledRef.current) {
+                onAgentUninstalledRef.current();
+            }
+        });
 
         channel.listen(
             ".ServerStatsUpdated",

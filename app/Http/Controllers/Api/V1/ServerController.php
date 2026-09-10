@@ -9,6 +9,7 @@ use App\Data\ServerListData;
 use App\Data\ServersIndexData;
 use App\Data\StatPointData;
 use App\Data\UpdateServerData;
+use App\Events\ActionItemsUpdated;
 use App\Events\AgentConfigUpdated;
 use App\Events\AgentUninstalled;
 use App\Events\ServerStatusUpdated;
