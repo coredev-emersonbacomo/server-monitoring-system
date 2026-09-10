@@ -91,10 +91,11 @@ export const ServerStatChart = memo(function ServerStatChart({
                                     color: "rgba(255,255,255,0.85)",
                                 }}
                                 labelFormatter={(v) => fmtDatetime(Number(v), timeSpan)}
-                                formatter={(v: unknown) => [
-                                    `${Number(v).toFixed(2)}${unit}`,
-                                    title,
-                                ]}
+                                formatter={(v: unknown) =>
+                                    v == null
+                                        ? ["—", title]
+                                        : [`${Number(v).toFixed(2)}${unit}`, title]
+                                }
                                 cursor={{
                                     stroke: "rgba(255,255,255,0.07)",
                                     strokeWidth: 32,
@@ -144,7 +145,7 @@ export const ServerStatChart = memo(function ServerStatChart({
                 )}
             </div>
             <span className="text-xs text-muted-foreground">
-                {currentValue !== undefined
+                {currentValue != null
                     ? `${currentValue.toFixed(2)}${unit}`
                     : `—${unit}`}
             </span>

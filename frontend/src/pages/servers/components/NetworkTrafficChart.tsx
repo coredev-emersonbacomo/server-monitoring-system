@@ -368,7 +368,11 @@ export const NetworkTrafficChart = memo(function NetworkTrafficChart({
                                     color: "rgba(255,255,255,0.85)",
                                 }}
                                 labelFormatter={(v) => fmtDatetime(Number(v), timeSpan)}
-                                formatter={(v: unknown, name: unknown) => [`${Number(v).toFixed(2)} MB/s`, String(name)]}
+                                formatter={(v: unknown, name: unknown) =>
+                                    v == null
+                                        ? ["—", String(name)]
+                                        : [`${Number(v).toFixed(2)} MB/s`, String(name)]
+                                }
                                 cursor={{ stroke: "rgba(255,255,255,0.07)", strokeWidth: 32 }}
                             />
                             {filteredNames.map((name) => (
@@ -381,7 +385,6 @@ export const NetworkTrafficChart = memo(function NetworkTrafficChart({
                                     dot={false}
                                     strokeWidth={1.5}
                                     isAnimationActive={false}
-                                    connectNulls
                                 />
                             ))}
                             <Legend
