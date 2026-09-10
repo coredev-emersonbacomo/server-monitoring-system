@@ -122,7 +122,9 @@ export default function ClientDetail() {
                       description: client.description ?? "",
                       location: client.location,
                       email: client.email,
-                      contact_number: client.contact_number,
+                      contact_number: client.contact_number
+                          ? client.contact_number.replace(/\D/g, "")
+                          : "",
                       budget: client.budget ?? 0,
                   }
                 : {
@@ -144,13 +146,16 @@ export default function ClientDetail() {
 
     useEffect(() => {
         if (!client || isCreate) return;
+        const cleanContact = client.contact_number
+            ? client.contact_number.replace(/\D/g, "")
+            : "";
         store.setState({
             form: {
                 name: client.name,
                 description: client.description ?? "",
                 location: client.location,
                 email: client.email,
-                contact_number: client.contact_number,
+                contact_number: cleanContact,
                 budget: client.budget ?? 0,
             },
             originalData: {
@@ -158,7 +163,7 @@ export default function ClientDetail() {
                 description: client.description ?? "",
                 location: client.location,
                 email: client.email,
-                contact_number: client.contact_number,
+                contact_number: cleanContact,
                 budget: client.budget ?? 0,
             },
         });
@@ -183,7 +188,8 @@ export default function ClientDetail() {
             form.description !== (client.description ?? "") ||
             form.location !== client.location ||
             form.email !== client.email ||
-            form.contact_number !== client.contact_number ||
+            form.contact_number.replace(/\D/g, "") !==
+                (client.contact_number ?? "").replace(/\D/g, "") ||
             Number(form.budget ?? 0) !== Number(client.budget ?? 0);
         return formChanged || bannerFile !== null;
     }, [form, client, bannerFile, isCreate]);
@@ -206,13 +212,16 @@ export default function ClientDetail() {
     // ── Handlers ───────────────────────────────────────────────────────────────
     const handleSubmit = async () => {
         if (isSaving) return;
+        if (!store.validate()) return;
+
+        const cleanContactNumber = form.contact_number.replace(/\D/g, "");
 
         const fd = new FormData();
         fd.append("name", form.name);
         fd.append("description", form.description ?? "");
         fd.append("location", form.location);
         fd.append("email", form.email);
-        fd.append("contact_number", form.contact_number);
+        fd.append("contact_number", cleanContactNumber);
         fd.append("budget", String(form.budget ?? 0));
 
         if (bannerFile) {
@@ -245,8 +254,11 @@ export default function ClientDetail() {
                 toast.success("Client updated successfully.");
                 setBannerFile(null);
                 store.setState({
-                    form: { ...form },
-                    originalData: { ...form },
+                    form: { ...form, contact_number: cleanContactNumber },
+                    originalData: {
+                        ...form,
+                        contact_number: cleanContactNumber,
+                    },
                     errors: {},
                     externalDirty: false,
                 });
@@ -305,13 +317,16 @@ export default function ClientDetail() {
     const cancelEdit = () => {
         store.setMode("view");
         if (client) {
+            const cleanContact = client.contact_number
+                ? client.contact_number.replace(/\D/g, "")
+                : "";
             store.setState({
                 form: {
                     name: client.name,
                     description: client.description ?? "",
                     location: client.location,
                     email: client.email,
-                    contact_number: client.contact_number,
+                    contact_number: cleanContact,
                     budget: client.budget ?? 0,
                 },
             });
@@ -472,7 +487,17 @@ export default function ClientDetail() {
                                         size="sm"
                                         icon={<Pencil className="w-4 h-4" />}
                                         label="Edit"
-                                        onClick={() => store.setMode("edit")}
+                                        onClick={() => {
+                                            store.setState({
+                                                form: {
+                                                    ...form,
+                                                    contact_number: (
+                                                        form.contact_number || ""
+                                                    ).replace(/\D/g, ""),
+                                                },
+                                            });
+                                            store.setMode("edit");
+                                        }}
                                     />
                                 )}
                                 {showEdit && mode !== "create" && (

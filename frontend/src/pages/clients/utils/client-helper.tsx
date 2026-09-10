@@ -1,6 +1,6 @@
 // Path: frontend/src/pages/clients/utils/client-helper.tsx
 const MOBILE_REGEX = /^09\d{9}$/;
-const TELEPHONE_REGEX = /^0(?!9)\d{6,9}$/;
+const TELEPHONE_REGEX = /^(?:0(?!9)\d{7,9}|(?!09)\d{7,8})$/;
 
 export type ContactNumberType = "mobile" | "telephone" | "invalid";
 
@@ -35,7 +35,7 @@ export function validateContactNumber(value: string): string | undefined {
 
     const type = getContactNumberType(digits);
     if (type === "invalid") {
-        return "Enter a valid mobile (09XXXXXXXXX) or telephone number";
+        return "Enter a valid mobile (09XXXXXXXXX) or landline (7-8 digits)";
     }
     return undefined;
 }

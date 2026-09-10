@@ -84,12 +84,51 @@ export function ClientDetailsTab({
                         <FloatingInput
                             label="Contact Number"
                             value={form.contact_number}
-                            maxLength={15}
+                            maxLength={11}
+                            inputMode="numeric"
                             onValueChange={(value: string) => {
-                                const cleaned = formatContactNumber(value);
-                                store.set("contact_number")(cleaned);
-                                const message = validateContactNumber(cleaned);
-                                store.setState({ errors: { ...errors, contact_number: message ?? "" } });
+                                const digits = value.replace(/\D/g, "").slice(0, 11);
+                                store.set("contact_number")(digits);
+                                if (!digits) {
+                                    store.setState({
+                                        errors: {
+                                            ...errors,
+                                            contact_number: "Contact number is required",
+                                        },
+                                    });
+                                } else if (digits.length === 11) {
+                                    const message = validateContactNumber(digits);
+                                    store.setState({
+                                        errors: {
+                                            ...errors,
+                                            contact_number: message ?? "",
+                                        },
+                                    });
+                                } else if (!digits.startsWith("09") && (digits.length === 7 || digits.length === 8)) {
+                                    const message = validateContactNumber(digits);
+                                    store.setState({
+                                        errors: {
+                                            ...errors,
+                                            contact_number: message ?? "",
+                                        },
+                                    });
+                                } else if (errors.contact_number) {
+                                    store.setState({
+                                        errors: {
+                                            ...errors,
+                                            contact_number: "",
+                                        },
+                                    });
+                                }
+                            }}
+                            onBlur={() => {
+                                const message = validateContactNumber(form.contact_number);
+                                store.setState({
+                                    errors: {
+                                        ...errors,
+                                        contact_number: message ?? "",
+                                    },
+                                });
                             }}
                             error={errors.contact_number}
                         />
