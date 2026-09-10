@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useUrlState } from "@/hooks/useUrlState";
-import { useClients } from "@/hooks/useClients";
-import { useServers } from "@/hooks/useServers";
+import { useInfiniteClients } from "@/hooks/useClients";
+import { useInfiniteServers } from "@/hooks/useServers";
 import {
     Filter,
     ArrowUpDown,
@@ -82,21 +82,67 @@ export function EntityPickerModal({
 
     // Both hooks always run (rules-of-hooks); the inactive type stays
     // disabled so only one request fires.
-    const clientsQuery = useClients(type === "clients" ? clientParams : undefined, {
-        enabled: type === "clients",
-    });
-    const serversQuery = useServers(type === "servers" ? serverParams : undefined, {
-        enabled: type === "servers",
-    });
+    const clientsQuery = useInfiniteClients(
+        type === "clients" ? clientParams : undefined,
+        { enabled: type === "clients" },
+    );
+    const serversQuery = useInfiniteServers(
+        type === "servers" ? serverParams : undefined,
+        { enabled: type === "servers" },
+    );
 
-    const isLoading = type === "clients" ? clientsQuery.isLoading : serversQuery.isLoading;
+    const isLoading =
+        type === "clients" ? clientsQuery.isLoading : serversQuery.isLoading;
     const error = type === "clients" ? clientsQuery.error : serversQuery.error;
+    const hasNextPage =
+        type === "clients"
+            ? clientsQuery.hasNextPage
+            : serversQuery.hasNextPage;
+    const isFetchingNextPage =
+        type === "clients"
+            ? clientsQuery.isFetchingNextPage
+            : serversQuery.isFetchingNextPage;
+    const fetchNextPage =
+        type === "clients"
+            ? clientsQuery.fetchNextPage
+            : serversQuery.fetchNextPage;
+
+    // Flatten + dedupe by uuid: page boundaries shift on refetch when rows
+    // change server-side, and duplicates break React keys.
     const items = useMemo<EntityItemData[]>(() => {
-        if (type === "clients") {
-            return (clientsQuery.data?.data ?? []) as unknown as EntityItemData[];
+        const pages = type === "clients" ? clientsQuery.data?.pages : serversQuery.data?.pages;
+        if (!pages) return [];
+        const seen = new Set<string>();
+        const out: EntityItemData[] = [];
+        for (const page of pages) {
+            for (const item of (page.data ?? []) as unknown as EntityItemData[]) {
+                if (seen.has(item.uuid)) continue;
+                seen.add(item.uuid);
+                out.push(item);
+            }
         }
-        return ((serversQuery.data?.data ?? []) as unknown as EntityItemData[]);
+        return out;
     }, [type, clientsQuery.data, serversQuery.data]);
+
+    // IntersectionObserver sentinel for automatic infinite scrolling.
+    const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        const el = loadMoreRef.current;
+        if (!el) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+                    fetchNextPage();
+                }
+            },
+            { rootMargin: "300px" },
+        );
+
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
     const toggle = (uuid: string) => {
         setSelected((prev) => {
@@ -361,6 +407,18 @@ export function EntityPickerModal({
                                 </div>
                             );
                         })}
+
+                    {!isLoading &&
+                        !error &&
+                        items.length > 0 && (
+                            <div ref={loadMoreRef} className="flex justify-center py-3">
+                                {isFetchingNextPage && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Loading…
+                                    </p>
+                                )}
+                            </div>
+                        )}
                 </div>
 
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">

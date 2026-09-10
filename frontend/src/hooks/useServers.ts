@@ -56,15 +56,18 @@ export const useServers = (
     });
 };
 
-export const useInfiniteServers = (params?: {
-    client_uuid?: string;
-    client_uuids?: string;
-    q?: string;
-    status?: string;
-    sort?: string;
-    dir?: "asc" | "desc";
-    per_page?: number;
-}) => {
+export const useInfiniteServers = (
+    params?: {
+        client_uuid?: string;
+        client_uuids?: string;
+        q?: string;
+        status?: string;
+        sort?: string;
+        dir?: "asc" | "desc";
+        per_page?: number;
+    },
+    opts?: { enabled?: boolean },
+) => {
     const queryClient = useQueryClient();
 
     useEffect(() => {
@@ -110,6 +113,7 @@ export const useInfiniteServers = (params?: {
             }
             return undefined;
         },
+        enabled: opts?.enabled ?? true,
     });
 };
 
