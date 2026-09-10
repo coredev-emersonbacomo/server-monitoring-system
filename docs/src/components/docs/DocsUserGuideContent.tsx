@@ -13,9 +13,8 @@ export function DocsDashboardContent() {
             <Section title="The Dashboard at a glance">
                 <p>
                     The Dashboard is the landing page after login and the
-                    starting point for monitoring. It refreshes every 60 seconds
-                    and receives live updates over WebSockets. It has four
-                    areas:
+                    starting point for monitoring. Contains a refresh button to receive latest data.
+                        It has four areas:
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
@@ -73,7 +72,7 @@ export function DocsDashboardContent() {
                     usage across all servers. Each server is its own colored
                     line on the same chart so you can spot outliers at a glance.
                     The 1H / 1D / 1W selector changes the aggregation window
-                    (minute / hour / day). Charts update live via WebSocket.
+                    (minute / hour / day). Charts update through refresh button.
                 </p>
             </Section>
         </>
@@ -104,16 +103,14 @@ export function DocsClientsContent() {
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <strong>Search</strong> matches name, email, location,
-                        or contact number.
+                        <strong>Search</strong> matches Name.
                     </li>
                     <li>
                         <strong>Filter tabs</strong>: All, With Servers, No
                         Servers, Archived.
                     </li>
                     <li>
-                        <strong>Sort</strong> by created date, name, email, or
-                        location (ascending/descending).
+                        <strong>Sort</strong> by Name, Server count, SecOps count.
                     </li>
                 </ul>
             </Section>
@@ -128,10 +125,10 @@ export function DocsClientsContent() {
                         <strong>Name</strong> (min 2 characters)
                     </li>
                     <li>
-                        <strong>Description</strong> (min 2, max 255 characters)
+                        <strong>Description</strong> (min 5, max 255 characters)
                     </li>
                     <li>
-                        <strong>Location</strong> (min 2 characters)
+                        <strong>Location</strong> (min 5 characters)
                     </li>
                     <li>
                         <strong>Email Address</strong> (must be a valid email)
@@ -143,6 +140,9 @@ export function DocsClientsContent() {
                     <li>
                         <strong>Upload Banner Image</strong> (optional - JPEG,
                         PNG, JPG, GIF, or WebP)
+                    </li>
+                    <li>
+                        <strong>Financial & Subscriptio</strong> (must be a number)
                     </li>
                 </ul>
                 <p>
@@ -526,7 +526,7 @@ export function DocsLogsContent() {
                 </p>
             </Section>
 
-            <Section title="Three log tabs">
+            <Section title="Five log tabs">
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
                         <strong>Activity</strong> - general activity logs
@@ -538,8 +538,13 @@ export function DocsLogsContent() {
                         transitions and health events.
                     </li>
                     <li>
-                        <strong>Agent</strong> - agent installation and update
-                        events.
+                        <strong>Agent</strong> - agent installation and update events.
+                    </li>
+                    <li>
+                        <strong>File Activity</strong> - server files activity.
+                    </li>
+                    <li>
+                        <strong>Agent Lifecycle</strong> - agent status reports (e.g., started, unexpectedly disconnected).
                     </li>
                 </ul>
             </Section>
@@ -633,6 +638,17 @@ export function DocsReportsContent() {
                     the backend server. Metrics windows use the last 24 hours by
                     default (1–168 hours supported).
                 </Callout>
+            </Section>
+
+            <Section title="Report Glossary & Definitions">
+                <ul className="list-disc pl-5 space-y-3">
+                    <li>
+                        <strong>KPI (Key Performance Indicator)</strong>: Quantifiable metrics used to track and measure critical business and operational performance. Includes the KPI summary (servers, clients, users, alerts, budget vs. subscription fee), servers needing attention, 7-day metrics, top CPU usage, most alerts, highest cost rankings, recent clients and servers, and diagnostic insights.
+                    </li>
+                    <li>
+                        <strong>SLA (Service Level Agreement)</strong>: A commitment defining the expected level of service availability and reliability, monitored here through the SLA uptime dashboard.
+                    </li>
+                </ul>
             </Section>
 
             <Section title="What each report contains">
