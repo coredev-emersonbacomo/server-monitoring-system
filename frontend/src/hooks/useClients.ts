@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/api/api";
 import { getEchoInstance } from "@/hooks/useServerSocket";
 import type { ClientData } from "@/types/models";
@@ -44,6 +44,48 @@ export const useClients = (
             });
             if (error) throw error;
             return data as unknown as PaginatedClients;
+        },
+        enabled: opts?.enabled ?? true,
+    });
+};
+
+export const useInfiniteClients = (
+    params?: {
+        exclude_user_uuid?: string;
+        user_uuid?: string;
+        available_only?: boolean;
+        q?: string;
+        filter?: string;
+        sort?: string;
+        dir?: "asc" | "desc";
+        per_page?: number;
+    },
+    opts?: { enabled?: boolean },
+) => {
+    return useInfiniteQuery<PaginatedClients>({
+        queryKey: ["clients-infinite", params],
+        initialPageParam: 1,
+        queryFn: async ({ pageParam = 1 }) => {
+            const queryParams = params
+                ? {
+                      ...params,
+                      ...(params.available_only !== undefined
+                          ? { available_only: params.available_only ? 1 : 0 }
+                          : {}),
+                      page: pageParam as number,
+                  }
+                : { page: pageParam as number };
+            const { data, error } = await api.GET("/v1/clients", {
+                params: { query: queryParams as never },
+            });
+            if (error) throw error;
+            return data as unknown as PaginatedClients;
+        },
+        getNextPageParam: (lastPage) => {
+            if (lastPage.current_page < lastPage.last_page) {
+                return lastPage.current_page + 1;
+            }
+            return undefined;
         },
         enabled: opts?.enabled ?? true,
     });
