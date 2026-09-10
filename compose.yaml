@@ -3,161 +3,161 @@
 # Mirrors scripts/entry.js dev services: redis, reverb, queue, scheduler.
 
 services:
-  postgres:
-    # Plain TimescaleDB (not -ha/Patroni: HA manager fights manual user
-    # management and is overkill for single-node dev/prod).
-    image: timescale/timescaledb:latest-pg17
-    environment:
-      POSTGRES_DB: server_monitoring
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+    postgres:
+        # Plain TimescaleDB (not -ha/Patroni: HA manager fights manual user
+        # management and is overkill for single-node dev/prod).
+        image: timescale/timescaledb:latest-pg17
+        environment:
+            POSTGRES_DB: server_monitoring
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+        ports:
+            - "5432:5432"
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
 
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+    redis:
+        image: redis:7
+        ports:
+            - "6379:6379"
+        volumes:
+            - redis_data:/data
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
 
-  app:
-    build:
-      context: .
-      target: dev
-    ports:
-      - "8000:8000"
-    volumes:
-      - .:/var/www/html
-      - /var/www/html/vendor
-      - /var/www/html/node_modules
-      - /var/www/html/frontend/node_modules
-      - /var/www/html/docs/node_modules
-    environment:
-      APP_ENV: local
-      APP_DEBUG: "true"
-      APP_URL: ${APP_URL:-http://localhost:8000}
-      # Set to "true" by `npm run ngrok` so generated agent install commands
-      # bypass ngrok's free-tier browser interstitial. Never true in prod.
-      NGROK_SKIP_BROWSER_WARNING: ${NGROK_SKIP_BROWSER_WARNING:-false}
-      DB_CONNECTION: pgsql
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_DATABASE: server_monitoring
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
-      REDIS_CLIENT: predis
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      CACHE_STORE: redis
-      SESSION_DRIVER: database
-      QUEUE_CONNECTION: database
-      BROADCAST_CONNECTION: reverb
-      # Flip switch: "true" seeds full DatabaseSeeder on empty DB (fresh
-      # volume). Safe on reboot — guarded by users-table-empty check.
-      SEED_ON_BOOT: "true"
-      REVERB_HOST: 127.0.0.1
-      REVERB_PORT: 8081
-      REVERB_SCHEME: http
-      REVERB_SERVER_HOST: 0.0.0.0
-      REVERB_SERVER_PORT: 8081
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: >
-      sh -c "composer install --no-interaction &&
-             php artisan migrate --force &&
-             frankenphp run --config /etc/caddy/Caddyfile"
+    app:
+        build:
+            context: .
+            target: dev
+        ports:
+            - "8000:8000"
+        volumes:
+            - .:/var/www/html
+            - /var/www/html/vendor
+            - /var/www/html/node_modules
+            - /var/www/html/frontend/node_modules
+            - /var/www/html/docs/node_modules
+        environment:
+            APP_ENV: local
+            APP_DEBUG: "true"
+            APP_URL: ${APP_URL:-http://localhost:8000}
+            # Set to "true" by `npm run ngrok` so generated agent install commands
+            # bypass ngrok's free-tier browser interstitial. Never true in prod.
+            NGROK_SKIP_BROWSER_WARNING: ${NGROK_SKIP_BROWSER_WARNING:-false}
+            DB_CONNECTION: pgsql
+            DB_HOST: postgres
+            DB_PORT: 5432
+            DB_DATABASE: server_monitoring
+            DB_USERNAME: postgres
+            DB_PASSWORD: postgres
+            REDIS_CLIENT: predis
+            REDIS_HOST: redis
+            REDIS_PORT: 6379
+            CACHE_STORE: redis
+            SESSION_DRIVER: database
+            QUEUE_CONNECTION: database
+            BROADCAST_CONNECTION: reverb
+            # Flip switch: "true" seeds full DatabaseSeeder on empty DB (fresh
+            # volume). Safe on reboot — guarded by users-table-empty check.
+            SEED_ON_BOOT: "true"
+            REVERB_HOST: 127.0.0.1
+            REVERB_PORT: 8081
+            REVERB_SCHEME: http
+            REVERB_SERVER_HOST: 0.0.0.0
+            REVERB_SERVER_PORT: 8081
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        command: >
+            sh -c "composer install --no-interaction &&
+                   php artisan migrate --force &&
+                   frankenphp run --config /etc/caddy/Caddyfile"
 
-  reverb:
-    build:
-      context: .
-      target: dev
-    ports:
-      - "8081:8081"
-    volumes:
-      - .:/var/www/html
-      - /var/www/html/vendor
-      - /var/www/html/node_modules
-    environment:
-      APP_ENV: local
-      # Follows the tunnel URL like app (memory-only via ngrok process env);
-      # siblings have no other channel since only app gets recreated with it.
-      APP_URL: ${APP_URL:-http://localhost:8000}
-      DB_HOST: postgres
-      DB_DATABASE: server_monitoring
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
-      REDIS_HOST: redis
-      REVERB_SERVER_HOST: 0.0.0.0
-      REVERB_SERVER_PORT: 8081
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: ["php", "artisan", "reverb:start"]
+    reverb:
+        build:
+            context: .
+            target: dev
+        ports:
+            - "8081:8081"
+        volumes:
+            - .:/var/www/html
+            - /var/www/html/vendor
+            - /var/www/html/node_modules
+        environment:
+            APP_ENV: local
+            # Follows the tunnel URL like app (memory-only via ngrok process env);
+            # siblings have no other channel since only app gets recreated with it.
+            APP_URL: ${APP_URL:-http://localhost:8000}
+            DB_HOST: postgres
+            DB_DATABASE: server_monitoring
+            DB_USERNAME: postgres
+            DB_PASSWORD: postgres
+            REDIS_HOST: redis
+            REVERB_SERVER_HOST: 0.0.0.0
+            REVERB_SERVER_PORT: 8081
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        command: ["php", "artisan", "reverb:start"]
 
-  queue:
-    build:
-      context: .
-      target: dev
-    volumes:
-      - .:/var/www/html
-      - /var/www/html/vendor
-      - /var/www/html/node_modules
-    environment:
-      APP_ENV: local
-      APP_URL: ${APP_URL:-http://localhost:8000}
-      DB_HOST: postgres
-      DB_DATABASE: server_monitoring
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
-      REDIS_HOST: redis
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: ["php", "artisan", "queue:work", "-q"]
+    queue:
+        build:
+            context: .
+            target: dev
+        volumes:
+            - .:/var/www/html
+            - /var/www/html/vendor
+            - /var/www/html/node_modules
+        environment:
+            APP_ENV: local
+            APP_URL: ${APP_URL:-http://localhost:8000}
+            DB_HOST: postgres
+            DB_DATABASE: server_monitoring
+            DB_USERNAME: postgres
+            DB_PASSWORD: postgres
+            REDIS_HOST: redis
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        command: ["php", "artisan", "queue:work", "-q"]
 
-  scheduler:
-    build:
-      context: .
-      target: dev
-    volumes:
-      - .:/var/www/html
-      - /var/www/html/vendor
-      - /var/www/html/node_modules
-    environment:
-      APP_ENV: local
-      APP_URL: ${APP_URL:-http://localhost:8000}
-      DB_HOST: postgres
-      DB_DATABASE: server_monitoring
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
-      REDIS_HOST: redis
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    command: ["php", "artisan", "schedule:work"]
+    scheduler:
+        build:
+            context: .
+            target: dev
+        volumes:
+            - .:/var/www/html
+            - /var/www/html/vendor
+            - /var/www/html/node_modules
+        environment:
+            APP_ENV: local
+            APP_URL: ${APP_URL:-http://localhost:8000}
+            DB_HOST: postgres
+            DB_DATABASE: server_monitoring
+            DB_USERNAME: postgres
+            DB_PASSWORD: postgres
+            REDIS_HOST: redis
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        command: ["php", "artisan", "schedule:work"]
 
 volumes:
-  postgres_data:
-  redis_data:
+    postgres_data:
+    redis_data:

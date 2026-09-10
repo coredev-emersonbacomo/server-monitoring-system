@@ -170,23 +170,468 @@ export function DocsAdrContent() {
         <>
             <Section title="Architecture Decision Records">
                 <p>
-                    This section will hold a decision log of the significant
-                    architecture choices behind the system - why the stack was
-                    chosen, how the alert engine works, how realtime updates
-                    are delivered, and how reporting is compiled.
+                    Architecture Decision Records (ADRs) capture significant, durable
+                    architectural choices behind the system  -  including the technical
+                    context, evaluated options, chosen solutions, and permanent constraints.
+                    The canonical source files live in the repository under{" "}
+                    <InlineCode>docs/architecture/</InlineCode>.
                 </p>
-            </Section>
-            <Section title="Under construction">
-                <Callout type="warning">
-                    The ADR record is being updated and is not ready yet. This
-                    is currently a placeholder.
-                </Callout>
                 <p>
-                    While this section is drafted, the concrete reference
-                    material below (Architecture, Alerting System, Storage
-                    Providers, Background Jobs & Scheduling) already documents
-                    how the pieces actually work today.
+                    Unlike temporary implementation plans in <InlineCode>TODO/</InlineCode>,
+                    ADRs describe <strong>permanent architectural truth</strong>. Developers
+                    and automated agents must read relevant ADRs before making changes to agent
+                    topology, telemetry pipelines, audit storage, or delivery semantics.
                 </p>
+                <Callout type="tip" title="Source of Truth">
+                    Every architectural change that alters data ownership, storage schema,
+                    process lifecycles, or network contracts requires an ADR. Existing ADRs
+                    are never rewritten away; superseded decisions are marked with references
+                    to their successor.
+                </Callout>
+            </Section>
+
+            <Section title="ADR Index">
+                <p>
+                    The table below provides a quick reference to all approved architectural
+                    decisions in the repository:
+                </p>
+                <div className="overflow-x-auto my-4">
+                    <table className="w-full text-sm border border-border/40 rounded-lg overflow-hidden">
+                        <thead className="bg-muted/30">
+                            <tr>
+                                <th className="text-left px-3 py-2 font-medium text-foreground">
+                                    Record
+                                </th>
+                                <th className="text-left px-3 py-2 font-medium text-foreground">
+                                    Status
+                                </th>
+                                <th className="text-left px-3 py-2 font-medium text-foreground">
+                                    Subsystem
+                                </th>
+                                <th className="text-left px-3 py-2 font-medium text-foreground">
+                                    Summary Decision
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/30">
+                            <tr>
+                                <td className="px-3 py-2.5 font-mono text-xs font-semibold text-foreground whitespace-nowrap">
+                                    <a
+                                        href="#adr-0001-agent-server-ownership-model-and-agent-self-bootstrap"
+                                        className="hover:underline text-primary"
+                                    >
+                                        ADR-0001
+                                    </a>
+                                </td>
+                                <td className="px-3 py-2.5 whitespace-nowrap">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                        Partially Superseded
+                                    </span>
+                                </td>
+                                <td className="px-3 py-2.5 text-xs font-medium text-foreground">
+                                    Agent / Core
+                                </td>
+                                <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                                    1:N server ownership model (<InlineCode>servers.agent_id</InlineCode>),
+                                    runtime port/process filters, and auto-bootstrap config.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-2.5 font-mono text-xs font-semibold text-foreground whitespace-nowrap">
+                                    <a
+                                        href="#adr-0002-single-agent-per-physical-computer"
+                                        className="hover:underline text-primary"
+                                    >
+                                        ADR-0002
+                                    </a>
+                                </td>
+                                <td className="px-3 py-2.5 whitespace-nowrap">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                        Accepted
+                                    </span>
+                                </td>
+                                <td className="px-3 py-2.5 text-xs font-medium text-foreground">
+                                    Agent Lifecycle
+                                </td>
+                                <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                                    Singleton OS service per host, detect-and-attach installer,
+                                    split Detach Server vs. Uninstall Agent, aggregated heartbeat.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-2.5 font-mono text-xs font-semibold text-foreground whitespace-nowrap">
+                                    <a
+                                        href="#adr-0003-per-interface-network-traffic-with-checklist-filter"
+                                        className="hover:underline text-primary"
+                                    >
+                                        ADR-0003
+                                    </a>
+                                </td>
+                                <td className="px-3 py-2.5 whitespace-nowrap">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                        Accepted
+                                    </span>
+                                </td>
+                                <td className="px-3 py-2.5 text-xs font-medium text-foreground">
+                                    Metrics / Telemetry
+                                </td>
+                                <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                                    Per-interface network stats (Ethernet, Wi-Fi, VPN), TimescaleDB
+                                    hypertable + CAGGs, delta rates, and checklist filters.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-2.5 font-mono text-xs font-semibold text-foreground whitespace-nowrap">
+                                    <a
+                                        href="#adr-0004-audit-subsystem-file-activity-agent-lifecycle"
+                                        className="hover:underline text-primary"
+                                    >
+                                        ADR-0004
+                                    </a>
+                                </td>
+                                <td className="px-3 py-2.5 whitespace-nowrap">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                        Accepted
+                                    </span>
+                                </td>
+                                <td className="px-3 py-2.5 text-xs font-medium text-foreground">
+                                    Audit / Security
+                                </td>
+                                <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                                    Two dedicated audit tables, watched paths via auth/WS config updates,
+                                    durable JSON-lines queue, backend timeout disconnect detection.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td className="px-3 py-2.5 font-mono text-xs font-semibold text-foreground whitespace-nowrap">
+                                    <a
+                                        href="#adr-0005-agent-delivery-semantics-bounded-heartbeat-retry-no-metric-backfill"
+                                        className="hover:underline text-primary"
+                                    >
+                                        ADR-0005
+                                    </a>
+                                </td>
+                                <td className="px-3 py-2.5 whitespace-nowrap">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                        Accepted
+                                    </span>
+                                </td>
+                                <td className="px-3 py-2.5 text-xs font-medium text-foreground">
+                                    Reliability / Pipeline
+                                </td>
+                                <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                                    Tick-bounded heartbeat retry, no synthetic metric backfill
+                                    (outage gaps preserved), durable queue for audit events only.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </Section>
+
+            <Section title="ADR-0001: Agent-Server Ownership Model and Agent Self-Bootstrap">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                        Partially Superseded by ADR-0002
+                    </span>
+                    <span className="text-xs text-muted-foreground font-mono">
+                        docs/architecture/0001-agent-server-relationship.md
+                    </span>
+                </div>
+                <Callout type="warning" title="Superseded Portions">
+                    The data model, authentication, heartbeat validation, and filter
+                    decisions in ADR-0001 remain in active force. The installer, per-instance
+                    service unit, and <InlineCode>{"instances/<uuid>"}</InlineCode> on-disk
+                    layout portions were superseded by ADR-0002.
+                </Callout>
+
+                <SubSection title="Context & Problem">
+                    <p>
+                        The monitoring agent was originally architected as a strict 1:1
+                        relationship: <InlineCode>agents.server_id</InlineCode> was a required foreign
+                        key, with a unique partial index enforcing one active agent per server.
+                        Registering the same installation UUID for an additional server triggered
+                        a 409 conflict, making it impossible for one agent on a machine to monitor
+                        multiple logical server environments.
+                    </p>
+                    <p>
+                        Additionally, field installations reported missing{" "}
+                        <InlineCode>config.json</InlineCode> and <InlineCode>agent.log</InlineCode> files.
+                        Investigation showed the agent attempted to load configuration relative to
+                        the executable directory inside <InlineCode>Program Files</InlineCode>, which
+                        is read-only for standard users and LocalSystem services, resulting in silent
+                        startup termination.
+                    </p>
+                </SubSection>
+
+                <SubSection title="Key Decisions">
+                    <ul className="list-disc pl-5 space-y-2">
+                        <li>
+                            <strong>1:N Ownership:</strong> Added a nullable{" "}
+                            <InlineCode>servers.agent_id</InlineCode> foreign key as canonical ownership.
+                            One agent can own many servers. <InlineCode>agents.server_id</InlineCode>{" "}
+                            was made nullable and retained purely as a backward-compatible pointer.
+                        </li>
+                        <li>
+                            <strong>Find-or-Create Registration:</strong> Re-registering with an
+                            existing <InlineCode>installation_uuid</InlineCode> links the new server
+                            to the existing agent rather than failing with 409.
+                        </li>
+                        <li>
+                            <strong>In-Memory Noise Filters:</strong> <InlineCode>servers.port_filter</InlineCode>{" "}
+                            and <InlineCode>servers.process_filter</InlineCode> define per-server
+                            SecOps spotlights. Stored in the backend database and cached in the agent's
+                            runtime memory (<InlineCode>map[serverUUID]ServerRuntimeConfig</InlineCode>),
+                            allowing isolated filtering per monitored environment.
+                        </li>
+                        <li>
+                            <strong>Agent Self-Bootstrap:</strong> When <InlineCode>config.json</InlineCode>{" "}
+                            is missing on first run, the agent automatically initializes a minimal default
+                            bootstrap configuration in machine-writable storage (
+                            <InlineCode>C:\ProgramData\MonitorAgent\</InlineCode> on Windows,{" "}
+                            <InlineCode>/var/lib/monitor-agent/</InlineCode> on Linux) instead of
+                            crashing silently.
+                        </li>
+                    </ul>
+                </SubSection>
+            </Section>
+
+            <Section title="ADR-0002: Single Agent per Physical Computer">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                        Accepted
+                    </span>
+                    <span className="text-xs text-muted-foreground font-mono">
+                        docs/architecture/0002-singleton-agent-per-computer.md
+                    </span>
+                </div>
+
+                <SubSection title="Context & Problem">
+                    <p>
+                        Although ADR-0001 resolved the database model for 1:N servers, the
+                        installation scripts still generated a fresh installation UUID on every
+                        execution, created separate service units (e.g.{" "}
+                        <InlineCode>{"monitor-agent@<uuid>.service"}</InlineCode>), and wrote to isolated
+                        per-instance subdirectories. Running the installer multiple times on the
+                        same host created multiple competing agent services, while running the
+                        uninstaller risked deleting all agent instances simultaneously.
+                    </p>
+                </SubSection>
+
+                <SubSection title="Key Decisions">
+                    <ul className="list-disc pl-5 space-y-2">
+                        <li>
+                            <strong>Singleton OS Service:</strong> Exactly one agent service per physical
+                            machine (<InlineCode>MonitorAgent</InlineCode> on Windows,{" "}
+                            <InlineCode>monitor-agent.service</InlineCode> on Linux), one binary path,
+                            one installation UUID, and one private key pair.
+                        </li>
+                        <li>
+                            <strong>Detect-and-Attach Installer:</strong> When executed, the install
+                            script first checks if the service already exists. If found, it reads the
+                            existing installation ID and attaches the newly provisioned server via{" "}
+                            <InlineCode>/api/v1/register</InlineCode> using the provision token, without
+                            creating duplicate services or rotating keys.
+                        </li>
+                        <li>
+                            <strong>Private Key in OS Keystore:</strong> Private keys are never stored
+                            on disk in plaintext. On Windows, keys live in the NCrypt/CNG store (
+                            <InlineCode>MonitorAgentIdentity</InlineCode>); on Linux, in a{" "}
+                            <InlineCode>0600</InlineCode> file owned by the <InlineCode>monitor</InlineCode>{" "}
+                            user.
+                        </li>
+                        <li>
+                            <strong>Two-Tier Lifecycle:</strong>
+                            <ul className="list-disc pl-5 mt-1 space-y-1 text-xs md:text-sm">
+                                <li>
+                                    <em>Detach Server:</em> Removes an individual server association
+                                    (<InlineCode>agent_id = null</InlineCode>,{" "}
+                                    <InlineCode>status = agent_uninstalled</InlineCode>). The agent
+                                    and service remain running for any remaining servers.
+                                </li>
+                                <li>
+                                    <em>Uninstall Agent:</em> Decommissions the whole host only when zero
+                                    monitored servers remain, stopping the OS service and revoking the key.
+                                </li>
+                            </ul>
+                        </li>
+                        <li>
+                            <strong>Aggregated Heartbeat:</strong> The agent sends one consolidated{" "}
+                            <InlineCode>POST /api/v1/agent/heartbeat</InlineCode> per tick with host-level
+                            metrics (<InlineCode>cpu, memory, disk, network</InlineCode>) once, along with
+                            a collection of per-server partitions, reducing N network requests to 1.
+                        </li>
+                    </ul>
+                </SubSection>
+            </Section>
+
+            <Section title="ADR-0003: Per-Interface Network Traffic with Checklist Filter">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                        Accepted
+                    </span>
+                    <span className="text-xs text-muted-foreground font-mono">
+                        docs/architecture/0003-per-interface-network-traffic.md
+                    </span>
+                </div>
+
+                <SubSection title="Context & Problem">
+                    <p>
+                        Previously, the Go agent gathered network metrics strictly from Ethernet adapters
+                        and collapsed all interface counters into aggregate{" "}
+                        <InlineCode>server_updates.network_rbytes</InlineCode> and{" "}
+                        <InlineCode>network_tbytes</InlineCode> sums. Wi-Fi, VPN adapters, and virtual
+                        interfaces were omitted, and operators could not view individual adapter
+                        throughput or filter noisy secondary interfaces.
+                    </p>
+                </SubSection>
+
+                <SubSection title="Key Decisions">
+                    <ul className="list-disc pl-5 space-y-2">
+                        <li>
+                            <strong>Universal Interface Collection:</strong> Expanded the collector to
+                            all non-loopback interfaces (<InlineCode>/proc/net/dev</InlineCode> on Linux,{" "}
+                            <InlineCode>Get-NetAdapter</InlineCode> on Windows), capturing interface type
+                            (<InlineCode>ethernet | wifi | vpn | unknown</InlineCode>) and operational state
+                            (<InlineCode>up | down</InlineCode>).
+                        </li>
+                        <li>
+                            <strong>TimescaleDB Hypertable:</strong> Created{" "}
+                            <InlineCode>server_network_stats</InlineCode> with 1-day chunk intervals,
+                            1-year data retention, and 5 continuous aggregate views (
+                            <InlineCode>minute, hour, day, week, month</InlineCode>).
+                        </li>
+                        <li>
+                            <strong>Delta-Based Throughput Rates:</strong> Historical and live throughput
+                            are calculated identically via delta bytes divided by delta time (
+                            <InlineCode>(curr - prev) / dt</InlineCode>), ensuring accurate MB/s rates.
+                        </li>
+                        <li>
+                            <strong>Checklist Filtering:</strong> Modeled after the port and process
+                            filters using <InlineCode>servers.network_filter</InlineCode> (persisted
+                            server selection) and <InlineCode>agents.available_interfaces</InlineCode>{" "}
+                            (agent-reported active interfaces).
+                        </li>
+                        <li>
+                            <strong>Dual Chart UI:</strong> Preserved separate Net In and Net Out charts
+                            for visual clarity while sharing a unified checklist filter dialog in the Net In
+                            header.
+                        </li>
+                    </ul>
+                </SubSection>
+            </Section>
+
+            <Section title="ADR-0004: Audit Subsystem (File Activity + Agent Lifecycle)">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                        Accepted
+                    </span>
+                    <span className="text-xs text-muted-foreground font-mono">
+                        docs/architecture/0004-audit-subsystem.md
+                    </span>
+                </div>
+
+                <SubSection title="Context & Problem">
+                    <p>
+                        The application required auditable logging for filesystem modifications on
+                        monitored servers and monitoring agent lifecycle events (startup, graceful
+                        stop, crashes, unexpected disconnects) without constructing redundant,
+                        parallel configuration or transport channels.
+                    </p>
+                </SubSection>
+
+                <SubSection title="Key Decisions">
+                    <ul className="list-disc pl-5 space-y-2">
+                        <li>
+                            <strong>Dedicated Audit Tables:</strong> Created{" "}
+                            <InlineCode>file_activity_logs</InlineCode> and{" "}
+                            <InlineCode>agent_lifecycle_events</InlineCode>, both scoped by{" "}
+                            <InlineCode>server_id</InlineCode> and <InlineCode>agent_id</InlineCode>,
+                            surfacing through the existing Logs UI and API.
+                        </li>
+                        <li>
+                            <strong>Reuse Configuration Delivery:</strong> Watched directories are
+                            persisted in <InlineCode>watched_paths</InlineCode> and pushed to agents
+                            via existing session tokens (<InlineCode>AgentAuthService::issueSession</InlineCode>)
+                            and <InlineCode>AgentConfigUpdated</InlineCode> WebSocket broadcasts, avoiding
+                            a separate configuration channel.
+                        </li>
+                        <li>
+                            <strong>Durable Agent Queue:</strong> Buffered audit events in an fsynced,
+                            local JSON-lines file with per-event UUIDs. The backend guarantees
+                            idempotent ingestion, preventing duplicates during queue drains.
+                        </li>
+                        <li>
+                            <strong>Scoped Path Monitoring:</strong>
+                            <ul className="list-disc pl-5 mt-1 space-y-1 text-xs md:text-sm">
+                                <li>
+                                    <em>Agent Scope:</em> Always-on monitoring of the agent state directory
+                                    (<InlineCode>%ProgramData%\MonitorAgent</InlineCode>) to audit config
+                                    changes and prevent tampering.
+                                </li>
+                                <li>
+                                    <em>Server Scope:</em> Operator-configured directory paths monitored
+                                    exclusively for specific servers.
+                                </li>
+                            </ul>
+                        </li>
+                        <li>
+                            <strong>Backend Heartbeat Timeout Disconnect:</strong> The scheduler detects
+                            offline agents when heartbeats expire, recording an{" "}
+                            <InlineCode>unexpectedly_disconnected</InlineCode> lifecycle event unless a
+                            graceful shutdown event was already recorded within the grace window.
+                        </li>
+                    </ul>
+                </SubSection>
+            </Section>
+
+            <Section title="ADR-0005: Agent Delivery Semantics (Bounded Heartbeat Retry, No Metric Backfill)">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                        Accepted
+                    </span>
+                    <span className="text-xs text-muted-foreground font-mono">
+                        docs/architecture/0005-agent-delivery-semantics.md
+                    </span>
+                </div>
+
+                <SubSection title="Context & Problem">
+                    <p>
+                        The Go agent previously retried failed heartbeat requests indefinitely.
+                        During network or backend interruptions, stale metric payloads queued
+                        behind failed attempts, delaying fresher samples and stalling command
+                        acknowledgments and configuration updates. The design question was whether
+                        to build a durable queue for point-in-time metrics.
+                    </p>
+                </SubSection>
+
+                <SubSection title="Key Decisions">
+                    <ul className="list-disc pl-5 space-y-2">
+                        <li>
+                            <strong>Tick-Bounded Heartbeat Retry:</strong> Heartbeat delivery is bounded
+                            strictly by the tick interval. If transmission fails, the stale payload is
+                            discarded; the next tick delivers fresh data. Because the backend stamps
+                            metrics at ingest time, retrying stale metrics only corrupts timelines.
+                        </li>
+                        <li>
+                            <strong>No Metric Backfill:</strong> Preserving blank outage gaps on charts
+                            is preferred over synthetic backfills. True backfill requires trusting client
+                            clocks, creates clock-skew anomalies, and complicates TimescaleDB ingestion
+                            windows.
+                        </li>
+                        <li>
+                            <strong>Durable Queue Reserved for Irreplaceable Data:</strong> The durable
+                            disk queue (fsynced JSON-lines) is strictly reserved for irreplaceable historical
+                            records  -  specifically file activity logs and lifecycle events (ADR-0004).
+                        </li>
+                        <li>
+                            <strong>Idempotent Command Deduplication:</strong> Remote commands dispatched
+                            from the backend deduplicate by command ID and acknowledge on the next
+                            successful heartbeat, preventing re-execution of shell commands across network
+                            reconnects.
+                        </li>
+                    </ul>
+                </SubSection>
             </Section>
         </>
     );

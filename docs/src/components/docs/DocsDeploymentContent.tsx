@@ -6,6 +6,7 @@ import {
     Callout,
 } from "./Section";
 import { DocsGmailSmtpContent } from "./DocsGmailSmtpContent";
+import { DocsDiscordNotificationsContent } from "./DocsDiscordNotificationsContent";
 
 export function DocsOverviewContent() {
     return (
@@ -752,6 +753,14 @@ CLOUDINARY_DELIVERY_PREFIX=https://res.cloudinary.com`}</CodeBlock>
                     Gmail SMTP account. Configure it as follows.
                 </p>
                 <DocsGmailSmtpContent />
+            </Section>
+
+            <Section title="Discord notifications setup">
+                <p>
+                    Real-time server alert embeds, status alerts, and role callouts
+                    are delivered to Discord. Configure it as follows.
+                </p>
+                <DocsDiscordNotificationsContent />
             </Section>
         </>
     );
