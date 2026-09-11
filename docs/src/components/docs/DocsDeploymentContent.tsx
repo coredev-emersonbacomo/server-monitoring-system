@@ -7,36 +7,40 @@ export function DocsOverviewContent() {
         <>
             <Section title="What is this system?">
                 <p>
-                    The Server Monitoring System is a platform for monitoring
-                    physical servers and virtual machines on behalf of clients.
-                    A lightweight agent is installed on each monitored machine;
-                    it reports CPU, memory, disk, network, process, and port
-                    data back to a central backend. The data is streamed live to
-                    the dashboard over WebSockets and stored in a time-series
-                    database for historical charts and reports.
+                    The Server Monitoring System is a client-facing infrastructure
+                    monitoring platform for managed environments. It gives SecOps
+                    teams a single operational view across many client-owned
+                    servers, with each host running a lightweight Go agent that
+                    reports CPU, memory, disk, network, process, and port
+                    telemetry to a central Laravel backend. Live metrics are
+                    streamed to the dashboard, stored in a time-series database,
+                    and used for alert evaluation, historical analysis, and PDF
+                    reporting.
                 </p>
                 <p>The system is a monorepo with four main pieces:</p>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <InlineCode>Laravel backend</InlineCode> - REST API,
-                        realtime broadcasting, alert engine, background jobs,
-                        and PDF report compilation.
+                        <InlineCode>Laravel backend</InlineCode> - client and
+                        server management, REST APIs, realtime broadcast channels,
+                        alert evaluation, scheduled jobs, and report generation.
                     </li>
                     <li>
                         <InlineCode>React SPA</InlineCode> (in{" "}
-                        <InlineCode>frontend/</InlineCode>) - the dashboard and
-                        management interface.
+                        <InlineCode>frontend/</InlineCode>) - the operational
+                        dashboard and admin surfaces used by SecOps teams.
                     </li>
                     <li>
                         <InlineCode>Go agent</InlineCode> (in{" "}
                         <InlineCode>resources/agent/go</InlineCode>) - installed
-                        on each monitored server.
+                        on each monitored host to collect telemetry and report
+                        health back to the backend.
                     </li>
                     <li>
                         <InlineCode>
                             PostgreSQL (TimescaleDB) + Redis + Reverb
                         </InlineCode>{" "}
-                        - storage, caching, and realtime messaging.
+                        - time-series storage, queue/cache infrastructure, and
+                        realtime event delivery.
                     </li>
                 </ul>
             </Section>
@@ -366,7 +370,7 @@ export function DocsInstallationContent() {
     return (
         <>
             <Section title="Installation">
-                <p>Choose your preferred development workflow:</p>
+                <p>Choose the setup flow that matches your environment:</p>
 
                 <Section title="Option A: Herd (Native)">
                     <CodeBlock>{`# 1. Install prerequisites
@@ -438,52 +442,54 @@ which docker
 docker compose up                  # build if needed, then start all services
 `}</CodeBlock>
                     <p>
-                        Access the application at:{" "}
+                        Open the monitoring dashboard at:{" "}
                         <InlineCode>http://localhost:8000</InlineCode>
                         <br />
-                        TimescaleDB + Redis included - nothing else to install.
+                        TimescaleDB and Redis are included, so there is nothing
+                        extra to install.
                         <br />
-                        First boot migrates and seeds automatically (login:{" "}
+                        On the first boot, the app migrates and seeds the
+                        database automatically. Use the default login:{" "}
                         <InlineCode>user</InlineCode> /{" "}
-                        <InlineCode>user123</InlineCode>).
+                        <InlineCode>user123</InlineCode>.
                         <br />
-                        Source is bind-mounted (live edits).
+                        The source code is bind-mounted, so edits appear live.
                     </p>
                     <Callout>
-                        <InlineCode>where.exe docker</InlineCode> (Windows) or{" "}
-                        <InlineCode>which docker</InlineCode> (macOS/Linux) must
-                        print a path. If it prints nothing or the terminal says{" "}
+                        Run <InlineCode>where.exe docker</InlineCode> on Windows
+                        or <InlineCode>which docker</InlineCode> on macOS/Linux.
+                        If it prints nothing, or the terminal says{" "}
                         <InlineCode>
                             &apos;docker&apos; is not recognized
                         </InlineCode>
-                        , close and reopen the terminal first (the installer
-                        only adds PATH for new shells), then reinstall Docker
-                        Desktop with PATH integration enabled. See
-                        Troubleshooting below.
+                        , close and reopen the terminal first. The installer only
+                        adds Docker to PATH for new shells. If needed, reinstall
+                        Docker Desktop with PATH integration enabled.
                     </Callout>
                 </Section>
 
                 <Section title="Reset the database">
                     <p>
-                        To reset from scratch (drops aggregates, re-runs
-                        migrate:fresh --seed, dumps schema, kicks off
-                        system:monitor):
+                        If you want to start from a clean state, this command
+                        drops the current aggregates, reruns the migrations and
+                        seed data, saves the schema, and restarts the monitoring
+                        worker loop:
                     </p>
                     <CodeBlock>{`npm run resetdb`}</CodeBlock>
                     <p>
-                        Works in both flows: with the Docker stack up it resets
-                        the Docker database (prints its target and asks [y/N]
-                        first) - otherwise the local Herd database.
+                        This works in both setups. If Docker is running, it resets
+                        the Docker database and asks for confirmation first. If
+                        not, it resets the local Herd database instead.
                     </p>
                 </Section>
 
                 <Section title="(Optional) Rebuild the agent">
                     <p>
-                        Pre-built agent binaries are committed to the repo (
+                        The repo already includes prebuilt agent binaries in{" "}
                         <InlineCode>public/agent</InlineCode> and{" "}
-                        <InlineCode>public/MonitorAgent.exe</InlineCode>), so
-                        this is only needed when you change agent code (requires
-                        the{" "}
+                        <InlineCode>public/MonitorAgent.exe</InlineCode>. You only
+                        need to rebuild them if you change the agent code itself.
+                        This requires the{" "}
                         <a
                             className="text-blue-600 dark:text-blue-400 underline"
                             href="https://go.dev/dl/"
@@ -492,14 +498,14 @@ docker compose up                  # build if needed, then start all services
                         >
                             Go toolchain
                         </a>{" "}
-                        on the host, not in Docker):
+                        on the host machine, not inside Docker:
                     </p>
                     <CodeBlock>{`npm run compileagent`}</CodeBlock>
                     <p>
-                        This cross-compiles both binaries with Go, then syncs
-                        the agent version, auto-bumps the version record when
-                        the binaries change, and broadcasts an update to
-                        connected agents.
+                        This compiles both binaries for the supported targets,
+                        syncs the agent version, updates the version metadata when
+                        the binaries change, and notifies connected agents of the
+                        update.
                     </p>
                 </Section>
             </Section>
@@ -512,105 +518,76 @@ export function DocsConfigurationContent() {
         <>
             <Section title="Environment files">
                 <p>
-                    The base application config lives in{" "}
-                    <InlineCode>.env.development</InlineCode>, which Laravel
-                    loads on startup (Laravel hardcodes{" "}
-                    <InlineCode>.env.development</InlineCode> +{" "}
-                    <InlineCode>.env</InlineCode> - it never reads{" "}
-                    <InlineCode>.env.production</InlineCode> itself; that file
-                    is only selected by <InlineCode>node entry.js prod</InlineCode>
-                    ). <InlineCode>.env</InlineCode> holds{" "}
-                    <strong>personal overrides only</strong> - it is gitignored
-                    and merged on top, so it is no longer the main env holder.
+                    The main local config file is{" "}
+                    <InlineCode>.env.development</InlineCode>. Laravel reads it
+                    when the app starts, and your personal settings live in the
+                    gitignored root <InlineCode>.env</InlineCode> file. The app
+                    does not read <InlineCode>.env.production</InlineCode>
+                    directly; that file is only used when the entry script is
+                    run in production mode.
                 </p>
                 <Callout type="danger">
-                    This repo is public:{" "}
-                    <InlineCode>.env.development</InlineCode> is visible to
-                    everyone, so every key in it is a throwaway dev
-                    placeholder (dummy JWT/Reverb/APP_KEY, blank
-                    SMTP/Cloudinary/Discord) - never a real secret. After
-                    cloning, regenerate them for your own use (
-                    <InlineCode>php artisan key:generate</InlineCode>, fresh{" "}
-                    <InlineCode>JWT_SECRET</InlineCode> /{" "}
-                    <InlineCode>REVERB_*</InlineCode>), put real credentials
-                    only in the gitignored personal{" "}
-                    <InlineCode>.env</InlineCode>, and never commit that file -
-                    or push a private fork with real keys back here. Git
-                    history before 2026-09-09 still contains the old real
-                    Cloudinary/Discord/JWT values: purge history (
-                    <InlineCode>git filter-repo</InlineCode>) and rotate every
-                    one of those secrets before going public - treat them as
-                    compromised.
+                    This repo is public, so every value in{" "}
+                    <InlineCode>.env.development</InlineCode> is just a dev
+                    placeholder. The JWT key, Reverb keys, SMTP values, and
+                    Cloudinary or Discord credentials are all dummy values and
+                    must not be treated as real secrets. After cloning, generate
+                    fresh values for your own setup, put the real ones in your
+                    personal <InlineCode>.env</InlineCode>, and never commit that
+                    file. If older git history still contains real secrets,
+                    rotate them and clean the repo history before publishing.
                 </Callout>
                 <Callout type="warning">
-                    Docker twist: inside containers,{" "}
-                    <InlineCode>compose.yaml</InlineCode>{" "}
-                    <InlineCode>environment:</InlineCode> entries are real OS
-                    variables, and Laravel loads env files with{" "}
-                    <InlineCode>createImmutable</InlineCode> - real env beats{" "}
-                    <strong>every</strong> file. So editing{" "}
-                    <InlineCode>.env</InlineCode> reaches Herd immediately but
-                    never reaches a running container (this exact trap once
-                    froze <InlineCode>APP_URL</InlineCode> at{" "}
-                    <InlineCode>localhost:8000</InlineCode>). For Docker, change
-                    the value via <InlineCode>{"${VAR:-default}"}</InlineCode>{" "}
-                    interpolation in <InlineCode>compose.yaml</InlineCode> (or
-                    the prod overlay) and recreate the container.
+                    With Docker, the values in <InlineCode>compose.yaml</InlineCode>{" "}
+                    are the real environment variables used inside the running
+                    containers. They override everything else. This means an edit
+                    in your local <InlineCode>.env</InlineCode> changes Herd right
+                    away, but it does not change a live Docker container. For
+                    Docker, update the value in <InlineCode>compose.yaml</InlineCode>{" "}
+                    or in the production override and recreate the container.
                 </Callout>
                 <ul className="list-disc pl-5 space-y-1.5">
                     <li>
-                        <InlineCode>.env.development</InlineCode> - committed,
-                        base dev config. Holds NO real secrets (placeholders
-                        only) - put personal credentials in{" "}
-                        <InlineCode>.env</InlineCode>.
+                        <InlineCode>.env.development</InlineCode> - the committed
+                        default config for local development. It contains no real
+                        secrets; keep personal values in <InlineCode>.env</InlineCode>.
                     </li>
                     <li>
-                        <InlineCode>.env</InlineCode> - gitignored, personal
-                        overrides that win on top.
+                        <InlineCode>.env</InlineCode> - your personal local
+                        overrides. This file is gitignored and wins over the
+                        default values.
                     </li>
                     <li>
-                        <InlineCode>.env.example</InlineCode> - regenerated from{" "}
-                        <InlineCode>.env.development</InlineCode> with values
-                        stripped by the entry script on every{" "}
-                        <InlineCode>npm run dev</InlineCode> /{" "}
-                        <InlineCode>npm run prod</InlineCode>.
+                        <InlineCode>.env.example</InlineCode> - a clean template
+                        regenerated from the dev defaults and stripped by the entry
+                        script during local or production startup.
                     </li>
                     <li>
-                        <InlineCode>.env.testing</InlineCode> - committed, test
-                        config.
+                        <InlineCode>.env.testing</InlineCode> - test-specific
+                        configuration.
                     </li>
                     <li>
-                        <InlineCode>.env</InlineCode> - gitignored, local
-                        secrets (e.g. Gmail SMTP) loaded directly by Laravel and
-                        overriding <InlineCode>.env.development</InlineCode> -
-                        see Gmail SMTP below.
-                    </li>
-                    <li>
-                        <InlineCode>.env.production</InlineCode> - gitignored,
-                        production values.
+                        <InlineCode>.env.production</InlineCode> - production-only
+                        values, kept out of version control.
                     </li>
                 </ul>
                 <p>
-                    The frontend has no <InlineCode>frontend/.env</InlineCode>{" "}
-                    (only <InlineCode>frontend/.env.example</InlineCode>) -{" "}
-                    <InlineCode>VITE_*</InlineCode> values are injected from the
-                    root env by the entry script at build/dev time.
+                    The frontend does not use a separate <InlineCode>frontend/.env</InlineCode>{" "}
+                    file. The Vite variables are injected from the root env at
+                    build time and during local development.
                 </p>
             </Section>
 
             <Section title="Dev safety switches">
                 <p>
-                    Env comes in layers with precedence (highest first): real
-                    process env (Docker compose{" "}
-                    <InlineCode>environment:</InlineCode>) &gt; personal
-                    gitignored <InlineCode>.env</InlineCode> &gt;{" "}
-                    <InlineCode>.env.development</InlineCode> defaults. Set
-                    these once per machine, then forget them - and only ever
-                    edit your personal <InlineCode>.env</InlineCode> in the repo
-                    root (create it on first clone; never commit it). A fresh
-                    clone without a personal <InlineCode>.env</InlineCode> sends
-                    real notifications - that is intentional (staging-like
-                    behaves like prod).
+                    Environment values are layered in order of priority: Docker
+                    runtime variables, your personal gitignored{" "}
+                    <InlineCode>.env</InlineCode>, and then the default values in
+                    <InlineCode>.env.development</InlineCode>. Set the important
+                    values once per machine, and only edit your personal root{" "}
+                    <InlineCode>.env</InlineCode> file. A fresh clone without that
+                    file will still behave like a production-like setup and may
+                    send real notifications, which is intentional in this repo.
                 </p>
                 <SubSection title="Native (Herd)">
                     <p>
@@ -673,25 +650,21 @@ export function DocsConfigurationContent() {
 
             <Section title="Key configuration variables">
                 <p>
-                    Every knob the app reads from env. Set once per machine in
-                    your personal <InlineCode>.env</InlineCode> (repo root); dev
-                    defaults in <InlineCode>.env.development</InlineCode>{" "}
-                    already cover local runs, so you only provide the rows
-                    marked "you fetch" or "generate". Where to put them and when
-                    they apply is in{" "}
-                    <InlineCode>Dev safety switches</InlineCode> above.
+                    The app reads most of its runtime settings from environment
+                    variables. Set them once in your personal root{" "}
+                    <InlineCode>.env</InlineCode> file, and keep the defaults in
+                    <InlineCode>.env.development</InlineCode> for local development.
+                    Only add the values that are marked as generated or fetched
+                    from outside services.
                 </p>
                 <p>
-                    You can override any default - personal{" "}
-                    <InlineCode>.env</InlineCode> wins over{" "}
-                    <InlineCode>.env.development</InlineCode> - but usually
-                    shouldn't for Database/Redis/Reverb: the local services
-                    expect those exact values, so changing one means
-                    reconfiguring the matching service too (e.g. a new DB
-                    password must also be set on the postgres server/container).
-                    Only override with a reason (e.g. a port clash), and never
-                    ship dev defaults to prod - prod uses generated env (see{" "}
-                    <InlineCode>Production: physical server</InlineCode>).
+                    Your personal <InlineCode>.env</InlineCode> overrides the dev
+                    defaults, but for database, Redis, and Reverb settings it is
+                    usually best to leave the project defaults alone. If you
+                    change one of those values, you must also change the matching
+                    service configuration. Only override a value when you need to
+                    fix a local issue, such as a port conflict. Do not ship dev
+                    defaults into production.
                 </p>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm border border-border/40 rounded-lg overflow-hidden">
@@ -1074,45 +1047,41 @@ export function DocsRunningContent() {
         <>
             <Section title="Quick start">
                 <SubSection title="Docker workflow (local, no tunnel)">
-                    <CodeBlock>{`# From the repo root — the script owns the stack, never run compose up yourself:
-npm run docker             # full stack + Vite HMR — primary local workflow
-docker compose logs -f app          # tail app logs
-docker compose exec app php artisan tinker   # REPL inside the container`}</CodeBlock>
+                    <CodeBlock>{`# From the repo root — let the script manage the stack for you:
+npm run docker             # full stack + Vite HMR — main local workflow
+docker compose logs -f app          # follow app logs
+docker compose exec app php artisan tinker   # open the Laravel REPL`}</CodeBlock>
                     <p>
-                        Image builds happen automatically: first run, plus
-                        whenever the Dockerfile or lockfiles change (
-                        <InlineCode>composer.json</InlineCode> /{" "}
-                        <InlineCode>package.json</InlineCode> — detected, no
-                        manual <InlineCode>--build</InlineCode>). Source edits
-                        apply live through the bind mount. Append{" "}
-                        <InlineCode>rebuild</InlineCode> (
-                        <InlineCode>npm run docker rebuild</InlineCode>) to
-                        force a rebuild regardless.
+                        The Docker image is rebuilt automatically when needed,
+                        such as on the first run or when the Dockerfile or lock
+                        files change. Source edits appear live through the bind
+                        mount. If you want to force a rebuild, add the{" "}
+                        <InlineCode>rebuild</InlineCode> flag: {" "}
+                        <InlineCode>npm run docker rebuild</InlineCode>.
                     </p>
                 </SubSection>
 
                 <SubSection title="ngrok workflow (public tunnel)">
                     <CodeBlock>{`npm run ngrok              # Docker stack + Vite HMR + public tunnel URL`}</CodeBlock>
                     <p>
-                        Same stack as above, plus a stable public URL for
-                        testing agent installs and external integrations from
-                        other machines. Needs{" "}
-                        <InlineCode>NGROK_DOMAIN</InlineCode> +{" "}
+                        This is the same stack as the Docker flow, but it adds a
+                        stable public URL for testing agent installs and external
+                        integrations from other machines. It needs{" "}
+                        <InlineCode>NGROK_DOMAIN</InlineCode> and{" "}
                         <InlineCode>NGROK_UPSTREAM</InlineCode> in your{" "}
-                        <InlineCode>.env</InlineCode> — full setup under{" "}
-                        <strong>Pre-production testing with ngrok</strong>{" "}
-                        below.
+                        <InlineCode>.env</InlineCode>. See the ngrok setup section
+                        below for the full instructions.
                     </p>
                 </SubSection>
 
-                <SubSection title="Herd workflow (Native Windows/macOS)">
+                <SubSection title="Herd workflow (native Windows/macOS)">
                     <CodeBlock>{`npm run dev       # redis + vite + reverb + queue + scheduler
 # App: http://server-monitoring-system.test
 # Frontend dev: http://localhost:5173
 # Docs dev: http://localhost:5174`}</CodeBlock>
                     <p>
-                        Uses local PHP 8.5, Redis, and PostgreSQL. App served
-                        via Herd at{" "}
+                        This uses local PHP 8.5, Redis, and PostgreSQL. The app is
+                        served through Herd at{" "}
                         <InlineCode>
                             http://server-monitoring-system.test
                         </InlineCode>
@@ -1218,13 +1187,13 @@ npm run docker rebuild`}</CodeBlock>
 
             <Section title="Pre-production testing with ngrok">
                 <p>
-                    Use <InlineCode>npm run ngrok</InlineCode> to expose your
-                    local app via a stable ngrok domain for testing agent
-                    installations and external integrations. This extends the
-                    Docker dev flow with an internet tunnel and requires{" "}
-                    <InlineCode>NGROK_DOMAIN</InlineCode> +
+                    Use <InlineCode>npm run ngrok</InlineCode> when you need to
+                    expose the local app through a stable ngrok domain for agent
+                    installs and external testing. This keeps the Docker dev flow
+                    but adds an internet tunnel, and it needs{" "}
+                    <InlineCode>NGROK_DOMAIN</InlineCode> and{" "}
                     <InlineCode>NGROK_UPSTREAM</InlineCode> in your{" "}
-                    <InlineCode>.env</InlineCode>.
+                    <InlineCode>.env</InlineCode> file.
                 </p>
                 <SubSection title="Setup">
                     <ol className="list-decimal pl-5 space-y-1.5">
@@ -1394,10 +1363,10 @@ npm run ngrok    # tunnels to Vite, which proxies to the Herd app`}</CodeBlock>
 
             <Section title="Production: physical server">
                 <p>
-                    Prerequisites on the server: Docker Engine + compose plugin,
-                    a DNS <InlineCode>A</InlineCode> record (e.g.{" "}
-                    <InlineCode>monitor.company.com</InlineCode>) pointing at
-                    the server, ports 80/443 open.
+                    Before you deploy, make sure the server has Docker Engine and
+                    the Compose plugin installed, a DNS <InlineCode>A</InlineCode>{" "}
+                    record such as <InlineCode>monitor.company.com</InlineCode>{" "}
+                    pointing to the server, and ports 80 and 443 open.
                 </p>
                 <CodeBlock>{`git clone <repo> && cd server-monitoring-system
 npm run setup:docker -- --app-url https://monitor.company.com
@@ -1409,21 +1378,20 @@ docker compose -f compose.yaml -f compose.prod.yaml --env-file .env.docker up -d
                     compose invocation.
                 </Callout>
                 <p>
-                    Caddy terminates HTTPS automatically (Let&apos;s Encrypt)
-                    and routes <InlineCode>/app/*</InlineCode> to Reverb
-                    websockets, everything else to Laravel. First boot migrates;
-                    data persists in Docker volumes. The overlay forwards
-                    DB/Redis/Reverb (+ <InlineCode>APP_URL</InlineCode>,{" "}
-                    <InlineCode>APP_KEY</InlineCode>,{" "}
-                    <InlineCode>JWT_SECRET</InlineCode>,{" "}
-                    <InlineCode>MAIL_*</InlineCode>,{" "}
-                    <InlineCode>CLOUDINARY_*</InlineCode>,{" "}
-                    <InlineCode>UPLOAD_STORAGE_PROVIDER</InlineCode>) into the
-                    app container, and the mail/storage subset into the queue
-                    worker (which executes those jobs).{" "}
-                    <InlineCode>APP_KEY</InlineCode> /{" "}
-                    <InlineCode>JWT_SECRET</InlineCode> are required - compose
-                    refuses to start without them.
+                    Caddy handles HTTPS automatically with Let&apos;s Encrypt and
+                    routes <InlineCode>/app/*</InlineCode> to the Reverb WebSocket
+                    layer, while everything else goes to Laravel. The first boot
+                    runs the migrations, and data stays in Docker volumes. The
+                    production overlay passes the database, Redis, Reverb, and
+                    app settings into the container, including{" "}
+                    <InlineCode>APP_URL</InlineCode>, <InlineCode>APP_KEY</InlineCode>,{" "}
+                    <InlineCode>JWT_SECRET</InlineCode>, <InlineCode>MAIL_*</InlineCode>,{" "}
+                    <InlineCode>CLOUDINARY_*</InlineCode>, and{" "}
+                    <InlineCode>UPLOAD_STORAGE_PROVIDER</InlineCode>. The queue
+                    worker also receives the mail and storage values it needs to
+                    process those jobs. <InlineCode>APP_KEY</InlineCode> and{" "}
+                    <InlineCode>JWT_SECRET</InlineCode> are required, and Docker
+                    will refuse to start without them.
                 </p>
                 <SubSection title="Updates">
                     <CodeBlock>{`git pull && docker compose -f compose.yaml -f compose.prod.yaml --env-file .env.docker up -d --build`}</CodeBlock>
@@ -1438,23 +1406,22 @@ docker compose -f compose.yaml -f compose.prod.yaml --env-file .env.docker up -d
             <Section title="Verify the installation">
                 <ol className="list-decimal pl-5 space-y-1.5">
                     <li>
-                        Log in at <InlineCode>{"${APP_URL}"}</InlineCode> with
-                        the seeded user (<InlineCode>user / user123</InlineCode>{" "}
-                        - there is no admin role).
+                        Log in at <InlineCode>{"${APP_URL}"}</InlineCode> using the
+                        seeded user account: <InlineCode>user / user123</InlineCode>.
+                        There is no admin role in the default seed data.
                     </li>
                     <li>
-                        Open the Dashboard - stat cards and the Server Overview
-                        donut should load.
+                        Open the dashboard. The stat cards and server overview chart
+                        should load correctly.
                     </li>
                     <li>
-                        Create a client, then a server under it, and follow the
-                        Agent Installation Guide to install the agent on a
-                        machine (see the User Guide).
+                        Create a client, then create a server under it, and follow
+                        the agent installation guide to install the Go agent on a
+                        machine.
                     </li>
                     <li>
-                        Confirm the server reaches{" "}
-                        <InlineCode>online</InlineCode> status and metrics
-                        appear in the Metrics tab.
+                        Confirm the server changes to <InlineCode>online</InlineCode>{" "}
+                        and that metrics appear in the metrics view.
                     </li>
                 </ol>
             </Section>

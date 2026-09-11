@@ -205,39 +205,39 @@ const PAGES: Record<
     requirements: {
         title: "Requirements",
         description:
-            "Software and services required to install and run the system.",
+            "System dependencies for the Laravel backend, React dashboard, Go agent, and supporting infrastructure.",
         Content: DocsRequirementsContent,
     },
     installation: {
         title: "Installation & Setup",
-        description: "From cloning the repository to a running system.",
+        description: "Set up the backend, dashboard, agent, and supporting services for a working monitoring stack.",
         Content: DocsInstallationContent,
     },
     configuration: {
         title: "Configuration",
-        description: "Environment files, key variables, and Gmail SMTP.",
+        description: "Runtime settings, environment variables, Reverb, SMTP, and system-wide operational configuration.",
         Content: DocsConfigurationContent,
     },
     running: {
         title: "Running the App",
-        description: "Dev workflow, production build, and deployment.",
+        description: "Start the Laravel app, frontend dashboard, queues, and supporting services for live monitoring.",
         Content: DocsRunningContent,
     },
     dashboard: {
         title: "Dashboard",
         description:
-            "Stat cards, server overview, action board, and live usage charts.",
+            "Live health overview for clients, servers, alerts, and operational actions across the estate.",
         Content: DocsDashboardContent,
     },
     clients: {
         title: "Clients",
         description:
-            "Manage client accounts, their servers, and SecOps assignments.",
+            "Manage client organizations, monitored assets, and the SecOps users assigned to each environment.",
         Content: DocsClientsContent,
     },
     servers: {
         title: "Servers",
-        description: "Create servers, install the agent, and monitor metrics.",
+        description: "Register monitored hosts, install the Go agent, and track health, metrics, and status changes.",
         Content: DocsServersContent,
     },
     "agent-setup": {
@@ -248,30 +248,30 @@ const PAGES: Record<
     },
     users: {
         title: "Users",
-        description: "Manage accounts, credentials, and client assignments.",
+        description: "Manage SecOps accounts, client access, credentials, and runtime permissions.",
         Content: DocsUsersContent,
     },
     logs: {
         title: "Logs",
-        description: "Activity, server health, and agent audit logs.",
+        description: "Review activity, health checks, agent events, and operational audit trails.",
         Content: DocsLogsContent,
     },
     reports: {
         title: "Reports",
         description:
-            "Generate PDF reports for servers, clients, and the whole system.",
+            "Generate shareable PDF summaries for clients, servers, and system-wide health.",
         Content: DocsReportsContent,
     },
     settings: {
         title: "Settings",
         description:
-            "Profile, sessions, system settings, agent settings, and alert configs.",
+            "Manage user preferences, system settings, agent configuration, and alert logic.",
         Content: DocsSettingsContent,
     },
     "alert-editor": {
         title: "Alert Config Editor",
         description:
-            "The visual node editor for alerts - every node type, wiring, scopes, and templates.",
+            "Design the alert graph for specific clients, servers, and runtime conditions using the visual workflow editor.",
         Content: DocsAlertConfiguratorContent,
     },
     adrs: {
@@ -776,16 +776,16 @@ export default function Docs() {
     return (
         <div className="flex h-full flex-col w-full bg-background text-foreground">
             <div className="relative">
-            {/* Top Navigation Bar */}
-            <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md supports-backdrop-filter:bg-background/60">
-                <div className="flex h-14 items-center justify-between px-3 sm:px-6 gap-2 sm:gap-4">
-                    {/* Left Side: Logo/Title */}
-                    <div className="flex items-center gap-2.5 min-w-0">
-                        <img src="/coreDevlogo.png" alt="Server Monitoring Logo" className="size-5 shrink-0 object-contain" />
-                        <span className="font-bold text-sm sm:text-base tracking-tight truncate">
-                            <span className="hidden sm:inline">Server Monitoring </span>Documentation
-                        </span>
-                    </div>
+                {/* Top Navigation Bar */}
+                <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur-md supports-backdrop-filter:bg-background/60">
+                    <div className="flex h-16 items-center justify-between px-3 sm:px-6 gap-2 sm:gap-4">
+                        {/* Left Side: Logo/Title */}
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <img src="/docs/images/coreDevlogo.png" alt="Server Monitoring Logo" className="size-6 shrink-0 object-contain" />
+                            <span className="font-bold text-base sm:text-lgtracking-tight truncate">
+                                <span className="hidden sm:inline">Server Monitoring </span>Documentation
+                            </span>
+                        </div>
 
                     {/* Right Side: Search & Mobile Menu */}
                     <div className="flex items-center gap-2 shrink-0">
@@ -932,7 +932,7 @@ export default function Docs() {
                                     </h1>
                                     <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
                                         {isOverview
-                                            ? "Welcome to the Server Monitoring System documentation. Explore guides, setup instructions, and technical references."
+                                            ? "A client-focused monitoring platform for managed infrastructure: one backend, many clients, live telemetry, alerts, and operational reporting."
                                             : page?.description}
                                     </p>
                                 </div>

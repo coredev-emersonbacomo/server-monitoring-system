@@ -73,7 +73,7 @@ function ClientGrid({
     const virtualizer = useVirtualizer({
         count: rows.length || 1,
         getScrollElement: () => document.documentElement,
-        estimateSize: () => CARD_ESTIMATE_PX + 16,
+        estimateSize: () => CARD_ESTIMATE_PX + 10,
         overscan: 3,
     });
 
@@ -107,6 +107,7 @@ function ClientGrid({
                         <div
                             key={virtualRow.key}
                             data-index={virtualRow.index}
+                            ref={virtualizer.measureElement}
                             style={{
                                 position: "absolute",
                                 top: 0,
@@ -119,8 +120,8 @@ function ClientGrid({
                                 style={{
                                     display: "grid",
                                     gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
-                                    gap: "16px",
-                                    paddingBottom: "16px",
+                                    gap: "15px",
+                                    paddingBottom: "15px",
                                 }}
                             >
                                 {row.map((client) => (
