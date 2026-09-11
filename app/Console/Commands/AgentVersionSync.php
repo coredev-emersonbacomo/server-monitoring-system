@@ -100,7 +100,7 @@ class AgentVersionSync extends Command
         // Create AgentVersion record
         AgentVersion::create([
             'version' => $nextVersion,
-            'binary_url' => url('/MonitorAgent.exe'),
+            'binary_url' => rtrim(env('APP_URL') ?: url('/'), '/').'/MonitorAgent.exe',
             'description' => sprintf(
                 'Agent binary auto-updated to %s (windows: %s, linux: %s)',
                 $nextVersion,
@@ -128,9 +128,10 @@ class AgentVersionSync extends Command
             // Detect platform from the agent's first server OS to send the right binary URL
             // (all servers on one host share the OS).
             $os = strtolower($server->operating_system ?? '');
+            $baseUrl = rtrim(env('APP_URL') ?: url('/'), '/');
             $agentBinaryUrl = str_contains($os, 'windows')
-                ? url('/MonitorAgent.exe')
-                : url('/agent');
+                ? $baseUrl.'/MonitorAgent.exe'
+                : $baseUrl.'/agent';
 
             event(new AgentConfigUpdated(
                 $server->uuid,

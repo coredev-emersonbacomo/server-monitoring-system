@@ -233,12 +233,18 @@ class ProvisioningService
         // Select agent binary based on platform
         $platform = $metadata['platform'] ?? 'linux';
 
+        // Both URLs must be built from APP_URL - the externally reachable base
+        // (e.g. the ngrok tunnel) - never from url()/the inbound Host: the
+        // Vite/ngrok proxy rewrites Host to 127.0.0.1:8000, so url() would emit
+        // a loopback address the target agent cannot reach.
+        $baseUrl = rtrim(env('APP_URL') ?: url('/'), '/');
+
         if ($platform === 'windows') {
             $agentPath = public_path('MonitorAgent.exe');
-            $downloadUrl = url('/MonitorAgent.exe');
+            $downloadUrl = $baseUrl.'/MonitorAgent.exe';
         } else {
             $agentPath = public_path('agent');
-            $downloadUrl = url('/agent');
+            $downloadUrl = $baseUrl.'/agent';
         }
 
         $sha256 = file_exists($agentPath) ? hash_file('sha256', $agentPath) : '';
@@ -249,7 +255,7 @@ class ProvisioningService
             'download_url' => $downloadUrl,
             'expected_sha256' => $sha256,
             'agent_version' => $agentVersion,
-            'server_url' => env('APP_URL') ?: url('/'),
+            'server_url' => $baseUrl,
         ];
     }
 

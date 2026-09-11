@@ -46,7 +46,7 @@ class SettingController extends Controller
             if (! $latest || $latest->version !== $agentVersion) {
                 AgentVersion::create([
                     'version' => $agentVersion,
-                    'binary_url' => url('/MonitorAgent.exe'),
+                    'binary_url' => rtrim(env('APP_URL') ?: url('/'), '/').'/MonitorAgent.exe',
                     'description' => 'Agent binary updated to version '.$agentVersion,
                 ]);
             }
