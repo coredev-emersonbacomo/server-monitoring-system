@@ -7,7 +7,7 @@
     "start": "node scripts/entry.js prod",
     "dev": "node scripts/entry.js dev",
     "docs": "npm run dev -w docs",
-    "tim": "cross-env VITE_BACKEND_URL=http://127.0.0.1:8000 node scripts/entry.js dev",
+    "host": "node scripts/host.js",
     "prod": "node scripts/entry.js prod",
     "setup": "composer install && npm install",
     "setup:docker": "node scripts/setup-docker-env.js",
