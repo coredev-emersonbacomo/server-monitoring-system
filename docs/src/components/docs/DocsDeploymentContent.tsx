@@ -1,6 +1,7 @@
 import { Section, SubSection, CodeBlock, InlineCode, Callout } from "./Section";
 import { DocsGmailSmtpContent } from "./DocsGmailSmtpContent";
 import { DocsDiscordNotificationsContent } from "./DocsDiscordNotificationsContent";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 
 export function DocsOverviewContent() {
     return (
@@ -84,6 +85,11 @@ export function DocsOverviewContent() {
 }
 
 export function DocsRequirementsContent() {
+    const navigate = useNavigate();
+    const go = (id: string) => {
+        navigate(`/docs/${id}`);
+    };
+
     return (
         <>
             <Section title="Development workflows">
@@ -101,7 +107,136 @@ export function DocsRequirementsContent() {
                     below.
                 </p>
 
-                <Section title="Option A: Herd (Native - Windows/macOS)">
+                <Section title="Option A: Ngrok Tunnel Deployment (Recommended)">
+                    <p>
+                        Host the app locally using ngrok.
+                        Comply the requirements that is needed.
+                        Run this in terminal or cmd, make sure that npm is in PATH <InlineCode>npm run host</InlineCode>.
+                        This tunnels automatically to the specified ngrok_url in environment.
+                        The <strong>NGROK_DOMAIN</strong> can be changed into a real domain (<strong>if you own one</strong>).
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1.5">
+                        <li>
+                            <strong>Laravel (13.21.1 or later)</strong> -{" "}
+                            <a
+                                className="text-blue-600 dark:text-blue-400 underline"
+                                href="https://laravel.com/framework/docs/13.x/installation"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                Install Laravel
+                            </a>{" "}
+                            (includes PHP 8.5+)
+                        </li>
+                        <li>
+                            <strong>Ngrok</strong> -{" "}
+                            <a
+                                className="text-blue-600 dark:text-blue-400 underline"
+                                href="#running#pre-production-testing-with-ngrok"
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={() => go("running#pre-production-testing-with-ngrok")}
+                            >
+                                Setup
+                            </a>{" "}
+                            follow the documentation for setting up NGROK_DOMAIN.
+                        </li>
+                        <li>
+                            <strong>Node.js</strong> -{" "}
+                            <a
+                                className="text-blue-600 dark:text-blue-400 underline"
+                                href="https://nodejs.org/en/download"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                download Node.js 22 LTS
+                            </a>{" "}
+                            (for Vite dev servers)
+                        </li>
+                        <li>
+                            <strong>Redis</strong> - run{" "}
+                            <InlineCode>
+                                npm run install-redis:windows
+                            </InlineCode>{" "}
+                            (fetches the{" "}
+                            <a
+                                className="text-blue-600 dark:text-blue-400 underline"
+                                href="https://github.com/redis-windows/redis-windows"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                redis-windows
+                            </a>{" "}
+                            build to{" "}
+                            <InlineCode>C:\redis\redis-server.exe</InlineCode>,
+                            which the dev tooling uses automatically)
+                        </li>
+                        <li>
+                            <strong>PostgreSQL 17</strong> -{" "}
+                            plus TimescaleDB (<strong>Important</strong>) per the {" "}
+                            <a
+                                className="text-blue-600 dark:text-blue-400 underline"
+                                href="https://docs.timescale.com/self-hosted/latest/install/"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                self-hosted install docs
+                            </a>
+                        </li>
+                        <li>
+                            <strong>Git</strong> -{" "}
+                            <a
+                                className="text-blue-600 dark:text-blue-400 underline"
+                                href="https://git-scm.com/downloads"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                download Git
+                            </a>{" "}
+                            to clone the repository.
+                        </li>
+                        <li>
+                            <strong>Typst</strong> -{" "}
+                            <a
+                                className="text-blue-600 dark:text-blue-400 underline"
+                                href="https://github.com/typst/typst/releases"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                download Typst
+                            </a>{" "}
+                            for PDF report compilation.{" "}
+                            <strong>Windows:</strong> download the latest{" "}
+                            <InlineCode>
+                                typst-x86_64-pc-windows-msvc.zip
+                            </InlineCode>
+                            , extract it, and add the folder containing{" "}
+                            <InlineCode>typst.exe</InlineCode> to your{" "}
+                            <InlineCode>PATH</InlineCode> (search &quot;Edit
+                            environment variables for your account&quot; in
+                            Windows Settings, edit <InlineCode>Path</InlineCode>{" "}
+                            under User variables, click New, and paste the
+                            folder path). Alternatively, install via winget:{" "}
+                            <InlineCode>winget install Typst.Typst</InlineCode>.{" "}
+                            <strong>macOS:</strong>{" "}
+                            <InlineCode>brew install typst</InlineCode>.{" "}
+                            <strong>Linux:</strong>{" "}
+                            <InlineCode>
+                                cargo install --locked typst-cli
+                            </InlineCode>{" "}
+                            or download the{" "}
+                            <InlineCode>
+                                typst-x86_64-unknown-linux-musl.tar.xz
+                            </InlineCode>{" "}
+                            from the releases page, extract it, and copy{" "}
+                            <InlineCode>typst</InlineCode> to{" "}
+                            <InlineCode>/usr/local/bin/</InlineCode>. Verify
+                            with <InlineCode>typst --version</InlineCode>.
+                        </li>
+                    </ul>
+                </Section>
+
+                <Section title="Option B: Herd (Native - Windows/macOS)">
                     <p>
                         Herd provides a native development experience with zero
                         Docker configuration. Ideal for quick iteration on
@@ -223,7 +358,7 @@ export function DocsRequirementsContent() {
                     </ul>
                 </Section>
 
-                <Section title="Option B: Docker (Containerized - Any OS)">
+                <Section title="Option C: Docker (Containerized - Any OS)">
                     <p>
                         Docker provides a consistent, isolated environment with
                         a single command to start the full stack. No host-level
