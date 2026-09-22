@@ -162,7 +162,8 @@ class HeartbeatService
                 // Pick the binary URL for the agent's platform — the AgentVersion
                 // record only stores the Windows URL.
                 $os = strtolower($server->operating_system ?? '');
-                $binaryUrl = str_contains($os, 'windows') ? url('/MonitorAgent.exe') : url('/agent');
+                $baseUrl = rtrim(env('APP_URL') ?: url('/'), '/');
+                $binaryUrl = str_contains($os, 'windows') ? $baseUrl.'/MonitorAgent.exe' : $baseUrl.'/agent';
                 $response['pending_update'] = [
                     'version' => $latestBinaryUpdate->version,
                     'heartbeat_interval' => null,
@@ -435,7 +436,8 @@ class HeartbeatService
                 // Pick the binary URL for the agent's platform — every server
                 // on one computer shares the OS, so the first server suffices.
                 $os = strtolower($accepted[0]['server']->operating_system ?? '');
-                $binaryUrl = str_contains($os, 'windows') ? url('/MonitorAgent.exe') : url('/agent');
+                $baseUrl = rtrim(env('APP_URL') ?: url('/'), '/');
+                $binaryUrl = str_contains($os, 'windows') ? $baseUrl.'/MonitorAgent.exe' : $baseUrl.'/agent';
                 $response['pending_update'] = [
                     'version' => $latestBinaryUpdate->version,
                     'heartbeat_interval' => null,
