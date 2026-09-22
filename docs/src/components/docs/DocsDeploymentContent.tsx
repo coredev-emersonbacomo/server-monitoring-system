@@ -530,8 +530,48 @@ npm run dev       # redis + vite + reverb + queue + scheduler`}</CodeBlock>
                         <InlineCode>http://localhost:5173</InlineCode>
                     </p>
                     <Callout>
+                        The default credentials are{" "}
+                        <InlineCode>user / user123</InlineCode> (UserSeeder -
+                        there is no admin role). Change the password after first
+                        login. Seeding is controlled by the{" "}
+                        <InlineCode>SEED_ON_BOOT</InlineCode> flip switch:{" "}
+                        <InlineCode>true</InlineCode> in dev (seeds once on
+                        empty DB, safe on reboot),{" "}
+                        <InlineCode>false</InlineCode> in prod - create the
+                        first prod user once with{" "}
+                        <InlineCode>
+                            php artisan db:seed --class=UserSeeder --force
+                        </InlineCode>
+                        .
+                    </Callout>
+                </Section>
+
+                <Section title="Option B: No Herd">
+                    <CodeBlock>{`# 1. Install prerequisites
+# - Laravel (includes PHP 8.5+)
+# - Node.js v22+
+# - Redis (or use C:\\redis\\redis-server.exe on Windows)
+# - PostgreSQL with TimescaleDB extension
+# - Typst CLI (report compilation) - see Requirements > Option A
+
+# 2. Setup
+change .env APP_URL to "http://127.0.0.1:8000"
+npm run setup     # composer install + npm install (first time only)
+
+# 3. Start development services
+npm run noherd # redis + vite + reverb + queue + scheduler`}</CodeBlock>
+                    <p>
+                        Access the application at:{" "}
+                        <InlineCode>
+                            http://127.0.0.1:8000
+                        </InlineCode>
+                        <br />
+                        Frontend dev server:{" "}
+                        <InlineCode>http://localhost:5173</InlineCode>
+                    </p>
+                    <Callout>
                         On Linux there is no Herd: run{" "}
-                        <InlineCode>npm run tim</InlineCode> instead (same
+                        <InlineCode>npm run noherd</InlineCode> instead (same
                         services, Vite proxy targets{" "}
                         <InlineCode>http://127.0.0.1:8000</InlineCode>) - bring
                         your own backend on :8000 (e.g.{" "}
