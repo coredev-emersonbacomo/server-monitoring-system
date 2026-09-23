@@ -1,8 +1,9 @@
-import { ChevronLeft, Upload, BadgeCheck, ShieldAlert } from "lucide-react";
+import { Upload, BadgeCheck, ShieldAlert, UserCircle } from "lucide-react";
 import { Form, type FormStore } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import type { AuthUserData } from "@/types/models";
 import type { ProfileForm } from "../constants/profileSchema";
+import IndexHeader from "@/components/IndexHeader";
 
 interface ProfileHeaderProps {
     mode: "view" | "edit" | "create";
@@ -24,11 +25,21 @@ export function ProfileHeader({
     fullName,
     isVerified,
     avatarSrc,
-    onNavigateBack,
     onAvatarChange,
 }: ProfileHeaderProps) {
     return (
         <div className="relative">
+            <div className="relative z-20">
+                <IndexHeader
+                    icon={UserCircle}
+                    description="Manage your personal information and avatar."
+                    trail={[
+                        { label: "Settings", href: "/settings" },
+                        { label: "Profile" },
+                    ]}
+                />
+            </div>
+
             <div className="absolute inset-0 overflow-hidden rounded-t-xl">
                 <div
                     className="w-full h-full"
@@ -43,15 +54,7 @@ export function ProfileHeader({
 
             <div className="relative z-10 px-6 sm:px-8 lg:px-10 pt-6 pb-20">
                 {/* ── Top bar: actions ── */}
-                <div className="flex items-center justify-between mb-6">
-                    <button
-                        type="button"
-                        onClick={onNavigateBack}
-                        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                        Back to Settings
-                    </button>
+                <div className="flex items-center justify-end mb-6">
                     <div className="flex items-center gap-2">
                         {mode === "view" ? (
                             <Form.Buttons.Edit />

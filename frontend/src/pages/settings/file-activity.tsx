@@ -171,10 +171,14 @@ export default function FileActivitySettings() {
                 icon={FolderSearch}
                 title="File Activity Monitoring"
                 description="Configure which paths the agent audits on monitored servers."
+                trail={[
+                    { label: "Settings", href: "/settings" },
+                    { label: "File Activity Monitoring" },
+                ]}
             />
 
             <main className="w-full flex-1 min-h-0 py-6">
-                <div className="max-w-3xl mx-auto px-6 flex flex-col gap-4">
+                <div className="max-w-7xl mx-auto px-6 flex flex-col gap-4">
                     <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
                         <code>%ProgramData%\MonitorAgent</code> is monitored by
                         default (agent-scoped) and always on. Add or edit paths
@@ -248,14 +252,14 @@ export default function FileActivitySettings() {
                                             </td>
                                             <td className="px-4 py-3 text-muted-foreground">
                                                 {p.exclude_patterns &&
-                                                p.exclude_patterns.length > 0
+                                                    p.exclude_patterns.length > 0
                                                     ? p.exclude_patterns
-                                                          .slice(0, 2)
-                                                          .join(", ") +
-                                                      (p.exclude_patterns
-                                                          .length > 2
-                                                          ? "…"
-                                                          : "")
+                                                        .slice(0, 2)
+                                                        .join(", ") +
+                                                    (p.exclude_patterns
+                                                        .length > 2
+                                                        ? "…"
+                                                        : "")
                                                     : "—"}
                                             </td>
                                             <td className="px-4 py-3">

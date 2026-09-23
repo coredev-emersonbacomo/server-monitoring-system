@@ -89,14 +89,14 @@ function Settings() {
         },
         ...(SHOW_PIPELINE_VISUALIZER
             ? [
-                  {
-                      title: "System Pipeline Visualizer",
-                      description:
-                          "Real-time ecosystem map showing agent heartbeats, metrics flow particles, backend FSM evaluations, and exact scheduled timers.",
-                      icon: Activity,
-                      href: "/settings/alerts/debugger",
-                  } as const,
-              ]
+                {
+                    title: "System Pipeline Visualizer",
+                    description:
+                        "Real-time ecosystem map showing agent heartbeats, metrics flow particles, backend FSM evaluations, and exact scheduled timers.",
+                    icon: Activity,
+                    href: "/settings/alerts/debugger",
+                } as const,
+            ]
             : []),
         {
             title: "Docs",
@@ -118,7 +118,7 @@ function Settings() {
             />
 
             <main className="py-6 w-full flex-1">
-                <div className="max-w-2xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-12xl mx-auto px-6 sm:px-8 lg:px-10">
                     {settingsSections.map((section) => {
                         const content = (
                             <>

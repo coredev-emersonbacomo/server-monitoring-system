@@ -253,7 +253,7 @@ function AgentSettingsContent({
 
             {/* Body */}
             <main className="py-8 flex-1">
-                <div className="max-w-2xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-6">
+                <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-6">
                     {/* Section: Monitoring */}
                     <div className="bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
                         <div className="flex items-center gap-3 px-6 py-4 border-b border-border/60 bg-muted/30">

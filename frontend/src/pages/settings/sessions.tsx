@@ -357,7 +357,7 @@ export default function Sessions() {
                 </div>
 
                 <main className="py-6 w-full flex-1">
-                    <div className="max-w-4xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-6">
+                    <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col gap-6">
                         {/* Summary Metrics */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             {[
